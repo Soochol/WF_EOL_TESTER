@@ -1,62 +1,71 @@
 """
 Serial Communication Driver Module
 
-This module provides a component-based serial communication system for hardware communication.
-It follows clean architecture principles with separation of concerns and single responsibility.
-Located in src/driver/serial/ as a hardware driver component.
+Simple and efficient serial communication system for hardware devices.
+Optimized for request-response patterns like BS205 LoadCell and similar industrial equipment.
 
-The new architecture provides:
-- SerialManager: High-level interface for most use cases
-- Core components: Transport, Buffer, Reader for specific needs
-- Feature components: Retry, Health, AsyncAdapter for optional functionality
-- Clean interfaces following SOLID principles
+The architecture provides:
+- SerialConnection: Core async serial communication class
+- SerialManager: Factory class for creating connections
+- Constants: Centralized configuration values
+- Exceptions: Structured error handling
 """
 
-# Main interface for most use cases
-from .manager import SerialManager
-
-# Core components for specific needs
-from .core import (
-    ISerialTransport, ISerialBuffer,
-    SerialTransport, SerialBuffer, SerialReader
+# Configuration constants (always available)
+from driver.serial.constants import (
+    DEFAULT_BAUDRATE, DEFAULT_TIMEOUT, CONNECT_TIMEOUT,
+    COMMAND_TERMINATOR, RESPONSE_TERMINATOR, ENCODING,
+    READ_BUFFER_SIZE, MAX_COMMAND_LENGTH, MAX_RESPONSE_LENGTH,
+    MAX_RETRY_ATTEMPTS, RETRY_DELAY, FLUSH_TIMEOUT,
+    BS205_BAUDRATE, BS205_TIMEOUT, BS205_TERMINATOR
 )
 
-# Feature components for optional functionality
-from .features import RetryManager, HealthMonitor, AsyncAdapter
-
-# Exception classes
-from .exceptions import (
-    SerialDriverError,
+# Exception classes (always available)
+from driver.serial.exceptions import (
+    SerialError,
     SerialConnectionError,
     SerialCommunicationError,
     SerialTimeoutError,
-    SerialBufferError,
     SerialConfigurationError,
-    SerialExceptionFactory
+    SerialBufferError
 )
 
+# Core serial communication classes (conditional import for dependencies)
+try:
+    from driver.serial.serial import SerialConnection, SerialManager
+    _SERIAL_AVAILABLE = True
+except ImportError:
+    _SERIAL_AVAILABLE = False
+    SerialConnection = None
+    SerialManager = None
+
 __all__ = [
-    # Main interface
+    # Core classes
+    'SerialConnection',
     'SerialManager',
     
-    # Core components
-    'ISerialTransport',
-    'ISerialBuffer', 
-    'SerialTransport',
-    'SerialBuffer',
-    'SerialReader',
-    
-    # Feature components
-    'RetryManager',
-    'HealthMonitor',
-    'AsyncAdapter',
+    # Constants
+    'DEFAULT_BAUDRATE',
+    'DEFAULT_TIMEOUT',
+    'CONNECT_TIMEOUT',
+    'COMMAND_TERMINATOR',
+    'RESPONSE_TERMINATOR',
+    'ENCODING',
+    'READ_BUFFER_SIZE',
+    'MAX_COMMAND_LENGTH',
+    'MAX_RESPONSE_LENGTH',
+    'MAX_RETRY_ATTEMPTS',
+    'RETRY_DELAY',
+    'FLUSH_TIMEOUT',
+    'BS205_BAUDRATE',
+    'BS205_TIMEOUT',
+    'BS205_TERMINATOR',
     
     # Exceptions
-    'SerialDriverError',
+    'SerialError',
     'SerialConnectionError',
     'SerialCommunicationError',
     'SerialTimeoutError',
-    'SerialBufferError',
     'SerialConfigurationError',
-    'SerialExceptionFactory'
+    'SerialBufferError'
 ]

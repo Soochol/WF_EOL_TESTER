@@ -1,0 +1,37 @@
+{
+  "project": {
+    "name": "WF_EOL_TESTER",
+    "type": "python",
+    "domain": "hardware_testing"
+  },
+  "superclaude": {
+    "auto_persona": "backend",
+    "fallback_persona": "analyzer", 
+    "preferred_flags": ["--think", "--uc", "--validate"],
+    "mcp_priority": ["task-master-ai", "sequential-thinking"],
+    "quality_gates": true
+  },
+  "env": {
+    "SUPERCLAUDE_PROJECT_MODE": "hardware_testing",
+    "SUPERCLAUDE_DEFAULT_PERSONA": "backend",
+    "SUPERCLAUDE_ENABLE_VALIDATION": "true"
+  },
+  "permissions": {
+    "allow": [
+      "mcp__task-master-ai__*",
+      "TodoWrite",
+      "Read",
+      "Write", 
+      "Edit",
+      "MultiEdit",
+      "Bash(python:*)",
+      "Bash(pytest:*)",
+      "Bash(pip:*)",
+      "Bash(uv:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)"
+    ]
+  }
+}

@@ -9,11 +9,19 @@ import asyncio
 import json
 import argparse
 from pathlib import Path
+from typing import Dict, Any, Optional
 from loguru import logger
 
-from hardware.factory import ServiceFactory
+from infrastructure.hardware.factory import ServiceFactory
 from ui.cli.eol_tester_cli import EOLTesterCLI
-from core.use_cases.execute_eol_test import ExecuteEOLTestUseCase
+from application.use_cases.execute_eol_force_test import ExecuteEOLTestUseCase
+
+# 상수 정의
+DEFAULT_CONFIG_FILE = "config.json"
+DEFAULT_LOG_ROTATION = "10 MB"
+DEFAULT_LOG_RETENTION = "7 days"
+LOGS_DIRECTORY = "logs"
+EOL_TESTER_LOG_FILE = "eol_tester.log"
 
 
 def setup_logging(debug: bool = False) -> None:
@@ -35,19 +43,20 @@ def setup_logging(debug: bool = False) -> None:
     )
     
     # 파일 로깅
-    logs_dir = Path("logs")
+    logs_dir = Path(LOGS_DIRECTORY)
     logs_dir.mkdir(exist_ok=True)
     
     logger.add(
-        logs_dir / "eol_tester.log",
-        rotation="10 MB",
-        retention="7 days",
+        logs_dir / EOL_TESTER_LOG_FILE,
+        rotation=DEFAULT_LOG_ROTATION,
+        retention=DEFAULT_LOG_RETENTION,
+        compression="zip",
         level="DEBUG",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name} - {message}"
     )
 
 
-def load_config(config_file: str) -> dict:
+def load_config(config_file: str) -> Dict[str, Any]:
     """
     설정 파일 로드
     
@@ -76,7 +85,7 @@ def load_config(config_file: str) -> dict:
         sys.exit(1)
 
 
-def save_config(config: dict, config_file: str) -> None:
+def save_config(config: Dict[str, Any], config_file: str) -> None:
     """
     설정 파일 저장
     
@@ -114,8 +123,8 @@ Examples:
     parser.add_argument(
         "--config",
         type=str,
-        default="config.json",
-        help="Configuration file path (default: config.json)"
+        default=DEFAULT_CONFIG_FILE,
+        help=f"Configuration file path (default: {DEFAULT_CONFIG_FILE})"
     )
     
     parser.add_argument(

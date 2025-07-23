@@ -1,0 +1,4 @@
+SuperClaude
+config
+profiles
+setup

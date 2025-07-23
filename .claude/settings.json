@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__task-master-ai__*",
+      "TodoWrite",
+      "Read",
+      "Write", 
+      "Edit",
+      "MultiEdit",
+      "Bash(python:*)",
+      "Bash(pytest:*)",
+      "Bash(pip:*)",
+      "Bash(uv:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)"
+    ]
+  }
+}

@@ -8,12 +8,12 @@ import asyncio
 from typing import Optional
 from loguru import logger
 
-from ...core.use_cases.execute_eol_test import (
+from application.use_cases.execute_eol_force_test import (
     ExecuteEOLTestUseCase, 
     ExecuteEOLTestCommand, 
     EOLTestResult
 )
-from ...core.enums.test_types import TestType
+from domain.enums.test_types import TestType
 
 
 class EOLTesterCLI:

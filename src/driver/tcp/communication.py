@@ -5,19 +5,18 @@ Generic TCP/IP communication driver for network-based devices.
 Supports command/response protocols commonly used in test equipment.
 """
 
-import socket
-import time
+import asyncio
 from typing import Optional
 
 from loguru import logger
 
-from .constants import (
+from driver.tcp.constants import (
     DEFAULT_PORT, DEFAULT_TIMEOUT, CONNECT_TIMEOUT, 
     COMMAND_TERMINATOR, RESPONSE_TERMINATOR,
     COMMAND_BUFFER_SIZE, MAX_COMMAND_LENGTH,
     RECV_BUFFER_SIZE, FLUSH_TIMEOUT
 )
-from .exceptions import TCPError, TCPConnectionError, TCPCommunicationError, TCPTimeoutError
+from driver.tcp.exceptions import TCPError, TCPConnectionError, TCPCommunicationError, TCPTimeoutError
 
 
 class TCPCommunication:
@@ -35,10 +34,11 @@ class TCPCommunication:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.socket = None
+        self.reader = None
+        self.writer = None
         self.is_connected = False
         
-    def connect(self) -> None:
+    async def connect(self) -> None:
         """
         Establish TCP connection
         
@@ -46,14 +46,14 @@ class TCPCommunication:
             TCPConnectionError: If connection fails
         """
         try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.settimeout(CONNECT_TIMEOUT)
-            self.socket.connect((self.host, self.port))
-            self.socket.settimeout(self.timeout)  # Set operational timeout
+            self.reader, self.writer = await asyncio.wait_for(
+                asyncio.open_connection(self.host, self.port),
+                timeout=CONNECT_TIMEOUT
+            )
             self.is_connected = True
             logger.info(f"TCP connected to {self.host}:{self.port}")
             
-        except socket.error as e:
+        except (OSError, asyncio.TimeoutError) as e:
             logger.error(f"TCP connection failed ({type(e).__name__}): {e}")
             self.is_connected = False
             raise TCPConnectionError(
@@ -63,7 +63,7 @@ class TCPCommunication:
                 details=str(e)
             )
     
-    def disconnect(self) -> bool:
+    async def disconnect(self) -> bool:
         """
         Close TCP connection
         
@@ -71,9 +71,11 @@ class TCPCommunication:
             bool: True if disconnection successful
         """
         try:
-            if self.socket:
-                self.socket.close()
-                self.socket = None
+            if self.writer:
+                self.writer.close()
+                await self.writer.wait_closed()
+                self.writer = None
+                self.reader = None
             self.is_connected = False
             logger.info(f"TCP disconnected from {self.host}:{self.port}")
             return True
@@ -82,7 +84,7 @@ class TCPCommunication:
             logger.error(f"Error during TCP disconnect: {e}")
             return False
     
-    def send_command(self, command: str) -> None:
+    async def send_command(self, command: str) -> None:
         """
         Send command to device
         
@@ -92,7 +94,7 @@ class TCPCommunication:
         Raises:
             TCPCommunicationError: If command send fails
         """
-        if not self.is_connected or not self.socket:
+        if not self.is_connected or not self.writer:
             logger.error("TCP not connected to device")
             raise TCPConnectionError(
                 "Not connected to device",
@@ -114,10 +116,11 @@ class TCPCommunication:
                     port=self.port
                 )
                 
-            self.socket.send(command.encode())
+            self.writer.write(command.encode())
+            await self.writer.drain()
             logger.debug(f"TCP sent: {repr(command)}")
             
-        except socket.error as e:
+        except (OSError, ConnectionError) as e:
             logger.error(f"Failed to send TCP command '{command}': {e}")
             self.is_connected = False
             raise TCPCommunicationError(
@@ -127,7 +130,7 @@ class TCPCommunication:
                 details=str(e)
             )
     
-    def receive_response(self) -> str:
+    async def receive_response(self) -> str:
         """
         Receive response from device
         
@@ -137,7 +140,7 @@ class TCPCommunication:
         Raises:
             TCPCommunicationError: If response reception fails
         """
-        if not self.is_connected or not self.socket:
+        if not self.is_connected or not self.reader:
             logger.error("TCP not connected to device")
             raise TCPConnectionError(
                 "Not connected to device",
@@ -147,11 +150,14 @@ class TCPCommunication:
             
         try:
             response_data = b""
-            start_time = time.time()
             
-            while time.time() - start_time < self.timeout:
+            # Read data until we get the response terminator or timeout
+            while True:
                 try:
-                    data = self.socket.recv(RECV_BUFFER_SIZE)
+                    data = await asyncio.wait_for(
+                        self.reader.read(RECV_BUFFER_SIZE), 
+                        timeout=self.timeout
+                    )
                     if not data:
                         break
                         
@@ -161,7 +167,7 @@ class TCPCommunication:
                     if RESPONSE_TERMINATOR.encode() in response_data:
                         break
                         
-                except socket.timeout:
+                except asyncio.TimeoutError:
                     break
                     
             if response_data:
@@ -176,7 +182,7 @@ class TCPCommunication:
                     port=self.port
                 )
                 
-        except socket.error as e:
+        except (OSError, ConnectionError) as e:
             logger.error(f"Failed to receive TCP response: {e}")
             self.is_connected = False
             raise TCPCommunicationError(
@@ -186,7 +192,7 @@ class TCPCommunication:
                 details=str(e)
             )
     
-    def query(self, command: str) -> str:
+    async def query(self, command: str) -> str:
         """
         Send command and receive response
         
@@ -199,34 +205,30 @@ class TCPCommunication:
         Raises:
             TCPCommunicationError: If query fails
         """
-        self.send_command(command)
-        return self.receive_response()
+        await self.send_command(command)
+        return await self.receive_response()
     
-    def flush_buffer(self) -> None:
+    async def flush_buffer(self) -> None:
         """Clear any pending data in receive buffer"""
-        if not self.is_connected or not self.socket:
+        if not self.is_connected or not self.reader:
             return
             
         try:
-            original_timeout = self.socket.gettimeout()
-            self.socket.settimeout(FLUSH_TIMEOUT)
-            
             while True:
                 try:
-                    data = self.socket.recv(RECV_BUFFER_SIZE)
+                    data = await asyncio.wait_for(
+                        self.reader.read(RECV_BUFFER_SIZE), 
+                        timeout=FLUSH_TIMEOUT
+                    )
                     if not data:
                         break
-                except socket.timeout:
+                except asyncio.TimeoutError:
                     break
                     
         except Exception:
             pass
-        finally:
-            # Restore original timeout
-            if self.socket:
-                self.socket.settimeout(original_timeout)
     
-    def test_connection(self) -> bool:
+    async def test_connection(self) -> bool:
         """
         Test if connection is still alive
         
@@ -238,7 +240,7 @@ class TCPCommunication:
             
         try:
             # Send identity query as connection test (common SCPI command)
-            response = self.query("*IDN?")
+            response = await self.query("*IDN?")
             return True
             
         except Exception as e:
@@ -246,7 +248,7 @@ class TCPCommunication:
             self.is_connected = False
             return False
     
-    def reconnect(self) -> None:
+    async def reconnect(self) -> None:
         """
         Attempt to reconnect
         
@@ -254,16 +256,16 @@ class TCPCommunication:
             TCPConnectionError: If reconnection fails
         """
         logger.info(f"Attempting to reconnect to {self.host}:{self.port}...")
-        self.disconnect()
-        time.sleep(1)  # Brief delay before reconnect
-        self.connect()
+        await self.disconnect()
+        await asyncio.sleep(1)  # Brief delay before reconnect
+        await self.connect()
     
-    def __enter__(self):
-        """Context manager entry"""
-        self.connect()
+    async def __aenter__(self):
+        """Async context manager entry"""
+        await self.connect()
         return self
     
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
-        self.disconnect()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit"""
+        await self.disconnect()
         return False
