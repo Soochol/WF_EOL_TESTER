@@ -213,6 +213,25 @@ class LMAMCUService(MCUService):
         
         return self._current_test_mode
     
+    async def wait_for_boot_complete(self) -> None:
+        """
+        MCU 부팅 완료 신호 대기
+        
+        MCU가 완전히 부팅되고 준비될 때까지 대기합니다.
+        
+        Raises:
+            ConnectionError: 연결되지 않은 경우
+            RuntimeError: 부팅 완료 타임아웃
+        """
+        if not await self.is_connected():
+            raise ConnectionError("LMA MCU is not connected")
+        
+        try:
+            await self._wait_for_boot_complete()
+        except Exception as e:
+            logger.error(f"MCU boot complete wait failed: {e}")
+            raise RuntimeError(f"MCU boot complete timeout: {e}")
+    
     async def set_fan_speed(self, speed_percent: float) -> bool:
         """
         팬 속도 설정

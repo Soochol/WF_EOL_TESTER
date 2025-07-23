@@ -11,7 +11,7 @@ from loguru import logger
 from application.interfaces.loadcell_service import LoadCellService
 from application.interfaces.power_service import PowerService
 from application.interfaces.robot_service import RobotService
-from application.interfaces.mcu_service import MCUService
+from application.interfaces.mcu_service import MCUService, TestMode
 from application.interfaces.test_repository import TestRepository
 from domain.entities.eol_test import EOLTest
 from domain.entities.dut import DUT
@@ -115,21 +115,14 @@ class ExecuteEOLTestUseCase:
         try:
             test.start_test()
             
-            # 하드웨어 연결
-            await self._connect_hardware(command.test_type)
+            # 1. Setup 단계
+            await self._setup(command)
             
-            # Robot 초기화 (홈 위치로 이동)
-            await self._initialize_robot()
+            # 2. Main Test 단계
+            measurements = await self._main_test(command)
             
-            # 측정 실행
-            if self._requires_force_measurement(command.test_type):
-                force = await self._measure_force()
-                measurements['force'] = force
-            
-            if self._requires_power_measurement(command.test_type):
-                voltage, current = await self._measure_power(command.test_config)
-                measurements['voltage'] = voltage
-                measurements['current'] = current
+            # 3. Clean Up 단계 (성공 시)
+            await self._clean_up()
             
             # 결과 평가
             passed = self._evaluate_results(measurements, command.pass_criteria)
@@ -155,6 +148,12 @@ class ExecuteEOLTestUseCase:
             )
             
         except Exception as e:
+            # Clean Up 단계 (실패 시)
+            try:
+                await self._clean_up()
+            except Exception as cleanup_error:
+                logger.error(f"Cleanup after failure also failed: {cleanup_error}")
+            
             test.fail_test(str(e))
             await self._repository.update(test)
             
@@ -172,27 +171,27 @@ class ExecuteEOLTestUseCase:
             )
     
     async def _connect_hardware(self, test_type: TestType) -> None:
-        """모든 필수 하드웨어 연결"""
-        logger.info("Connecting all hardware components...")
+        """테스트 타입에 따라 필요한 하드웨어 연결"""
+        logger.info(f"Connecting hardware for {test_type.value}...")
         tasks = []
         hardware_names = []
         
-        # Robot 연결 (모든 테스트에 필수)
+        # Robot 연결 (항상 필요)
         if not await self._robot.is_connected():
             tasks.append(self._robot.connect())
             hardware_names.append("Robot")
         
-        # MCU 연결 (모든 테스트에 필수)
+        # MCU 연결 (항상 필요)
         if not await self._mcu.is_connected():
             tasks.append(self._mcu.connect())
             hardware_names.append("MCU")
         
-        # Power 연결 (모든 테스트에 필수)
+        # Power 연결 (항상 필요)
         if not await self._power.is_connected():
             tasks.append(self._power.connect())
             hardware_names.append("Power")
         
-        # LoadCell 연결 (모든 테스트에 필수)
+        # LoadCell 연결 (항상 필요)
         if not await self._loadcell.is_connected():
             tasks.append(self._loadcell.connect())
             hardware_names.append("LoadCell")
@@ -220,7 +219,7 @@ class ExecuteEOLTestUseCase:
         logger.info("All hardware components connected successfully")
     
     async def _verify_hardware_connections(self) -> None:
-        """하드웨어 연결 상태 검증"""
+        """모든 하드웨어 연결 상태 검증"""
         connection_checks = [
             ("Robot", self._robot.is_connected()),
             ("MCU", self._mcu.is_connected()),
@@ -278,13 +277,6 @@ class ExecuteEOLTestUseCase:
         finally:
             await self._power.enable_output(False)  # 안전을 위해 항상 비활성화
     
-    def _requires_force_measurement(self, test_type: TestType) -> bool:
-        """힘 측정이 필요한지 확인"""
-        return test_type in [TestType.FORCE_ONLY, TestType.COMPREHENSIVE]
-    
-    def _requires_power_measurement(self, test_type: TestType) -> bool:
-        """전력 측정이 필요한지 확인"""
-        return test_type in [TestType.ELECTRICAL_ONLY, TestType.COMPREHENSIVE]
     
     def _evaluate_results(self, measurements: Dict[str, float], criteria: Dict[str, Any]) -> bool:
         """측정 결과 평가"""
@@ -309,3 +301,205 @@ class ExecuteEOLTestUseCase:
                     return False
         
         return True
+    
+    async def _setup(self, command: ExecuteEOLTestCommand) -> None:
+        """
+        테스트 준비 단계
+        - 하드웨어 연결
+        - Robot 초기화
+        - Power 초기화 및 ON
+        - MCU 부팅 완료 신호 대기
+        - 테스트모드 1 진입
+        """
+        logger.info("Starting test setup...")
+        
+        # 1. 하드웨어 연결
+        await self._connect_hardware(command.test_type)
+        
+        # 2. Robot 초기화 (항상 실행)
+        await self._initialize_robot()
+        
+        # 3. Power 초기화 및 ON (항상 실행)
+        voltage = command.test_config.get('target_voltage', 18.0)
+        current = command.test_config.get('current_limit', 20.0)
+        await self._power.set_output(voltage, current)
+        await self._power.enable_output(True)
+        logger.info(f"Power enabled: {voltage}V, {current}A")
+        
+        # 4. MCU 부팅 완료 신호 대기 (항상 실행)
+        await self._wait_mcu_ready()
+        
+        # 5. 테스트모드 1 진입 (항상 실행)
+        await self._mcu.set_test_mode(TestMode.MODE_1)
+        logger.info("DUT set to test mode 1")
+        
+        logger.info("Test setup completed")
+    
+    async def _wait_mcu_ready(self) -> None:
+        """MCU 부팅 완료 신호 대기"""
+        logger.info("Waiting for MCU boot complete signal...")
+        try:
+            await self._mcu.wait_for_boot_complete()
+            logger.info("MCU boot complete signal received")
+        except Exception as e:
+            logger.error(f"MCU boot complete wait failed: {e}")
+            raise RuntimeError(f"MCU boot complete timeout: {e}")
+    
+    async def _main_test(self, command: ExecuteEOLTestCommand) -> Dict[str, float]:
+        """
+        메인 테스트 실행
+        - 상한온도 설정
+        - Force up (테스트 동작 온도) 설정
+        - Robot 스트로크 이동
+        - LoadCell 측정
+        - (Robot 스트로크 이동 - LoadCell 측정 반복)
+        - Force up (동작 온도 설정)
+        - 스트로크 대기 위치 이동
+        - Force down (대기온도 설정)
+        """
+        logger.info("Starting main test...")
+        measurements = {}
+        
+        try:
+            # 1. 상한온도 설정 (예: 85도)
+            upper_temp = command.test_config.get('upper_temperature', 85.0)
+            logger.info(f"Setting upper temperature: {upper_temp}°C")
+            # TODO: MCU에 상한온도 설정 메서드 필요
+            
+            # 2. Force up (테스트 동작 온도) 설정
+            test_temp = command.test_config.get('test_temperature', 25.0)
+            logger.info(f"Setting test temperature: {test_temp}°C")
+            # TODO: MCU에 동작온도 설정 메서드 필요
+            
+            # 3. Robot 스트로크 이동 및 LoadCell 측정 반복
+            stroke_positions = command.test_config.get('stroke_positions', [0.0, 10.0, 20.0])
+            force_measurements = []
+            
+            for i, position in enumerate(stroke_positions):
+                logger.info(f"Moving robot to stroke position {i+1}: {position}mm")
+                
+                # Robot을 지정된 위치로 이동 (항상 실행)
+                await self._move_robot_to_position(position)
+                await asyncio.sleep(0.5)  # 안정화 대기
+                
+                # LoadCell 측정 (항상 실행)
+                force = await self._measure_force()
+                force_measurements.append(force)
+                logger.info(f"Force measurement at position {position}mm: {force}N")
+                
+                # 잠시 대기
+                await asyncio.sleep(0.2)
+            
+            # 측정값 평균 계산
+            if force_measurements:
+                measurements['force'] = sum(force_measurements) / len(force_measurements)
+                measurements['force_max'] = max(force_measurements)
+                measurements['force_min'] = min(force_measurements)
+            
+            # 4. 전력 측정 (항상 실행)
+            voltage, current = await self._measure_power(command.test_config)
+            measurements['voltage'] = voltage
+            measurements['current'] = current
+            
+            # 5. 스트로크 대기 위치로 이동 (항상 실행)
+            standby_position = command.test_config.get('standby_position', 0.0)
+            logger.info(f"Moving robot to standby position: {standby_position}mm")
+            await self._move_robot_to_position(standby_position)
+            
+            # 6. Force down (대기온도) 설정
+            standby_temp = command.test_config.get('standby_temperature', 20.0)
+            logger.info(f"Setting standby temperature: {standby_temp}°C")
+            # TODO: MCU에 대기온도 설정 메서드 필요
+            
+            logger.info("Main test completed")
+            return measurements
+            
+        except Exception as e:
+            logger.error(f"Main test failed: {e}")
+            raise
+    
+    async def _move_robot_to_position(self, position: float) -> None:
+        """Robot을 지정된 위치로 이동"""
+        logger.debug(f"Moving robot to position: {position}mm")
+        # TODO: Robot 서비스에 위치 이동 메서드 구현 필요
+        # 임시로 현재 위치 가져오기만 수행
+        current_pos = await self._robot.get_current_position()
+        logger.debug(f"Current robot position: {current_pos}")
+        # 실제 구현에서는 await self._robot.move_to_position(position) 같은 메서드 호출
+    
+    async def _clean_up(self) -> None:
+        """
+        테스트 정리 단계
+        - Power OFF
+        - 하드웨어 연결 해제
+        """
+        logger.info("Starting test cleanup...")
+        
+        try:
+            # 1. Power OFF
+            try:
+                if await self._power.is_connected():
+                    await self._power.enable_output(False)
+                    logger.info("Power output disabled")
+            except Exception as e:
+                logger.warning(f"Failed to disable power output: {e}")
+            
+            # 2. 하드웨어 연결 해제 (역순으로)
+            disconnect_tasks = []
+            hardware_names = []
+            
+            # LoadCell 연결 해제
+            try:
+                if await self._loadcell.is_connected():
+                    disconnect_tasks.append(self._loadcell.disconnect())
+                    hardware_names.append("LoadCell")
+            except Exception as e:
+                logger.warning(f"LoadCell disconnect preparation failed: {e}")
+            
+            # Power 연결 해제
+            try:
+                if await self._power.is_connected():
+                    disconnect_tasks.append(self._power.disconnect())
+                    hardware_names.append("Power")
+            except Exception as e:
+                logger.warning(f"Power disconnect preparation failed: {e}")
+            
+            # MCU 연결 해제
+            try:
+                if await self._mcu.is_connected():
+                    disconnect_tasks.append(self._mcu.disconnect())
+                    hardware_names.append("MCU")
+            except Exception as e:
+                logger.warning(f"MCU disconnect preparation failed: {e}")
+            
+            # Robot 연결 해제
+            try:
+                if await self._robot.is_connected():
+                    disconnect_tasks.append(self._robot.disconnect())
+                    hardware_names.append("Robot")
+            except Exception as e:
+                logger.warning(f"Robot disconnect preparation failed: {e}")
+            
+            # 병렬로 연결 해제 시도
+            if disconnect_tasks:
+                logger.info(f"Disconnecting hardware: {', '.join(hardware_names)}")
+                results = await asyncio.gather(*disconnect_tasks, return_exceptions=True)
+                
+                # 연결 해제 결과 확인
+                failed_disconnects = []
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        failed_disconnects.append(f"{hardware_names[i]}: {str(result)}")
+                    elif not result:
+                        failed_disconnects.append(f"{hardware_names[i]}: Disconnect returned False")
+                
+                if failed_disconnects:
+                    logger.warning(f"Some hardware disconnections failed: {'; '.join(failed_disconnects)}")
+                else:
+                    logger.info("All hardware disconnected successfully")
+            
+            logger.info("Test cleanup completed")
+            
+        except Exception as e:
+            logger.error(f"Cleanup failed: {e}")
+            # 정리 실패해도 예외를 다시 발생시키지 않음 (이미 테스트는 완료된 상태)

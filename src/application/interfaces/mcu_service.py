@@ -198,3 +198,16 @@ class MCUService(ABC):
             ConnectionError: 연결되지 않은 경우
         """
         pass
+    
+    @abstractmethod
+    async def wait_for_boot_complete(self) -> None:
+        """
+        MCU 부팅 완료 신호 대기
+        
+        MCU가 완전히 부팅되고 준비될 때까지 대기합니다.
+        
+        Raises:
+            ConnectionError: 연결되지 않은 경우
+            RuntimeError: 부팅 완료 타임아웃
+        """
+        pass

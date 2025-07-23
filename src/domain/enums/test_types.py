@@ -11,8 +11,6 @@ class TestType(Enum):
     """EOL Test type enumeration"""
     FORCE_TEST = "force_test"
     ELECTRICAL_TEST = "electrical_test" 
-    FUNCTIONAL_TEST = "functional_test"
-    CALIBRATION_TEST = "calibration_test"
     FULL_EOL_TEST = "full_eol_test"
     
     def __str__(self) -> str:
@@ -31,4 +29,5 @@ class TestType(Enum):
     @property
     def is_comprehensive(self) -> bool:
         """Check if test type is comprehensive (tests multiple aspects)"""
-        return self in (TestType.FULL_EOL_TEST, TestType.FUNCTIONAL_TEST)
+        return self == TestType.FULL_EOL_TEST
+    

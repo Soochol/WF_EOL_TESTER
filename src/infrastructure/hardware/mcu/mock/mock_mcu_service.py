@@ -208,6 +208,27 @@ class MockMCUService(MCUService):
         
         return self._current_test_mode
     
+    async def wait_for_boot_complete(self) -> None:
+        """
+        MCU 부팅 완료 신호 대기 (시뮬레이션)
+        
+        Mock 환경에서는 짧은 지연 후 부팅 완료로 처리
+        
+        Raises:
+            ConnectionError: 연결되지 않은 경우
+            RuntimeError: 부팅 완료 타임아웃 (시뮬레이션)
+        """
+        if not await self.is_connected():
+            raise ConnectionError("Mock MCU is not connected")
+        
+        logger.info("Mock MCU: Simulating boot complete wait...")
+        
+        # 실제 하드웨어 부팅 시간 시뮬레이션 (1-3초)
+        boot_time = random.uniform(1.0, 3.0)
+        await asyncio.sleep(boot_time)
+        
+        logger.info(f"Mock MCU: Boot complete after {boot_time:.1f}s")
+    
     async def set_fan_speed(self, speed_percent: float) -> bool:
         """
         팬 속도 설정 (시뮬레이션)

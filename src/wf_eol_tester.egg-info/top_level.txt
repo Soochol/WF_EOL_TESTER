@@ -1,5 +1,0 @@
-application
-domain
-driver
-infrastructure
-ui
