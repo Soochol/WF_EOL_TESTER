@@ -195,6 +195,14 @@ async def main() -> None:
         # 서비스 생성
         logger.info("Creating EOL Tester services...")
         
+        robot_service = ServiceFactory.create_robot_service(
+            config['hardware']['robot']
+        )
+        
+        mcu_service = ServiceFactory.create_mcu_service(
+            config['hardware']['mcu']
+        )
+        
         loadcell_service = ServiceFactory.create_loadcell_service(
             config['hardware']['loadcell']
         )
@@ -209,6 +217,8 @@ async def main() -> None:
         
         # Use Case 생성
         use_case = ExecuteEOLTestUseCase(
+            robot_service=robot_service,
+            mcu_service=mcu_service,
             loadcell_service=loadcell_service,
             power_service=power_service,
             test_repository=test_repository

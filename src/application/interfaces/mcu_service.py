@@ -151,6 +151,23 @@ class MCUService(ABC):
         pass
     
     @abstractmethod
+    async def set_upper_temperature(self, upper_temp: float) -> bool:
+        """
+        상한 온도 설정
+        
+        Args:
+            upper_temp: 상한 온도 (°C)
+            
+        Returns:
+            설정 성공 여부
+            
+        Raises:
+            ConnectionError: 연결되지 않은 경우
+            ValueError: 잘못된 온도 범위
+        """
+        pass
+    
+    @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
@@ -161,9 +178,9 @@ class MCUService(ABC):
         pass
     
     @abstractmethod
-    async def start_heating(self) -> bool:
+    async def start_standby_heating(self) -> bool:
         """
-        가열 시작
+        대기 가열 시작
         
         Returns:
             시작 성공 여부
@@ -174,9 +191,9 @@ class MCUService(ABC):
         pass
     
     @abstractmethod
-    async def start_cooling(self) -> bool:
+    async def start_standby_cooling(self) -> bool:
         """
-        냉각 시작
+        대기 냉각 시작
         
         Returns:
             시작 성공 여부
