@@ -13,11 +13,16 @@ from application.interfaces.power_service import PowerService
 from application.interfaces.robot_service import RobotService
 from application.interfaces.mcu_service import MCUService, TestMode
 from application.interfaces.test_repository import TestRepository
+from application.interfaces.configuration_service import ConfigurationService
+from application.services.exception_handler import ExceptionHandler
 from domain.entities.eol_test import EOLTest
 from domain.entities.dut import DUT
 from domain.enums.test_status import TestStatus
 from domain.enums.test_types import TestType
 from domain.value_objects.identifiers import TestId
+from domain.value_objects.test_configuration import TestConfiguration
+from domain.exceptions.configuration_exceptions import InvalidConfigurationException
+from domain.exceptions.test_exceptions import TestExecutionException
 
 
 class ExecuteEOLTestCommand:
@@ -63,15 +68,7 @@ class EOLTestResult:
 
 
 class ExecuteEOLTestUseCase:
-    """EOL Test Execution Use Case"""
-    
-    # Default configuration constants
-    DEFAULT_VOLTAGE = 18.0
-    DEFAULT_CURRENT = 20.0
-    DEFAULT_UPPER_TEMP = 80.0
-    DEFAULT_FAN_SPEED = 10
-    DEFAULT_MAX_STROKE = 240.0
-    DEFAULT_INITIAL_POSITION = 10.0
+    """EOL Test Execution Use Case with Configuration Management"""
     
     def __init__(
         self,
@@ -79,13 +76,18 @@ class ExecuteEOLTestUseCase:
         mcu_service: MCUService,
         loadcell_service: LoadCellService,
         power_service: PowerService,
-        test_repository: TestRepository
+        test_repository: TestRepository,
+        configuration_service: ConfigurationService,
+        exception_handler: ExceptionHandler
     ):
         self._robot = robot_service
         self._mcu = mcu_service
         self._loadcell = loadcell_service
         self._power = power_service
         self._repository = test_repository
+        self._config_service = configuration_service
+        self._exception_handler = exception_handler
+        self._config: Optional[TestConfiguration] = None
     
     async def execute(self, command: ExecuteEOLTestCommand) -> EOLTestResult:
         """
@@ -98,6 +100,9 @@ class ExecuteEOLTestUseCase:
             테스트 실행 결과
         """
         logger.info(f"Starting EOL test for DUT {command.dut_id}")
+        
+        # Load and validate configuration first
+        await self._load_configuration(command)
         
         # 테스트 엔티티 생성
         dut = DUT(
@@ -175,6 +180,54 @@ class ExecuteEOLTestUseCase:
                 await self._clean_up()
             except Exception as cleanup_error:
                 logger.error(f"Cleanup failed: {cleanup_error}")
+    
+    async def _load_configuration(self, command: ExecuteEOLTestCommand) -> None:
+        """
+        Load and validate test configuration
+        
+        Args:
+            command: Test execution command containing configuration options
+            
+        Raises:
+            InvalidConfigurationException: If configuration is invalid
+        """
+        try:
+            # Get profile name from command or use default
+            profile_name = command.test_config.get('profile', 'default')
+            
+            # Load base configuration from profile
+            base_config = await self._config_service.load_profile(profile_name)
+            
+            # Merge with runtime overrides
+            if command.test_config:
+                # Remove 'profile' key from overrides as it's not a config parameter
+                overrides = {k: v for k, v in command.test_config.items() if k != 'profile'}
+                if overrides:
+                    self._config = await self._config_service.merge_configurations(base_config, overrides)
+                else:
+                    self._config = base_config
+            else:
+                self._config = base_config
+            
+            # Validate final configuration
+            if not await self._config_service.validate_configuration(self._config):
+                validation_errors = await self._config_service.get_validation_errors(self._config)
+                raise InvalidConfigurationException(
+                    parameter_name="merged_configuration",
+                    invalid_value=str(command.test_config),
+                    validation_rule="; ".join(validation_errors),
+                    config_source=f"profile:{profile_name}"
+                )
+            
+            logger.info(f"Configuration loaded: profile '{profile_name}', {self._config.get_total_measurement_points()} measurement points")
+            
+        except Exception as e:
+            if isinstance(e, InvalidConfigurationException):
+                raise
+            raise TestExecutionException(
+                f"Failed to load configuration: {str(e)}",
+                details={"profile_name": command.test_config.get('profile', 'default')}
+            )
     
     async def _connect_hardware(self, test_type: TestType) -> None:
         """Connect required hardware based on test type"""
@@ -266,19 +319,19 @@ class ExecuteEOLTestUseCase:
     async def _measure_force(self) -> float:
         """Measure force"""
         await self._loadcell.zero()
-        await asyncio.sleep(0.1)  # Stabilization wait
+        await asyncio.sleep(self._config.loadcell_zero_delay)  # Stabilization wait
         return await self._loadcell.read_force()
     
-    async def _measure_power(self, config: Dict[str, Any]) -> tuple[float, float]:
-        """Measure power"""
-        voltage = config.get('target_voltage', 12.0)
-        current = config.get('current_limit', 1.0)
+    async def _measure_power(self) -> tuple[float, float]:
+        """Measure power using current configuration"""
+        voltage = self._config.voltage
+        current = self._config.current
         
         await self._power.set_output(voltage, current)
         await self._power.enable_output(True)
         
         try:
-            await asyncio.sleep(0.5)  # Stabilization wait
+            await asyncio.sleep(self._config.power_stabilization)  # Stabilization wait
             return await self._power.measure_output()
         finally:
             await self._power.enable_output(False)  # Always disable for safety
@@ -303,7 +356,7 @@ class ExecuteEOLTestUseCase:
                     return False
             else:
                 # Direct comparison
-                if abs(value - criterion) > 0.001:  # Tolerance
+                if abs(value - criterion) > self._config.measurement_tolerance:  # Use configured tolerance
                     return False
         
         return True
@@ -331,8 +384,8 @@ class ExecuteEOLTestUseCase:
             await self._initialize_robot()
             
             # Power initialization and ON (always executed)
-            voltage = command.test_config.get('target_voltage', self.DEFAULT_VOLTAGE)
-            current = command.test_config.get('current_limit', self.DEFAULT_CURRENT)
+            voltage = self._config.voltage
+            current = self._config.current
             await self._power.set_output(voltage, current)
             await self._power.enable_output(True)
             logger.info(f"Power enabled: {voltage}V, {current}A")
@@ -345,8 +398,8 @@ class ExecuteEOLTestUseCase:
             logger.info("MCU set to test mode 1")
             
             # MCU configuration (upper temperature, fan speed)
-            upper_temp = command.test_config.get('upper_temperature', self.DEFAULT_UPPER_TEMP)
-            fan_speed = command.test_config.get('fan_speed', self.DEFAULT_FAN_SPEED)
+            upper_temp = self._config.upper_temperature
+            fan_speed = self._config.fan_speed
 
             await self._mcu.set_upper_temperature(upper_temp)
             await self._mcu.set_fan_speed(fan_speed)
@@ -368,16 +421,12 @@ class ExecuteEOLTestUseCase:
         logger.info("MCU standby heating started")
 
         # Robot to max stroke position
-        max_stroke = self.DEFAULT_MAX_STROKE
-        if command:
-            max_stroke = command.test_config.get('max_stroke', self.DEFAULT_MAX_STROKE)
+        max_stroke = self._config.max_stroke
         await self._robot.move_to_position(max_stroke)
         logger.info(f"Robot moved to max stroke position: {max_stroke}mm")
 
         # Robot to initial position
-        initial_position = self.DEFAULT_INITIAL_POSITION
-        if command:
-            initial_position = command.test_config.get('initial_position', self.DEFAULT_INITIAL_POSITION)
+        initial_position = self._config.initial_position
         await self._robot.move_to_position(initial_position)
         logger.info(f"Robot moved to initial position: {initial_position}mm")
 
@@ -409,10 +458,10 @@ class ExecuteEOLTestUseCase:
         measurements = {}
         all_measurements = []
         
-        # Get test parameters
-        temperature_list = command.test_config.get('temperature_list', [25.0, 30.0, 35.0, 40.0, 45.0, 50.0])
-        stroke_positions = command.test_config.get('stroke_positions', [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0])
-        upper_temp = command.test_config.get('upper_temperature', self.DEFAULT_UPPER_TEMP)
+        # Get test parameters from configuration
+        temperature_list = self._config.temperature_list
+        stroke_positions = self._config.stroke_positions
+        upper_temp = self._config.upper_temperature
         
         try:
             # Temperature loop
@@ -426,7 +475,7 @@ class ExecuteEOLTestUseCase:
                 # Set operating temperature
                 await self._mcu.set_temperature(temperature)
                 logger.info(f"Operating temperature set to: {temperature}°C")
-                await asyncio.sleep(1.0)  # Wait for temperature stabilization
+                await asyncio.sleep(self._config.temperature_stabilization)  # Wait for temperature stabilization
                 
                 # Stroke position loop
                 for pos_idx, position in enumerate(stroke_positions):
@@ -434,11 +483,11 @@ class ExecuteEOLTestUseCase:
                     
                     # Move robot
                     await self._robot.move_to_position(position)
-                    await asyncio.sleep(0.5)  # Stabilization
+                    await asyncio.sleep(self._config.stabilization_delay)  # Stabilization
                     
                     # Measure force
                     await self._loadcell.zero()
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(self._config.loadcell_zero_delay)
                     force = await self._loadcell.read_force()
                     
                     # Store measurement
@@ -454,7 +503,7 @@ class ExecuteEOLTestUseCase:
             measurements['all_measurements'] = all_measurements
             
             # Move to standby position
-            standby_position = command.test_config.get('standby_position', self.DEFAULT_INITIAL_POSITION)
+            standby_position = self._config.standby_position
             await self._robot.move_to_position(standby_position)
             logger.info(f"Robot moved to standby position: {standby_position}mm")
             

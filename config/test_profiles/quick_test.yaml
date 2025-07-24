@@ -1,0 +1,53 @@
+# Quick Test Configuration Profile
+# Reduced test points for faster testing during development
+
+metadata:
+  profile_name: "quick_test"
+  description: "Fast test configuration with minimal test points for development"
+  version: "1.0"
+  created_by: "System"
+  created_time: "2024-01-01T00:00:00"
+
+# Hardware configuration (same as default)
+hardware:
+  voltage: 18.0
+  current: 20.0
+  upper_temperature: 80.0
+  fan_speed: 10
+  max_stroke: 240.0
+  initial_position: 10.0
+
+# Reduced test parameters for speed
+test_parameters:
+  # Only 3 temperature test points
+  temperature_list: [25.0, 35.0, 45.0]
+  
+  # Only 4 stroke position test points  
+  stroke_positions: [10.0, 100.0, 180.0, 240.0]
+  
+  standby_position: 10.0
+
+# Faster timing for quick tests
+timing:
+  stabilization_delay: 0.2        # Reduced stabilization wait
+  temperature_stabilization: 0.5  # Faster temperature stabilization
+  power_stabilization: 0.3        # Faster power stabilization
+  loadcell_zero_delay: 0.1
+
+# Same tolerances as default
+tolerances:
+  measurement_tolerance: 0.001
+  force_precision: 2
+  temperature_precision: 1
+
+# Shorter timeout for quick tests
+execution:
+  retry_attempts: 2       # Fewer retries
+  timeout_seconds: 120.0  # 2 minute timeout
+
+# Same safety limits
+safety:
+  max_temperature: 100.0
+  max_force: 1000.0
+  max_voltage: 30.0
+  max_current: 50.0

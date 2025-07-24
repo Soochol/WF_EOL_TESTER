@@ -1,0 +1,53 @@
+# Comprehensive Test Configuration Profile
+# Extended test points for thorough validation
+
+metadata:
+  profile_name: "comprehensive"
+  description: "Comprehensive test configuration with extended test points"
+  version: "1.0"
+  created_by: "System"
+  created_time: "2024-01-01T00:00:00"
+
+# Hardware configuration (same as default)
+hardware:
+  voltage: 18.0
+  current: 20.0
+  upper_temperature: 80.0
+  fan_speed: 10
+  max_stroke: 240.0
+  initial_position: 10.0
+
+# Extended test parameters
+test_parameters:
+  # More temperature test points
+  temperature_list: [20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0]
+  
+  # More stroke position test points
+  stroke_positions: [5.0, 10.0, 30.0, 50.0, 80.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0, 220.0, 240.0]
+  
+  standby_position: 10.0
+
+# Longer timing for comprehensive tests
+timing:
+  stabilization_delay: 1.0        # Longer stabilization wait
+  temperature_stabilization: 2.0  # Longer temperature stabilization
+  power_stabilization: 1.0        # Longer power stabilization
+  loadcell_zero_delay: 0.2
+
+# Tighter tolerances for comprehensive testing
+tolerances:
+  measurement_tolerance: 0.0001  # Tighter tolerance
+  force_precision: 3            # Higher precision
+  temperature_precision: 2      # Higher precision
+
+# Extended execution settings
+execution:
+  retry_attempts: 5       # More retries
+  timeout_seconds: 900.0  # 15 minute timeout
+
+# Same safety limits
+safety:
+  max_temperature: 100.0
+  max_force: 1000.0
+  max_voltage: 30.0
+  max_current: 50.0

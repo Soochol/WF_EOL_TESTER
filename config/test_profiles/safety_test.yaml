@@ -1,0 +1,53 @@
+# Safety Test Configuration Profile
+# Conservative configuration with enhanced safety margins
+
+metadata:
+  profile_name: "safety_test"
+  description: "Conservative configuration with enhanced safety margins"
+  version: "1.0"
+  created_by: "System"
+  created_time: "2024-01-01T00:00:00"
+
+# Conservative hardware configuration
+hardware:
+  voltage: 12.0          # Lower voltage for safety
+  current: 15.0          # Lower current limit
+  upper_temperature: 60.0 # Conservative temperature limit
+  fan_speed: 20          # Higher fan speed for safety
+  max_stroke: 200.0      # Reduced stroke range
+  initial_position: 20.0 # Further from limits
+
+# Conservative test parameters
+test_parameters:
+  # Lower temperature range
+  temperature_list: [25.0, 30.0, 35.0, 40.0]
+  
+  # Conservative stroke positions (away from limits)
+  stroke_positions: [20.0, 60.0, 100.0, 140.0, 180.0]
+  
+  standby_position: 20.0
+
+# Extended timing for safety
+timing:
+  stabilization_delay: 1.0        # Longer stabilization
+  temperature_stabilization: 2.0  # Extra temperature stabilization
+  power_stabilization: 1.0        # Longer power stabilization  
+  loadcell_zero_delay: 0.2
+
+# Standard tolerances
+tolerances:
+  measurement_tolerance: 0.001
+  force_precision: 2
+  temperature_precision: 1
+
+# Conservative execution settings
+execution:
+  retry_attempts: 2       # Fewer retries to avoid stress
+  timeout_seconds: 180.0  # Shorter timeout
+
+# Conservative safety limits
+safety:
+  max_temperature: 80.0  # Lower maximum temperature
+  max_force: 500.0       # Lower maximum force
+  max_voltage: 20.0      # Lower maximum voltage
+  max_current: 30.0      # Lower maximum current
