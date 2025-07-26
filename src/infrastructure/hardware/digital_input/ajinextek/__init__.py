@@ -5,7 +5,7 @@ This module contains the Ajinextek Digital I/O hardware implementation with
 structured constants, error handling, and communication protocols.
 """
 
-from infrastructure.hardware.digital_input.ajinextek.ajinextek_input_service import AjinextekInputService
+from infrastructure.hardware.digital_input.ajinextek.ajinextek_input_adapter import AjinextekInputAdapter
 from infrastructure.hardware.digital_input.ajinextek.constants import (
     DEFAULT_BOARD_NUMBER, DEFAULT_MODULE_POSITION, MAX_INPUT_CHANNELS, MAX_OUTPUT_CHANNELS,
     PIN_MODE_INPUT, PIN_MODE_OUTPUT, PIN_MODE_INPUT_PULLUP, PIN_MODE_INPUT_PULLDOWN,
@@ -20,7 +20,7 @@ from infrastructure.hardware.digital_input.ajinextek.error_codes import (
 
 __all__ = [
     # Main service
-    'AjinextekInputService',
+    'AjinextekInputAdapter',
     
     # Constants
     'DEFAULT_BOARD_NUMBER', 'DEFAULT_MODULE_POSITION', 'MAX_INPUT_CHANNELS', 'MAX_OUTPUT_CHANNELS',

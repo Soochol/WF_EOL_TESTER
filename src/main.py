@@ -15,6 +15,14 @@ from loguru import logger
 from infrastructure.hardware.factory import ServiceFactory
 from ui.cli.eol_tester_cli import EOLTesterCLI
 from application.use_cases.execute_eol_force_test import ExecuteEOLTestUseCase
+from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.repository_service import RepositoryService
+from application.services.exception_handler import ExceptionHandler
+from application.services.configuration_validator import ConfigurationValidator
+from application.services.test_result_evaluator import TestResultEvaluator
+from infrastructure.repositories.yaml_configuration_repository import YamlConfigurationRepository
+from infrastructure.repositories.json_test_repository import JsonTestRepository
+from infrastructure.repositories.json_profile_preference_repository import JsonProfilePreferenceRepository
 
 # 상수 정의
 DEFAULT_CONFIG_FILE = "config.json"
@@ -215,13 +223,37 @@ async def main() -> None:
             config.get('repository', {})
         )
         
-        # Use Case 생성
-        use_case = ExecuteEOLTestUseCase(
+        # Create repositories
+        configuration_repository = YamlConfigurationRepository()
+        profile_preference_repository = JsonProfilePreferenceRepository()
+        
+        # Create repository service
+        repository_service = RepositoryService(
+            test_repository=test_repository,
+            configuration_repository=configuration_repository,
+            profile_preference_repository=profile_preference_repository
+        )
+        
+        # Create individual business services
+        exception_handler = ExceptionHandler()
+        configuration_validator = ConfigurationValidator()
+        test_result_evaluator = TestResultEvaluator()
+        
+        # Create hardware services facade
+        hardware_services = HardwareServiceFacade(
             robot_service=robot_service,
             mcu_service=mcu_service,
             loadcell_service=loadcell_service,
-            power_service=power_service,
-            test_repository=test_repository
+            power_service=power_service
+        )
+        
+        # Use Case 생성
+        use_case = ExecuteEOLTestUseCase(
+            hardware_services=hardware_services,
+            repository_service=repository_service,
+            exception_handler=exception_handler,
+            configuration_validator=configuration_validator,
+            test_result_evaluator=test_result_evaluator
         )
         
         # CLI 생성 및 실행

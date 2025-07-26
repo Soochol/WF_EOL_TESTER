@@ -14,28 +14,28 @@ except ImportError:
 
 # Device-specific implementations (conditional imports)
 try:
-    from infrastructure.hardware.loadcell import BS205LoadCellService, MockLoadCellService
+    from infrastructure.hardware.loadcell import BS205LoadCellAdapter, MockLoadCellAdapter
 except ImportError:
-    BS205LoadCellService = None
-    MockLoadCellService = None
+    BS205LoadCellAdapter = None
+    MockLoadCellAdapter = None
 
 try:
-    from infrastructure.hardware.power import OdaPowerService, MockPowerService
+    from infrastructure.hardware.power import OdaPowerAdapter, MockPowerAdapter
 except ImportError:
-    OdaPowerService = None
-    MockPowerService = None
+    OdaPowerAdapter = None
+    MockPowerAdapter = None
 
 try:
-    from infrastructure.hardware.mcu import LMAMCUService, MockMCUService
+    from infrastructure.hardware.mcu import LMAMCUAdapter, MockMCUAdapter
 except ImportError:
-    LMAMCUService = None
-    MockMCUService = None
+    LMAMCUAdapter = None
+    MockMCUAdapter = None
 
 try:
-    from infrastructure.hardware.digital_input import AjinextekInputService, MockInputService
+    from infrastructure.hardware.digital_input import AjinextekInputAdapter, MockInputAdapter
 except ImportError:
-    AjinextekInputService = None
-    MockInputService = None
+    AjinextekInputAdapter = None
+    MockInputAdapter = None
 
 # Repository implementations
 try:
@@ -50,17 +50,17 @@ if ServiceFactory:
     __all__.append('ServiceFactory')
 
 # Add available services to exports
-if BS205LoadCellService:
-    __all__.extend(['BS205LoadCellService', 'MockLoadCellService'])
+if BS205LoadCellAdapter:
+    __all__.extend(['BS205LoadCellAdapter', 'MockLoadCellAdapter'])
     
-if OdaPowerService:
-    __all__.extend(['OdaPowerService', 'MockPowerService'])
+if OdaPowerAdapter:
+    __all__.extend(['OdaPowerAdapter', 'MockPowerAdapter'])
     
-if LMAMCUService:
-    __all__.extend(['LMAMCUService', 'MockMCUService'])
+if LMAMCUAdapter:
+    __all__.extend(['LMAMCUAdapter', 'MockMCUAdapter'])
     
-if AjinextekInputService:
-    __all__.extend(['AjinextekInputService', 'MockInputService'])
+if AjinextekInputAdapter:
+    __all__.extend(['AjinextekInputAdapter', 'MockInputAdapter'])
     
 if JsonTestRepository:
     __all__.append('JsonTestRepository')

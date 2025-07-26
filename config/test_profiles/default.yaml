@@ -8,7 +8,53 @@ metadata:
   created_by: "System"
   created_time: "2024-01-01T00:00:00"
 
-# Hardware configuration
+# Hardware device configurations
+hardware_config:
+  robot:
+    # Motion parameters
+    axis: 0
+    velocity: 100.0        # Default velocity (mm/s)
+    acceleration: 100.0    # Default acceleration (mm/s²)
+    deceleration: 100.0    # Default deceleration (mm/s²)
+    
+    # Safety limits
+    max_velocity: 500.0
+    max_acceleration: 1000.0
+    max_deceleration: 1000.0
+    
+    # Positioning settings
+    position_tolerance: 0.1
+    homing_velocity: 10.0
+    homing_acceleration: 100.0
+    homing_deceleration: 100.0
+    
+    # Connection parameters (AJINEXTEK)
+    irq_no: 7
+    axis_count: 2
+  
+  loadcell:
+    port: "COM3"           # Serial port for BS205 LoadCell
+    baudrate: 9600         # Communication baudrate
+    timeout: 1.0           # Communication timeout
+    indicator_id: 1        # LoadCell indicator ID
+  
+  mcu:
+    port: "COM4"           # Serial port for LMA MCU
+    baudrate: 115200       # Communication baudrate
+    timeout: 2.0           # Communication timeout
+  
+  power:
+    host: "192.168.1.100"  # IP address for ODA Power Supply
+    port: 8080             # TCP port
+    timeout: 5.0           # Communication timeout
+    channel: 1             # Output channel
+  
+  digital_input:
+    board_no: 0            # AJINEXTEK board number
+    input_count: 8         # Number of input channels
+    debounce_time: 0.01    # Debounce time (seconds)
+
+# Test hardware configuration (legacy support)
 hardware:
   voltage: 18.0          # Operating voltage (V)
   current: 20.0          # Current limit (A)  
@@ -52,3 +98,33 @@ safety:
   max_force: 1000.0      # Absolute maximum force (N)
   max_voltage: 30.0      # Absolute maximum voltage (V) 
   max_current: 50.0      # Absolute maximum current (A)
+
+# Pass/Fail criteria for test validation
+pass_criteria:
+  # Global force limits (fallback if no spec_points defined)
+  force_limit_min: 0.0       # Minimum acceptable force (N)
+  force_limit_max: 100.0     # Maximum acceptable force (N)
+  
+  # Global temperature limits
+  temperature_limit_min: -10.0  # Minimum acceptable temperature (°C)
+  temperature_limit_max: 80.0   # Maximum acceptable temperature (°C)
+  
+  # 2D Specification Matrix - [temperature, stroke, upper_limit, lower_limit]
+  # Format: [temp(°C), stroke(mm), upper_force(N), lower_force(N)]
+  spec_points:
+    - [25.0, 10.0, 15.0, 5.0]    # 25°C, 10mm: 5-15N
+    - [30.0, 60.0, 25.0, 15.0]   # 30°C, 60mm: 15-25N
+    - [35.0, 100.0, 35.0, 25.0]  # 35°C, 100mm: 25-35N
+    - [40.0, 140.0, 45.0, 35.0]  # 40°C, 140mm: 35-45N
+    - [45.0, 180.0, 55.0, 45.0]  # 45°C, 180mm: 45-55N
+    - [50.0, 220.0, 65.0, 55.0]  # 50°C, 220mm: 55-65N
+  
+  # Measurement precision and tolerances
+  measurement_tolerance: 0.001  # General measurement tolerance
+  force_precision: 2           # Force measurement decimal places
+  temperature_precision: 1     # Temperature measurement decimal places
+  position_tolerance: 0.5      # Position tolerance (mm)
+  
+  # Test execution criteria
+  max_test_duration: 300.0     # Maximum test duration (seconds)
+  min_stabilization_time: 0.5  # Minimum stabilization time (seconds)

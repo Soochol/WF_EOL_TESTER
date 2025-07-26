@@ -6,19 +6,19 @@ This module contains loadcell hardware implementations and services.
 
 # Import device-specific implementations
 try:
-    from infrastructure.hardware.loadcell.bs205 import BS205LoadCellService
+    from infrastructure.hardware.loadcell.bs205 import BS205LoadCellAdapter
 except ImportError:
-    BS205LoadCellService = None
+    BS205LoadCellAdapter = None
 
 try:
-    from infrastructure.hardware.loadcell.mock import MockLoadCellService
+    from infrastructure.hardware.loadcell.mock import MockLoadCellAdapter
 except ImportError:
-    MockLoadCellService = None
+    MockLoadCellAdapter = None
 
 __all__ = []
 
-if BS205LoadCellService:
-    __all__.append('BS205LoadCellService')
+if BS205LoadCellAdapter:
+    __all__.append('BS205LoadCellAdapter')
     
-if MockLoadCellService:
-    __all__.append('MockLoadCellService')
+if MockLoadCellAdapter:
+    __all__.append('MockLoadCellAdapter')

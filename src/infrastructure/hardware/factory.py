@@ -8,27 +8,27 @@ Replaces the complex dependency injection system.
 from typing import Dict, Any, Optional
 from loguru import logger
 
-from application.interfaces.loadcell_service import LoadCellService
-from application.interfaces.power_service import PowerService
-from application.interfaces.mcu_service import MCUService
-from application.interfaces.digital_input_service import DigitalInputService
-from application.interfaces.robot_service import RobotService
+from application.interfaces.loadcell import LoadCellService
+from application.interfaces.power import PowerService
+from application.interfaces.mcu import MCUService
+from application.interfaces.digital_input import DigitalInputService
+from application.interfaces.robot import RobotService
 from application.interfaces.test_repository import TestRepository
 
 # Hardware implementations
-from infrastructure.hardware.loadcell.bs205 import BS205LoadCellService
-from infrastructure.hardware.power.oda import OdaPowerService
-from infrastructure.hardware.mcu.lma import LMAMCUService
-from infrastructure.hardware.digital_input.ajinextek import AjinextekInputService
-from infrastructure.hardware.loadcell.mock import MockLoadCellService
-from infrastructure.hardware.power.mock import MockPowerService
-from infrastructure.hardware.mcu.mock import MockMCUService
-from infrastructure.hardware.digital_input.mock import MockInputService
-from infrastructure.hardware.robot import MockRobotService
+from infrastructure.hardware.loadcell.bs205 import BS205LoadCellAdapter
+from infrastructure.hardware.power.oda import OdaPowerAdapter
+from infrastructure.hardware.mcu.lma import LMAMCUAdapter
+from infrastructure.hardware.digital_input.ajinextek import AjinextekInputAdapter
+from infrastructure.hardware.loadcell.mock import MockLoadCellAdapter
+from infrastructure.hardware.power.mock import MockPowerAdapter
+from infrastructure.hardware.mcu.mock import MockMCUAdapter
+from infrastructure.hardware.digital_input.mock import MockInputAdapter
+from infrastructure.hardware.robot import MockRobotAdapter
 
 # Try to import AJINEXTEK robot service
 try:
-    from infrastructure.hardware.robot import AjinextekRobotService
+    from infrastructure.hardware.robot import AjinextekRobotAdapter
     _AJINEXTEK_ROBOT_AVAILABLE = True
 except ImportError:
     _AJINEXTEK_ROBOT_AVAILABLE = False
@@ -63,7 +63,7 @@ class ServiceFactory:
             noise_level = config.get('noise_level', 0.1)
             
             logger.info(f"Creating Mock LoadCell service (base: {base_force}N)")
-            return MockLoadCellService(
+            return MockLoadCellAdapter(
                 mock_values=mock_values,
                 base_force=base_force,
                 noise_level=noise_level
@@ -78,7 +78,7 @@ class ServiceFactory:
             indicator_id = connection.get('indicator_id', 1)
             
             logger.info(f"Creating BS205 LoadCell service on {port}")
-            return BS205LoadCellService(
+            return BS205LoadCellAdapter(
                 port=port,
                 baudrate=baudrate,
                 timeout=timeout,
@@ -112,7 +112,7 @@ class ServiceFactory:
             current_accuracy = config.get('current_accuracy', 0.001)
             
             logger.info(f"Creating Mock Power service ({max_voltage}V/{max_current}A)")
-            return MockPowerService(
+            return MockPowerAdapter(
                 max_voltage=max_voltage,
                 max_current=max_current,
                 voltage_accuracy=voltage_accuracy,
@@ -128,7 +128,7 @@ class ServiceFactory:
             channel = connection.get('channel', 1)
             
             logger.info(f"Creating ODA Power service at {host}:{port}")
-            return OdaPowerService(
+            return OdaPowerAdapter(
                 host=host,
                 port=port,
                 timeout=timeout,
@@ -161,7 +161,7 @@ class ServiceFactory:
             response_delay = config.get('response_delay', 0.1)
             
             logger.info(f"Creating Mock MCU service (initial: {initial_temperature}°C)")
-            return MockMCUService(
+            return MockMCUAdapter(
                 initial_temperature=initial_temperature,
                 temperature_drift_rate=temperature_drift_rate,
                 response_delay=response_delay
@@ -175,7 +175,7 @@ class ServiceFactory:
             timeout = connection.get('timeout', 5.0)
             
             logger.info(f"Creating LMA MCU service on {port}")
-            return LMAMCUService(
+            return LMAMCUAdapter(
                 port=port,
                 baudrate=baudrate,
                 timeout=timeout
@@ -208,7 +208,7 @@ class ServiceFactory:
             response_delay_ms = config.get('response_delay_ms', 5.0)
             
             logger.info(f"Creating Mock Digital Input service ({total_pins} pins)")
-            return MockInputService(
+            return MockInputAdapter(
                 total_pins=total_pins,
                 simulate_noise=simulate_noise,
                 noise_probability=noise_probability,
@@ -226,7 +226,7 @@ class ServiceFactory:
             auto_initialize = connection.get('auto_initialize', True)
             
             logger.info(f"Creating Ajinextek Digital Input service on board {board_number}")
-            return AjinextekInputService(
+            return AjinextekInputAdapter(
                 board_number=board_number,
                 module_position=module_position,
                 signal_type=signal_type,
@@ -262,7 +262,7 @@ class ServiceFactory:
             response_delay = config.get('response_delay', 0.1)
             
             logger.info(f"Creating Mock Robot service ({axis_count} axes)")
-            return MockRobotService(
+            return MockRobotAdapter(
                 axis_count=axis_count,
                 max_position=max_position,
                 default_velocity=default_velocity,
@@ -282,7 +282,7 @@ class ServiceFactory:
             default_acceleration = connection.get('default_acceleration', 100.0)
             
             logger.info(f"Creating AJINEXTEK Robot service (IRQ: {irq_no}, {axis_count} axes)")
-            return AjinextekRobotService(
+            return AjinextekRobotAdapter(
                 irq_no=irq_no,
                 axis_count=axis_count,
                 default_velocity=default_velocity,

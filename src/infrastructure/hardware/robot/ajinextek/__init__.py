@@ -5,7 +5,7 @@ Hardware implementation for AJINEXTEK robot controllers using AXL library.
 """
 
 try:
-    from infrastructure.hardware.robot.ajinextek.ajinextek_robot_service import AjinextekRobotService
+    from infrastructure.hardware.robot.ajinextek.ajinextek_robot_adapter import AjinextekRobotAdapter
     from infrastructure.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
     from infrastructure.hardware.robot.ajinextek.constants import *
     from infrastructure.hardware.robot.ajinextek.error_codes import *
@@ -18,4 +18,4 @@ except ImportError as e:
 __all__ = []
 
 if _AJINEXTEK_AVAILABLE:
-    __all__.extend(['AjinextekRobotService', 'AXLWrapper'])
+    __all__.extend(['AjinextekRobotAdapter', 'AXLWrapper'])

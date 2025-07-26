@@ -6,19 +6,19 @@ This module contains power supply hardware implementations and services.
 
 # Import device-specific implementations
 try:
-    from infrastructure.hardware.power.oda import OdaPowerService
+    from infrastructure.hardware.power.oda import OdaPowerAdapter
 except ImportError:
-    OdaPowerService = None
+    OdaPowerAdapter = None
 
 try:
-    from infrastructure.hardware.power.mock import MockPowerService
+    from infrastructure.hardware.power.mock import MockPowerAdapter
 except ImportError:
-    MockPowerService = None
+    MockPowerAdapter = None
 
 __all__ = []
 
-if OdaPowerService:
-    __all__.append('OdaPowerService')
+if OdaPowerAdapter:
+    __all__.append('OdaPowerAdapter')
     
-if MockPowerService:
-    __all__.append('MockPowerService')
+if MockPowerAdapter:
+    __all__.append('MockPowerAdapter')

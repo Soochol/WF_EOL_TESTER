@@ -166,6 +166,23 @@ class DUT:
             specifications=data.get('specifications', {})
         )
     
+    @classmethod
+    def from_command_info(cls, command_info) -> 'DUT':
+        """Create DUT from DUTCommandInfo
+        
+        Args:
+            command_info: DUTCommandInfo instance
+            
+        Returns:
+            DUT entity with data from command info
+        """
+        return cls(
+            dut_id=DUTId(command_info.dut_id),
+            model_number=command_info.model_number,
+            serial_number=command_info.serial_number,
+            manufacturer=command_info.manufacturer
+        )
+    
     def __str__(self) -> str:
         return f"{self._manufacturer} {self._model_number} (SN: {self._serial_number})"
     

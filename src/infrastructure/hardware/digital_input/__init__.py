@@ -7,19 +7,19 @@ Provides digital I/O control for EOL testing systems.
 
 # Import device-specific implementations
 try:
-    from infrastructure.hardware.digital_input.ajinextek import AjinextekInputService
+    from infrastructure.hardware.digital_input.ajinextek import AjinextekInputAdapter
 except ImportError:
-    AjinextekInputService = None
+    AjinextekInputAdapter = None
 
 try:
-    from infrastructure.hardware.digital_input.mock import MockInputService
+    from infrastructure.hardware.digital_input.mock import MockInputAdapter
 except ImportError:
-    MockInputService = None
+    MockInputAdapter = None
 
 __all__ = []
 
-if AjinextekInputService:
-    __all__.append('AjinextekInputService')
+if AjinextekInputAdapter:
+    __all__.append('AjinextekInputAdapter')
     
-if MockInputService:
-    __all__.append('MockInputService')
+if MockInputAdapter:
+    __all__.append('MockInputAdapter')

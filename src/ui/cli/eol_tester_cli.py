@@ -13,7 +13,7 @@ from application.use_cases.execute_eol_force_test import (
     ExecuteEOLTestCommand, 
     EOLTestResult
 )
-from domain.enums.test_types import TestType
+from domain.value_objects.dut_command_info import DUTCommandInfo
 
 
 class EOLTesterCLI:
@@ -58,38 +58,32 @@ class EOLTesterCLI:
         print("\n" + "-"*60)
         print("Main Menu")
         print("-"*60)
-        print("1. Execute Force Test")
-        print("2. Execute Electrical Test")
-        print("3. Execute Comprehensive Test")
-        print("4. Check Hardware Status")
-        print("5. Exit")
+        print("1. Execute EOL Test")
+        print("2. Check Hardware Status")
+        print("3. Exit")
         print("-"*60)
         
         try:
-            choice = input("Select option (1-5): ").strip()
+            choice = input("Select option (1-3): ").strip()
             
             if choice == "1":
-                await self._execute_force_test()
+                await self._execute_eol_test()
             elif choice == "2":
-                await self._execute_electrical_test()
-            elif choice == "3":
-                await self._execute_comprehensive_test()
-            elif choice == "4":
                 await self._check_hardware_status()
-            elif choice == "5":
+            elif choice == "3":
                 self._running = False
                 print("Exiting...")
             else:
-                print("Invalid option. Please select 1-5.")
+                print("Invalid option. Please select 1-3.")
                 
         except (KeyboardInterrupt, EOFError):
             self._running = False
             print("\\nExiting...")
     
-    async def _execute_force_test(self) -> None:
-        """힘 측정 테스트 실행"""
+    async def _execute_eol_test(self) -> None:
+        """EOL 테스트 실행"""
         print("\\n" + "="*60)
-        print("Force Measurement Test")
+        print("EOL Test")
         print("="*60)
         
         # DUT 정보 입력
@@ -97,97 +91,18 @@ class EOLTesterCLI:
         if not dut_info:
             return
         
-        # 테스트 명령 생성
-        command = ExecuteEOLTestCommand(
+        # DUTCommandInfo 생성
+        dut_command_info = DUTCommandInfo(
             dut_id=dut_info['id'],
-            dut_model=dut_info['model'],
-            dut_serial=dut_info['serial'],
-            test_type=TestType.FORCE_ONLY,
-            operator_id=dut_info['operator'],
-            pass_criteria={
-                'force_min': 8.0,   # 최소 8N
-                'force_max': 12.0   # 최대 12N
-            }
+            model_number=dut_info['model'],
+            serial_number=dut_info['serial'],
+            manufacturer="Unknown"
         )
         
-        await self._execute_test(command)
-    
-    async def _execute_electrical_test(self) -> None:
-        """전기적 측정 테스트 실행"""
-        print("\\n" + "="*60)
-        print("Electrical Measurement Test")
-        print("="*60)
-        
-        # DUT 정보 입력
-        dut_info = await self._get_dut_info()
-        if not dut_info:
-            return
-        
-        # 전압/전류 설정 입력
-        try:
-            voltage = float(input("Target voltage (V) [12.0]: ") or "12.0")
-            current = float(input("Current limit (A) [1.0]: ") or "1.0")
-        except ValueError:
-            print("Invalid voltage/current values")
-            return
-        
         # 테스트 명령 생성
         command = ExecuteEOLTestCommand(
-            dut_id=dut_info['id'],
-            dut_model=dut_info['model'],
-            dut_serial=dut_info['serial'],
-            test_type=TestType.ELECTRICAL_ONLY,
-            operator_id=dut_info['operator'],
-            test_config={
-                'target_voltage': voltage,
-                'current_limit': current
-            },
-            pass_criteria={
-                'voltage_min': voltage * 0.95,  # ±5% 허용
-                'voltage_max': voltage * 1.05,
-                'current_max': current
-            }
-        )
-        
-        await self._execute_test(command)
-    
-    async def _execute_comprehensive_test(self) -> None:
-        """종합 테스트 실행"""
-        print("\\n" + "="*60)
-        print("Comprehensive Test")
-        print("="*60)
-        
-        # DUT 정보 입력
-        dut_info = await self._get_dut_info()
-        if not dut_info:
-            return
-        
-        # 설정 입력
-        try:
-            voltage = float(input("Target voltage (V) [12.0]: ") or "12.0")
-            current = float(input("Current limit (A) [1.0]: ") or "1.0")
-        except ValueError:
-            print("Invalid values")
-            return
-        
-        # 테스트 명령 생성
-        command = ExecuteEOLTestCommand(
-            dut_id=dut_info['id'],
-            dut_model=dut_info['model'],
-            dut_serial=dut_info['serial'],
-            test_type=TestType.COMPREHENSIVE,
-            operator_id=dut_info['operator'],
-            test_config={
-                'target_voltage': voltage,
-                'current_limit': current
-            },
-            pass_criteria={
-                'force_min': 8.0,
-                'force_max': 12.0,
-                'voltage_min': voltage * 0.95,
-                'voltage_max': voltage * 1.05,
-                'current_max': current
-            }
+            dut_info=dut_command_info,
+            operator_id=dut_info['operator']
         )
         
         await self._execute_test(command)
@@ -217,7 +132,7 @@ class EOLTesterCLI:
     
     async def _execute_test(self, command: ExecuteEOLTestCommand) -> None:
         """테스트 실행"""
-        print(f"\\nExecuting test for DUT: {command.dut_id}")
+        print(f"\\nExecuting test for DUT: {command.dut_info.dut_id}")
         print("Please wait...")
         
         try:

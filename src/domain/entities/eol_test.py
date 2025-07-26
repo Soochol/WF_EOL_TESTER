@@ -7,7 +7,6 @@ Represents an End-of-Line test execution with its configuration and state.
 from typing import Dict, Any, List, Optional
 from domain.value_objects.identifiers import TestId, DUTId, OperatorId, MeasurementId
 from domain.value_objects.time_values import Timestamp, TestDuration
-from domain.enums.test_types import TestType
 from domain.enums.test_status import TestStatus
 from domain.exceptions.validation_exceptions import ValidationException
 from domain.exceptions.business_rule_exceptions import BusinessRuleViolationException, InvalidTestStateException
@@ -22,7 +21,6 @@ class EOLTest:
         self,
         test_id: TestId,
         dut: DUT,
-        test_type: TestType,
         operator_id: OperatorId,
         test_configuration: Optional[Dict[str, Any]] = None,
         pass_criteria: Optional[Dict[str, Any]] = None,
@@ -34,7 +32,6 @@ class EOLTest:
         Args:
             test_id: Unique identifier for this test
             dut: Device Under Test
-            test_type: Type of test to perform
             operator_id: Operator performing the test
             test_configuration: Test configuration parameters
             pass_criteria: Criteria that determine pass/fail
@@ -43,11 +40,10 @@ class EOLTest:
         Raises:
             ValidationException: If required fields are invalid
         """
-        self._validate_required_fields(test_id, dut, test_type, operator_id)
+        self._validate_required_fields(test_id, dut, operator_id)
         
         self._test_id = test_id
         self._dut = dut
-        self._test_type = test_type
         self._operator_id = operator_id
         self._test_configuration = test_configuration or {}
         self._pass_criteria = pass_criteria or {}
@@ -71,16 +67,13 @@ class EOLTest:
         self._required_hardware: List[str] = []
         self._connected_hardware: Dict[str, bool] = {}
     
-    def _validate_required_fields(self, test_id: TestId, dut: DUT, test_type: TestType, operator_id: OperatorId) -> None:
+    def _validate_required_fields(self, test_id: TestId, dut: DUT, operator_id: OperatorId) -> None:
         """Validate required fields"""
         if not isinstance(test_id, TestId):
             raise ValidationException("test_id", test_id, "Test ID must be TestId instance")
         
         if not isinstance(dut, DUT):
             raise ValidationException("dut", dut, "DUT must be DUT instance")
-        
-        if not isinstance(test_type, TestType):
-            raise ValidationException("test_type", test_type, "Test type must be TestType enum")
         
         if not isinstance(operator_id, OperatorId):
             raise ValidationException("operator_id", operator_id, "Operator ID must be OperatorId instance")
@@ -94,11 +87,6 @@ class EOLTest:
     def dut(self) -> DUT:
         """Get Device Under Test"""
         return self._dut
-    
-    @property
-    def test_type(self) -> TestType:
-        """Get test type"""
-        return self._test_type
     
     @property
     def operator_id(self) -> OperatorId:
@@ -400,7 +388,6 @@ class EOLTest:
         return {
             'test_id': str(self._test_id),
             'dut': self._dut.to_dict(),
-            'test_type': self._test_type.value,
             'operator_id': str(self._operator_id),
             'test_configuration': self._test_configuration,
             'pass_criteria': self._pass_criteria,
@@ -431,7 +418,6 @@ class EOLTest:
         test = cls(
             test_id=TestId(data['test_id']),
             dut=dut,
-            test_type=TestType(data['test_type']),
             operator_id=OperatorId(data['operator_id']),
             test_configuration=data.get('test_configuration', {}),
             pass_criteria=data.get('pass_criteria', {}),
@@ -469,7 +455,7 @@ class EOLTest:
         return f"EOL Test {self._test_id} for {self._dut} {status_info}"
     
     def __repr__(self) -> str:
-        return f"EOLTest(id={self._test_id}, type={self._test_type.value}, status={self._status.value})"
+        return f"EOLTest(id={self._test_id}, status={self._status.value})"
     
     def __eq__(self, other) -> bool:
         if not isinstance(other, EOLTest):

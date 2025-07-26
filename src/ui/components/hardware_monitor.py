@@ -11,7 +11,6 @@ import asyncio
 import json
 
 from domain.enums.hardware_status import HardwareStatus
-from domain.entities.hardware_device import HardwareDevice
 
 
 class AlertSeverity(Enum):
@@ -43,6 +42,17 @@ class MonitoringMetrics:
     health_score: float  # 0-100
 
 
+@dataclass
+class MonitoredDevice:
+    """Simple device structure for monitoring purposes"""
+    device_id: str
+    device_type: str
+    vendor: str
+    model: Optional[str]
+    status: HardwareStatus
+    connection_info: str
+
+
 class HardwareMonitorComponent:
     """
     Real-time hardware monitoring component with:
@@ -55,7 +65,7 @@ class HardwareMonitorComponent:
     
     def __init__(self, refresh_interval: int = 2000):
         self.refresh_interval = refresh_interval
-        self._devices: Dict[str, HardwareDevice] = {}
+        self._devices: Dict[str, MonitoredDevice] = {}
         self._metrics: Dict[str, MonitoringMetrics] = {}
         self._alerts: List[HardwareAlert] = []
         self._subscribers: List[callable] = []
@@ -72,9 +82,9 @@ class HardwareMonitorComponent:
         """Stop hardware monitoring"""
         self._monitoring_active = False
         
-    def register_device(self, device: HardwareDevice) -> None:
+    def register_device(self, device: MonitoredDevice) -> None:
         """Register device for monitoring"""
-        device_id = device.device_id or device.get_full_identifier()
+        device_id = device.device_id
         self._devices[device_id] = device
         self._metrics[device_id] = MonitoringMetrics(
             uptime_percentage=0.0,
@@ -97,7 +107,7 @@ class HardwareMonitorComponent:
                     f"Failed to update device status: {str(e)}"
                 )
                 
-    async def _update_device_status(self, device_id: str, device: HardwareDevice) -> None:
+    async def _update_device_status(self, device_id: str, device: MonitoredDevice) -> None:
         """Update individual device status and metrics"""
         start_time = datetime.now()
         
