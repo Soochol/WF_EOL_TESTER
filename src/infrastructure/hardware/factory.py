@@ -348,10 +348,10 @@ class ServiceFactory:
         repository = ServiceFactory.create_test_repository(repository_config)
         
         # 애플리케이션 구성
-        from application.use_cases.execute_eol_force_test import ExecuteEOLTestUseCase
+        from application.use_cases.eol_force_test import EOLForceTestUseCase
         from ui.cli.eol_tester_cli import EOLTesterCLI
         
-        use_case = ExecuteEOLTestUseCase(
+        use_case = EOLForceTestUseCase(
             loadcell_service=loadcell,
             power_service=power,
             test_repository=repository

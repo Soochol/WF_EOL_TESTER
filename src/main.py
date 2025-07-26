@@ -14,7 +14,7 @@ from loguru import logger
 
 from infrastructure.hardware.factory import ServiceFactory
 from ui.cli.eol_tester_cli import EOLTesterCLI
-from application.use_cases.execute_eol_force_test import ExecuteEOLTestUseCase
+from application.use_cases.eol_force_test import EOLForceTestUseCase
 from application.services.hardware_service_facade import HardwareServiceFacade
 from application.services.repository_service import RepositoryService
 from application.services.exception_handler import ExceptionHandler
@@ -248,7 +248,7 @@ async def main() -> None:
         )
         
         # Use Case 생성
-        use_case = ExecuteEOLTestUseCase(
+        use_case = EOLForceTestUseCase(
             hardware_services=hardware_services,
             repository_service=repository_service,
             exception_handler=exception_handler,

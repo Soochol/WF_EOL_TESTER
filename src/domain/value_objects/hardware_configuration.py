@@ -5,13 +5,24 @@ Immutable configuration object containing all hardware device connection paramet
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from domain.exceptions.validation_exceptions import ValidationException
+
+
+# Supported hardware models
+SUPPORTED_ROBOT_MODELS: Set[str] = {"AJINEXTEK", "MOCK"}
+SUPPORTED_LOADCELL_MODELS: Set[str] = {"BS205", "MOCK"}
+SUPPORTED_MCU_MODELS: Set[str] = {"LMA", "MOCK"}
+SUPPORTED_POWER_MODELS: Set[str] = {"ODA", "MOCK"}
+SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {"AJINEXTEK", "MOCK"}
 
 
 @dataclass(frozen=True)
 class RobotConfig:
     """Robot motion configuration"""
+    
+    # Hardware model
+    model: str = "AJINEXTEK"
     
     # Motion parameters
     axis: int = 0
@@ -39,6 +50,9 @@ class RobotConfig:
 class LoadCellConfig:
     """LoadCell device configuration (BS205)"""
     
+    # Hardware model
+    model: str = "BS205"
+    
     port: str = "COM3"
     baudrate: int = 9600
     timeout: float = 1.0
@@ -49,6 +63,9 @@ class LoadCellConfig:
 class MCUConfig:
     """MCU device configuration (LMA)"""
     
+    # Hardware model
+    model: str = "LMA"
+    
     port: str = "COM4"
     baudrate: int = 115200
     timeout: float = 2.0
@@ -57,6 +74,9 @@ class MCUConfig:
 @dataclass(frozen=True)
 class PowerConfig:
     """Power supply configuration (ODA)"""
+    
+    # Hardware model
+    model: str = "ODA"
     
     host: str = "192.168.1.100"
     port: int = 8080
@@ -67,6 +87,9 @@ class PowerConfig:
 @dataclass(frozen=True)
 class DigitalInputConfig:
     """Digital Input configuration (AJINEXTEK)"""
+    
+    # Hardware model
+    model: str = "AJINEXTEK"
     
     board_no: int = 0
     input_count: int = 8
@@ -96,6 +119,11 @@ class HardwareConfiguration:
     
     def _validate_robot_config(self) -> None:
         """Validate robot configuration parameters"""
+        # Validate model
+        if self.robot.model not in SUPPORTED_ROBOT_MODELS:
+            raise ValidationException("robot.model", self.robot.model, 
+                                    f"Unsupported robot model. Supported models: {', '.join(SUPPORTED_ROBOT_MODELS)}")
+        
         if self.robot.axis < 0:
             raise ValidationException("robot.axis", self.robot.axis, "Axis number cannot be negative")
         
@@ -124,6 +152,10 @@ class HardwareConfiguration:
     def _validate_communication_configs(self) -> None:
         """Validate communication configuration parameters"""
         # LoadCell validation
+        if self.loadcell.model not in SUPPORTED_LOADCELL_MODELS:
+            raise ValidationException("loadcell.model", self.loadcell.model,
+                                    f"Unsupported loadcell model. Supported models: {', '.join(SUPPORTED_LOADCELL_MODELS)}")
+        
         if not self.loadcell.port:
             raise ValidationException("loadcell.port", self.loadcell.port, "LoadCell port cannot be empty")
         
@@ -137,6 +169,10 @@ class HardwareConfiguration:
             raise ValidationException("loadcell.indicator_id", self.loadcell.indicator_id, "LoadCell indicator ID cannot be negative")
         
         # MCU validation
+        if self.mcu.model not in SUPPORTED_MCU_MODELS:
+            raise ValidationException("mcu.model", self.mcu.model,
+                                    f"Unsupported MCU model. Supported models: {', '.join(SUPPORTED_MCU_MODELS)}")
+        
         if not self.mcu.port:
             raise ValidationException("mcu.port", self.mcu.port, "MCU port cannot be empty")
         
@@ -147,6 +183,10 @@ class HardwareConfiguration:
             raise ValidationException("mcu.timeout", self.mcu.timeout, "MCU timeout must be positive")
         
         # Digital Input validation
+        if self.digital_input.model not in SUPPORTED_DIGITAL_INPUT_MODELS:
+            raise ValidationException("digital_input.model", self.digital_input.model,
+                                    f"Unsupported digital input model. Supported models: {', '.join(SUPPORTED_DIGITAL_INPUT_MODELS)}")
+        
         if self.digital_input.board_no < 0:
             raise ValidationException("digital_input.board_no", self.digital_input.board_no, "Board number cannot be negative")
         
@@ -158,6 +198,11 @@ class HardwareConfiguration:
     
     def _validate_power_config(self) -> None:
         """Validate power supply configuration parameters"""
+        # Validate model
+        if self.power.model not in SUPPORTED_POWER_MODELS:
+            raise ValidationException("power.model", self.power.model,
+                                    f"Unsupported power supply model. Supported models: {', '.join(SUPPORTED_POWER_MODELS)}")
+        
         if not self.power.host:
             raise ValidationException("power.host", self.power.host, "Power host cannot be empty")
         
@@ -230,6 +275,7 @@ class HardwareConfiguration:
         """Convert configuration to dictionary representation"""
         return {
             'robot': {
+                'model': self.robot.model,
                 'axis': self.robot.axis,
                 'velocity': self.robot.velocity,
                 'acceleration': self.robot.acceleration,
@@ -245,23 +291,27 @@ class HardwareConfiguration:
                 'axis_count': self.robot.axis_count
             },
             'loadcell': {
+                'model': self.loadcell.model,
                 'port': self.loadcell.port,
                 'baudrate': self.loadcell.baudrate,
                 'timeout': self.loadcell.timeout,
                 'indicator_id': self.loadcell.indicator_id
             },
             'mcu': {
+                'model': self.mcu.model,
                 'port': self.mcu.port,
                 'baudrate': self.mcu.baudrate,
                 'timeout': self.mcu.timeout
             },
             'power': {
+                'model': self.power.model,
                 'host': self.power.host,
                 'port': self.power.port,
                 'timeout': self.power.timeout,
                 'channel': self.power.channel
             },
             'digital_input': {
+                'model': self.digital_input.model,
                 'board_no': self.digital_input.board_no,
                 'input_count': self.digital_input.input_count,
                 'debounce_time': self.digital_input.debounce_time
@@ -301,7 +351,7 @@ class HardwareConfiguration:
         return cls(**data_copy)
     
     def __str__(self) -> str:
-        return f"HardwareConfiguration(robot={self.robot.axis}, loadcell={self.loadcell.port}, mcu={self.mcu.port})"
+        return f"HardwareConfiguration(robot={self.robot.model}:{self.robot.axis}, loadcell={self.loadcell.model}:{self.loadcell.port}, mcu={self.mcu.model}:{self.mcu.port}, power={self.power.model}, input={self.digital_input.model})"
     
     def __repr__(self) -> str:
         return (f"HardwareConfiguration(robot={self.robot}, loadcell={self.loadcell}, "

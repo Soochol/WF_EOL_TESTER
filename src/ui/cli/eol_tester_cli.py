@@ -8,9 +8,9 @@ import asyncio
 from typing import Optional
 from loguru import logger
 
-from application.use_cases.execute_eol_force_test import (
-    ExecuteEOLTestUseCase, 
-    ExecuteEOLTestCommand, 
+from application.use_cases.eol_force_test import (
+    EOLForceTestUseCase, 
+    EOLForceTestCommand, 
     EOLTestResult
 )
 from domain.value_objects.dut_command_info import DUTCommandInfo
@@ -19,7 +19,7 @@ from domain.value_objects.dut_command_info import DUTCommandInfo
 class EOLTesterCLI:
     """EOL 테스터 CLI 인터페이스"""
     
-    def __init__(self, use_case: ExecuteEOLTestUseCase):
+    def __init__(self, use_case: EOLForceTestUseCase):
         """
         초기화
         
@@ -100,7 +100,7 @@ class EOLTesterCLI:
         )
         
         # 테스트 명령 생성
-        command = ExecuteEOLTestCommand(
+        command = EOLForceTestCommand(
             dut_info=dut_command_info,
             operator_id=dut_info['operator']
         )
@@ -130,7 +130,7 @@ class EOLTesterCLI:
         except (KeyboardInterrupt, EOFError):
             return None
     
-    async def _execute_test(self, command: ExecuteEOLTestCommand) -> None:
+    async def _execute_test(self, command: EOLForceTestCommand) -> None:
         """테스트 실행"""
         print(f"\\nExecuting test for DUT: {command.dut_info.dut_id}")
         print("Please wait...")

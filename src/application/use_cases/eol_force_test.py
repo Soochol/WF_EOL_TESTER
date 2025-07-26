@@ -40,7 +40,7 @@ from domain.exceptions import (
 )
 
 
-class ExecuteEOLTestCommand:
+class EOLForceTestCommand:
     """EOL Test Execution Command"""
 
     def __init__(
@@ -52,7 +52,7 @@ class ExecuteEOLTestCommand:
         self.operator_id = operator_id
 
 
-class ExecuteEOLTestUseCase:
+class EOLForceTestUseCase:
     """
     EOL Test Execution Use Case with Exception First Architecture
 
@@ -82,7 +82,7 @@ class ExecuteEOLTestUseCase:
         self._test_config: Optional[TestConfiguration] = None
         self._hardware_config: Optional[HardwareConfiguration] = None
 
-    async def execute(self, command: ExecuteEOLTestCommand) -> EOLTestResult:
+    async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
         Execute EOL test using Exception First principles
 
