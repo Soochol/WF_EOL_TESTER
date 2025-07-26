@@ -13,6 +13,7 @@ from loguru import logger
 from application.interfaces.test_repository import TestRepository
 from domain.entities.eol_test import EOLTest
 from domain.value_objects.identifiers import TestId
+from domain.exceptions import RepositoryAccessError, ConfigurationNotFoundError
 
 
 class JsonTestRepository(TestRepository):
@@ -118,32 +119,44 @@ class JsonTestRepository(TestRepository):
         logger.debug(f"Found {len(tests)} tests for DUT {dut_id}")
         return tests
     
-    async def delete(self, test_id: str) -> bool:
+    async def delete(self, test_id: str) -> None:
         """
         테스트 삭제
         
         Args:
             test_id: 테스트 ID
             
-        Returns:
-            삭제 성공 여부
+        Raises:
+            ConfigurationNotFoundError: If test does not exist
+            RepositoryAccessError: If deletion fails
         """
         try:
+            # 테스트 존재 확인
+            file_path = self._get_test_file_path(test_id)
+            if not file_path.exists() and test_id not in self._tests_cache:
+                raise ConfigurationNotFoundError(
+                    f"Test {test_id} not found",
+                    config_source=str(file_path)
+                )
+            
             # 캐시에서 제거
             if test_id in self._tests_cache:
                 del self._tests_cache[test_id]
             
             # 파일 삭제
-            file_path = self._get_test_file_path(test_id)
             if file_path.exists():
                 file_path.unlink()
             
             logger.debug(f"Test {test_id} deleted from repository")
-            return True
             
+        except ConfigurationNotFoundError:
+            raise
         except Exception as e:
             logger.error(f"Failed to delete test {test_id}: {e}")
-            return False
+            raise RepositoryAccessError(
+                f"Failed to delete test {test_id}: {str(e)}",
+                config_source=str(self._get_test_file_path(test_id))
+            )
     
     async def _test_to_dict(self, test: EOLTest) -> Dict[str, Any]:
         """테스트 엔티티를 딕셔너리로 변환"""
@@ -250,8 +263,11 @@ class JsonTestRepository(TestRepository):
                 try:
                     test_date = datetime.fromisoformat(created_at).timestamp()
                     if test_date < cutoff_date:
-                        if await self.delete(test_id):
+                        try:
+                            await self.delete(test_id)
                             deleted_count += 1
+                        except Exception as e:
+                            logger.warning(f"Failed to delete old test {test_id}: {e}")
                 except Exception as e:
                     logger.warning(f"Failed to parse date for test {test_id}: {e}")
         

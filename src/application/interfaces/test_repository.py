@@ -65,14 +65,15 @@ class TestRepository(ABC):
         pass
     
     @abstractmethod
-    async def delete(self, test_id: str) -> bool:
+    async def delete(self, test_id: str) -> None:
         """
         테스트 삭제
         
         Args:
             test_id: 테스트 ID
             
-        Returns:
-            삭제 성공 여부
+        Raises:
+            RepositoryAccessError: If deletion fails
+            ConfigurationNotFoundError: If test with given ID does not exist
         """
         pass

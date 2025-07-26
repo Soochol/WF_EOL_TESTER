@@ -11,6 +11,7 @@ from loguru import logger
 
 
 from application.interfaces.digital_input import DigitalInputService, PinMode, LogicLevel
+from domain.exceptions import HardwareConnectionError, HardwareOperationError
 from infrastructure.hardware.digital_input.ajinextek.constants import (
     DEFAULT_BOARD_NUMBER, DEFAULT_MODULE_POSITION, MAX_INPUT_CHANNELS, MAX_OUTPUT_CHANNELS,
     PIN_MODE_INPUT, PIN_MODE_OUTPUT, PIN_MODE_INPUT_PULLUP, PIN_MODE_INPUT_PULLDOWN,
@@ -69,7 +70,7 @@ class AjinextekInputAdapter(DigitalInputService):
         # AXL library interface (placeholder - would use ctypes in real implementation)
         self._axl_lib = None
     
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
         DIO 하드웨어 연결
         
@@ -121,7 +122,7 @@ class AjinextekInputAdapter(DigitalInputService):
                 error_code=int(AjinextekErrorCode.HARDWARE_INITIALIZATION_FAILED)
             )
     
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
         DIO 하드웨어 연결 해제
         
@@ -161,7 +162,7 @@ class AjinextekInputAdapter(DigitalInputService):
         """
         return self._is_connected and self._is_initialized
     
-    async def configure_pin(self, pin: int, mode: PinMode) -> bool:
+    async def configure_pin(self, pin: int, mode: PinMode) -> None:
         """
         GPIO 핀 모드 설정
         
@@ -257,7 +258,7 @@ class AjinextekInputAdapter(DigitalInputService):
                 error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT)
             )
     
-    async def write_digital_output(self, pin: int, level: LogicLevel) -> bool:
+    async def write_digital_output(self, pin: int, level: LogicLevel) -> None:
         """
         디지털 출력 쓰기
         
@@ -328,7 +329,7 @@ class AjinextekInputAdapter(DigitalInputService):
         logger.debug(f"Read multiple inputs: {len(pins)} pins")
         return results
     
-    async def write_multiple_outputs(self, pin_values: Dict[int, LogicLevel]) -> bool:
+    async def write_multiple_outputs(self, pin_values: Dict[int, LogicLevel]) -> None:
         """
         다중 디지털 출력 쓰기
         
@@ -381,7 +382,7 @@ class AjinextekInputAdapter(DigitalInputService):
         """
         return self._pin_configurations.copy()
     
-    async def reset_all_outputs(self) -> bool:
+    async def reset_all_outputs(self) -> None:
         """
         모든 출력을 LOW로 리셋
         

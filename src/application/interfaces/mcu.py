@@ -12,22 +12,22 @@ class MCUService(ABC):
     """Abstract interface for MCU operations"""
     
     @abstractmethod
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
         Connect to MCU hardware
         
-        Returns:
-            True if connection successful, False otherwise
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         pass
     
     @abstractmethod
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
         Disconnect from MCU hardware
         
-        Returns:
-            True if disconnection successful, False otherwise
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
         pass
     
@@ -42,12 +42,12 @@ class MCUService(ABC):
         pass
     
     @abstractmethod
-    async def boot_complete(self) -> bool:
+    async def boot_complete(self) -> None:
         """
         Signal MCU that boot process is complete
         
-        Returns:
-            True if signal sent successfully, False otherwise
+        Raises:
+            HardwareOperationError: If signal sending fails
         """
         pass
     
@@ -76,17 +76,17 @@ class MCUService(ABC):
         pass
     
     @abstractmethod
-    async def reset(self) -> bool:
+    async def reset(self) -> None:
         """
         Reset the MCU
         
-        Returns:
-            True if reset successful, False otherwise
+        Raises:
+            HardwareOperationError: If reset fails
         """
         pass
     
     @abstractmethod
-    async def set_temperature_control(self, enabled: bool, target_temp: Optional[float] = None) -> bool:
+    async def set_temperature_control(self, enabled: bool, target_temp: Optional[float] = None) -> None:
         """
         Enable/disable temperature control
         
@@ -94,8 +94,8 @@ class MCUService(ABC):
             enabled: Whether to enable temperature control
             target_temp: Target temperature in Celsius (if enabling)
             
-        Returns:
-            True if command successful, False otherwise
+        Raises:
+            HardwareOperationError: If temperature control setting fails
         """
         pass
     

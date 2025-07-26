@@ -1,8 +1,7 @@
 """
 Domain Exceptions Package
 
-Contains domain-specific exceptions that represent business rule violations 
-and domain constraints.
+Contains domain-specific exceptions for EOL Tester application following Exception First principles.
 """
 
 from domain.exceptions.domain_exceptions import DomainException
@@ -14,7 +13,28 @@ from domain.exceptions.robot_exceptions import (
     AXLError, AXLConnectionError, AXLMotionError, AXLConfigurationError
 )
 
+from domain.exceptions.eol_exceptions import (
+    EOLTesterError,
+    ValidationError,
+    ConfigurationValidationError,
+    MultiConfigurationValidationError,
+    TestEvaluationError, 
+    HardwareError,
+    HardwareConnectionError,
+    HardwareOperationError,
+    RepositoryError,
+    ConfigurationNotFoundError,
+    RepositoryAccessError,
+    TestExecutionError,
+    TestSequenceError,
+    TestSetupError,
+    create_validation_error,
+    create_multi_validation_error,
+    create_test_evaluation_error
+)
+
 __all__ = [
+    # Legacy domain exceptions
     'DomainException',
     'ValidationException',
     'BusinessRuleViolationException',
@@ -26,5 +46,26 @@ __all__ = [
     'AXLError',
     'AXLConnectionError',
     'AXLMotionError',
-    'AXLConfigurationError'
+    'AXLConfigurationError',
+    
+    # Exception First hierarchy
+    'EOLTesterError',
+    'ValidationError',
+    'ConfigurationValidationError',
+    'MultiConfigurationValidationError',
+    'TestEvaluationError',
+    'HardwareError',
+    'HardwareConnectionError',
+    'HardwareOperationError',
+    'RepositoryError',
+    'ConfigurationNotFoundError',
+    'RepositoryAccessError',
+    'TestExecutionError',
+    'TestSequenceError',
+    'TestSetupError',
+    
+    # Utility functions
+    'create_validation_error',
+    'create_multi_validation_error',
+    'create_test_evaluation_error'
 ]

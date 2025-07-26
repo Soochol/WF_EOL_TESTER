@@ -10,6 +10,8 @@ from typing import Optional, Dict, Any, List
 from loguru import logger
 
 from application.interfaces.loadcell import LoadCellService
+from domain.exceptions import HardwareConnectionError, HardwareOperationError
+from domain.value_objects.measurements import ForceValue
 
 
 class MockLoadCellAdapter(LoadCellService):
@@ -39,15 +41,16 @@ class MockLoadCellAdapter(LoadCellService):
         self._is_connected = False
         self._zero_offset = 0.0
         self._value_index = 0
+        self._measurement_rate = 10  # Hz
         
         logger.info(f"MockLoadCellAdapter initialized with base force: {base_force}N")
     
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
         하드웨어 연결 (시뮬레이션)
         
-        Returns:
-            연결 성공 여부
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         logger.info("Connecting to mock LoadCell...")
         
@@ -62,15 +65,14 @@ class MockLoadCellAdapter(LoadCellService):
             logger.info("Mock LoadCell connected successfully")
         else:
             logger.warning("Mock LoadCell connection failed")
-        
-        return success
+            raise HardwareConnectionError("mock_loadcell", "Simulated connection failure")
     
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
         하드웨어 연결 해제 (시뮬레이션)
         
-        Returns:
-            연결 해제 성공 여부
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
         logger.info("Disconnecting mock LoadCell...")
         
@@ -80,7 +82,6 @@ class MockLoadCellAdapter(LoadCellService):
         self._zero_offset = 0.0
         
         logger.info("Mock LoadCell disconnected")
-        return True
     
     async def is_connected(self) -> bool:
         """
@@ -91,7 +92,7 @@ class MockLoadCellAdapter(LoadCellService):
         """
         return self._is_connected
     
-    async def read_force(self) -> float:
+    async def read_force(self) -> ForceValue:
         """
         힘 측정값 읽기 (시뮬레이션)
         
@@ -120,35 +121,88 @@ class MockLoadCellAdapter(LoadCellService):
         force -= self._zero_offset
         
         logger.debug(f"Mock LoadCell reading: {force:.3f}N")
-        return force
+        return ForceValue(force)
     
-    async def zero(self) -> bool:
+    async def zero_calibration(self) -> None:
         """
         영점 조정 (시뮬레이션)
         
-        Returns:
-            영점 조정 성공 여부
-            
         Raises:
-            ConnectionError: 연결되지 않은 경우
+            HardwareOperationError: If calibration fails
         """
         if not self._is_connected:
-            raise ConnectionError("Mock LoadCell is not connected")
+            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
         
-        logger.info("Zeroing mock LoadCell...")
+        try:
+            logger.info("Zeroing mock LoadCell...")
+            
+            # 영점 조정 시뮬레이션
+            await asyncio.sleep(0.5)
+            
+            # 현재 읽기값을 영점으로 설정
+            if self._mock_values and self._value_index < len(self._mock_values):
+                self._zero_offset = self._mock_values[self._value_index]
+            else:
+                noise = random.uniform(-self._noise_level, self._noise_level)
+                self._zero_offset = self._base_force + noise
+            
+            logger.info(f"Mock LoadCell zeroed (offset: {self._zero_offset:.3f}N)")
+            
+        except Exception as e:
+            logger.error(f"Mock LoadCell zero calibration failed: {e}")
+            raise HardwareOperationError("mock_loadcell", "zero_calibration", str(e))
+    
+    async def read_raw_value(self) -> float:
+        """
+        원시 ADC 값 읽기 (시뮬레이션)
         
-        # 영점 조정 시뮬레이션
-        await asyncio.sleep(0.5)
+        Returns:
+            원시 측정값
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
         
-        # 현재 읽기값을 영점으로 설정
-        if self._mock_values and self._value_index < len(self._mock_values):
-            self._zero_offset = self._mock_values[self._value_index]
-        else:
-            noise = random.uniform(-self._noise_level, self._noise_level)
-            self._zero_offset = self._base_force + noise
+        # 짧은 측정 지연
+        await asyncio.sleep(0.02)
         
-        logger.info(f"Mock LoadCell zeroed (offset: {self._zero_offset:.3f}N)")
-        return True
+        # 원시 값은 실제 힘값에 임의의 스케일 팩터를 적용
+        force_value = await self.read_force() 
+        raw_value = force_value.value * 1000.0 + random.uniform(-10, 10)  # 시뮬레이션
+        
+        logger.debug(f"Mock LoadCell raw reading: {raw_value:.1f}")
+        return raw_value
+    
+    async def set_measurement_rate(self, rate_hz: int) -> None:
+        """
+        측정 샘플링 레이트 설정
+        
+        Args:
+            rate_hz: 샘플링 레이트 (Hz)
+            
+        Raises:
+            HardwareOperationError: If rate setting fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
+        
+        if rate_hz <= 0 or rate_hz > 1000:
+            raise HardwareOperationError("mock_loadcell", "set_measurement_rate", 
+                                       f"Invalid measurement rate: {rate_hz} Hz (must be 1-1000)")
+        
+        self._measurement_rate = rate_hz
+        logger.info(f"Mock LoadCell measurement rate set to {rate_hz} Hz")
+    
+    async def get_measurement_rate(self) -> int:
+        """
+        현재 측정 샘플링 레이트 조회
+        
+        Returns:
+            현재 샘플링 레이트 (Hz)
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
+        
+        return self._measurement_rate
     
     async def get_status(self) -> Dict[str, Any]:
         """
@@ -169,8 +223,9 @@ class MockLoadCellAdapter(LoadCellService):
         
         if self._is_connected:
             try:
-                force = await self.read_force()
-                status['current_force'] = force
+                force_value = await self.read_force()
+                status['current_force'] = force_value.value
+                status['measurement_rate'] = self._measurement_rate
                 status['last_error'] = None
             except Exception as e:
                 status['current_force'] = None
@@ -201,7 +256,8 @@ class MockLoadCellAdapter(LoadCellService):
             if i > 0:
                 await asyncio.sleep(interval_sec)
             
-            force = await self.read_force()
+            force_value = await self.read_force()
+            force = force_value.value
             samples.append(force)
             logger.debug(f"Mock sample {i+1}/{count}: {force:.3f}N")
         

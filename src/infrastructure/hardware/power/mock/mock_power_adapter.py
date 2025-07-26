@@ -10,6 +10,7 @@ from typing import Dict, Any
 from loguru import logger
 
 from application.interfaces.power import PowerService
+from domain.exceptions import HardwareConnectionError, HardwareOperationError
 
 
 class MockPowerAdapter(PowerService):
@@ -46,48 +47,53 @@ class MockPowerAdapter(PowerService):
         
         logger.info(f"MockPowerAdapter initialized with {max_voltage}V/{max_current}A limits")
     
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
-        하드웨어 연결 (시뮬레이션)
+        Connect to power supply hardware (시뮬레이션)
         
-        Returns:
-            연결 성공 여부
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         logger.info("Connecting to mock Power Supply...")
         
-        # 연결 지연 시뮬레이션
-        await asyncio.sleep(self._connection_delay)
-        
-        # 95% 확률로 성공
-        success = random.random() > 0.05
-        
-        if success:
+        try:
+            # 연결 지연 시뮬레이션
+            await asyncio.sleep(self._connection_delay)
+            
+            # 95% 확률로 성공
+            if random.random() <= 0.05:
+                raise Exception("Simulated connection failure")
+            
             self._is_connected = True
             self._output_enabled = False  # 안전을 위해 비활성화
             logger.info("Mock Power Supply connected successfully")
-        else:
-            logger.warning("Mock Power Supply connection failed")
-        
-        return success
+            
+        except Exception as e:
+            logger.error(f"Failed to connect to mock Power Supply: {e}")
+            raise HardwareConnectionError("mock_power", str(e))
     
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
-        하드웨어 연결 해제 (시뮬레이션)
+        Disconnect from power supply hardware (시뮬레이션)
         
-        Returns:
-            연결 해제 성공 여부
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
-        logger.info("Disconnecting mock Power Supply...")
-        
-        await asyncio.sleep(0.1)
-        
-        self._is_connected = False
-        self._output_enabled = False
-        self._set_voltage = 0.0
-        self._set_current = 0.0
-        
-        logger.info("Mock Power Supply disconnected")
-        return True
+        try:
+            logger.info("Disconnecting mock Power Supply...")
+            
+            await asyncio.sleep(0.1)
+            
+            self._is_connected = False
+            self._output_enabled = False
+            self._set_voltage = 0.0
+            self._set_current = 0.0
+            
+            logger.info("Mock Power Supply disconnected")
+            
+        except Exception as e:
+            logger.error(f"Error disconnecting mock Power Supply: {e}")
+            raise HardwareOperationError("mock_power", "disconnect", str(e))
     
     async def is_connected(self) -> bool:
         """
@@ -98,92 +104,185 @@ class MockPowerAdapter(PowerService):
         """
         return self._is_connected
     
-    async def set_output(self, voltage: float, current: float) -> bool:
+    async def set_voltage(self, voltage: float) -> None:
         """
-        전압과 전류 출력 설정 (시뮬레이션)
+        Set output voltage (시뮬레이션)
         
         Args:
-            voltage: 출력 전압 (V)
-            current: 출력 전류 (A)
-            
-        Returns:
-            설정 성공 여부
+            voltage: Target voltage in volts
             
         Raises:
-            ConnectionError: 연결되지 않은 경우
-            ValueError: 잘못된 값 범위
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If voltage setting fails
         """
         if not self._is_connected:
-            raise ConnectionError("Mock Power Supply is not connected")
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
         
-        # 값 범위 검증
-        if not (0 <= voltage <= self._max_voltage):
-            raise ValueError(f"Voltage must be 0-{self._max_voltage}V, got {voltage}V")
-        if not (0 <= current <= self._max_current):
-            raise ValueError(f"Current must be 0-{self._max_current}A, got {current}A")
-        
-        # 설정 지연 시뮬레이션
-        await asyncio.sleep(0.05)
-        
-        self._set_voltage = voltage
-        self._set_current = current
-        
-        logger.info(f"Mock Power Supply set to: {voltage}V, {current}A")
-        return True
+        try:
+            # 값 범위 검증
+            if not (0 <= voltage <= self._max_voltage):
+                raise HardwareOperationError("mock_power", "set_voltage", 
+                                           f"Voltage must be 0-{self._max_voltage}V, got {voltage}V")
+            
+            # 설정 지연 시뮬레이션
+            await asyncio.sleep(0.05)
+            
+            self._set_voltage = voltage
+            logger.info(f"Mock Power Supply voltage set to: {voltage}V")
+            
+        except Exception as e:
+            logger.error(f"Failed to set mock Power Supply voltage: {e}")
+            raise HardwareOperationError("mock_power", "set_voltage", str(e))
     
-    async def enable_output(self, enable: bool = True) -> bool:
+    async def get_voltage(self) -> float:
         """
-        출력 활성화/비활성화 (시뮬레이션)
+        Get current output voltage (시뮬레이션)
+        
+        Returns:
+            Current voltage in volts
+            
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If voltage reading fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
+        
+        try:
+            await asyncio.sleep(0.02)
+            
+            if not self._output_enabled:
+                return 0.0
+            
+            # 설정값에 약간의 오차 추가
+            voltage_error = random.uniform(-self._voltage_accuracy, self._voltage_accuracy)
+            actual_voltage = max(0, self._set_voltage + voltage_error)
+            
+            logger.debug(f"Mock Power Supply voltage: {actual_voltage:.3f}V")
+            return actual_voltage
+            
+        except Exception as e:
+            logger.error(f"Failed to get mock Power Supply voltage: {e}")
+            raise HardwareOperationError("mock_power", "get_voltage", str(e))
+    
+    async def set_current_limit(self, current: float) -> None:
+        """
+        Set current limit (시뮬레이션)
         
         Args:
-            enable: 활성화 여부
-            
-        Returns:
-            설정 성공 여부
+            current: Current limit in amperes
             
         Raises:
-            ConnectionError: 연결되지 않은 경우
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current limit setting fails
         """
         if not self._is_connected:
-            raise ConnectionError("Mock Power Supply is not connected")
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
         
-        await asyncio.sleep(0.05)
-        
-        self._output_enabled = enable
-        status = "enabled" if enable else "disabled"
-        logger.info(f"Mock Power Supply output {status}")
-        
-        return True
+        try:
+            # 값 범위 검증
+            if not (0 <= current <= self._max_current):
+                raise HardwareOperationError("mock_power", "set_current_limit", 
+                                           f"Current must be 0-{self._max_current}A, got {current}A")
+            
+            # 설정 지연 시뮬레이션
+            await asyncio.sleep(0.05)
+            
+            self._set_current = current
+            logger.info(f"Mock Power Supply current limit set to: {current}A")
+            
+        except Exception as e:
+            logger.error(f"Failed to set mock Power Supply current limit: {e}")
+            raise HardwareOperationError("mock_power", "set_current_limit", str(e))
     
-    async def measure_output(self) -> tuple[float, float]:
+    async def get_current(self) -> float:
         """
-        실제 출력 전압/전류 측정 (시뮬레이션)
+        Get current output current (시뮬레이션)
         
         Returns:
-            (전압, 전류) 튜플
+            Current in amperes
             
         Raises:
-            ConnectionError: 연결되지 않은 경우
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current reading fails
         """
         if not self._is_connected:
-            raise ConnectionError("Mock Power Supply is not connected")
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
         
-        # 측정 지연 시뮬레이션
-        await asyncio.sleep(0.02)
+        try:
+            await asyncio.sleep(0.02)
+            
+            if not self._output_enabled:
+                return 0.0
+            
+            # 설정값에 약간의 오차 추가
+            current_error = random.uniform(-self._current_accuracy, self._current_accuracy)
+            actual_current = max(0, self._set_current + current_error)
+            
+            logger.debug(f"Mock Power Supply current: {actual_current:.3f}A")
+            return actual_current
+            
+        except Exception as e:
+            logger.error(f"Failed to get mock Power Supply current: {e}")
+            raise HardwareOperationError("mock_power", "get_current", str(e))
+    
+    async def enable_output(self) -> None:
+        """
+        Enable power output (시뮬레이션)
         
-        if not self._output_enabled:
-            # 출력이 비활성화된 경우
-            return 0.0, 0.0
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If output enabling fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
         
-        # 설정값에 약간의 오차 추가
-        voltage_error = random.uniform(-self._voltage_accuracy, self._voltage_accuracy)
-        current_error = random.uniform(-self._current_accuracy, self._current_accuracy)
+        try:
+            await asyncio.sleep(0.05)
+            
+            self._output_enabled = True
+            logger.info("Mock Power Supply output enabled")
+            
+        except Exception as e:
+            logger.error(f"Failed to enable mock Power Supply output: {e}")
+            raise HardwareOperationError("mock_power", "enable_output", str(e))
+    
+    async def disable_output(self) -> None:
+        """
+        Disable power output (시뮬레이션)
         
-        actual_voltage = max(0, self._set_voltage + voltage_error)
-        actual_current = max(0, self._set_current + current_error)
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If output disabling fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
         
-        logger.debug(f"Mock Power Supply measurements: {actual_voltage:.3f}V, {actual_current:.3f}A")
-        return actual_voltage, actual_current
+        try:
+            await asyncio.sleep(0.05)
+            
+            self._output_enabled = False
+            logger.info("Mock Power Supply output disabled")
+            
+        except Exception as e:
+            logger.error(f"Failed to disable mock Power Supply output: {e}")
+            raise HardwareOperationError("mock_power", "disable_output", str(e))
+    
+    async def is_output_enabled(self) -> bool:
+        """
+        Check if power output is enabled (시뮬레이션)
+        
+        Returns:
+            True if output is enabled, False otherwise
+            
+        Raises:
+            HardwareConnectionError: If not connected
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_power", "Power Supply is not connected")
+        
+        return self._output_enabled
+    
     
     async def get_status(self) -> Dict[str, Any]:
         """
@@ -206,13 +305,14 @@ class MockPowerAdapter(PowerService):
         
         if self._is_connected:
             try:
-                voltage, current = await self.measure_output()
-                status['measured_voltage'] = voltage
-                status['measured_current'] = current
+                status['measured_voltage'] = await self.get_voltage()
+                status['measured_current'] = await self.get_current()
+                status['output_enabled'] = await self.is_output_enabled()
                 status['last_error'] = None
             except Exception as e:
                 status['measured_voltage'] = None
                 status['measured_current'] = None
+                status['output_enabled'] = None
                 status['last_error'] = str(e)
         
         return status

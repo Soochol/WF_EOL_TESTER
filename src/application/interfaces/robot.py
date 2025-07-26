@@ -12,22 +12,22 @@ class RobotService(ABC):
     """Abstract interface for robot control operations"""
     
     @abstractmethod
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
         Connect to robot hardware
         
-        Returns:
-            True if connection successful, False otherwise
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         pass
     
     @abstractmethod
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
         Disconnect from robot hardware
         
-        Returns:
-            True if disconnection successful, False otherwise
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
         pass
     
@@ -42,17 +42,17 @@ class RobotService(ABC):
         pass
     
     @abstractmethod
-    async def initialize_axes(self) -> bool:
+    async def initialize_axes(self) -> None:
         """
         Initialize robot axes and perform homing
         
-        Returns:
-            True if initialization successful, False otherwise
+        Raises:
+            HardwareOperationError: If initialization fails
         """
         pass
     
     @abstractmethod
-    async def move_to_position(self, axis: int, position: float, velocity: Optional[float] = None) -> bool:
+    async def move_to_position(self, axis: int, position: float, velocity: Optional[float] = None) -> None:
         """
         Move axis to absolute position
         
@@ -61,13 +61,13 @@ class RobotService(ABC):
             position: Target position in mm
             velocity: Optional velocity override in mm/s
             
-        Returns:
-            True if movement successful, False otherwise
+        Raises:
+            HardwareOperationError: If movement fails
         """
         pass
     
     @abstractmethod
-    async def move_relative(self, axis: int, distance: float, velocity: Optional[float] = None) -> bool:
+    async def move_relative(self, axis: int, distance: float, velocity: Optional[float] = None) -> None:
         """
         Move axis by relative distance
         
@@ -76,8 +76,8 @@ class RobotService(ABC):
             distance: Distance to move in mm
             velocity: Optional velocity override in mm/s
             
-        Returns:
-            True if movement successful, False otherwise
+        Raises:
+            HardwareOperationError: If movement fails
         """
         pass
     
@@ -105,25 +105,25 @@ class RobotService(ABC):
         pass
     
     @abstractmethod
-    async def stop_motion(self, axis: Optional[int] = None) -> bool:
+    async def stop_motion(self, axis: Optional[int] = None) -> None:
         """
         Stop motion on specified axis or all axes
         
         Args:
             axis: Axis to stop (None for all axes)
             
-        Returns:
-            True if stop successful, False otherwise
+        Raises:
+            HardwareOperationError: If stop operation fails
         """
         pass
     
     @abstractmethod
-    async def emergency_stop(self) -> bool:
+    async def emergency_stop(self) -> None:
         """
         Emergency stop all motion immediately
         
-        Returns:
-            True if emergency stop successful, False otherwise
+        Raises:
+            HardwareOperationError: If emergency stop fails
         """
         pass
     
@@ -141,7 +141,7 @@ class RobotService(ABC):
         pass
     
     @abstractmethod
-    async def set_velocity(self, axis: int, velocity: float) -> bool:
+    async def set_velocity(self, axis: int, velocity: float) -> None:
         """
         Set default velocity for axis
         
@@ -149,8 +149,8 @@ class RobotService(ABC):
             axis: Axis number
             velocity: Velocity in mm/s
             
-        Returns:
-            True if velocity set successfully, False otherwise
+        Raises:
+            HardwareOperationError: If velocity setting fails
         """
         pass
     
@@ -168,7 +168,7 @@ class RobotService(ABC):
         pass
     
     @abstractmethod
-    async def wait_for_completion(self, axis: Optional[int] = None, timeout: Optional[float] = None) -> bool:
+    async def wait_for_completion(self, axis: Optional[int] = None, timeout: Optional[float] = None) -> None:
         """
         Wait for motion to complete
         
@@ -176,8 +176,9 @@ class RobotService(ABC):
             axis: Axis to wait for (None waits for all axes)
             timeout: Maximum wait time in seconds
             
-        Returns:
-            True if motion completed, False if timeout
+        Raises:
+            HardwareOperationError: If wait operation fails
+            TimeoutError: If motion doesn't complete within timeout
         """
         pass
     

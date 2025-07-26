@@ -12,22 +12,22 @@ class PowerService(ABC):
     """Abstract interface for power supply operations"""
     
     @abstractmethod
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
         Connect to power supply hardware
         
-        Returns:
-            True if connection successful, False otherwise
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         pass
     
     @abstractmethod
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
         Disconnect from power supply hardware
         
-        Returns:
-            True if disconnection successful, False otherwise
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
         pass
     
@@ -42,15 +42,15 @@ class PowerService(ABC):
         pass
     
     @abstractmethod
-    async def set_voltage(self, voltage: float) -> bool:
+    async def set_voltage(self, voltage: float) -> None:
         """
         Set output voltage
         
         Args:
             voltage: Target voltage in volts
             
-        Returns:
-            True if voltage set successfully, False otherwise
+        Raises:
+            HardwareOperationError: If voltage setting fails
         """
         pass
     
@@ -65,15 +65,15 @@ class PowerService(ABC):
         pass
     
     @abstractmethod
-    async def set_current_limit(self, current: float) -> bool:
+    async def set_current_limit(self, current: float) -> None:
         """
         Set current limit
         
         Args:
             current: Current limit in amperes
             
-        Returns:
-            True if limit set successfully, False otherwise
+        Raises:
+            HardwareOperationError: If current limit setting fails
         """
         pass
     
@@ -88,22 +88,22 @@ class PowerService(ABC):
         pass
     
     @abstractmethod
-    async def enable_output(self) -> bool:
+    async def enable_output(self) -> None:
         """
         Enable power output
         
-        Returns:
-            True if output enabled successfully, False otherwise
+        Raises:
+            HardwareOperationError: If output enabling fails
         """
         pass
     
     @abstractmethod
-    async def disable_output(self) -> bool:
+    async def disable_output(self) -> None:
         """
         Disable power output
         
-        Returns:
-            True if output disabled successfully, False otherwise
+        Raises:
+            HardwareOperationError: If output disabling fails
         """
         pass
     

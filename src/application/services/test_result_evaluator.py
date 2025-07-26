@@ -2,12 +2,14 @@
 Test Result Evaluator Service
 
 Business service for evaluating test measurements against pass criteria.
+Uses Exception First principles for error handling.
 """
 
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 from loguru import logger
 
 from domain.value_objects.pass_criteria import PassCriteria
+from domain.exceptions import TestEvaluationError, create_test_evaluation_error
 
 
 class TestResultEvaluator:
@@ -26,7 +28,7 @@ class TestResultEvaluator:
         self, 
         measurements: Dict[str, Any], 
         criteria: PassCriteria
-    ) -> Tuple[bool, List[Dict[str, Any]]]:
+    ) -> None:
         """
         Evaluate measurement results against pass criteria
         
@@ -34,15 +36,13 @@ class TestResultEvaluator:
             measurements: Dictionary of measurement data
             criteria: Pass/fail criteria to evaluate against
             
-        Returns:
-            Tuple of (passed: bool, failed_points: List[Dict])
-            
         Raises:
+            TestEvaluationError: If evaluation fails or measurements don't meet criteria
             ValueError: If measurements or criteria are invalid
         """
         if not measurements:
             logger.warning("No measurements provided for evaluation")
-            return False, [{"error": "No measurements to evaluate"}]
+            raise create_test_evaluation_error([{"error": "No measurements to evaluate"}], 0)
         
         if not criteria:
             logger.error("No pass criteria provided for evaluation")
@@ -102,13 +102,8 @@ class TestResultEvaluator:
                     'force': force
                 })
         
-        # Determine overall result
-        passed = len(failed_points) == 0
-        
-        # Log evaluation summary
-        if passed:
-            logger.info(f"✅ Evaluation PASSED: All {total_points} measurements within specification limits")
-        else:
+        # Log evaluation summary and raise exception if there are failures
+        if failed_points:
             logger.warning(f"❌ Evaluation FAILED: {len(failed_points)}/{total_points} measurements outside specification")
             
             # Log first few failures for debugging
@@ -118,8 +113,10 @@ class TestResultEvaluator:
             
             if len(failed_points) > 3:
                 logger.warning(f"  ... and {len(failed_points) - 3} more failures")
-        
-        return passed, failed_points
+            
+            raise create_test_evaluation_error(failed_points, total_points)
+        else:
+            logger.info(f"✅ Evaluation PASSED: All {total_points} measurements within specification limits")
     
     async def _evaluate_single_point(
         self, 
@@ -200,29 +197,37 @@ class TestResultEvaluator:
     async def get_evaluation_summary(
         self, 
         measurements: Dict[str, Any], 
-        failed_points: List[Dict[str, Any]]
+        test_evaluation_error: TestEvaluationError = None
     ) -> Dict[str, Any]:
         """
         Generate a comprehensive evaluation summary
         
         Args:
             measurements: Original measurement data
-            failed_points: List of failed measurement points
+            test_evaluation_error: Optional TestEvaluationError containing failure details
             
         Returns:
             Dictionary containing evaluation summary statistics
         """
         total_measurements = len([m for m in measurements.values() if isinstance(m, dict)])
-        failed_count = len(failed_points)
-        passed_count = total_measurements - failed_count
         
-        # Categorize failures by type
-        failure_categories = {}
-        for failure in failed_points:
-            error_type = failure.get('error', 'unknown')
-            if error_type not in failure_categories:
-                failure_categories[error_type] = []
-            failure_categories[error_type].append(failure)
+        if test_evaluation_error:
+            failed_points = test_evaluation_error.failed_points
+            failed_count = len(failed_points)
+            passed_count = total_measurements - failed_count
+            
+            # Categorize failures by type
+            failure_categories = {}
+            for failure in failed_points:
+                error_type = failure.get('error', 'unknown')
+                if error_type not in failure_categories:
+                    failure_categories[error_type] = []
+                failure_categories[error_type].append(failure)
+        else:
+            failed_points = []
+            failed_count = 0
+            passed_count = total_measurements
+            failure_categories = {}
         
         # Calculate statistics
         pass_rate = (passed_count / total_measurements * 100) if total_measurements > 0 else 0

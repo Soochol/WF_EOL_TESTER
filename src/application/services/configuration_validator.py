@@ -2,14 +2,21 @@
 Configuration Validator Service
 
 Business service for validating test and hardware configurations.
+Uses Exception First principles for error handling.
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any
 from loguru import logger
 
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.exceptions.validation_exceptions import ValidationException
+from domain.exceptions import (
+    ConfigurationValidationError,
+    MultiConfigurationValidationError,
+    create_validation_error,
+    create_multi_validation_error
+)
 
 
 class ConfigurationValidator:
@@ -24,15 +31,15 @@ class ConfigurationValidator:
         """Initialize the configuration validator"""
         pass
 
-    async def validate_test_configuration(self, config: TestConfiguration) -> Tuple[bool, List[str]]:
+    async def validate_test_configuration(self, config: TestConfiguration) -> None:
         """
         Validate test configuration
 
         Args:
             config: TestConfiguration to validate
 
-        Returns:
-            Tuple of (is_valid: bool, errors: List[str])
+        Raises:
+            ConfigurationValidationError: If validation fails
         """
         errors = []
 
@@ -40,29 +47,29 @@ class ConfigurationValidator:
             # Use the built-in validation
             config.__post_init__()
             logger.debug("Test configuration validation passed")
-            return True, []
 
         except ValidationException as e:
             error_msg = f"Test configuration validation failed: {e}"
             logger.error(error_msg)
             errors.append(error_msg)
-            return False, errors
 
         except Exception as e:
             error_msg = f"Unexpected error during test configuration validation: {e}"
             logger.error(error_msg)
             errors.append(error_msg)
-            return False, errors
 
-    async def validate_hardware_configuration(self, config: HardwareConfiguration) -> Tuple[bool, List[str]]:
+        if errors:
+            raise create_validation_error(errors, "test_configuration")
+
+    async def validate_hardware_configuration(self, config: HardwareConfiguration) -> None:
         """
         Validate hardware configuration
 
         Args:
             config: HardwareConfiguration to validate
 
-        Returns:
-            Tuple of (is_valid: bool, errors: List[str])
+        Raises:
+            ConfigurationValidationError: If validation fails
         """
         errors = []
 
@@ -70,25 +77,25 @@ class ConfigurationValidator:
             # Use the built-in validation
             config.__post_init__()
             logger.debug("Hardware configuration validation passed")
-            return True, []
 
         except ValidationException as e:
             error_msg = f"Hardware configuration validation failed: {e}"
             logger.error(error_msg)
             errors.append(error_msg)
-            return False, errors
 
         except Exception as e:
             error_msg = f"Unexpected error during hardware configuration validation: {e}"
             logger.error(error_msg)
             errors.append(error_msg)
-            return False, errors
+
+        if errors:
+            raise create_validation_error(errors, "hardware_configuration")
 
     async def validate_all_configurations(
         self,
         test_config: TestConfiguration,
         hardware_config: HardwareConfiguration
-    ) -> Tuple[bool, Dict[str, List[str]]]:
+    ) -> None:
         """
         Validate both test and hardware configurations
 
@@ -96,43 +103,43 @@ class ConfigurationValidator:
             test_config: TestConfiguration to validate
             hardware_config: HardwareConfiguration to validate
 
-        Returns:
-            Tuple of (all_valid: bool, errors_by_type: Dict[str, List[str]])
+        Raises:
+            MultiConfigurationValidationError: If any validation fails
         """
         logger.info("Starting comprehensive configuration validation")
 
+        errors_by_type = {}
+
         # Validate test configuration
-        test_valid, test_errors = await self.validate_test_configuration(test_config)
+        try:
+            await self.validate_test_configuration(test_config)
+        except ConfigurationValidationError as e:
+            errors_by_type['test_configuration'] = e.errors
 
         # Validate hardware configuration
-        hardware_valid, hardware_errors = await self.validate_hardware_configuration(hardware_config)
+        try:
+            await self.validate_hardware_configuration(hardware_config)
+        except ConfigurationValidationError as e:
+            errors_by_type['hardware_configuration'] = e.errors
 
         # Check cross-configuration compatibility
-        compatibility_valid, compatibility_errors = await self.validate_configuration_compatibility(
-            test_config, hardware_config
-        )
+        try:
+            await self.validate_configuration_compatibility(test_config, hardware_config)
+        except ConfigurationValidationError as e:
+            errors_by_type['compatibility'] = e.errors
 
-        all_valid = test_valid and hardware_valid and compatibility_valid
-
-        errors_by_type = {
-            'test_configuration': test_errors,
-            'hardware_configuration': hardware_errors,
-            'compatibility': compatibility_errors
-        }
-
-        if all_valid:
-            logger.info("✅ All configuration validations passed")
-        else:
-            total_errors = sum(len(errs) for errs in errors_by_type.values())
+        if errors_by_type:
+            total_errors = sum(len(errors) for errors in errors_by_type.values())
             logger.warning(f"❌ Configuration validation failed with {total_errors} errors")
-
-        return all_valid, errors_by_type
+            raise create_multi_validation_error(errors_by_type)
+        else:
+            logger.info("✅ All configuration validations passed")
 
     async def validate_configuration_compatibility(
         self,
         test_config: TestConfiguration,
         hardware_config: HardwareConfiguration
-    ) -> Tuple[bool, List[str]]:
+    ) -> None:
         """
         Validate compatibility between test and hardware configurations
 
@@ -140,8 +147,8 @@ class ConfigurationValidator:
             test_config: TestConfiguration to check
             hardware_config: HardwareConfiguration to check
 
-        Returns:
-            Tuple of (is_compatible: bool, errors: List[str])
+        Raises:
+            ConfigurationValidationError: If compatibility validation fails
         """
         errors = []
 
@@ -172,18 +179,18 @@ class ConfigurationValidator:
             if hardware_config.robot.acceleration > hardware_config.robot.max_acceleration:
                 errors.append(f"Robot acceleration {hardware_config.robot.acceleration} exceeds max acceleration {hardware_config.robot.max_acceleration}")
 
-            if len(errors) == 0:
-                logger.debug("Configuration compatibility validation passed")
-                return True, []
-            else:
+            if errors:
                 logger.warning(f"Configuration compatibility validation failed with {len(errors)} errors")
-                return False, errors
+                raise create_validation_error(errors, "compatibility")
+            else:
+                logger.debug("Configuration compatibility validation passed")
 
+        except ConfigurationValidationError:
+            raise
         except Exception as e:
             error_msg = f"Unexpected error during compatibility validation: {e}"
             logger.error(error_msg)
-            errors.append(error_msg)
-            return False, errors
+            raise create_validation_error([error_msg], "compatibility")
 
     async def get_configuration_summary(
         self,

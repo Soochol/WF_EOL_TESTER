@@ -13,22 +13,22 @@ class LoadCellService(ABC):
     """Abstract interface for load cell operations"""
     
     @abstractmethod
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
         Connect to load cell hardware
         
-        Returns:
-            True if connection successful, False otherwise
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         pass
     
     @abstractmethod
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
         Disconnect from load cell hardware
         
-        Returns:
-            True if disconnection successful, False otherwise
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
         pass
     
@@ -43,12 +43,12 @@ class LoadCellService(ABC):
         pass
     
     @abstractmethod
-    async def zero_calibration(self) -> bool:
+    async def zero_calibration(self) -> None:
         """
         Perform zero point calibration
         
-        Returns:
-            True if calibration successful, False otherwise
+        Raises:
+            HardwareOperationError: If calibration fails
         """
         pass
     
@@ -83,15 +83,15 @@ class LoadCellService(ABC):
         pass
     
     @abstractmethod
-    async def set_measurement_rate(self, rate_hz: int) -> bool:
+    async def set_measurement_rate(self, rate_hz: int) -> None:
         """
         Set measurement sampling rate
         
         Args:
             rate_hz: Sampling rate in Hz
             
-        Returns:
-            True if rate set successfully, False otherwise
+        Raises:
+            HardwareOperationError: If rate setting fails
         """
         pass
     

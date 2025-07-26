@@ -1,7 +1,16 @@
 """
 Execute EOL Test Use Case
 
-Simplified use case for executing End-of-Line tests.
+Comprehensive use case for executing End-of-Line tests with full Exception First architecture.
+This module implements robust error handling, hardware coordination, and test evaluation
+following Exception First principles throughout the entire test execution workflow.
+
+Key Features:
+- Exception First error handling at all levels
+- Comprehensive hardware service coordination
+- Automated configuration management and validation
+- Proper resource cleanup and error reporting
+- Test result evaluation with detailed failure analysis
 """
 
 import asyncio
@@ -23,6 +32,12 @@ from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.exceptions.test_exceptions import TestExecutionException
+from domain.exceptions import (
+    MultiConfigurationValidationError,
+    TestEvaluationError,
+    RepositoryAccessError,
+    ConfigurationNotFoundError
+)
 
 
 class ExecuteEOLTestCommand:
@@ -38,7 +53,17 @@ class ExecuteEOLTestCommand:
 
 
 class ExecuteEOLTestUseCase:
-    """EOL Test Execution Use Case with Direct Service Dependencies"""
+    """
+    EOL Test Execution Use Case with Exception First Architecture
+
+    This use case orchestrates the complete End-of-Line testing process using
+    Exception First principles for robust error handling. It coordinates hardware
+    services, configuration management, and test evaluation while ensuring proper
+    cleanup and error reporting.
+
+    All operations follow Exception First patterns - methods either succeed or
+    raise descriptive exceptions with detailed context for troubleshooting.
+    """
 
     def __init__(
         self,
@@ -59,13 +84,24 @@ class ExecuteEOLTestUseCase:
 
     async def execute(self, command: ExecuteEOLTestCommand) -> EOLTestResult:
         """
-        Execute EOL test
+        Execute EOL test using Exception First principles
 
         Args:
-            command: Test execution command
+            command: Test execution command containing DUT info and operator ID
 
         Returns:
-            Test execution result
+            EOLTestResult containing test outcome, measurements, and execution details
+
+        Raises:
+            TestExecutionException: If configuration validation fails or critical test errors occur
+            ConfigurationNotFoundError: If specified profile cannot be found
+            RepositoryAccessError: If test data cannot be saved
+            HardwareConnectionException: If hardware connection fails
+
+        Note:
+            This method follows Exception First principles - all operations either succeed
+            or raise descriptive exceptions. Test failures are captured in the result
+            object rather than raised as exceptions.
         """
         logger.info(f"Starting EOL test for DUT {command.dut_info.dut_id}")
 
@@ -78,18 +114,23 @@ class ExecuteEOLTestUseCase:
         )
 
         # Validate configurations
-        all_valid, validation_errors = await self._configuration_validator.validate_all_configurations(
-            self._test_config, self._hardware_config
-        )
+        try:
+            await self._configuration_validator.validate_all_configurations(
+                self._test_config, self._hardware_config
+            )
+            logger.info("Configuration validation passed")
+        except MultiConfigurationValidationError as e:
+            logger.error(f"Configuration validation failed: {e.message}")
+            raise TestExecutionException(
+                f"Configuration validation failed: {e.get_context('total_errors')} errors found"
+            )
 
-        if not all_valid:
-            error_summary = self._format_validation_errors(validation_errors)
-            raise ValueError(f"Configuration validation failed: {error_summary}")
-
-        # Mark profile as used (fire-and-forget)
+        # Mark profile as used (non-critical operation - don't fail test on error)
         try:
             await self._repository.mark_profile_as_used(self._profile_name)
+            logger.debug(f"Profile '{self._profile_name}' marked as used successfully")
         except Exception as pref_error:
+            # Profile usage tracking failure should not interrupt test execution
             logger.warning(f"Failed to mark profile '{self._profile_name}' as used: {pref_error}")
 
         # Create test entity
@@ -124,15 +165,17 @@ class ExecuteEOLTestUseCase:
             await self._hardware.teardown_test(self._test_config, self._hardware_config)
 
             # Evaluate results using test result evaluator
-            passed, failed_points = await self._test_result_evaluator.evaluate_measurements(
-                measurements, self._test_config.pass_criteria
-            )
-
-            # Test completion
-            if passed:
+            try:
+                await self._test_result_evaluator.evaluate_measurements(
+                    measurements, self._test_config.pass_criteria
+                )
+                # If no exception, test passed
                 test.complete_test()
-            else:
-                test.fail_test("Measurements outside acceptable range")
+                passed = True
+            except TestEvaluationError as e:
+                # Test failed - use exception data
+                test.fail_test(f"Test evaluation failed: {e.get_failure_summary()}")
+                passed = False
 
             # Save final test state
             await self._repository.test_repository.update(test)
@@ -188,13 +231,3 @@ class ExecuteEOLTestUseCase:
                 }
                 await self._exception_handler.handle_exception(cleanup_error, context)
 
-    def _format_validation_errors(self, validation_errors):
-        """Format validation errors into a readable summary"""
-        error_parts = []
-        
-        for config_type, errors in validation_errors.items():
-            if errors:
-                error_list = "; ".join(errors)
-                error_parts.append(f"{config_type}: {error_list}")
-        
-        return " | ".join(error_parts) if error_parts else "Unknown validation errors"

@@ -56,32 +56,16 @@ class ConfigurationRepository(ABC):
         pass
     
     @abstractmethod
-    async def validate_configuration(self, config: TestConfiguration) -> bool:
+    async def validate_configuration(self, config: TestConfiguration) -> None:
         """
         Validate a configuration object against business rules
         
         Args:
             config: TestConfiguration to validate
             
-        Returns:
-            True if configuration is valid, False otherwise
-            
-        Note:
-            This method should not raise exceptions for invalid configuration,
-            but return False instead. Use get_validation_errors for details.
-        """
-        pass
-    
-    @abstractmethod
-    async def get_validation_errors(self, config: TestConfiguration) -> List[str]:
-        """
-        Get detailed validation errors for a configuration
-        
-        Args:
-            config: TestConfiguration to validate
-            
-        Returns:
-            List of validation error messages, empty if valid
+        Raises:
+            ConfigurationValidationError: If configuration contains validation errors
+            InvalidConfigurationException: If configuration contains invalid values
         """
         pass
     

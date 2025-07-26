@@ -292,40 +292,42 @@ class YamlConfigurationRepository(ConfigurationRepository):
         
         return flattened
     
-    async def validate_configuration(self, config: TestConfiguration) -> bool:
+    async def validate_configuration(self, config: TestConfiguration) -> None:
         """
         Validate a configuration object against business rules
         
         Args:
             config: TestConfiguration to validate
             
-        Returns:
-            True if configuration is valid, False otherwise
+        Raises:
+            InvalidConfigurationException: If configuration is invalid
         """
         try:
-            return config.is_valid()
+            if not config.is_valid():
+                # Get detailed validation errors
+                errors = []
+                try:
+                    config.__post_init__()  # This will raise validation exceptions
+                except Exception as e:
+                    errors.append(str(e))
+                
+                raise InvalidConfigurationException(
+                    parameter_name="test_configuration",
+                    invalid_value="TestConfiguration object",
+                    validation_rule="; ".join(errors) if errors else "Configuration validation failed",
+                    config_source="validate_configuration"
+                )
         except Exception as e:
-            logger.warning(f"Configuration validation failed: {e}")
-            return False
+            if isinstance(e, InvalidConfigurationException):
+                raise
+            logger.error(f"Configuration validation failed: {e}")
+            raise InvalidConfigurationException(
+                parameter_name="test_configuration",
+                invalid_value="TestConfiguration object",
+                validation_rule=str(e),
+                config_source="validate_configuration"
+            )
     
-    async def get_validation_errors(self, config: TestConfiguration) -> List[str]:
-        """
-        Get detailed validation errors for a configuration
-        
-        Args:
-            config: TestConfiguration to validate
-            
-        Returns:
-            List of validation error messages, empty if valid
-        """
-        errors = []
-        
-        try:
-            config.__post_init__()  # This will raise validation exceptions
-        except Exception as e:
-            errors.append(str(e))
-        
-        return errors
     
     async def merge_configurations(
         self, 
@@ -353,15 +355,8 @@ class YamlConfigurationRepository(ConfigurationRepository):
             # Create merged configuration
             merged_config = base.with_overrides(**override)
             
-            # Validate merged configuration
-            if not await self.validate_configuration(merged_config):
-                validation_errors = await self.get_validation_errors(merged_config)
-                raise InvalidConfigurationException(
-                    parameter_name="merged_configuration",
-                    invalid_value=str(override),
-                    validation_rule="; ".join(validation_errors),
-                    config_source="runtime_override"
-                )
+            # Validate merged configuration (will raise exception if invalid)
+            await self.validate_configuration(merged_config)
             
             logger.debug(f"Successfully merged configuration with overrides: {list(override.keys())}")
             return merged_config
@@ -465,7 +460,7 @@ class YamlConfigurationRepository(ConfigurationRepository):
                 'estimated_duration_seconds': config.estimate_test_duration_seconds(),
                 'temperature_count': config.get_temperature_count(),
                 'position_count': config.get_position_count(),
-                'is_valid': await self.validate_configuration(config)
+                'is_valid': True  # If we get here, validation passed
             }
             
         except Exception as e:
@@ -485,15 +480,8 @@ class YamlConfigurationRepository(ConfigurationRepository):
         Raises:
             InvalidConfigurationException: If configuration is invalid
         """
-        # Validate configuration first
-        if not await self.validate_configuration(config):
-            validation_errors = await self.get_validation_errors(config)
-            raise InvalidConfigurationException(
-                parameter_name="configuration",
-                invalid_value="TestConfiguration object",
-                validation_rule="; ".join(validation_errors),
-                config_source=f"save_profile:{profile_name}"
-            )
+        # Validate configuration first (will raise exception if invalid)
+        await self.validate_configuration(config)
         
         profile_file = self._config_path / f"{profile_name}.yaml"
         
@@ -802,9 +790,11 @@ class YamlConfigurationRepository(ConfigurationRepository):
         }
         
         # Check if configuration is valid
-        if not await self.validate_configuration(config):
+        try:
+            await self.validate_configuration(config)
+        except InvalidConfigurationException as e:
             compatibility['compatible'] = False
-            compatibility['issues'].extend(await self.get_validation_errors(config))
+            compatibility['issues'].append(str(e))
         
         # Add system-specific compatibility checks here
         # For now, just basic validation

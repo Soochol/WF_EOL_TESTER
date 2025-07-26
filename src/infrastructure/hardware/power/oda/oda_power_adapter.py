@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from loguru import logger
 
 from application.interfaces.power import PowerService
+from domain.exceptions import HardwareConnectionError, HardwareOperationError
 from driver.tcp.communication import TCPCommunication
 from driver.tcp.exceptions import TCPError
 
@@ -42,12 +43,12 @@ class OdaPowerAdapter(PowerService):
         self._is_connected = False
         self._output_enabled = False
     
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         """
-        하드웨어 연결
+        Connect to power supply hardware
         
-        Returns:
-            연결 성공 여부
+        Raises:
+            HardwareConnectionError: If connection fails
         """
         try:
             logger.info(f"Connecting to ODA Power Supply at {self._host}:{self._port}")
@@ -60,41 +61,43 @@ class OdaPowerAdapter(PowerService):
                 self._is_connected = True
                 
                 # 안전을 위해 출력 비활성화
-                await self.enable_output(False)
+                await self.disable_output()
                 
                 logger.info("ODA Power Supply connected successfully")
-                return True
             else:
                 logger.warning("ODA Power Supply identification failed")
-                return False
+                raise HardwareConnectionError("oda_power", "Device identification failed")
                 
         except TCPError as e:
             logger.error(f"Failed to connect to ODA Power Supply: {e}")
             self._is_connected = False
-            return False
+            raise HardwareConnectionError("oda_power", str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error during ODA connection: {e}")
+            self._is_connected = False
+            raise HardwareConnectionError("oda_power", str(e))
     
-    async def disconnect(self) -> bool:
+    async def disconnect(self) -> None:
         """
-        하드웨어 연결 해제
+        Disconnect from power supply hardware
         
-        Returns:
-            연결 해제 성공 여부
+        Raises:
+            HardwareOperationError: If disconnection fails
         """
         try:
             # 안전을 위해 출력 비활성화
             if self._is_connected:
-                await self.enable_output(False)
+                await self.disable_output()
             
             await self._tcp_comm.disconnect()
             self._is_connected = False
             self._output_enabled = False
             
             logger.info("ODA Power Supply disconnected")
-            return True
             
         except Exception as e:
             logger.error(f"Error disconnecting ODA Power Supply: {e}")
-            return False
+            raise HardwareOperationError("oda_power", "disconnect", str(e))
     
     async def is_connected(self) -> bool:
         """
@@ -105,117 +108,141 @@ class OdaPowerAdapter(PowerService):
         """
         return self._is_connected and self._tcp_comm.is_connected()
     
-    async def set_output(self, voltage: float, current: float) -> bool:
+    async def set_voltage(self, voltage: float) -> None:
         """
-        전압과 전류 출력 설정
+        Set output voltage
         
         Args:
-            voltage: 출력 전압 (V)
-            current: 출력 전류 (A)
-            
-        Returns:
-            설정 성공 여부
+            voltage: Target voltage in volts
             
         Raises:
-            ConnectionError: 연결되지 않은 경우
-            ValueError: 잘못된 값 범위
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If voltage setting fails
         """
         if not await self.is_connected():
-            raise ConnectionError("ODA Power Supply is not connected")
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
         
         # 값 범위 검증
         if not (0 <= voltage <= 30):
-            raise ValueError(f"Voltage must be 0-30V, got {voltage}V")
-        if not (0 <= current <= 5):
-            raise ValueError(f"Current must be 0-5A, got {current}A")
+            raise HardwareOperationError("oda_power", "set_voltage", 
+                                       f"Voltage must be 0-30V, got {voltage}V")
         
         try:
-            logger.info(f"Setting ODA output: {voltage}V, {current}A")
+            logger.info(f"Setting ODA voltage: {voltage}V")
             
             # 전압 설정
             voltage_response = await self._send_command(f"VOLT {voltage:.3f}")
             
-            # 전류 한계 설정
-            current_response = await self._send_command(f"CURR {current:.3f}")
-            
-            # 설정 확인
-            if voltage_response is not None and current_response is not None:
-                logger.info("ODA output settings applied successfully")
-                return True
+            if voltage_response is None:
+                # For commands that don't return responses, None is expected success
+                logger.info("ODA voltage setting applied successfully")
             else:
-                logger.error("Failed to apply ODA output settings")
-                return False
+                logger.info(f"ODA voltage setting response: {voltage_response}")
                 
         except TCPError as e:
-            logger.error(f"Failed to set ODA output: {e}")
-            return False
+            logger.error(f"Failed to set ODA voltage: {e}")
+            raise HardwareOperationError("oda_power", "set_voltage", str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error setting ODA voltage: {e}")
+            raise HardwareOperationError("oda_power", "set_voltage", str(e))
     
-    async def enable_output(self, enable: bool = True) -> bool:
+    async def get_voltage(self) -> float:
         """
-        출력 활성화/비활성화
-        
-        Args:
-            enable: 활성화 여부
-            
-        Returns:
-            설정 성공 여부
-            
-        Raises:
-            ConnectionError: 연결되지 않은 경우
-        """
-        if not await self.is_connected():
-            raise ConnectionError("ODA Power Supply is not connected")
-        
-        try:
-            command = "OUTP ON" if enable else "OUTP OFF"
-            response = await self._send_command(command)
-            
-            if response is not None:
-                self._output_enabled = enable
-                status = "enabled" if enable else "disabled"
-                logger.info(f"ODA output {status}")
-                return True
-            else:
-                logger.error(f"Failed to {'enable' if enable else 'disable'} ODA output")
-                return False
-                
-        except TCPError as e:
-            logger.error(f"Failed to control ODA output: {e}")
-            return False
-    
-    async def measure_output(self) -> tuple[float, float]:
-        """
-        실제 출력 전압/전류 측정
+        Get current output voltage
         
         Returns:
-            (전압, 전류) 튜플
+            Current voltage in volts
             
         Raises:
-            ConnectionError: 연결되지 않은 경우
-            RuntimeError: 측정 실패
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If voltage reading fails
         """
         if not await self.is_connected():
-            raise ConnectionError("ODA Power Supply is not connected")
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
         
         try:
             # 전압 측정
             voltage_response = await self._send_command("MEAS:VOLT?")
-            # 전류 측정
-            current_response = await self._send_command("MEAS:CURR?")
             
-            if voltage_response is None or current_response is None:
-                raise RuntimeError("Failed to get measurement responses")
+            if voltage_response is None:
+                raise HardwareOperationError("oda_power", "get_voltage", "No voltage response")
             
             voltage = float(voltage_response.strip())
-            current = float(current_response.strip())
+            logger.debug(f"ODA voltage measurement: {voltage:.3f}V")
+            return voltage
             
-            logger.debug(f"ODA measurements: {voltage:.3f}V, {current:.3f}A")
-            return voltage, current
-            
-        except (ValueError, AttributeError) as e:
-            raise RuntimeError(f"Failed to parse ODA measurements: {e}")
+        except ValueError as e:
+            raise HardwareOperationError("oda_power", "get_voltage", f"Failed to parse voltage: {e}")
         except TCPError as e:
-            raise RuntimeError(f"Communication error during measurement: {e}")
+            raise HardwareOperationError("oda_power", "get_voltage", str(e))
+        except Exception as e:
+            raise HardwareOperationError("oda_power", "get_voltage", str(e))
+    
+    async def enable_output(self) -> None:
+        """
+        Enable power output
+        
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If output enabling fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+        
+        try:
+            response = await self._send_command("OUTP ON")
+            
+            # For commands that don't return responses, None is expected success
+            self._output_enabled = True
+            logger.info("ODA output enabled")
+                
+        except TCPError as e:
+            logger.error(f"Failed to enable ODA output: {e}")
+            raise HardwareOperationError("oda_power", "enable_output", str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error enabling ODA output: {e}")
+            raise HardwareOperationError("oda_power", "enable_output", str(e))
+    
+    async def disable_output(self) -> None:
+        """
+        Disable power output
+        
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If output disabling fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+        
+        try:
+            response = await self._send_command("OUTP OFF")
+            
+            # For commands that don't return responses, None is expected success
+            self._output_enabled = False
+            logger.info("ODA output disabled")
+                
+        except TCPError as e:
+            logger.error(f"Failed to disable ODA output: {e}")
+            raise HardwareOperationError("oda_power", "disable_output", str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error disabling ODA output: {e}")
+            raise HardwareOperationError("oda_power", "disable_output", str(e))
+    
+    async def is_output_enabled(self) -> bool:
+        """
+        Check if power output is enabled
+        
+        Returns:
+            True if output is enabled, False otherwise
+            
+        Raises:
+            HardwareConnectionError: If not connected  
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+        
+        return self._output_enabled
+    
     
     async def get_status(self) -> Dict[str, Any]:
         """
@@ -236,13 +263,14 @@ class OdaPowerAdapter(PowerService):
         if await self.is_connected():
             try:
                 # 현재 측정값도 포함
-                voltage, current = await self.measure_output()
-                status['current_voltage'] = voltage
-                status['current_current'] = current
+                status['current_voltage'] = await self.get_voltage()
+                status['current_current'] = await self.get_current()
+                status['output_enabled'] = await self.is_output_enabled()
                 status['last_error'] = None
             except Exception as e:
                 status['current_voltage'] = None
                 status['current_current'] = None
+                status['output_enabled'] = None
                 status['last_error'] = str(e)
         
         return status
@@ -285,42 +313,71 @@ class OdaPowerAdapter(PowerService):
             logger.error(f"ODA command '{command}' failed: {e}")
             raise TCPError(f"Communication failed: {e}")
     
-    async def set_voltage_only(self, voltage: float) -> bool:
+    async def set_current_limit(self, current: float) -> None:
         """
-        전압만 설정 (전류는 현재 값 유지)
+        Set current limit
         
         Args:
-            voltage: 출력 전압 (V)
+            current: Current limit in amperes
             
-        Returns:
-            설정 성공 여부
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current limit setting fails
         """
         if not await self.is_connected():
-            raise ConnectionError("ODA Power Supply is not connected")
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+        
+        # 값 범위 검증
+        if not (0 <= current <= 5):
+            raise HardwareOperationError("oda_power", "set_current_limit", 
+                                       f"Current must be 0-5A, got {current}A")
         
         try:
-            response = await self._send_command(f"VOLT {voltage:.3f}")
-            return response is not None
-        except TCPError as e:
-            logger.error(f"Failed to set voltage: {e}")
-            return False
-    
-    async def set_current_limit(self, current: float) -> bool:
-        """
-        전류 한계만 설정 (전압은 현재 값 유지)
-        
-        Args:
-            current: 전류 한계 (A)
+            logger.info(f"Setting ODA current limit: {current}A")
             
-        Returns:
-            설정 성공 여부
-        """
-        if not await self.is_connected():
-            raise ConnectionError("ODA Power Supply is not connected")
-        
-        try:
             response = await self._send_command(f"CURR {current:.3f}")
-            return response is not None
+            
+            if response is None:
+                # For commands that don't return responses, None is expected success
+                logger.info("ODA current limit setting applied successfully")
+            else:
+                logger.info(f"ODA current limit setting response: {response}")
+                
         except TCPError as e:
-            logger.error(f"Failed to set current limit: {e}")
-            return False
+            logger.error(f"Failed to set ODA current limit: {e}")
+            raise HardwareOperationError("oda_power", "set_current_limit", str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error setting ODA current limit: {e}")
+            raise HardwareOperationError("oda_power", "set_current_limit", str(e))
+    
+    async def get_current(self) -> float:
+        """
+        Get current output current
+        
+        Returns:
+            Current in amperes
+            
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current reading fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+        
+        try:
+            # 전류 측정
+            current_response = await self._send_command("MEAS:CURR?")
+            
+            if current_response is None:
+                raise HardwareOperationError("oda_power", "get_current", "No current response")
+            
+            current = float(current_response.strip())
+            logger.debug(f"ODA current measurement: {current:.3f}A")
+            return current
+            
+        except ValueError as e:
+            raise HardwareOperationError("oda_power", "get_current", f"Failed to parse current: {e}")
+        except TCPError as e:
+            raise HardwareOperationError("oda_power", "get_current", str(e))
+        except Exception as e:
+            raise HardwareOperationError("oda_power", "get_current", str(e))
