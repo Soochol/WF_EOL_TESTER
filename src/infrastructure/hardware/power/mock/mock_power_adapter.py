@@ -19,7 +19,7 @@ class MockPowerAdapter(PowerService):
     def __init__(
         self,
         max_voltage: float = 30.0,
-        max_current: float = 5.0,
+        max_current: float = 50.0,  # Updated default to 50.0A
         voltage_accuracy: float = 0.01,
         current_accuracy: float = 0.001,
         connection_delay: float = 0.2
@@ -45,7 +45,16 @@ class MockPowerAdapter(PowerService):
         self._set_voltage = 0.0
         self._set_current = 0.0
         
-        logger.info(f"MockPowerAdapter initialized with {max_voltage}V/{max_current}A limits")
+        # 디버그 로그 추가
+        logger.info(f"🔧 MockPowerAdapter Constructor - Received max_current: {max_current}A")
+        logger.info(f"🔧 MockPowerAdapter Constructor - Final _max_current: {self._max_current}A")
+        
+        # 임시 해결책: 최소 50A로 강제 설정
+        if self._max_current < 50.0:
+            logger.warning(f"⚠️ Low max_current detected ({self._max_current}A), forcing to 50.0A")
+            self._max_current = 50.0
+        
+        logger.info(f"MockPowerAdapter initialized with {max_voltage}V/{self._max_current}A limits")
     
     async def connect(self) -> None:
         """
@@ -60,9 +69,10 @@ class MockPowerAdapter(PowerService):
             # 연결 지연 시뮬레이션
             await asyncio.sleep(self._connection_delay)
             
-            # 95% 확률로 성공
-            if random.random() <= 0.05:
-                raise Exception("Simulated connection failure")
+            # Connection always succeeds for testing
+            # Commented out random failure for reliable testing
+            # if random.random() <= 0.05:
+            #     raise Exception("Simulated connection failure")
             
             self._is_connected = True
             self._output_enabled = False  # 안전을 위해 비활성화

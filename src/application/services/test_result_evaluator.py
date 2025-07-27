@@ -60,9 +60,13 @@ class TestResultEvaluator:
                 continue
             
             # Extract measurement data
-            temperature = measurement.get('temperature')
-            stroke = measurement.get('position')
-            force = measurement.get('force')
+            temperature_obj = measurement.get('temperature')
+            stroke = measurement.get('position') 
+            force_obj = measurement.get('force')
+            
+            # Extract numeric values from value objects
+            temperature = temperature_obj.value if hasattr(temperature_obj, 'value') else temperature_obj
+            force = force_obj.value if hasattr(force_obj, 'value') else force_obj
             
             # Validate measurement completeness
             if any(val is None for val in [temperature, stroke, force]):

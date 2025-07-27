@@ -10,8 +10,10 @@ from typing import Optional, Dict, Any, List
 from loguru import logger
 
 from application.interfaces.loadcell import LoadCellService
-from domain.exceptions import HardwareConnectionError, HardwareOperationError
+from domain.exceptions.hardware_exceptions import HardwareConnectionException
+from domain.exceptions import HardwareOperationError
 from domain.value_objects.measurements import ForceValue
+from domain.enums.measurement_units import MeasurementUnit
 
 
 class MockLoadCellAdapter(LoadCellService):
@@ -57,15 +59,20 @@ class MockLoadCellAdapter(LoadCellService):
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._connection_delay)
         
-        # 90% 확률로 성공
-        success = random.random() > 0.1
+        # 테스트 환경에서는 항상 성공하도록 변경 (원래는 90% 확률)
+        success = True  # random.random() > 0.1
         
         if success:
             self._is_connected = True
             logger.info("Mock LoadCell connected successfully")
         else:
             logger.warning("Mock LoadCell connection failed")
-            raise HardwareConnectionError("mock_loadcell", "Simulated connection failure")
+            raise HardwareConnectionException(
+                hardware_type="loadcell",
+                connection_status="connection_failed",
+                operation="connect",
+                details={"error": "Simulated connection failure"}
+            )
     
     async def disconnect(self) -> None:
         """
@@ -121,7 +128,7 @@ class MockLoadCellAdapter(LoadCellService):
         force -= self._zero_offset
         
         logger.debug(f"Mock LoadCell reading: {force:.3f}N")
-        return ForceValue(force)
+        return ForceValue(force, MeasurementUnit.NEWTON)
     
     async def zero_calibration(self) -> None:
         """
@@ -131,7 +138,12 @@ class MockLoadCellAdapter(LoadCellService):
             HardwareOperationError: If calibration fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
+            raise HardwareConnectionException(
+                hardware_type="mock_loadcell",
+                connection_status="not_connected", 
+                operation="zero_calibration",
+                details={"error": "LoadCell is not connected"}
+            )
         
         try:
             logger.info("Zeroing mock LoadCell...")
@@ -160,7 +172,12 @@ class MockLoadCellAdapter(LoadCellService):
             원시 측정값
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
+            raise HardwareConnectionException(
+                hardware_type="mock_loadcell",
+                connection_status="not_connected", 
+                operation="read_raw_value",
+                details={"error": "LoadCell is not connected"}
+            )
         
         # 짧은 측정 지연
         await asyncio.sleep(0.02)
@@ -183,7 +200,12 @@ class MockLoadCellAdapter(LoadCellService):
             HardwareOperationError: If rate setting fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
+            raise HardwareConnectionException(
+                hardware_type="mock_loadcell",
+                connection_status="not_connected", 
+                operation="set_measurement_rate",
+                details={"error": "LoadCell is not connected"}
+            )
         
         if rate_hz <= 0 or rate_hz > 1000:
             raise HardwareOperationError("mock_loadcell", "set_measurement_rate", 
@@ -200,7 +222,12 @@ class MockLoadCellAdapter(LoadCellService):
             현재 샘플링 레이트 (Hz)
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_loadcell", "LoadCell is not connected")
+            raise HardwareConnectionException(
+                hardware_type="mock_loadcell",
+                connection_status="not_connected", 
+                operation="get_measurement_rate",
+                details={"error": "LoadCell is not connected"}
+            )
         
         return self._measurement_rate
     

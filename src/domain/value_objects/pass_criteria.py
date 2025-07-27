@@ -165,8 +165,8 @@ class PassCriteria:
             target_point = np.array([[temperature, stroke]])
             
             # Perform 2D linear interpolation
-            upper_limit = griddata(points, upper_values, target_point, method='linear', fill_value=None)[0]
-            lower_limit = griddata(points, lower_values, target_point, method='linear', fill_value=None)[0]
+            upper_limit = griddata(points, upper_values, target_point, method='linear', fill_value=np.nan)[0]
+            lower_limit = griddata(points, lower_values, target_point, method='linear', fill_value=np.nan)[0]
             
             # Handle extrapolation cases (outside spec point range)
             if np.isnan(upper_limit) or np.isnan(lower_limit):

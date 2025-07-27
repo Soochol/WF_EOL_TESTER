@@ -94,8 +94,8 @@ class YamlConfigurationRepository(ConfigurationRepository):
             # Flatten nested YAML structure for TestConfiguration
             flattened_data = self._flatten_yaml_data(yaml_data)
             
-            # Create configuration object
-            config = TestConfiguration(**flattened_data)
+            # Create configuration object using from_dict to handle nested objects
+            config = TestConfiguration.from_dict(flattened_data)
             
             # Cache the configuration
             self._cache[profile_name] = config
@@ -250,8 +250,6 @@ class YamlConfigurationRepository(ConfigurationRepository):
         if 'safety' in yaml_data:
             safety = yaml_data['safety']
             flattened.update({
-                'max_temperature': safety.get('max_temperature', 100.0),
-                'max_force': safety.get('max_force', 1000.0),
                 'max_voltage': safety.get('max_voltage', 30.0),
                 'max_current': safety.get('max_current', 50.0)
             })
@@ -287,7 +285,7 @@ class YamlConfigurationRepository(ConfigurationRepository):
         
         # Handle direct top-level parameters (backward compatibility)
         for key, value in yaml_data.items():
-            if key not in ['hardware', 'test_parameters', 'timing', 'tolerances', 'execution', 'safety', 'pass_criteria', 'hardware_config']:
+            if key not in ['hardware', 'test_parameters', 'timing', 'tolerances', 'execution', 'safety', 'pass_criteria', 'hardware_config', 'metadata']:
                 flattened[key] = value
         
         return flattened
@@ -390,9 +388,7 @@ class YamlConfigurationRepository(ConfigurationRepository):
         if 'current' in override and override['current'] > base.max_current:
             safety_conflicts['current'] = f"Override current {override['current']} exceeds safety limit {base.max_current}"
         
-        # Check temperature safety
-        if 'upper_temperature' in override and override['upper_temperature'] > base.max_temperature:
-            safety_conflicts['upper_temperature'] = f"Override temperature {override['upper_temperature']} exceeds safety limit {base.max_temperature}"
+        # Temperature safety check removed - max_temperature no longer in TestConfiguration
         
         if safety_conflicts:
             raise ConfigurationConflictException(
@@ -552,8 +548,6 @@ class YamlConfigurationRepository(ConfigurationRepository):
                 'timeout_seconds': config.timeout_seconds
             },
             'safety': {
-                'max_temperature': config.max_temperature,
-                'max_force': config.max_force,
                 'max_voltage': config.max_voltage,
                 'max_current': config.max_current
             }
