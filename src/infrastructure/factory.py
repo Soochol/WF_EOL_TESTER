@@ -60,18 +60,12 @@ class ServiceFactory:
             
         elif hw_type == 'bs205':
             # BS205 실제 하드웨어
-            connection = config.get('connection', {})
-            port = connection.get('port', 'COM3')
-            baudrate = connection.get('baudrate', 9600)
-            timeout = connection.get('timeout', 1.0)
-            indicator_id = connection.get('indicator_id', 1)
-            
-            logger.info(f"Creating BS205 LoadCell service on {port}")
+            logger.info(f"Creating BS205 LoadCell service on {config.get('port', 'COM3')}")
             return BS205LoadCell(
-                port=port,
-                baudrate=baudrate,
-                timeout=timeout,
-                indicator_id=indicator_id
+                port=config.get('port', 'COM3'),
+                baudrate=config.get('baudrate', 9600),
+                timeout=config.get('timeout', 1.0),
+                indicator_id=config.get('indicator_id', 1)
             )
         
         else:
@@ -105,18 +99,12 @@ class ServiceFactory:
             
         elif hw_type == 'oda':
             # ODA 실제 하드웨어
-            connection = config.get('connection', {})
-            host = connection.get('host', '192.168.1.100')
-            port = connection.get('port', 8080)
-            timeout = connection.get('timeout', 5.0)
-            channel = connection.get('channel', 1)
-            
-            logger.info(f"Creating ODA Power service at {host}:{port}")
+            logger.info(f"Creating ODA Power service at {config.get('host', '192.168.1.100')}:{config.get('port', 8080)}")
             return OdaPower(
-                host=host,
-                port=port,
-                timeout=timeout,
-                channel=channel
+                host=config.get('host', '192.168.1.100'),
+                port=config.get('port', 8080),
+                timeout=config.get('timeout', 5.0),
+                channel=config.get('channel', 1)
             )
         
         else:
@@ -149,16 +137,11 @@ class ServiceFactory:
             
         elif hw_type == 'lma':
             # LMA 실제 하드웨어
-            connection = config.get('connection', {})
-            port = connection.get('port', 'COM3')
-            baudrate = connection.get('baudrate', 9600)
-            timeout = connection.get('timeout', 5.0)
-            
-            logger.info(f"Creating LMA MCU service on {port}")
+            logger.info(f"Creating LMA MCU service on {config.get('port', 'COM4')}")
             return LMAMCU(
-                port=port,
-                baudrate=baudrate,
-                timeout=timeout
+                port=config.get('port', 'COM4'),
+                baudrate=config.get('baudrate', 115200),
+                timeout=config.get('timeout', 2.0)
             )
         
         else:
@@ -192,22 +175,11 @@ class ServiceFactory:
             
         elif hw_type == 'ajinextek':
             # Ajinextek DIO 실제 하드웨어
-            connection = config.get('connection', {})
-            board_number = connection.get('board_number', 0)
-            module_position = connection.get('module_position', 0)
-            signal_type = connection.get('signal_type', 2)  # 24V industrial
-            debounce_time_ms = connection.get('debounce_time_ms', 10)
-            retry_count = connection.get('retry_count', 3)
-            auto_initialize = connection.get('auto_initialize', True)
-            
-            logger.info(f"Creating Ajinextek Digital Input service on board {board_number}")
+            logger.info(f"Creating Ajinextek Digital Input service on board {config.get('board_no', 0)}")
             return AjinextekInput(
-                board_number=board_number,
-                module_position=module_position,
-                signal_type=signal_type,
-                debounce_time_ms=debounce_time_ms,
-                retry_count=retry_count,
-                auto_initialize=auto_initialize
+                board_no=config.get('board_no', 0),
+                input_count=config.get('input_count', 8),
+                debounce_time=config.get('debounce_time', 0.01)
             )
         
         else:
@@ -241,37 +213,14 @@ class ServiceFactory:
             
         elif hw_type == 'ajinextek':
             # AJINEXTEK 실제 하드웨어
-            connection = config.get('connection', {})
-            motion = config.get('motion', {})
-            safety = config.get('safety', {})
-            positioning = config.get('positioning', {})
-            homing = config.get('homing', {})
-            
-            logger.info(f"Creating AJINEXTEK Robot service (IRQ: {connection.get('irq_no', 7)}, {connection.get('axis_count', 6)} axes)")
+            logger.info(f"Creating AJINEXTEK Robot service (IRQ: {config.get('irq_no', 7)}, {config.get('axis_count', 6)} axes)")
             return AjinextekRobot(
                 # Hardware model
                 model=config.get('model', 'AJINEXTEK'),
                 
-                # Motion parameters
-                axis=motion.get('axis', 0),
-                velocity=motion.get('velocity', 100.0),
-                acceleration=motion.get('acceleration', 100.0),
-                deceleration=motion.get('deceleration', 100.0),
-                
-                # Safety limits
-                max_velocity=safety.get('max_velocity', 500.0),
-                max_acceleration=safety.get('max_acceleration', 1000.0),
-                max_deceleration=safety.get('max_deceleration', 1000.0),
-                
-                # Positioning settings
-                position_tolerance=positioning.get('position_tolerance', 0.1),
-                homing_velocity=homing.get('homing_velocity', 10.0),
-                homing_acceleration=homing.get('homing_acceleration', 100.0),
-                homing_deceleration=homing.get('homing_deceleration', 100.0),
-                
                 # Connection parameters
-                irq_no=connection.get('irq_no', 7),
-                axis_count=connection.get('axis_count', 6)
+                irq_no=config.get('irq_no', 7),
+                axis_count=config.get('axis_count', 6)
             )
         
         else:

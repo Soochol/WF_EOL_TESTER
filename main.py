@@ -108,12 +108,12 @@ async def main() -> None:
         
         # Use Case 생성
         use_case = EOLForceTestUseCase(
-            hardware_services=hardware_services,
-            configuration_service=configuration_service,
-            repository_service=test_result_service,
-            exception_handler=exception_handler,
-            configuration_validator=configuration_validator,
-            test_result_evaluator=test_result_evaluator
+            hardware_services = hardware_services,
+            configuration_service = configuration_service,
+            configuration_validator = configuration_validator,
+            repository_service = test_result_service,
+            test_result_evaluator = test_result_evaluator,
+            exception_handler = exception_handler,
         )
         
         # CLI 생성 및 실행

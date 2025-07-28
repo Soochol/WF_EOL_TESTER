@@ -69,16 +69,16 @@ class EOLForceTestUseCase:
         self,
         hardware_services: HardwareServiceFacade,
         configuration_service: ConfigurationService,
+        configuration_validator: ConfigurationValidator,
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
-        configuration_validator: ConfigurationValidator,
         test_result_evaluator: TestResultEvaluator
     ):
         self._hardware = hardware_services
         self._configuration = configuration_service
+        self._configuration_validator = configuration_validator
         self._repository = repository_service
         self._exception_handler = exception_handler
-        self._configuration_validator = configuration_validator
         self._test_result_evaluator = test_result_evaluator
         self._profile_name: Optional[str] = None
         self._test_config: Optional[TestConfiguration] = None

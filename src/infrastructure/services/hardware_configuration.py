@@ -24,22 +24,6 @@ class RobotConfig:
     # Hardware model
     model: str = "AJINEXTEK"
     
-    # Motion parameters
-    axis: int = 0
-    velocity: float = 100.0
-    acceleration: float = 100.0
-    deceleration: float = 100.0
-    
-    # Safety limits
-    max_velocity: float = 500.0
-    max_acceleration: float = 1000.0
-    max_deceleration: float = 1000.0
-    
-    # Positioning settings
-    position_tolerance: float = 0.1
-    homing_velocity: float = 10.0
-    homing_acceleration: float = 100.0
-    homing_deceleration: float = 100.0
     
     # Connection parameters (AJINEXTEK specific)
     irq_no: int = 7
@@ -124,24 +108,6 @@ class HardwareConfiguration:
             raise ValidationException("robot.model", self.robot.model, 
                                     f"Unsupported robot model. Supported models: {', '.join(SUPPORTED_ROBOT_MODELS)}")
         
-        if self.robot.axis < 0:
-            raise ValidationException("robot.axis", self.robot.axis, "Axis number cannot be negative")
-        
-        if self.robot.velocity <= 0:
-            raise ValidationException("robot.velocity", self.robot.velocity, "Velocity must be positive")
-        
-        if self.robot.acceleration <= 0:
-            raise ValidationException("robot.acceleration", self.robot.acceleration, "Acceleration must be positive")
-        
-        if self.robot.deceleration <= 0:
-            raise ValidationException("robot.deceleration", self.robot.deceleration, "Deceleration must be positive")
-        
-        if self.robot.max_velocity <= self.robot.velocity:
-            raise ValidationException("robot.max_velocity", self.robot.max_velocity, 
-                                    f"Max velocity must be greater than velocity ({self.robot.velocity})")
-        
-        if self.robot.position_tolerance <= 0:
-            raise ValidationException("robot.position_tolerance", self.robot.position_tolerance, "Position tolerance must be positive")
         
         if self.robot.irq_no < 0:
             raise ValidationException("robot.irq_no", self.robot.irq_no, "IRQ number cannot be negative")
@@ -276,17 +242,6 @@ class HardwareConfiguration:
         return {
             'robot': {
                 'model': self.robot.model,
-                'axis': self.robot.axis,
-                'velocity': self.robot.velocity,
-                'acceleration': self.robot.acceleration,
-                'deceleration': self.robot.deceleration,
-                'max_velocity': self.robot.max_velocity,
-                'max_acceleration': self.robot.max_acceleration,
-                'max_deceleration': self.robot.max_deceleration,
-                'position_tolerance': self.robot.position_tolerance,
-                'homing_velocity': self.robot.homing_velocity,
-                'homing_acceleration': self.robot.homing_acceleration,
-                'homing_deceleration': self.robot.homing_deceleration,
                 'irq_no': self.robot.irq_no,
                 'axis_count': self.robot.axis_count
             },

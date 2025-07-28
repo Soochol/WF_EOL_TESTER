@@ -31,14 +31,8 @@ class ConfigurationService:
         profile_preference: ProfilePreference = None
     ):
         self._configuration = configuration
-        
-        # ProfilePreference - create default if not provided
-        if profile_preference:
-            self._profile_preference = profile_preference
-        else:
-            # Create with default JSON repository if not provided
-            from infrastructure.implementation.configuration.json_profile_preference import JsonProfilePreference
-            self._profile_preference = JsonProfilePreference()
+        self._profile_preference = profile_preference
+
     
     @property
     def configuration(self) -> Configuration:
@@ -50,10 +44,7 @@ class ConfigurationService:
         """Get the profile preference"""
         return self._profile_preference
     
-    async def load_configuration(
-        self, 
-        profile_name: str
-    ) -> TestConfiguration:
+    async def load_configuration(self,profile_name: str) -> TestConfiguration:
         """
         Load test configuration from repository
         

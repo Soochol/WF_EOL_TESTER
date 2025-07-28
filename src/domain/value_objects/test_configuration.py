@@ -19,17 +19,26 @@ class TestConfiguration:
     Two configurations with same values are considered identical.
     """
 
-    # Hardware default settings
+    # Hardware power settings
     voltage: float = 18.0
     current: float = 20.0
     upper_temperature: float = 80.0
     fan_speed: int = 10
+
+    # Motion control settings
+    axis: int = 0
+    velocity: float = 100.0
+    acceleration: float = 100.0
+    deceleration: float = 100.0
+
+    # Positioning settings
     standby_position: float = 10.0
     max_stroke: float = 240.0
     initial_position: float = 10.0
-
-    # Pass/Fail criteria configuration
-    pass_criteria: PassCriteria = field(default_factory=PassCriteria)
+    position_tolerance: float = 0.1
+    homing_velocity: float = 10.0
+    homing_acceleration: float = 100.0
+    homing_deceleration: float = 100.0
 
     # Test parameters
     temperature_list: List[float] = field(default_factory=lambda: [38.0, 40.0, 42.0, 44.0, 46.0, 48.0, 50.0, 52.0, 54.0, 56.0, 58.0, 60.0])
@@ -41,7 +50,7 @@ class TestConfiguration:
     power_stabilization: float = 0.5
     loadcell_zero_delay: float = 0.1
 
-    # Measurement tolerances and precision
+    # Measurement settings
     measurement_tolerance: float = 0.001
     force_precision: int = 2
     temperature_precision: int = 1
@@ -50,17 +59,22 @@ class TestConfiguration:
     retry_attempts: int = 3
     timeout_seconds: float = 60.0
 
+    # Pass/Fail criteria configuration
+    pass_criteria: PassCriteria = field(default_factory=PassCriteria)
+
     # Safety limits
-    max_temperature: float = 80.0
-    max_force: float = 1000.0
     max_voltage: float = 30.0
     max_current: float = 30.0
+    max_velocity: float = 500.0
+    max_acceleration: float = 1000.0
+    max_deceleration: float = 1000.0
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization"""
         self._validate_hardware_settings()
         self._validate_test_parameters()
         self._validate_safety_limits()
+        self._validate_motion_parameters()
         self._validate_timing_settings()
 
     def _validate_hardware_settings(self) -> None:
@@ -74,7 +88,7 @@ class TestConfiguration:
         if self.upper_temperature <= 0:
             raise ValidationException("upper_temperature", self.upper_temperature, "Upper temperature must be positive")
 
-        if not (0 <= self.fan_speed <= 100):
+        if not (0 <= self.fan_speed <= 10):
             raise ValidationException("fan_speed", self.fan_speed, "Fan speed must be between 0 and 100")
 
         if self.max_stroke <= 0:
@@ -102,13 +116,6 @@ class TestConfiguration:
 
     def _validate_safety_limits(self) -> None:
         """Validate safety limit parameters"""
-        if self.max_temperature <= self.upper_temperature:
-            raise ValidationException("max_temperature", self.max_temperature,
-                                    f"Max temperature must be greater than upper temperature ({self.upper_temperature})")
-
-        if self.max_force <= 0:
-            raise ValidationException("max_force", self.max_force, "Max force must be positive")
-
         if self.max_voltage <= self.voltage:
             raise ValidationException("max_voltage", self.max_voltage,
                                     f"Max voltage must be greater than operating voltage ({self.voltage})")
@@ -116,6 +123,44 @@ class TestConfiguration:
         if self.max_current <= self.current:
             raise ValidationException("max_current", self.max_current,
                                     f"Max current must be greater than operating current ({self.current})")
+
+    def _validate_motion_parameters(self) -> None:
+        """Validate motion control parameters"""
+        if self.axis < 0:
+            raise ValidationException("axis", self.axis, "Axis number cannot be negative")
+
+        if self.velocity <= 0:
+            raise ValidationException("velocity", self.velocity, "Velocity must be positive")
+
+        if self.acceleration <= 0:
+            raise ValidationException("acceleration", self.acceleration, "Acceleration must be positive")
+
+        if self.deceleration <= 0:
+            raise ValidationException("deceleration", self.deceleration, "Deceleration must be positive")
+
+        if self.max_velocity <= self.velocity:
+            raise ValidationException("max_velocity", self.max_velocity,
+                                    f"Max velocity must be greater than operating velocity ({self.velocity})")
+
+        if self.max_acceleration <= self.acceleration:
+            raise ValidationException("max_acceleration", self.max_acceleration,
+                                    f"Max acceleration must be greater than operating acceleration ({self.acceleration})")
+
+        if self.max_deceleration <= self.deceleration:
+            raise ValidationException("max_deceleration", self.max_deceleration,
+                                    f"Max deceleration must be greater than operating deceleration ({self.deceleration})")
+
+        if self.position_tolerance <= 0:
+            raise ValidationException("position_tolerance", self.position_tolerance, "Position tolerance must be positive")
+
+        if self.homing_velocity <= 0:
+            raise ValidationException("homing_velocity", self.homing_velocity, "Homing velocity must be positive")
+
+        if self.homing_acceleration <= 0:
+            raise ValidationException("homing_acceleration", self.homing_acceleration, "Homing acceleration must be positive")
+
+        if self.homing_deceleration <= 0:
+            raise ValidationException("homing_deceleration", self.homing_deceleration, "Homing deceleration must be positive")
 
     def _validate_timing_settings(self) -> None:
         """Validate timing configuration parameters"""
@@ -223,10 +268,19 @@ class TestConfiguration:
             'temperature_precision': self.temperature_precision,
             'retry_attempts': self.retry_attempts,
             'timeout_seconds': self.timeout_seconds,
-            'max_temperature': self.max_temperature,
-            'max_force': self.max_force,
             'max_voltage': self.max_voltage,
-            'max_current': self.max_current
+            'max_current': self.max_current,
+            'axis': self.axis,
+            'velocity': self.velocity,
+            'acceleration': self.acceleration,
+            'deceleration': self.deceleration,
+            'max_velocity': self.max_velocity,
+            'max_acceleration': self.max_acceleration,
+            'max_deceleration': self.max_deceleration,
+            'position_tolerance': self.position_tolerance,
+            'homing_velocity': self.homing_velocity,
+            'homing_acceleration': self.homing_acceleration,
+            'homing_deceleration': self.homing_deceleration
         }
 
         # Apply overrides
@@ -261,10 +315,19 @@ class TestConfiguration:
             'temperature_precision': self.temperature_precision,
             'retry_attempts': self.retry_attempts,
             'timeout_seconds': self.timeout_seconds,
-            'max_temperature': self.max_temperature,
-            'max_force': self.max_force,
             'max_voltage': self.max_voltage,
-            'max_current': self.max_current
+            'max_current': self.max_current,
+            'axis': self.axis,
+            'velocity': self.velocity,
+            'acceleration': self.acceleration,
+            'deceleration': self.deceleration,
+            'max_velocity': self.max_velocity,
+            'max_acceleration': self.max_acceleration,
+            'max_deceleration': self.max_deceleration,
+            'position_tolerance': self.position_tolerance,
+            'homing_velocity': self.homing_velocity,
+            'homing_acceleration': self.homing_acceleration,
+            'homing_deceleration': self.homing_deceleration
         }
 
     @classmethod
