@@ -18,7 +18,7 @@ else:
     DLL_PATH = AXL_LIBRARY_DIR / "32Bit" / "AXL.dll"
 
 # Import error codes from separate file
-from infrastructure.hardware.robot.ajinextek.error_codes import AXT_RT_SUCCESS
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import AXT_RT_SUCCESS
 
 # Servo control
 SERVO_OFF = 0

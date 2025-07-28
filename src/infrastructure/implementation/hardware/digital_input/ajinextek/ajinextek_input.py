@@ -12,13 +12,13 @@ from loguru import logger
 
 from application.interfaces.hardware.digital_input import DigitalInputService, PinMode, LogicLevel
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
-from infrastructure.hardware.digital_input.ajinextek.constants import (
+from infrastructure.implementation.hardware.digital_input.ajinextek.constants import (
     DEFAULT_BOARD_NUMBER, DEFAULT_MODULE_POSITION, MAX_INPUT_CHANNELS, MAX_OUTPUT_CHANNELS,
     PIN_MODE_INPUT, PIN_MODE_OUTPUT, PIN_MODE_INPUT_PULLUP, PIN_MODE_INPUT_PULLDOWN,
     LOGIC_LOW, LOGIC_HIGH, DEFAULT_RETRY_COUNT, DEFAULT_DEBOUNCE_TIME_MS,
     STATUS_MESSAGES, COMMAND_DESCRIPTIONS, DEFAULT_CONFIG
 )
-from infrastructure.hardware.digital_input.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes import (
     AjinextekDIOError, AjinextekHardwareError, AjinextekConfigurationError,
     AjinextekOperationError, AjinextekChannelError, AjinextekErrorCode,
     validate_board_number, validate_channel_number, validate_channel_list,

@@ -10,8 +10,8 @@ from typing import Optional, Any
 import os
 import platform
 
-from infrastructure.hardware.robot.ajinextek.constants import DLL_PATH
-from infrastructure.hardware.robot.ajinextek.error_codes import AXT_RT_SUCCESS, get_error_message
+from infrastructure.implementation.hardware.robot.ajinextek.constants import DLL_PATH
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import AXT_RT_SUCCESS, get_error_message
 # 절대 import 사용 (권장)
 from domain.exceptions.robot_exceptions import AXLError, AXLConnectionError, AXLMotionError
 

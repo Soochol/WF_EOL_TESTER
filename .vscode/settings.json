@@ -1,0 +1,26 @@
+{
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "black-formatter.args": [
+        "--config",
+        "pyproject.toml"
+    ],
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
+    "cSpell.words": [
+        "loadcell",
+        "AJINEXTEK",
+        "baudrate"
+    ],
+    "python-envs.pythonProjects": []
+}

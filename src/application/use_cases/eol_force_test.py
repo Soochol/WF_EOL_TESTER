@@ -14,40 +14,37 @@ Key Features:
 """
 
 import asyncio
-from typing import Optional, Any
+from typing import Any, Optional
+
 from loguru import logger
 
+from application.services.configuration_service import ConfigurationService
+from application.services.configuration_validator import ConfigurationValidator
+from application.services.exception_handler import ExceptionHandler
 from application.services.hardware_service_facade import HardwareServiceFacade
 from application.services.repository_service import RepositoryService
-from application.services.configuration_service import ConfigurationService
-from application.services.exception_handler import ExceptionHandler
-from application.services.configuration_validator import ConfigurationValidator
 from application.services.test_result_evaluator import TestResultEvaluator
-from domain.entities.eol_test import EOLTest
 from domain.entities.dut import DUT
+from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
-from domain.value_objects.eol_test_result import EOLTestResult
-from domain.value_objects.identifiers import TestId, MeasurementId
-from domain.value_objects.time_values import TestDuration
-from domain.value_objects.dut_command_info import DUTCommandInfo
-from domain.value_objects.test_configuration import TestConfiguration
-from domain.exceptions.test_exceptions import TestExecutionException
 from domain.exceptions import (
+    ConfigurationNotFoundError,
     MultiConfigurationValidationError,
-    TestEvaluationError,
     RepositoryAccessError,
-    ConfigurationNotFoundError
+    TestEvaluationError,
 )
+from domain.exceptions.test_exceptions import TestExecutionException
+from domain.value_objects.dut_command_info import DUTCommandInfo
+from domain.value_objects.eol_test_result import EOLTestResult
+from domain.value_objects.identifiers import MeasurementId, TestId
+from domain.value_objects.test_configuration import TestConfiguration
+from domain.value_objects.time_values import TestDuration
 
 
 class EOLForceTestCommand:
     """EOL Test Execution Command"""
 
-    def __init__(
-        self,
-        dut_info: DUTCommandInfo,
-        operator_id: str
-    ):
+    def __init__(self, dut_info: DUTCommandInfo, operator_id: str):
         self.dut_info = dut_info
         self.operator_id = operator_id
 
@@ -72,7 +69,7 @@ class EOLForceTestUseCase:
         configuration_validator: ConfigurationValidator,
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
-        test_result_evaluator: TestResultEvaluator
+        test_result_evaluator: TestResultEvaluator,
     ):
         self._hardware = hardware_services
         self._configuration = configuration_service
@@ -110,21 +107,15 @@ class EOLForceTestUseCase:
         self._profile_name = await self._configuration.get_active_profile_name()
 
         # Load configuration
-        self._test_config = await self._configuration.load_configuration(
-            self._profile_name
-        )
+        self._test_config = await self._configuration.load_configuration(self._profile_name)
 
         # Validate configuration
         try:
-            await self._configuration_validator.validate_test_configuration(
-                self._test_config
-            )
+            await self._configuration_validator.validate_test_configuration(self._test_config)
             logger.info("Configuration validation passed")
         except MultiConfigurationValidationError as e:
             logger.error(f"Configuration validation failed: {e.message}")
-            raise TestExecutionException(
-                f"Configuration validation failed: {e.get_context('total_errors')} errors found"
-            )
+            raise TestExecutionException(f"Configuration validation failed: {e.get_context('total_errors')} errors found")
 
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:
@@ -137,11 +128,7 @@ class EOLForceTestUseCase:
         # Create test entity
         dut = DUT.from_command_info(command.dut_info)
 
-        test = EOLTest(
-            test_id=TestId.generate(),
-            dut=dut,
-            operator_id=command.operator_id
-        )
+        test = EOLTest(test_id=TestId.generate(), dut=dut, operator_id=command.operator_id)
 
         # Save test
         await self._repository.test_repository.save(test)
@@ -167,9 +154,7 @@ class EOLForceTestUseCase:
 
             # Evaluate results using test result evaluator
             try:
-                await self._test_result_evaluator.evaluate_measurements(
-                    measurements, self._test_config.pass_criteria
-                )
+                await self._test_result_evaluator.evaluate_measurements(measurements, self._test_config.pass_criteria)
                 # If no exception, test passed
                 test.complete_test()
                 passed = True
@@ -193,7 +178,7 @@ class EOLForceTestUseCase:
                 is_passed=passed,
                 measurement_ids=[MeasurementId.generate() for _ in measurements],
                 test_summary=measurements,
-                error_message=None
+                error_message=None,
             )
 
         except Exception as e:
@@ -202,7 +187,7 @@ class EOLForceTestUseCase:
                 "operation": "execute_eol_test",
                 "test_id": str(test.test_id),
                 "dut_id": command.dut_info.dut_id,
-                "measurements_count": len(measurements)
+                "measurements_count": len(measurements),
             }
             handled_exception = await self._exception_handler.handle_exception(e, context)
 
@@ -218,7 +203,7 @@ class EOLForceTestUseCase:
                 is_passed=False,
                 measurement_ids=[MeasurementId.generate() for _ in measurements],
                 test_summary=measurements,
-                error_message=str(handled_exception)
+                error_message=str(handled_exception),
             )
 
         finally:
@@ -226,9 +211,5 @@ class EOLForceTestUseCase:
             try:
                 await self._hardware.shutdown_hardware()
             except Exception as cleanup_error:
-                context = {
-                    "operation": "hardware_shutdown_cleanup",
-                    "test_id": str(test.test_id) if 'test' in locals() else None
-                }
+                context = {"operation": "hardware_shutdown_cleanup", "test_id": str(test.test_id) if "test" in locals() else None}
                 await self._exception_handler.handle_exception(cleanup_error, context)
-

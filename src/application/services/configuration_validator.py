@@ -5,17 +5,18 @@ Business service for validating test and hardware configurations.
 Uses Exception First principles for error handling.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from loguru import logger
 
-from domain.value_objects.test_configuration import TestConfiguration
-from domain.exceptions.validation_exceptions import ValidationException
 from domain.exceptions import (
     ConfigurationValidationError,
     MultiConfigurationValidationError,
+    create_multi_validation_error,
     create_validation_error,
-    create_multi_validation_error
 )
+from domain.exceptions.validation_exceptions import ValidationException
+from domain.value_objects.test_configuration import TestConfiguration
 
 
 class ConfigurationValidator:
@@ -60,11 +61,7 @@ class ConfigurationValidator:
         if errors:
             raise create_validation_error(errors, "test_configuration")
 
-
-    async def validate_all_configurations(
-        self,
-        test_config: TestConfiguration
-    ) -> None:
+    async def validate_all_configurations(self, test_config: TestConfiguration) -> None:
         """
         Validate test configuration
 
@@ -82,7 +79,7 @@ class ConfigurationValidator:
         try:
             await self.validate_test_configuration(test_config)
         except ConfigurationValidationError as e:
-            errors_by_type['test_configuration'] = e.errors
+            errors_by_type["test_configuration"] = e.errors
 
         # Hardware configuration validation removed - no longer needed
         # Cross-configuration compatibility validation removed - no longer needed
@@ -94,10 +91,7 @@ class ConfigurationValidator:
         else:
             logger.info("✅ All configuration validations passed")
 
-    async def validate_configuration_compatibility(
-        self,
-        test_config: TestConfiguration
-    ) -> None:
+    async def validate_configuration_compatibility(self, test_config: TestConfiguration) -> None:
         """
         Validate test configuration compatibility and internal consistency
 
@@ -118,7 +112,9 @@ class ConfigurationValidator:
             # Check temperature compatibility
             max_test_temp = max(test_config.temperature_list) if test_config.temperature_list else 0
             if max_test_temp > test_config.upper_temperature:
-                errors.append(f"Test temperatures exceed upper_temperature limit: {max_test_temp} > {test_config.upper_temperature}")
+                errors.append(
+                    f"Test temperatures exceed upper_temperature limit: {max_test_temp} > {test_config.upper_temperature}"
+                )
 
             # Check safety limits compatibility - removed max_temperature check as it's no longer in TestConfiguration
 
@@ -135,10 +131,7 @@ class ConfigurationValidator:
             logger.error(error_msg)
             raise create_validation_error([error_msg], "compatibility")
 
-    async def get_configuration_summary(
-        self,
-        test_config: TestConfiguration
-    ) -> Dict[str, Any]:
+    async def get_configuration_summary(self, test_config: TestConfiguration) -> Dict[str, Any]:
         """
         Generate a summary of test configuration settings for logging/debugging
 
@@ -150,19 +143,27 @@ class ConfigurationValidator:
         """
         try:
             summary = {
-                'test_configuration': {
-                    'measurement_points': test_config.get_total_measurement_points(),
-                    'estimated_duration_seconds': test_config.estimate_test_duration_seconds(),
-                    'temperature_count': test_config.get_temperature_count(),
-                    'position_count': test_config.get_position_count(),
-                    'temperature_range': [min(test_config.temperature_list), max(test_config.temperature_list)] if test_config.temperature_list else [0, 0],
-                    'stroke_range': [min(test_config.stroke_positions), max(test_config.stroke_positions)] if test_config.stroke_positions else [0, 0],
-                    'safety_limits': {
-                        'max_temperature': test_config.max_temperature,
-                        'max_force': test_config.max_force,
-                        'max_voltage': test_config.max_voltage,
-                        'max_current': test_config.max_current
-                    }
+                "test_configuration": {
+                    "measurement_points": test_config.get_total_measurement_points(),
+                    "estimated_duration_seconds": test_config.estimate_test_duration_seconds(),
+                    "temperature_count": test_config.get_temperature_count(),
+                    "position_count": test_config.get_position_count(),
+                    "temperature_range": (
+                        [min(test_config.temperature_list), max(test_config.temperature_list)]
+                        if test_config.temperature_list
+                        else [0, 0]
+                    ),
+                    "stroke_range": (
+                        [min(test_config.stroke_positions), max(test_config.stroke_positions)]
+                        if test_config.stroke_positions
+                        else [0, 0]
+                    ),
+                    "safety_limits": {
+                        "max_temperature": test_config.max_temperature,
+                        "max_force": test_config.max_force,
+                        "max_voltage": test_config.max_voltage,
+                        "max_current": test_config.max_current,
+                    },
                 }
             }
 
@@ -172,4 +173,4 @@ class ConfigurationValidator:
         except Exception as e:
             error_msg = f"Failed to generate configuration summary: {e}"
             logger.error(error_msg)
-            return {'error': error_msg}
+            return {"error": error_msg}

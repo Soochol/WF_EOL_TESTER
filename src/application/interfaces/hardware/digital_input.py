@@ -6,6 +6,7 @@ Interface for digital input operations.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
+from domain.enums.digital_input_enums import PinMode, LogicLevel
 
 
 class DigitalInputService(ABC):

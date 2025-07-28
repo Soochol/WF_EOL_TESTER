@@ -6,15 +6,16 @@ Facade pattern implementation to group and simplify hardware service interaction
 
 import asyncio
 from typing import Dict, List
+
 from loguru import logger
 
-from application.interfaces.hardware.robot import RobotService
-from application.interfaces.hardware.mcu import MCUService, TestMode
 from application.interfaces.hardware.loadcell import LoadCellService
+from application.interfaces.hardware.mcu import MCUService, TestMode
 from application.interfaces.hardware.power import PowerService
-from domain.value_objects.test_configuration import TestConfiguration
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from application.interfaces.hardware.robot import RobotService
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
+from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.test_configuration import TestConfiguration
 
 
 class HardwareServiceFacade:
@@ -26,11 +27,7 @@ class HardwareServiceFacade:
     """
 
     def __init__(
-        self,
-        robot_service: RobotService,
-        mcu_service: MCUService,
-        loadcell_service: LoadCellService,
-        power_service: PowerService
+        self, robot_service: RobotService, mcu_service: MCUService, loadcell_service: LoadCellService, power_service: PowerService
     ):
         self._robot = robot_service
         self._mcu = mcu_service
@@ -68,8 +65,7 @@ class HardwareServiceFacade:
                 logger.info(f"Successfully connected: {', '.join(hardware_names)}")
             except Exception as e:
                 raise HardwareConnectionException(
-                    f"Failed to connect hardware: {str(e)}",
-                    details={"failed_hardware": hardware_names}
+                    f"Failed to connect hardware: {str(e)}", details={"failed_hardware": hardware_names}
                 )
         else:
             logger.info("All hardware already connected")
@@ -95,7 +91,7 @@ class HardwareServiceFacade:
                 position=config.initial_position,
                 velocity=hardware_config.robot.velocity,
                 acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration
+                deceleration=hardware_config.robot.deceleration,
             )
             await asyncio.sleep(config.stabilization_delay)
 
@@ -107,15 +103,16 @@ class HardwareServiceFacade:
 
         except Exception as e:
             await self._power.enable_output(False)  # Safety: disable power on error
-            raise HardwareConnectionException(
-                f"Failed to initialize hardware: {str(e)}",
-                details={"config": config.to_dict()}
-            )
+            raise HardwareConnectionException(f"Failed to initialize hardware: {str(e)}", details={"config": config.to_dict()})
 
-    async def perform_force_test_sequence(self, config: TestConfiguration, hardware_config: HardwareConfiguration) -> Dict[str, float]:
+    async def perform_force_test_sequence(
+        self, config: TestConfiguration, hardware_config: HardwareConfiguration
+    ) -> Dict[str, float]:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         logger.info("Starting force test sequence...")
-        logger.info(f"Test matrix: {len(config.temperature_list)} temperatures × {len(config.stroke_positions)} positions = {len(config.temperature_list) * len(config.stroke_positions)} total measurements")
+        logger.info(
+            f"Test matrix: {len(config.temperature_list)} temperatures × {len(config.stroke_positions)} positions = {len(config.temperature_list) * len(config.stroke_positions)} total measurements"
+        )
 
         measurements = {}
 
@@ -134,7 +131,9 @@ class HardwareServiceFacade:
 
                 # Inner loop: Iterate through stroke positions
                 for pos_idx, position in enumerate(config.stroke_positions):
-                    logger.info(f"Measuring at temp {temperature}°C, position {position}mm ({pos_idx+1}/{len(config.stroke_positions)})")
+                    logger.info(
+                        f"Measuring at temp {temperature}°C, position {position}mm ({pos_idx+1}/{len(config.stroke_positions)})"
+                    )
 
                     # Move to position using robot configuration
                     await self._robot.move_absolute(
@@ -142,7 +141,7 @@ class HardwareServiceFacade:
                         position=position,
                         velocity=hardware_config.robot.velocity,
                         acceleration=hardware_config.robot.acceleration,
-                        deceleration=hardware_config.robot.deceleration
+                        deceleration=hardware_config.robot.deceleration,
                     )
                     await asyncio.sleep(config.stabilization_delay)
 
@@ -154,11 +153,7 @@ class HardwareServiceFacade:
                     # power_data = await self._power.measure_output()
 
                     # Store measurement data
-                    measurement = {
-                        'force': force,
-                        'temperature': temperature,
-                        'position': position
-                    }
+                    measurement = {"force": force, "temperature": temperature, "position": position}
                     measurements[f"temp_{temperature}_pos_{position}"] = measurement
 
                     # # Allow stabilization between positions (if not last position)
@@ -168,7 +163,9 @@ class HardwareServiceFacade:
                 logger.info(f"Completed all positions for temperature {temperature}°C")
 
             logger.info(f"Force test sequence completed with {len(measurements)} measurements")
-            logger.info(f"Test matrix completed: {len(config.temperature_list)} temperatures × {len(config.stroke_positions)} positions")
+            logger.info(
+                f"Test matrix completed: {len(config.temperature_list)} temperatures × {len(config.stroke_positions)} positions"
+            )
             return measurements
 
         except Exception as e:
@@ -184,7 +181,7 @@ class HardwareServiceFacade:
                 position=config.standby_position,
                 velocity=100.0,  # Default velocity
                 acceleration=100.0,  # Default acceleration
-                deceleration=hardware_config.robot.deceleration
+                deceleration=hardware_config.robot.deceleration,
             )
             logger.info(f"Robot returned to safe position: {config.standby_position}mm")
         except Exception as e:
@@ -227,10 +224,10 @@ class HardwareServiceFacade:
     async def get_hardware_status(self) -> Dict[str, bool]:
         """Get connection status of all hardware"""
         return {
-            'robot': await self._robot.is_connected(),
-            'mcu': await self._mcu.is_connected(),
-            'power': await self._power.is_connected(),
-            'loadcell': await self._loadcell.is_connected()
+            "robot": await self._robot.is_connected(),
+            "mcu": await self._mcu.is_connected(),
+            "power": await self._power.is_connected(),
+            "loadcell": await self._loadcell.is_connected(),
         }
 
     async def setup_test(self, config: TestConfiguration, hardware_config: HardwareConfiguration) -> None:
@@ -267,16 +264,10 @@ class HardwareServiceFacade:
 
         except asyncio.TimeoutError:
             await self._power.enable_output(False)  # Safety: disable power on timeout
-            raise HardwareConnectionException(
-                "MCU boot timeout during test setup",
-                details={"timeout": config.timeout_seconds}
-            )
+            raise HardwareConnectionException("MCU boot timeout during test setup", details={"timeout": config.timeout_seconds})
         except Exception as e:
             await self._power.enable_output(False)  # Safety: disable power on error
-            raise HardwareConnectionException(
-                f"Failed to setup test: {str(e)}",
-                details={"config": config.to_dict()}
-            )
+            raise HardwareConnectionException(f"Failed to setup test: {str(e)}", details={"config": config.to_dict()})
 
     async def teardown_test(self, config: TestConfiguration, hardware_config: HardwareConfiguration) -> None:
         """Teardown test and return hardware to safe state"""
@@ -290,13 +281,13 @@ class HardwareServiceFacade:
                 position=config.standby_position,
                 velocity=100.0,  # Default velocity
                 acceleration=100.0,  # Default acceleration
-                deceleration=hardware_config.robot.deceleration
+                deceleration=hardware_config.robot.deceleration,
             )
             logger.info("Robot returned to safe position")
 
             # MCU teardown - exit test mode, reset to normal temperature
             logger.info("Resetting MCU to normal state...")
-            if hasattr(self._mcu, 'set_test_mode'):
+            if hasattr(self._mcu, "set_test_mode"):
                 # Try to set to normal mode (MODE_0 or similar)
                 try:
                     await self._mcu.set_test_mode(TestMode.MODE_0)
@@ -344,7 +335,7 @@ class HardwareServiceFacade:
                 position=config.max_stroke,
                 velocity=hardware_config.robot.velocity,
                 acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration
+                deceleration=hardware_config.robot.deceleration,
             )
             logger.info(f"Robot moved to max stroke position: {config.max_stroke}mm")
 
@@ -354,7 +345,7 @@ class HardwareServiceFacade:
                 position=config.initial_position,
                 velocity=hardware_config.robot.velocity,
                 acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration
+                deceleration=hardware_config.robot.deceleration,
             )
             logger.info(f"Robot moved to initial position: {config.initial_position}mm")
 
@@ -367,15 +358,9 @@ class HardwareServiceFacade:
         except Exception as e:
             logger.error(f"LMA standby sequence failed: {e}")
             raise HardwareConnectionException(
-                f"Failed to set LMA standby sequence: {str(e)}",
-                details={"config": config.to_dict()}
+                f"Failed to set LMA standby sequence: {str(e)}", details={"config": config.to_dict()}
             )
 
     def get_hardware_services(self) -> Dict[str, object]:
         """Get direct access to hardware services (for advanced usage)"""
-        return {
-            'robot': self._robot,
-            'mcu': self._mcu,
-            'power': self._power,
-            'loadcell': self._loadcell
-        }
+        return {"robot": self._robot, "mcu": self._mcu, "power": self._power, "loadcell": self._loadcell}

@@ -12,7 +12,7 @@ from typing import Optional, List, Dict, Any
 from loguru import logger
 
 from application.interfaces.configuration.profile_preference import ProfilePreference
-from domain.exceptions.repository_exceptions import RepositoryException
+from domain.exceptions import RepositoryError as RepositoryException
 
 
 class JsonProfilePreference(ProfilePreference):

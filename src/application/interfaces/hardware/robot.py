@@ -6,6 +6,7 @@ Interface for robot control and motion operations.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
+from domain.enums.robot_enums import MotionStatus
 
 
 class RobotService(ABC):

@@ -13,13 +13,13 @@ from loguru import logger
 from application.interfaces.hardware.loadcell import LoadCellService
 
 from driver.serial.serial import SerialManager, SerialError
-from infrastructure.hardware.loadcell.bs205.constants import (
+from infrastructure.implementation.hardware.loadcell.bs205.constants import (
     DEFAULT_BAUDRATE, DEFAULT_TIMEOUT, DEFAULT_INDICATOR_ID,
     CMD_READ_WEIGHT, CMD_ZERO, CMD_IDENTITY,
     KG_TO_NEWTON, ZERO_OPERATION_DELAY, DEVICE_ID_PATTERN,
     COMMAND_DESCRIPTIONS, STATUS_MESSAGES
 )
-from infrastructure.hardware.loadcell.bs205.error_codes import (
+from infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
     BS205Error, BS205CommunicationError, BS205HardwareError, BS205OperationError,
     BS205ErrorCode, parse_weight_response, convert_weight_to_force,
     validate_weight_range, validate_sample_parameters

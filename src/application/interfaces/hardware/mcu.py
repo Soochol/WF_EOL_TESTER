@@ -6,6 +6,7 @@ Interface for MCU (Microcontroller Unit) operations and control.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
+from domain.enums.mcu_enums import TestMode, MCUStatus
 
 
 class MCUService(ABC):
