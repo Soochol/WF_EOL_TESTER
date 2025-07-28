@@ -8,10 +8,10 @@ import asyncio
 from typing import Dict, List
 from loguru import logger
 
-from application.interfaces.robot import RobotService
-from application.interfaces.mcu import MCUService, TestMode
-from application.interfaces.loadcell import LoadCellService
-from application.interfaces.power import PowerService
+from application.interfaces.hardware.robot import RobotService
+from application.interfaces.hardware.mcu import MCUService, TestMode
+from application.interfaces.hardware.loadcell import LoadCellService
+from application.interfaces.hardware.power import PowerService
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.exceptions.hardware_exceptions import HardwareConnectionException

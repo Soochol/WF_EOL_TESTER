@@ -14,11 +14,12 @@ Key Features:
 """
 
 import asyncio
-from typing import Optional
+from typing import Optional, Any
 from loguru import logger
 
 from application.services.hardware_service_facade import HardwareServiceFacade
 from application.services.repository_service import RepositoryService
+from application.services.configuration_service import ConfigurationService
 from application.services.exception_handler import ExceptionHandler
 from application.services.configuration_validator import ConfigurationValidator
 from application.services.test_result_evaluator import TestResultEvaluator
@@ -30,7 +31,6 @@ from domain.value_objects.identifiers import TestId, MeasurementId
 from domain.value_objects.time_values import TestDuration
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.test_configuration import TestConfiguration
-from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.exceptions.test_exceptions import TestExecutionException
 from domain.exceptions import (
     MultiConfigurationValidationError,
@@ -68,19 +68,20 @@ class EOLForceTestUseCase:
     def __init__(
         self,
         hardware_services: HardwareServiceFacade,
+        configuration_service: ConfigurationService,
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
         configuration_validator: ConfigurationValidator,
         test_result_evaluator: TestResultEvaluator
     ):
         self._hardware = hardware_services
+        self._configuration = configuration_service
         self._repository = repository_service
         self._exception_handler = exception_handler
         self._configuration_validator = configuration_validator
         self._test_result_evaluator = test_result_evaluator
         self._profile_name: Optional[str] = None
         self._test_config: Optional[TestConfiguration] = None
-        self._hardware_config: Optional[HardwareConfiguration] = None
 
     async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
@@ -106,17 +107,17 @@ class EOLForceTestUseCase:
         logger.info(f"Starting EOL test for DUT {command.dut_info.dut_id}")
 
         # Load profile name
-        self._profile_name = await self._repository.get_active_profile_name()
+        self._profile_name = await self._configuration.get_active_profile_name()
 
-        # Load configurations
-        self._test_config, self._hardware_config = await self._repository.load_configurations(
+        # Load configuration
+        self._test_config = await self._configuration.load_configuration(
             self._profile_name
         )
 
-        # Validate configurations
+        # Validate configuration
         try:
-            await self._configuration_validator.validate_all_configurations(
-                self._test_config, self._hardware_config
+            await self._configuration_validator.validate_test_configuration(
+                self._test_config
             )
             logger.info("Configuration validation passed")
         except MultiConfigurationValidationError as e:
@@ -127,7 +128,7 @@ class EOLForceTestUseCase:
 
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:
-            await self._repository.mark_profile_as_used(self._profile_name)
+            await self._configuration.mark_profile_as_used(self._profile_name)
             logger.debug(f"Profile '{self._profile_name}' marked as used successfully")
         except Exception as pref_error:
             # Profile usage tracking failure should not interrupt test execution
@@ -153,16 +154,16 @@ class EOLForceTestUseCase:
 
             # Setup phase
             await self._hardware.connect_all_hardware()
-            await self._hardware.initialize_hardware(self._test_config, self._hardware_config)
+            await self._hardware.initialize_hardware(self._test_config)
 
             # setup test sequence
-            await self._hardware.setup_test(self._test_config, self._hardware_config)
+            await self._hardware.setup_test(self._test_config)
 
             # Main Test phase - Use hardware facade
-            measurements = await self._hardware.perform_force_test_sequence(self._test_config, self._hardware_config)
+            measurements = await self._hardware.perform_force_test_sequence(self._test_config)
 
             # Test Teardown test sequence
-            await self._hardware.teardown_test(self._test_config, self._hardware_config)
+            await self._hardware.teardown_test(self._test_config)
 
             # Evaluate results using test result evaluator
             try:

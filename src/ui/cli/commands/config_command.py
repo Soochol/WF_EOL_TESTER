@@ -10,7 +10,7 @@ from pathlib import Path
 from loguru import logger
 
 from ui.cli.commands.base import Command, CommandResult
-from infrastructure.hardware.factory import ServiceFactory
+from infrastructure.factory import ServiceFactory
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 
 
