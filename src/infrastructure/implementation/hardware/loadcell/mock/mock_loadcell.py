@@ -25,7 +25,7 @@ class MockLoadCell(LoadCellService):
         mock_values: Optional[List[float]] = None,
         base_force: float = 10.0,
         noise_level: float = 0.1,
-        connection_delay: float = 0.1
+        connection_delay: float = 0.1,
     ):
         """
         초기화
@@ -58,7 +58,9 @@ class MockLoadCell(LoadCellService):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        logger.info(f"Connecting to mock LoadCell on {loadcell_config.port} at {loadcell_config.baudrate} baud...")
+        logger.info(
+            f"Connecting to mock LoadCell on {loadcell_config.port} at {loadcell_config.baudrate} baud..."
+        )
 
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._connection_delay)
@@ -75,7 +77,7 @@ class MockLoadCell(LoadCellService):
                 hardware_type="loadcell",
                 connection_status="connection_failed",
                 operation="connect",
-                details={"error": "Simulated connection failure"}
+                details={"error": "Simulated connection failure"},
             )
 
     async def disconnect(self) -> None:
@@ -146,7 +148,7 @@ class MockLoadCell(LoadCellService):
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="zero_calibration",
-                details={"error": "LoadCell is not connected"}
+                details={"error": "LoadCell is not connected"},
             )
 
         try:
@@ -180,7 +182,7 @@ class MockLoadCell(LoadCellService):
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="read_raw_value",
-                details={"error": "LoadCell is not connected"}
+                details={"error": "LoadCell is not connected"},
             )
 
         # 짧은 측정 지연
@@ -208,12 +210,15 @@ class MockLoadCell(LoadCellService):
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="set_measurement_rate",
-                details={"error": "LoadCell is not connected"}
+                details={"error": "LoadCell is not connected"},
             )
 
         if rate_hz <= 0 or rate_hz > 1000:
-            raise HardwareOperationError("mock_loadcell", "set_measurement_rate",
-                                       f"Invalid measurement rate: {rate_hz} Hz (must be 1-1000)")
+            raise HardwareOperationError(
+                "mock_loadcell",
+                "set_measurement_rate",
+                f"Invalid measurement rate: {rate_hz} Hz (must be 1-1000)",
+            )
 
         self._measurement_rate = rate_hz
         logger.info(f"Mock LoadCell measurement rate set to {rate_hz} Hz")
@@ -230,7 +235,7 @@ class MockLoadCell(LoadCellService):
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="get_measurement_rate",
-                details={"error": "LoadCell is not connected"}
+                details={"error": "LoadCell is not connected"},
             )
 
         return self._measurement_rate
@@ -243,24 +248,24 @@ class MockLoadCell(LoadCellService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': self._is_connected,
-            'hardware_type': 'Mock',
-            'base_force': self._base_force,
-            'noise_level': self._noise_level,
-            'zero_offset': self._zero_offset,
-            'mock_values_count': len(self._mock_values),
-            'value_index': self._value_index
+            "connected": self._is_connected,
+            "hardware_type": "Mock",
+            "base_force": self._base_force,
+            "noise_level": self._noise_level,
+            "zero_offset": self._zero_offset,
+            "mock_values_count": len(self._mock_values),
+            "value_index": self._value_index,
         }
 
         if self._is_connected:
             try:
                 force_value = await self.read_force()
-                status['current_force'] = force_value.value
-                status['measurement_rate'] = self._measurement_rate
-                status['last_error'] = None
+                status["current_force"] = force_value.value
+                status["measurement_rate"] = self._measurement_rate
+                status["last_error"] = None
             except Exception as e:
-                status['current_force'] = None
-                status['last_error'] = str(e)
+                status["current_force"] = None
+                status["last_error"] = str(e)
 
         return status
 

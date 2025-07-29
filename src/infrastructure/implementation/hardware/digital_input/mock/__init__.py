@@ -6,4 +6,4 @@ This module contains the mock input hardware implementation for testing and deve
 
 from .mock_input import MockInput
 
-__all__ = ['MockInput']
+__all__ = ["MockInput"]

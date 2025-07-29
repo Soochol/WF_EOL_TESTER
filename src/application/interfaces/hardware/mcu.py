@@ -57,7 +57,9 @@ class MCUService(ABC):
         pass
 
     @abstractmethod
-    async def send_command(self, command: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def send_command(
+        self, command: str, data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Send command to MCU
 
@@ -91,7 +93,9 @@ class MCUService(ABC):
         pass
 
     @abstractmethod
-    async def set_temperature_control(self, enabled: bool, target_temp: Optional[float] = None) -> None:
+    async def set_temperature_control(
+        self, enabled: bool, target_temp: Optional[float] = None
+    ) -> None:
         """
         Enable/disable temperature control
 

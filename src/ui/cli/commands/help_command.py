@@ -12,10 +12,7 @@ class HelpCommand(Command):
     """Command for displaying help information"""
 
     def __init__(self):
-        super().__init__(
-            name="help",
-            description="Show help information for commands"
-        )
+        super().__init__(name="help", description="Show help information for commands")
 
     async def execute(self, args: List[str]) -> CommandResult:
         """

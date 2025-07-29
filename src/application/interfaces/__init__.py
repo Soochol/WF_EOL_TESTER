@@ -14,12 +14,12 @@ from application.interfaces.configuration.profile_preference import ProfilePrefe
 from application.interfaces.repository.test_result_repository import TestResultRepository
 
 __all__ = [
-    'LoadCellService',
-    'PowerService',
-    'RobotService',
-    'MCUService',
-    'DigitalInputService',
-    'Configuration',
-    'ProfilePreference',
-    'TestResultRepository'
+    "LoadCellService",
+    "PowerService",
+    "RobotService",
+    "MCUService",
+    "DigitalInputService",
+    "Configuration",
+    "ProfilePreference",
+    "TestResultRepository",
 ]

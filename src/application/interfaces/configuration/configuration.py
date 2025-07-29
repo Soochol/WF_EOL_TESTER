@@ -71,9 +71,7 @@ class Configuration(ABC):
 
     @abstractmethod
     async def merge_configurations(
-        self,
-        base: TestConfiguration,
-        override: Dict[str, Any]
+        self, base: TestConfiguration, override: Dict[str, Any]
     ) -> TestConfiguration:
         """
         Merge base configuration with runtime overrides
@@ -148,10 +146,7 @@ class Configuration(ABC):
 
     @abstractmethod
     async def create_profile_from_template(
-        self,
-        template_name: str,
-        new_profile_name: str,
-        customizations: Dict[str, Any] = None
+        self, template_name: str, new_profile_name: str, customizations: Dict[str, Any] = None
     ) -> TestConfiguration:
         """
         Create a new profile based on an existing template
@@ -204,11 +199,7 @@ class Configuration(ABC):
         pass
 
     @abstractmethod
-    async def compare_profiles(
-        self,
-        profile1_name: str,
-        profile2_name: str
-    ) -> Dict[str, Any]:
+    async def compare_profiles(self, profile1_name: str, profile2_name: str) -> Dict[str, Any]:
         """
         Compare two configuration profiles and return differences
 
@@ -236,9 +227,7 @@ class Configuration(ABC):
 
     @abstractmethod
     async def validate_profile_compatibility(
-        self,
-        profile_name: str,
-        system_version: str = None
+        self, profile_name: str, system_version: str = None
     ) -> Dict[str, Any]:
         """
         Validate if a profile is compatible with current system

@@ -64,7 +64,9 @@ class ConfigurationService:
             raise ConfigurationNotFoundError(profile_name, available_profiles)
         except Exception as e:
             logger.error(f"Failed to load configurations from profile '{profile_name}': {e}")
-            raise RepositoryAccessError(operation="load_configuration", reason=str(e), file_path=f"{profile_name}.yaml")
+            raise RepositoryAccessError(
+                operation="load_configuration", reason=str(e), file_path=f"{profile_name}.yaml"
+            )
 
     async def list_available_profiles(self) -> List[str]:
         """
@@ -163,7 +165,9 @@ class ConfigurationService:
         """
         try:
             await self._profile_preference.clear_preferences()
-            logger.info("All profile preferences cleared - will use environment variable or default")
+            logger.info(
+                "All profile preferences cleared - will use environment variable or default"
+            )
         except Exception as e:
             logger.error(f"Failed to clear profile preferences: {e}")
             raise RepositoryAccessError(operation="clear_profile_preferences", reason=str(e))

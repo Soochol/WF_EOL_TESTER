@@ -27,7 +27,7 @@ class EOLTesterError(Exception):
         self.context = context or {}
         self.message = message
 
-    def add_context(self, key: str, value: Any) -> 'EOLTesterError':
+    def add_context(self, key: str, value: Any) -> "EOLTesterError":
         """Add context information to the exception"""
         self.context[key] = value
         return self
@@ -39,8 +39,10 @@ class EOLTesterError(Exception):
 
 # === Validation Exceptions ===
 
+
 class ValidationError(EOLTesterError):
     """Base exception for all validation errors"""
+
     pass
 
 
@@ -52,7 +54,12 @@ class ConfigurationValidationError(ValidationError):
     and provides structured access to the validation errors.
     """
 
-    def __init__(self, errors: List[str], config_type: str = "unknown", config_data: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        errors: List[str],
+        config_type: str = "unknown",
+        config_data: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize configuration validation error
 
@@ -66,11 +73,10 @@ class ConfigurationValidationError(ValidationError):
         self.config_data = config_data
 
         error_summary = f"Configuration validation failed for {config_type}: {len(errors)} errors"
-        super().__init__(error_summary, {
-            "errors": errors,
-            "config_type": config_type,
-            "error_count": len(errors)
-        })
+        super().__init__(
+            error_summary,
+            {"errors": errors, "config_type": config_type, "error_count": len(errors)},
+        )
 
     def get_error_summary(self) -> str:
         """Get a formatted summary of all validation errors"""
@@ -101,12 +107,17 @@ class MultiConfigurationValidationError(ValidationError):
         total_errors = sum(len(errors) for errors in errors_by_type.values())
         config_types = ", ".join(errors_by_type.keys())
 
-        message = f"Multiple configuration validation failed: {total_errors} errors across {config_types}"
-        super().__init__(message, {
-            "errors_by_type": errors_by_type,
-            "total_errors": total_errors,
-            "failed_config_types": list(errors_by_type.keys())
-        })
+        message = (
+            f"Multiple configuration validation failed: {total_errors} errors across {config_types}"
+        )
+        super().__init__(
+            message,
+            {
+                "errors_by_type": errors_by_type,
+                "total_errors": total_errors,
+                "failed_config_types": list(errors_by_type.keys()),
+            },
+        )
 
     def get_errors_for_type(self, config_type: str) -> List[str]:
         """Get validation errors for a specific configuration type"""
@@ -118,6 +129,7 @@ class MultiConfigurationValidationError(ValidationError):
 
 
 # === Test Evaluation Exceptions ===
+
 
 class TestEvaluationError(EOLTesterError):
     """
@@ -140,12 +152,15 @@ class TestEvaluationError(EOLTesterError):
         self.passed_points = max(0, total_points - len(failed_points))
 
         message = f"Test evaluation failed: {len(failed_points)} of {total_points} points failed"
-        super().__init__(message, {
-            "failed_points": failed_points,
-            "failed_count": len(failed_points),
-            "total_points": total_points,
-            "passed_count": self.passed_points
-        })
+        super().__init__(
+            message,
+            {
+                "failed_points": failed_points,
+                "failed_count": len(failed_points),
+                "total_points": total_points,
+                "passed_count": self.passed_points,
+            },
+        )
 
     def get_failure_summary(self) -> str:
         """Get a summary of test failures"""
@@ -154,7 +169,7 @@ class TestEvaluationError(EOLTesterError):
 
         failure_types = {}
         for point in self.failed_points:
-            error_type = point.get('error', 'unknown_failure')
+            error_type = point.get("error", "unknown_failure")
             failure_types[error_type] = failure_types.get(error_type, 0) + 1
 
         summary_parts = [f"{count} {error_type}" for error_type, count in failure_types.items()]
@@ -162,13 +177,15 @@ class TestEvaluationError(EOLTesterError):
 
     def get_failed_measurements(self) -> List[str]:
         """Get list of failed measurement keys"""
-        return [point.get('key', 'unknown') for point in self.failed_points if 'key' in point]
+        return [point.get("key", "unknown") for point in self.failed_points if "key" in point]
 
 
 # === Hardware Exceptions ===
 
+
 class HardwareError(EOLTesterError):
     """Base exception for all hardware-related errors"""
+
     pass
 
 
@@ -185,11 +202,7 @@ class HardwareConnectionError(HardwareError):
             message += f" on port {port}"
         message += f": {reason}"
 
-        super().__init__(message, {
-            "device": device,
-            "reason": reason,
-            "port": port
-        })
+        super().__init__(message, {"device": device, "reason": reason, "port": port})
 
 
 class HardwareOperationError(HardwareError):
@@ -201,17 +214,15 @@ class HardwareOperationError(HardwareError):
         self.reason = reason
 
         message = f"Hardware operation failed on {device}.{operation}: {reason}"
-        super().__init__(message, {
-            "device": device,
-            "operation": operation,
-            "reason": reason
-        })
+        super().__init__(message, {"device": device, "operation": operation, "reason": reason})
 
 
 # === Repository Exceptions ===
 
+
 class RepositoryError(EOLTesterError):
     """Base exception for all repository-related errors"""
+
     pass
 
 
@@ -226,10 +237,9 @@ class ConfigurationNotFoundError(RepositoryError):
         if available_profiles:
             message += f". Available profiles: {', '.join(available_profiles)}"
 
-        super().__init__(message, {
-            "profile_name": profile_name,
-            "available_profiles": self.available_profiles
-        })
+        super().__init__(
+            message, {"profile_name": profile_name, "available_profiles": self.available_profiles}
+        )
 
 
 class RepositoryAccessError(RepositoryError):
@@ -244,17 +254,17 @@ class RepositoryAccessError(RepositoryError):
         if file_path:
             message += f" (file: {file_path})"
 
-        super().__init__(message, {
-            "operation": operation,
-            "reason": reason,
-            "file_path": file_path
-        })
+        super().__init__(
+            message, {"operation": operation, "reason": reason, "file_path": file_path}
+        )
 
 
 # === Test Execution Exceptions ===
 
+
 class TestExecutionError(EOLTesterError):
     """Base exception for test execution errors"""
+
     pass
 
 
@@ -267,11 +277,9 @@ class TestSequenceError(TestExecutionError):
         self.measurements = measurements or {}
 
         message = f"Test sequence failed at step '{step}': {reason}"
-        super().__init__(message, {
-            "step": step,
-            "reason": reason,
-            "measurements_count": len(self.measurements)
-        })
+        super().__init__(
+            message, {"step": step, "reason": reason, "measurements_count": len(self.measurements)}
+        )
 
 
 class TestSetupError(TestExecutionError):
@@ -282,24 +290,28 @@ class TestSetupError(TestExecutionError):
         self.reason = reason
 
         message = f"Test setup failed for {component}: {reason}"
-        super().__init__(message, {
-            "component": component,
-            "reason": reason
-        })
+        super().__init__(message, {"component": component, "reason": reason})
 
 
 # === Utility Functions ===
 
-def create_validation_error(errors: List[str], config_type: str = "unknown") -> ConfigurationValidationError:
+
+def create_validation_error(
+    errors: List[str], config_type: str = "unknown"
+) -> ConfigurationValidationError:
     """Utility function to create a configuration validation error"""
     return ConfigurationValidationError(errors, config_type)
 
 
-def create_multi_validation_error(errors_dict: Dict[str, List[str]]) -> MultiConfigurationValidationError:
+def create_multi_validation_error(
+    errors_dict: Dict[str, List[str]],
+) -> MultiConfigurationValidationError:
     """Utility function to create a multi-configuration validation error"""
     return MultiConfigurationValidationError(errors_dict)
 
 
-def create_test_evaluation_error(failed_points: List[Dict[str, Any]], total: int = 0) -> TestEvaluationError:
+def create_test_evaluation_error(
+    failed_points: List[Dict[str, Any]], total: int = 0
+) -> TestEvaluationError:
     """Utility function to create a test evaluation error"""
     return TestEvaluationError(failed_points, total)

@@ -9,6 +9,7 @@ from enum import IntEnum
 
 class LMAErrorCode(IntEnum):
     """LMA specific error codes"""
+
     # Communication Errors
     COMM_TIMEOUT = 1001
     COMM_FRAME_ERROR = 1002
@@ -64,20 +65,25 @@ class LMAError(Exception):
 
 class LMACommunicationError(LMAError):
     """LMA communication errors"""
+
     pass
 
 
 class LMAHardwareError(LMAError):
     """LMA hardware errors"""
+
     pass
 
 
 class LMAOperationError(LMAError):
     """LMA operation errors"""
+
     pass
 
 
-def validate_temperature(temperature: float, min_temp: float = -40.0, max_temp: float = 150.0) -> None:
+def validate_temperature(
+    temperature: float, min_temp: float = -40.0, max_temp: float = 150.0
+) -> None:
     """
     Validate temperature range
 
@@ -92,7 +98,7 @@ def validate_temperature(temperature: float, min_temp: float = -40.0, max_temp: 
     if not (min_temp <= temperature <= max_temp):
         raise LMAOperationError(
             f"Temperature {temperature}°C is out of range [{min_temp}, {max_temp}]",
-            error_code=int(LMAErrorCode.OPERATION_TEMPERATURE_OUT_OF_RANGE)
+            error_code=int(LMAErrorCode.OPERATION_TEMPERATURE_OUT_OF_RANGE),
         )
 
 
@@ -111,5 +117,5 @@ def validate_fan_speed(fan_speed: int, min_speed: int = 1, max_speed: int = 10) 
     if not (min_speed <= fan_speed <= max_speed):
         raise LMAOperationError(
             f"Fan speed {fan_speed} is out of range [{min_speed}, {max_speed}]",
-            error_code=int(LMAErrorCode.OPERATION_FAN_SPEED_OUT_OF_RANGE)
+            error_code=int(LMAErrorCode.OPERATION_FAN_SPEED_OUT_OF_RANGE),
         )

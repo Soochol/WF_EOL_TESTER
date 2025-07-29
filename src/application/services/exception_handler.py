@@ -273,7 +273,9 @@ class ExceptionHandler:
         # Check for exact type match
         if exception_type in self._classification_rules:
             classification = self._classification_rules[exception_type]
-            logger.debug(f"Classified exception {exception_type.__name__} as {classification.category.value}")
+            logger.debug(
+                f"Classified exception {exception_type.__name__} as {classification.category.value}"
+            )
             return classification
 
         # Check for inheritance match
@@ -285,7 +287,9 @@ class ExceptionHandler:
                 return classification
 
         # Default classification for unknown exceptions
-        logger.warning(f"Unknown exception type {exception_type.__name__}, using default classification")
+        logger.warning(
+            f"Unknown exception type {exception_type.__name__}, using default classification"
+        )
         return ExceptionClassification(
             category=ExceptionCategory.UNKNOWN,
             severity=ExceptionSeverity.MEDIUM,
@@ -299,7 +303,9 @@ class ExceptionHandler:
             user_message="An unexpected error occurred. Please contact support.",
         )
 
-    def should_retry(self, exception: Exception, operation_name: str, attempt_count: int = 0) -> bool:
+    def should_retry(
+        self, exception: Exception, operation_name: str, attempt_count: int = 0
+    ) -> bool:
         """
         Determine if an operation should be retried after an exception
 
@@ -318,7 +324,9 @@ class ExceptionHandler:
             return False
 
         if attempt_count >= classification.max_retry_attempts:
-            logger.debug(f"Max retry attempts ({classification.max_retry_attempts}) exceeded for {operation_name}")
+            logger.debug(
+                f"Max retry attempts ({classification.max_retry_attempts}) exceeded for {operation_name}"
+            )
             return False
 
         # Update retry context
@@ -335,10 +343,14 @@ class ExceptionHandler:
             context.attempt_count = attempt_count
             context.last_exception = exception
 
-        logger.info(f"Retry allowed for {operation_name}: attempt {attempt_count + 1}/{classification.max_retry_attempts}")
+        logger.info(
+            f"Retry allowed for {operation_name}: attempt {attempt_count + 1}/{classification.max_retry_attempts}"
+        )
         return True
 
-    async def get_retry_delay(self, exception: Exception, operation_name: str, attempt_count: int) -> float:
+    async def get_retry_delay(
+        self, exception: Exception, operation_name: str, attempt_count: int
+    ) -> float:
         """
         Calculate retry delay for an operation
 
@@ -380,15 +392,22 @@ class ExceptionHandler:
         if classification.recovery_strategy:
             strategy = self._recovery_strategies.get(classification.recovery_strategy)
             if strategy:
-                logger.debug(f"Recovery strategy '{classification.recovery_strategy}' found for {type(exception).__name__}")
+                logger.debug(
+                    f"Recovery strategy '{classification.recovery_strategy}' found for {type(exception).__name__}"
+                )
                 return strategy
             else:
-                logger.warning(f"Recovery strategy '{classification.recovery_strategy}' not implemented")
+                logger.warning(
+                    f"Recovery strategy '{classification.recovery_strategy}' not implemented"
+                )
 
         return None
 
     async def handle_exception(
-        self, exception: Exception, operation_name: str = "unknown_operation", context: Dict[str, Any] = None
+        self,
+        exception: Exception,
+        operation_name: str = "unknown_operation",
+        context: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """
         Handle an exception with full classification and recovery
@@ -404,7 +423,11 @@ class ExceptionHandler:
         classification = self.classify_exception(exception)
 
         # Log the exception
-        log_level = "error" if classification.severity in [ExceptionSeverity.HIGH, ExceptionSeverity.CRITICAL] else "warning"
+        log_level = (
+            "error"
+            if classification.severity in [ExceptionSeverity.HIGH, ExceptionSeverity.CRITICAL]
+            else "warning"
+        )
         logger.log(log_level, f"Handling exception in {operation_name}: {exception}")
 
         # Prepare handling result
@@ -470,14 +493,18 @@ class ExceptionHandler:
 
     # Recovery strategy implementations
 
-    async def _reconnect_hardware_strategy(self, exception: Exception, context: Dict[str, Any]) -> None:
+    async def _reconnect_hardware_strategy(
+        self, exception: Exception, context: Dict[str, Any]
+    ) -> None:
         """Recovery strategy for hardware connection issues"""
         logger.info("Executing reconnect hardware recovery strategy")
         # Implementation would reconnect to hardware
         # This is a placeholder for actual hardware reconnection logic
         await asyncio.sleep(1.0)  # Simulate reconnection time
 
-    async def _retry_with_longer_timeout_strategy(self, exception: Exception, context: Dict[str, Any]) -> None:
+    async def _retry_with_longer_timeout_strategy(
+        self, exception: Exception, context: Dict[str, Any]
+    ) -> None:
         """Recovery strategy for timeout issues with extended timeout"""
         logger.info("Executing retry with longer timeout recovery strategy")
         # Implementation would retry operation with longer timeout
@@ -495,13 +522,17 @@ class ExceptionHandler:
         # Implementation would safely shut down all systems
         await asyncio.sleep(2.0)  # Simulate safe shutdown time
 
-    async def _retry_with_extended_timeout_strategy(self, exception: Exception, context: Dict[str, Any]) -> None:
+    async def _retry_with_extended_timeout_strategy(
+        self, exception: Exception, context: Dict[str, Any]
+    ) -> None:
         """Recovery strategy for test timeouts with extended timeout"""
         logger.info("Executing retry with extended timeout recovery strategy")
         # Implementation would retry test with extended timeout
         await asyncio.sleep(1.0)  # Simulate strategy execution time
 
-    async def _recalibrate_and_retry_strategy(self, exception: Exception, context: Dict[str, Any]) -> None:
+    async def _recalibrate_and_retry_strategy(
+        self, exception: Exception, context: Dict[str, Any]
+    ) -> None:
         """Recovery strategy for measurement validation issues"""
         logger.info("Executing recalibrate and retry recovery strategy")
         # Implementation would recalibrate measurement devices and retry

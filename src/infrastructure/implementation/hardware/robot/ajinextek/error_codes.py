@@ -56,7 +56,6 @@ AXT_RT_DIO_INVALID_VALUE = 3105  # 유효하지않는 값 설정
 ERROR_MESSAGES = {
     # General
     AXT_RT_SUCCESS: "Function executed successfully",
-
     # Library Errors
     AXT_RT_OPEN_ERROR: "Library is not open",
     AXT_RT_OPEN_ALREADY: "Library is already open and in use",
@@ -64,7 +63,6 @@ ERROR_MESSAGES = {
     AXT_RT_NOT_OPEN: "Library initialization failed",
     AXT_RT_NOT_SUPPORT_VERSION: "Unsupported hardware",
     AXT_RT_BAD_PARAMETER: "Invalid parameter provided by user",
-
     # Hardware Validation
     AXT_RT_INVALID_HARDWARE: "Invalid board",
     AXT_RT_INVALID_BOARD_NO: "Invalid board number",
@@ -73,14 +71,12 @@ ERROR_MESSAGES = {
     AXT_RT_INVALID_VARIABLE: "Invalid variable",
     AXT_RT_INVALID_MODULE_NO: "Invalid module number",
     AXT_RT_INVALID_NO: "Invalid number",
-
     # DIO Errors
     AXT_RT_DIO_OPEN_ERROR: "DIO module open failed",
     AXT_RT_DIO_NOT_MODULE: "DIO module not found",
     AXT_RT_DIO_INVALID_MODULE_NO: "Invalid DIO module number",
     AXT_RT_DIO_INVALID_OFFSET_NO: "Invalid DIO offset number",
     AXT_RT_DIO_INVALID_VALUE: "Invalid value setting",
-
     # Motion Errors
     AXT_RT_MOTION_OPEN_ERROR: "Motion library open failed",
     AXT_RT_MOTION_NOT_MODULE: "No motion module installed in system",

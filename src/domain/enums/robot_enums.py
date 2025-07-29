@@ -9,6 +9,7 @@ from enum import Enum
 
 class MotionStatus(Enum):
     """모션 상태"""
+
     IDLE = "idle"
     MOVING = "moving"
     ERROR = "error"

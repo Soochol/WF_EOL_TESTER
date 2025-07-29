@@ -15,15 +15,28 @@ from domain.value_objects.hardware_configuration import LoadCellConfig
 
 from driver.serial.serial import SerialManager, SerialError
 from infrastructure.implementation.hardware.loadcell.bs205.constants import (
-    DEFAULT_BAUDRATE, DEFAULT_TIMEOUT, DEFAULT_INDICATOR_ID,
-    CMD_READ_WEIGHT, CMD_ZERO, CMD_IDENTITY,
-    KG_TO_NEWTON, ZERO_OPERATION_DELAY, DEVICE_ID_PATTERN,
-    COMMAND_DESCRIPTIONS, STATUS_MESSAGES
+    DEFAULT_BAUDRATE,
+    DEFAULT_TIMEOUT,
+    DEFAULT_INDICATOR_ID,
+    CMD_READ_WEIGHT,
+    CMD_ZERO,
+    CMD_IDENTITY,
+    KG_TO_NEWTON,
+    ZERO_OPERATION_DELAY,
+    DEVICE_ID_PATTERN,
+    COMMAND_DESCRIPTIONS,
+    STATUS_MESSAGES,
 )
 from infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
-    BS205Error, BS205CommunicationError, BS205HardwareError, BS205OperationError,
-    BS205ErrorCode, parse_weight_response, convert_weight_to_force,
-    validate_weight_range, validate_sample_parameters
+    BS205Error,
+    BS205CommunicationError,
+    BS205HardwareError,
+    BS205OperationError,
+    BS205ErrorCode,
+    parse_weight_response,
+    convert_weight_to_force,
+    validate_weight_range,
+    validate_sample_parameters,
 )
 
 
@@ -35,7 +48,7 @@ class BS205LoadCell(LoadCellService):
         port: str,
         baudrate: int = DEFAULT_BAUDRATE,
         timeout: float = DEFAULT_TIMEOUT,
-        indicator_id: int = DEFAULT_INDICATOR_ID
+        indicator_id: int = DEFAULT_INDICATOR_ID,
     ):
         """
         초기화
@@ -71,12 +84,12 @@ class BS205LoadCell(LoadCellService):
         self._indicator_id = loadcell_config.indicator_id
 
         try:
-            logger.info(f"Connecting to BS205 LoadCell on {self._port} at {self._baudrate} baud (ID: {self._indicator_id})")
+            logger.info(
+                f"Connecting to BS205 LoadCell on {self._port} at {self._baudrate} baud (ID: {self._indicator_id})"
+            )
 
             self._connection = await SerialManager.create_connection(
-                port=self._port,
-                baudrate=self._baudrate,
-                timeout=self._timeout
+                port=self._port, baudrate=self._baudrate, timeout=self._timeout
             )
 
             # 연결 테스트 명령 전송
@@ -94,8 +107,7 @@ class BS205LoadCell(LoadCellService):
             logger.error(error_msg)
             self._is_connected = False
             raise BS205CommunicationError(
-                error_msg,
-                error_code=int(BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED)
+                error_msg, error_code=int(BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED)
             )
 
     async def disconnect(self) -> bool:
@@ -142,7 +154,7 @@ class BS205LoadCell(LoadCellService):
         if not await self.is_connected():
             raise BS205HardwareError(
                 "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED)
+                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
             )
 
         try:
@@ -151,8 +163,7 @@ class BS205LoadCell(LoadCellService):
 
             if not response:
                 raise BS205CommunicationError(
-                    "No response from BS205 LoadCell",
-                    error_code=int(BS205ErrorCode.COMM_TIMEOUT)
+                    "No response from BS205 LoadCell", error_code=int(BS205ErrorCode.COMM_TIMEOUT)
                 )
 
             # 응답 파싱 및 검증
@@ -171,13 +182,12 @@ class BS205LoadCell(LoadCellService):
             raise  # Re-raise BS205 specific errors
         except SerialError as e:
             raise BS205CommunicationError(
-                f"Communication error: {e}",
-                error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR)
+                f"Communication error: {e}", error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR)
             )
         except Exception as e:
             raise BS205OperationError(
                 f"Unexpected error reading force: {e}",
-                error_code=int(BS205ErrorCode.OPERATION_TIMEOUT)
+                error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
             )
 
     async def zero(self) -> bool:
@@ -194,7 +204,7 @@ class BS205LoadCell(LoadCellService):
         if not await self.is_connected():
             raise BS205HardwareError(
                 "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED)
+                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
             )
 
         try:
@@ -218,7 +228,7 @@ class BS205LoadCell(LoadCellService):
             logger.error(STATUS_MESSAGES["zero_failed"])
             raise BS205OperationError(
                 f"Failed to zero BS205 LoadCell: {e}",
-                error_code=int(BS205ErrorCode.OPERATION_ZERO_FAILED)
+                error_code=int(BS205ErrorCode.OPERATION_ZERO_FAILED),
             )
 
     async def get_status(self) -> Dict[str, Any]:
@@ -229,22 +239,22 @@ class BS205LoadCell(LoadCellService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': await self.is_connected(),
-            'port': self._port,
-            'baudrate': self._baudrate,
-            'indicator_id': self._indicator_id,
-            'hardware_type': 'BS205'
+            "connected": await self.is_connected(),
+            "port": self._port,
+            "baudrate": self._baudrate,
+            "indicator_id": self._indicator_id,
+            "hardware_type": "BS205",
         }
 
         if await self.is_connected():
             try:
                 # 현재 측정값도 포함
                 force = await self.read_force()
-                status['current_force'] = force
-                status['last_error'] = None
+                status["current_force"] = force
+                status["last_error"] = None
             except Exception as e:
-                status['current_force'] = None
-                status['last_error'] = str(e)
+                status["current_force"] = None
+                status["last_error"] = str(e)
 
         return status
 
@@ -263,13 +273,12 @@ class BS205LoadCell(LoadCellService):
         """
         if not self._connection:
             raise BS205CommunicationError(
-                "No connection available",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED)
+                "No connection available", error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED)
             )
 
         try:
             # 새로운 간단한 API 사용
-            response = await self._connection.send_command(command, '\r', self._timeout)
+            response = await self._connection.send_command(command, "\r", self._timeout)
 
             logger.debug(f"BS205 command: {command} -> response: {response}")
             return response
@@ -277,8 +286,7 @@ class BS205LoadCell(LoadCellService):
         except Exception as e:
             logger.error(f"BS205 command '{command}' failed: {e}")
             raise BS205CommunicationError(
-                f"Command '{command}' failed: {e}",
-                error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR)
+                f"Command '{command}' failed: {e}", error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR)
             )
 
     async def read_multiple_samples(self, count: int, interval_ms: int = 100) -> list[float]:
@@ -299,7 +307,7 @@ class BS205LoadCell(LoadCellService):
         if not await self.is_connected():
             raise BS205HardwareError(
                 "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED)
+                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
             )
 
         # 샘플링 파라미터 검증

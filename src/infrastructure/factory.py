@@ -29,7 +29,6 @@ from infrastructure.implementation.hardware.robot.mock import MockRobot
 from infrastructure.implementation.hardware.robot.ajinextek import AjinextekRobot
 
 
-
 class ServiceFactory:
     """하드웨어 서비스 팩토리"""
 
@@ -47,25 +46,21 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get('type', 'bs205').lower()
+        hw_type = config.get("type", "bs205").lower()
 
-        if hw_type == 'mock':
+        if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
             logger.info("Creating Mock LoadCell service (base: 10.0N)")
-            return MockLoadCell(
-                mock_values=[],
-                base_force=10.0,
-                noise_level=0.1
-            )
+            return MockLoadCell(mock_values=[], base_force=10.0, noise_level=0.1)
 
-        elif hw_type == 'bs205':
+        elif hw_type == "bs205":
             # BS205 실제 하드웨어
             logger.info(f"Creating BS205 LoadCell service on {config.get('port', 'COM3')}")
             return BS205LoadCell(
-                port=config.get('port', 'COM3'),
-                baudrate=config.get('baudrate', 9600),
-                timeout=config.get('timeout', 1.0),
-                indicator_id=config.get('indicator_id', 1)
+                port=config.get("port", "COM3"),
+                baudrate=config.get("baudrate", 9600),
+                timeout=config.get("timeout", 1.0),
+                indicator_id=config.get("indicator_id", 1),
             )
 
         else:
@@ -85,26 +80,25 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get('type', 'oda').lower()
+        hw_type = config.get("type", "oda").lower()
 
-        if hw_type == 'mock':
+        if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
             logger.info("Creating Mock Power service (30.0V/5.0A)")
             return MockPower(
-                max_voltage=30.0,
-                max_current=5.0,
-                voltage_accuracy=0.01,
-                current_accuracy=0.001
+                max_voltage=30.0, max_current=5.0, voltage_accuracy=0.01, current_accuracy=0.001
             )
 
-        elif hw_type == 'oda':
+        elif hw_type == "oda":
             # ODA 실제 하드웨어
-            logger.info(f"Creating ODA Power service at {config.get('host', '192.168.1.100')}:{config.get('port', 8080)}")
+            logger.info(
+                f"Creating ODA Power service at {config.get('host', '192.168.1.100')}:{config.get('port', 8080)}"
+            )
             return OdaPower(
-                host=config.get('host', '192.168.1.100'),
-                port=config.get('port', 8080),
-                timeout=config.get('timeout', 5.0),
-                channel=config.get('channel', 1)
+                host=config.get("host", "192.168.1.100"),
+                port=config.get("port", 8080),
+                timeout=config.get("timeout", 5.0),
+                channel=config.get("channel", 1),
             )
 
         else:
@@ -124,24 +118,20 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get('type', 'lma').lower()
+        hw_type = config.get("type", "lma").lower()
 
-        if hw_type == 'mock':
+        if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
             logger.info("Creating Mock MCU service (initial: 25.0°C)")
-            return MockMCU(
-                initial_temperature=25.0,
-                temperature_drift_rate=0.1,
-                response_delay=0.1
-            )
+            return MockMCU(initial_temperature=25.0, temperature_drift_rate=0.1, response_delay=0.1)
 
-        elif hw_type == 'lma':
+        elif hw_type == "lma":
             # LMA 실제 하드웨어
             logger.info(f"Creating LMA MCU service on {config.get('port', 'COM4')}")
             return LMAMCU(
-                port=config.get('port', 'COM4'),
-                baudrate=config.get('baudrate', 115200),
-                timeout=config.get('timeout', 2.0)
+                port=config.get("port", "COM4"),
+                baudrate=config.get("baudrate", 115200),
+                timeout=config.get("timeout", 2.0),
             )
 
         else:
@@ -161,25 +151,24 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get('type', 'ajinextek').lower()
+        hw_type = config.get("type", "ajinextek").lower()
 
-        if hw_type == 'mock':
+        if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
             logger.info("Creating Mock Digital Input service (32 pins)")
             return MockInput(
-                total_pins=32,
-                simulate_noise=False,
-                noise_probability=0.01,
-                response_delay_ms=5.0
+                total_pins=32, simulate_noise=False, noise_probability=0.01, response_delay_ms=5.0
             )
 
-        elif hw_type == 'ajinextek':
+        elif hw_type == "ajinextek":
             # Ajinextek DIO 실제 하드웨어
-            logger.info(f"Creating Ajinextek Digital Input service on board {config.get('board_no', 0)}")
+            logger.info(
+                f"Creating Ajinextek Digital Input service on board {config.get('board_no', 0)}"
+            )
             return AjinextekInput(
-                board_no=config.get('board_no', 0),
-                input_count=config.get('input_count', 8),
-                debounce_time=config.get('debounce_time', 0.01)
+                board_no=config.get("board_no", 0),
+                input_count=config.get("input_count", 8),
+                debounce_time=config.get("debounce_time", 0.01),
             )
 
         else:
@@ -199,28 +188,26 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get('type', 'ajinextek').lower()
+        hw_type = config.get("type", "ajinextek").lower()
 
-        if hw_type == 'mock':
+        if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
             logger.info("Creating Mock Robot service (6 axes)")
             return MockRobot(
-                axis_count=6,
-                max_position=1000.0,
-                default_velocity=100.0,
-                response_delay=0.1
+                axis_count=6, max_position=1000.0, default_velocity=100.0, response_delay=0.1
             )
 
-        elif hw_type == 'ajinextek':
+        elif hw_type == "ajinextek":
             # AJINEXTEK 실제 하드웨어
-            logger.info(f"Creating AJINEXTEK Robot service (IRQ: {config.get('irq_no', 7)}, {config.get('axis_count', 6)} axes)")
+            logger.info(
+                f"Creating AJINEXTEK Robot service (IRQ: {config.get('irq_no', 7)}, {config.get('axis_count', 6)} axes)"
+            )
             return AjinextekRobot(
                 # Hardware model
-                model=config.get('model', 'AJINEXTEK'),
-
+                model=config.get("model", "AJINEXTEK"),
                 # Connection parameters
-                irq_no=config.get('irq_no', 7),
-                axis_count=config.get('axis_count', 6)
+                irq_no=config.get("irq_no", 7),
+                axis_count=config.get("axis_count", 6),
             )
 
         else:

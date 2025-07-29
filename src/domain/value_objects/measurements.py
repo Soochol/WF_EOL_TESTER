@@ -19,7 +19,9 @@ class BaseMeasurement:
     def __init__(self, value: Union[int, float], unit: MeasurementUnit):
         """Initialize measurement with basic validation"""
         if not isinstance(value, (int, float)):
-            raise ValidationException("measurement_value", value, "Measurement value must be numeric")
+            raise ValidationException(
+                "measurement_value", value, "Measurement value must be numeric"
+            )
 
         if not isinstance(unit, MeasurementUnit):
             raise ValidationException("measurement_unit", unit, "Unit must be MeasurementUnit enum")
@@ -46,35 +48,40 @@ class BaseMeasurement:
     def __eq__(self, other) -> bool:
         if not isinstance(other, self.__class__):
             return False
-        return (abs(self._value - other._value) < 1e-9 and
-                self._unit == other._unit)
+        return abs(self._value - other._value) < 1e-9 and self._unit == other._unit
 
 
 class ForceValue(BaseMeasurement):
     """Force measurement value object"""
 
     @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.NEWTON) -> 'ForceValue':
+    def from_raw_data(
+        cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.NEWTON
+    ) -> "ForceValue":
         """Create ForceValue from raw controller data"""
         return cls(raw_value, unit)
 
 
 class VoltageValue(BaseMeasurement):
     """Voltage measurement value object"""
+
     pass
 
 
 class CurrentValue(BaseMeasurement):
     """Current measurement value object"""
+
     pass
 
 
 class ResistanceValue(BaseMeasurement):
     """Resistance measurement value object"""
+
     pass
 
 
 # === Test Measurement Collections ===
+
 
 @dataclass(frozen=True)
 class MeasurementReading:
@@ -84,11 +91,14 @@ class MeasurementReading:
     Represents a single measurement reading in a test sequence.
     Uses ForceValue for proper validation and unit handling.
     """
+
     force_value: ForceValue
     timestamp: Optional[datetime] = None
 
     @classmethod
-    def from_raw_force(cls, force: float, timestamp: Optional[datetime] = None) -> "MeasurementReading":
+    def from_raw_force(
+        cls, force: float, timestamp: Optional[datetime] = None
+    ) -> "MeasurementReading":
         """Create measurement reading from raw force value"""
         force_value = ForceValue.from_raw_data(force)
         return cls(force_value=force_value, timestamp=timestamp)
@@ -113,6 +123,7 @@ class PositionMeasurements:
     Contains measurement readings for multiple positions at a specific temperature.
     Provides convenient access methods and position-based operations.
     """
+
     _readings: Dict[float, MeasurementReading]
 
     def __post_init__(self):
@@ -142,17 +153,13 @@ class PositionMeasurements:
         """Get number of positions measured"""
         return len(self._readings)
 
-
     def has_position(self, position: float) -> bool:
         """Check if position was measured"""
         return position in self._readings
 
     def to_dict(self) -> Dict[float, Dict[str, float]]:
         """Convert to dictionary format for serialization"""
-        return {
-            position: {"force": reading.force}
-            for position, reading in self._readings.items()
-        }
+        return {position: {"force": reading.force} for position, reading in self._readings.items()}
 
     @classmethod
     def from_dict(cls, data: Dict[float, Dict[str, float]]) -> "PositionMeasurements":
@@ -177,6 +184,7 @@ class TestMeasurements:
     Contains the complete measurement matrix for an EOL test.
     Provides high-level operations for accessing and analyzing measurement data.
     """
+
     _measurements: Dict[float, PositionMeasurements]
 
     def __post_init__(self):
@@ -218,7 +226,10 @@ class TestMeasurements:
 
     def get_total_measurement_count(self) -> int:
         """Get total number of individual measurements across all temperatures and positions"""
-        return sum(pos_measurements.get_position_count() for pos_measurements in self._measurements.values())
+        return sum(
+            pos_measurements.get_position_count()
+            for pos_measurements in self._measurements.values()
+        )
 
     def get_measurement_matrix(self) -> Dict[Tuple[float, float], float]:
         """
@@ -235,7 +246,6 @@ class TestMeasurements:
                     result[(temp, pos)] = force
         return result
 
-
     def to_legacy_dict(self) -> Dict[float, Dict[float, Dict[str, float]]]:
         """
         Convert to legacy nested dict format for backward compatibility
@@ -249,7 +259,9 @@ class TestMeasurements:
         return result
 
     @classmethod
-    def from_legacy_dict(cls, data: Dict[float, Dict[float, Dict[str, float]]]) -> "TestMeasurements":
+    def from_legacy_dict(
+        cls, data: Dict[float, Dict[float, Dict[str, float]]]
+    ) -> "TestMeasurements":
         """
         Create TestMeasurements from legacy nested dict format
 
@@ -269,7 +281,7 @@ class TestMeasurements:
         return {
             "measurements": self.to_legacy_dict(),
             "temperature_count": self.get_temperature_count(),
-            "total_measurement_count": self.get_total_measurement_count()
+            "total_measurement_count": self.get_total_measurement_count(),
         }
 
     def __str__(self) -> str:

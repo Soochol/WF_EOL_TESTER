@@ -105,9 +105,13 @@ class ConfigurationValidator:
 
         try:
             # Check robot stroke compatibility
-            max_test_stroke = max(test_config.stroke_positions) if test_config.stroke_positions else 0
+            max_test_stroke = (
+                max(test_config.stroke_positions) if test_config.stroke_positions else 0
+            )
             if max_test_stroke > test_config.max_stroke:
-                errors.append(f"Test stroke positions exceed max_stroke limit: {max_test_stroke} > {test_config.max_stroke}")
+                errors.append(
+                    f"Test stroke positions exceed max_stroke limit: {max_test_stroke} > {test_config.max_stroke}"
+                )
 
             # Check temperature compatibility
             max_test_temp = max(test_config.temperature_list) if test_config.temperature_list else 0
@@ -119,7 +123,9 @@ class ConfigurationValidator:
             # Check safety limits compatibility - removed max_temperature check as it's no longer in TestConfiguration
 
             if errors:
-                logger.warning(f"Configuration compatibility validation failed with {len(errors)} errors")
+                logger.warning(
+                    f"Configuration compatibility validation failed with {len(errors)} errors"
+                )
                 raise create_validation_error(errors, "compatibility")
             else:
                 logger.debug("Configuration compatibility validation passed")

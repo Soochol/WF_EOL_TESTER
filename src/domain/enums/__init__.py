@@ -12,12 +12,12 @@ from domain.enums.digital_input_enums import PinMode, LogicLevel
 from domain.enums.robot_enums import MotionStatus
 
 __all__ = [
-    'HardwareStatus',
-    'MeasurementUnit',
-    'TestStatus',
-    'TestMode',
-    'MCUStatus',
-    'PinMode',
-    'LogicLevel',
-    'MotionStatus'
+    "HardwareStatus",
+    "MeasurementUnit",
+    "TestStatus",
+    "TestMode",
+    "MCUStatus",
+    "PinMode",
+    "LogicLevel",
+    "MotionStatus",
 ]

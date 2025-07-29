@@ -17,10 +17,7 @@ class TestCommand(Command):
     """Command for EOL test operations"""
 
     def __init__(self, use_case: Optional[EOLForceTestUseCase] = None):
-        super().__init__(
-            name="test",
-            description="Execute EOL tests"
-        )
+        super().__init__(name="test", description="Execute EOL tests")
         self._use_case = use_case
 
     def set_use_case(self, use_case: EOLForceTestUseCase) -> None:
@@ -61,16 +58,16 @@ class TestCommand(Command):
             "": "Start interactive EOL test",
             "quick": "Run quick test with default settings",
             "profile <name>": "Run test with specific profile",
-            "help": "Show test command help"
+            "help": "Show test command help",
         }
 
     async def _interactive_test(self) -> CommandResult:
         """Run interactive test mode"""
         try:
             # Get DUT information interactively
-            print("\\n" + "="*60)
+            print("\\n" + "=" * 60)
             print("EOL Test - Interactive Mode")
-            print("="*60)
+            print("=" * 60)
 
             dut_id = input("Enter DUT ID: ").strip()
             if not dut_id:
@@ -93,13 +90,12 @@ class TestCommand(Command):
                 dut_id=dut_id,
                 model_number=model_number,
                 serial_number=serial_number,
-                manufacturer="WF"
+                manufacturer="WF",
             )
 
             # Create and execute test command
             test_command = EOLForceTestCommand(
-                dut_info=dut_info,
-                operator_id=OperatorId(operator_id)
+                dut_info=dut_info, operator_id=OperatorId(operator_id)
             )
 
             print(f"\\nStarting EOL test for DUT: {dut_id}")
@@ -133,18 +129,18 @@ Total Measurements: {result.measurement_count}
         try:
             # Generate quick test DUT info
             import time
+
             timestamp = int(time.time())
 
             dut_info = DUTCommandInfo(
                 dut_id=f"QUICK_{timestamp}",
                 model_number="QuickTest",
                 serial_number=f"QT_{timestamp}",
-                manufacturer="WF"
+                manufacturer="WF",
             )
 
             test_command = EOLForceTestCommand(
-                dut_info=dut_info,
-                operator_id=OperatorId("QuickTest")
+                dut_info=dut_info, operator_id=OperatorId("QuickTest")
             )
 
             print(f"Running quick test for DUT: {dut_info.dut_id}")

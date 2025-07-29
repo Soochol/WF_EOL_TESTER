@@ -63,22 +63,20 @@ class TestId(BaseId):
         super()._validate_string_format(value)
 
         # Test ID format: TEST_YYYYMMDD_HHMMSS_XXX (or UUID)
-        test_id_pattern = r'^(TEST_\d{8}_\d{6}_\d{3}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'
+        test_id_pattern = r"^(TEST_\d{8}_\d{6}_\d{3}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
 
         if not re.match(test_id_pattern, value.strip()):
             raise InvalidFormatException(
-                "test_id",
-                value,
-                "TEST_YYYYMMDD_HHMMSS_XXX or UUID format"
+                "test_id", value, "TEST_YYYYMMDD_HHMMSS_XXX or UUID format"
             )
 
     @classmethod
-    def generate(cls) -> 'TestId':
+    def generate(cls) -> "TestId":
         """Generate a new random test ID"""
         return cls(str(uuid.uuid4()))
 
     @classmethod
-    def from_timestamp(cls, timestamp_suffix: str) -> 'TestId':
+    def from_timestamp(cls, timestamp_suffix: str) -> "TestId":
         """Create test ID with timestamp format"""
         # This would typically use current datetime, simplified for now
         return cls(f"TEST_{timestamp_suffix}")
@@ -93,18 +91,12 @@ class DUTId(BaseId):
         # DUT ID format: alphanumeric, hyphens, underscores allowed
         # Length: 3-50 characters
         if len(value.strip()) < 3 or len(value.strip()) > 50:
-            raise ValidationException(
-                "dut_id",
-                value,
-                "DUT ID must be between 3 and 50 characters"
-            )
+            raise ValidationException("dut_id", value, "DUT ID must be between 3 and 50 characters")
 
-        dut_id_pattern = r'^[A-Za-z0-9_-]+$'
+        dut_id_pattern = r"^[A-Za-z0-9_-]+$"
         if not re.match(dut_id_pattern, value.strip()):
             raise InvalidFormatException(
-                "dut_id",
-                value,
-                "alphanumeric characters, hyphens, and underscores only"
+                "dut_id", value, "alphanumeric characters, hyphens, and underscores only"
             )
 
 
@@ -118,17 +110,13 @@ class OperatorId(BaseId):
         # Length: 2-30 characters
         if len(value.strip()) < 2 or len(value.strip()) > 30:
             raise ValidationException(
-                "operator_id",
-                value,
-                "Operator ID must be between 2 and 30 characters"
+                "operator_id", value, "Operator ID must be between 2 and 30 characters"
             )
 
-        operator_id_pattern = r'^[A-Za-z0-9._-]+$'
+        operator_id_pattern = r"^[A-Za-z0-9._-]+$"
         if not re.match(operator_id_pattern, value.strip()):
             raise InvalidFormatException(
-                "operator_id",
-                value,
-                "alphanumeric characters, dots, hyphens, and underscores only"
+                "operator_id", value, "alphanumeric characters, dots, hyphens, and underscores only"
             )
 
 
@@ -139,22 +127,26 @@ class MeasurementId(BaseId):
         super()._validate_string_format(value)
 
         # Measurement ID can be UUID or sequential format
-        uuid_pattern = r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-        sequential_pattern = r'^M\d{10}$'  # M followed by 10 digits
+        uuid_pattern = (
+            r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        )
+        sequential_pattern = r"^M\d{10}$"  # M followed by 10 digits
 
-        if not (re.match(uuid_pattern, value.strip()) or re.match(sequential_pattern, value.strip())):
+        if not (
+            re.match(uuid_pattern, value.strip()) or re.match(sequential_pattern, value.strip())
+        ):
             raise InvalidFormatException(
                 "measurement_id",
                 value,
-                "UUID format or M followed by 10 digits (e.g., M0000000001)"
+                "UUID format or M followed by 10 digits (e.g., M0000000001)",
             )
 
     @classmethod
-    def generate(cls) -> 'MeasurementId':
+    def generate(cls) -> "MeasurementId":
         """Generate a new random measurement ID"""
         return cls(str(uuid.uuid4()))
 
     @classmethod
-    def from_sequence(cls, sequence: int) -> 'MeasurementId':
+    def from_sequence(cls, sequence: int) -> "MeasurementId":
         """Create measurement ID from sequence number"""
         return cls(f"M{sequence:010d}")

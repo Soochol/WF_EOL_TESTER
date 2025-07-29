@@ -19,13 +19,7 @@ from driver.tcp.exceptions import TCPError
 class OdaPower(PowerService):
     """ODA 전원 공급 장치 통합 서비스"""
 
-    def __init__(
-        self,
-        host: str,
-        port: int = 8080,
-        timeout: float = 5.0,
-        channel: int = 1
-    ):
+    def __init__(self, host: str, port: int = 8080, timeout: float = 5.0, channel: int = 1):
         """
         초기화
 
@@ -62,7 +56,9 @@ class OdaPower(PowerService):
         self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
 
         try:
-            logger.info(f"Connecting to ODA Power Supply at {self._host}:{self._port} (Channel: {self._channel})")
+            logger.info(
+                f"Connecting to ODA Power Supply at {self._host}:{self._port} (Channel: {self._channel})"
+            )
 
             await self._tcp_comm.connect()
 
@@ -135,8 +131,9 @@ class OdaPower(PowerService):
 
         # 값 범위 검증
         if not (0 <= voltage <= 30):
-            raise HardwareOperationError("oda_power", "set_voltage",
-                                       f"Voltage must be 0-30V, got {voltage}V")
+            raise HardwareOperationError(
+                "oda_power", "set_voltage", f"Voltage must be 0-30V, got {voltage}V"
+            )
 
         try:
             logger.info(f"Setting ODA voltage: {voltage}V")
@@ -183,7 +180,9 @@ class OdaPower(PowerService):
             return voltage
 
         except ValueError as e:
-            raise HardwareOperationError("oda_power", "get_voltage", f"Failed to parse voltage: {e}")
+            raise HardwareOperationError(
+                "oda_power", "get_voltage", f"Failed to parse voltage: {e}"
+            )
         except TCPError as e:
             raise HardwareOperationError("oda_power", "get_voltage", str(e))
         except Exception as e:
@@ -254,7 +253,6 @@ class OdaPower(PowerService):
 
         return self._output_enabled
 
-
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
@@ -263,26 +261,26 @@ class OdaPower(PowerService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': await self.is_connected(),
-            'host': self._host,
-            'port': self._port,
-            'channel': self._channel,
-            'output_enabled': self._output_enabled,
-            'hardware_type': 'ODA'
+            "connected": await self.is_connected(),
+            "host": self._host,
+            "port": self._port,
+            "channel": self._channel,
+            "output_enabled": self._output_enabled,
+            "hardware_type": "ODA",
         }
 
         if await self.is_connected():
             try:
                 # 현재 측정값도 포함
-                status['current_voltage'] = await self.get_voltage()
-                status['current_current'] = await self.get_current()
-                status['output_enabled'] = await self.is_output_enabled()
-                status['last_error'] = None
+                status["current_voltage"] = await self.get_voltage()
+                status["current_current"] = await self.get_current()
+                status["output_enabled"] = await self.is_output_enabled()
+                status["last_error"] = None
             except Exception as e:
-                status['current_voltage'] = None
-                status['current_current'] = None
-                status['output_enabled'] = None
-                status['last_error'] = str(e)
+                status["current_voltage"] = None
+                status["current_current"] = None
+                status["output_enabled"] = None
+                status["last_error"] = str(e)
 
         return status
 
@@ -307,7 +305,7 @@ class OdaPower(PowerService):
             command_with_terminator = f"{command}\n"
 
             # Use query() method for commands that expect responses
-            if command.endswith('?'):
+            if command.endswith("?"):
                 response = await self._tcp_comm.query(command_with_terminator)
             else:
                 # For commands that don't expect responses, just send
@@ -340,8 +338,9 @@ class OdaPower(PowerService):
 
         # 값 범위 검증
         if not (0 <= current <= 5):
-            raise HardwareOperationError("oda_power", "set_current_limit",
-                                       f"Current must be 0-5A, got {current}A")
+            raise HardwareOperationError(
+                "oda_power", "set_current_limit", f"Current must be 0-5A, got {current}A"
+            )
 
         try:
             logger.info(f"Setting ODA current limit: {current}A")
@@ -387,7 +386,9 @@ class OdaPower(PowerService):
             return current
 
         except ValueError as e:
-            raise HardwareOperationError("oda_power", "get_current", f"Failed to parse current: {e}")
+            raise HardwareOperationError(
+                "oda_power", "get_current", f"Failed to parse current: {e}"
+            )
         except TCPError as e:
             raise HardwareOperationError("oda_power", "get_current", str(e))
         except Exception as e:

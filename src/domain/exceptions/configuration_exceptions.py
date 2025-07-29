@@ -33,7 +33,7 @@ class InvalidConfigurationException(ConfigurationException):
         invalid_value: Any,
         validation_rule: str,
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize invalid configuration exception
@@ -48,11 +48,13 @@ class InvalidConfigurationException(ConfigurationException):
         message = f"Invalid configuration parameter '{parameter_name}': {invalid_value}. Rule: {validation_rule}"
 
         exception_details = details or {}
-        exception_details.update({
-            'parameter_name': parameter_name,
-            'invalid_value': invalid_value,
-            'validation_rule': validation_rule
-        })
+        exception_details.update(
+            {
+                "parameter_name": parameter_name,
+                "invalid_value": invalid_value,
+                "validation_rule": validation_rule,
+            }
+        )
 
         super().__init__(message, config_source, exception_details)
         self.parameter_name = parameter_name
@@ -67,7 +69,7 @@ class MissingConfigurationException(ConfigurationException):
         self,
         missing_parameters: List[str],
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize missing configuration exception
@@ -84,9 +86,7 @@ class MissingConfigurationException(ConfigurationException):
             message = f"Missing required configuration parameters: '{params_str}'"
 
         exception_details = details or {}
-        exception_details.update({
-            'missing_parameters': missing_parameters
-        })
+        exception_details.update({"missing_parameters": missing_parameters})
 
         super().__init__(message, config_source, exception_details)
         self.missing_parameters = missing_parameters
@@ -100,7 +100,7 @@ class ConfigurationConflictException(ConfigurationException):
         conflicting_parameters: Dict[str, Any],
         conflict_description: str,
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize configuration conflict exception
@@ -112,13 +112,17 @@ class ConfigurationConflictException(ConfigurationException):
             details: Additional conflict context
         """
         params_str = ", ".join(f"{k}={v}" for k, v in conflicting_parameters.items())
-        message = f"Configuration conflict: {conflict_description}. Conflicting parameters: {params_str}"
+        message = (
+            f"Configuration conflict: {conflict_description}. Conflicting parameters: {params_str}"
+        )
 
         exception_details = details or {}
-        exception_details.update({
-            'conflicting_parameters': conflicting_parameters,
-            'conflict_description': conflict_description
-        })
+        exception_details.update(
+            {
+                "conflicting_parameters": conflicting_parameters,
+                "conflict_description": conflict_description,
+            }
+        )
 
         super().__init__(message, config_source, exception_details)
         self.conflicting_parameters = conflicting_parameters
@@ -134,7 +138,7 @@ class ConfigurationVersionException(ConfigurationException):
         required_version: str,
         compatibility_issue: str,
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize configuration version exception
@@ -149,11 +153,13 @@ class ConfigurationVersionException(ConfigurationException):
         message = f"Configuration version incompatibility: {compatibility_issue}. Current: {current_version}, Required: {required_version}"
 
         exception_details = details or {}
-        exception_details.update({
-            'current_version': current_version,
-            'required_version': required_version,
-            'compatibility_issue': compatibility_issue
-        })
+        exception_details.update(
+            {
+                "current_version": current_version,
+                "required_version": required_version,
+                "compatibility_issue": compatibility_issue,
+            }
+        )
 
         super().__init__(message, config_source, exception_details)
         self.current_version = current_version
@@ -171,7 +177,7 @@ class ConfigurationRangeException(ConfigurationException):
         allowed_range: Dict[str, float],
         range_type: str = "numeric",
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize configuration range exception
@@ -184,17 +190,19 @@ class ConfigurationRangeException(ConfigurationException):
             config_source: Source of the configuration
             details: Additional range context
         """
-        min_val = allowed_range.get('min', '-∞')
-        max_val = allowed_range.get('max', '+∞')
+        min_val = allowed_range.get("min", "-∞")
+        max_val = allowed_range.get("max", "+∞")
         message = f"Configuration parameter '{parameter_name}' value {actual_value} is outside allowed {range_type} range [{min_val}, {max_val}]"
 
         exception_details = details or {}
-        exception_details.update({
-            'parameter_name': parameter_name,
-            'actual_value': actual_value,
-            'allowed_range': allowed_range,
-            'range_type': range_type
-        })
+        exception_details.update(
+            {
+                "parameter_name": parameter_name,
+                "actual_value": actual_value,
+                "allowed_range": allowed_range,
+                "range_type": range_type,
+            }
+        )
 
         super().__init__(message, config_source, exception_details)
         self.parameter_name = parameter_name
@@ -213,7 +221,7 @@ class ConfigurationFormatException(ConfigurationException):
         expected_format: str,
         format_example: str = None,
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize configuration format exception
@@ -232,12 +240,14 @@ class ConfigurationFormatException(ConfigurationException):
             message += f". Example: {format_example}"
 
         exception_details = details or {}
-        exception_details.update({
-            'parameter_name': parameter_name,
-            'invalid_format': invalid_format,
-            'expected_format': expected_format,
-            'format_example': format_example
-        })
+        exception_details.update(
+            {
+                "parameter_name": parameter_name,
+                "invalid_format": invalid_format,
+                "expected_format": expected_format,
+                "format_example": format_example,
+            }
+        )
 
         super().__init__(message, config_source, exception_details)
         self.parameter_name = parameter_name
@@ -255,7 +265,7 @@ class ConfigurationSecurityException(ConfigurationException):
         affected_parameters: List[str] = None,
         risk_level: str = "medium",
         config_source: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize configuration security exception
@@ -274,11 +284,13 @@ class ConfigurationSecurityException(ConfigurationException):
             message += f". Affected parameters: '{params_str}'"
 
         exception_details = details or {}
-        exception_details.update({
-            'security_violation': security_violation,
-            'affected_parameters': affected_parameters,
-            'risk_level': risk_level
-        })
+        exception_details.update(
+            {
+                "security_violation": security_violation,
+                "affected_parameters": affected_parameters,
+                "risk_level": risk_level,
+            }
+        )
 
         super().__init__(message, config_source, exception_details)
         self.security_violation = security_violation

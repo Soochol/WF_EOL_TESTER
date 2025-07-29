@@ -109,7 +109,7 @@ class JsonResultRepository(TestResultRepository):
         await self._load_all_tests()
 
         for test_dict in self._tests_cache.values():
-            if test_dict.get('dut', {}).get('dut_id') == dut_id:
+            if test_dict.get("dut", {}).get("dut_id") == dut_id:
                 test = await self._dict_to_test(test_dict)
                 tests.append(test)
 
@@ -135,8 +135,7 @@ class JsonResultRepository(TestResultRepository):
             file_path = self._get_test_file_path(test_id)
             if not file_path.exists() and test_id not in self._tests_cache:
                 raise ConfigurationNotFoundError(
-                    f"Test {test_id} not found",
-                    config_source=str(file_path)
+                    f"Test {test_id} not found", config_source=str(file_path)
                 )
 
             # 캐시에서 제거
@@ -155,7 +154,7 @@ class JsonResultRepository(TestResultRepository):
             logger.error(f"Failed to delete test {test_id}: {e}")
             raise RepositoryAccessError(
                 f"Failed to delete test {test_id}: {str(e)}",
-                config_source=str(self._get_test_file_path(test_id))
+                config_source=str(self._get_test_file_path(test_id)),
             )
 
     async def _test_to_dict(self, test: EOLTest) -> Dict[str, Any]:
@@ -167,7 +166,6 @@ class JsonResultRepository(TestResultRepository):
             logger.error(f"Failed to convert EOLTest to dict: {e}")
             logger.debug(f"Test: {test}")
             raise
-
 
     async def _dict_to_test(self, test_dict: Dict[str, Any]) -> EOLTest:
         """딕셔너리를 테스트 엔티티로 변환"""
@@ -188,7 +186,7 @@ class JsonResultRepository(TestResultRepository):
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
             # JSON 파일로 저장
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(test_dict, f, indent=2, ensure_ascii=False)
 
             logger.debug(f"Test {test_id} saved to file {file_path}")
@@ -205,7 +203,7 @@ class JsonResultRepository(TestResultRepository):
             return None
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 test_dict = json.load(f)
 
             logger.debug(f"Test {test_id} loaded from file {file_path}")
@@ -220,7 +218,7 @@ class JsonResultRepository(TestResultRepository):
         if not self._data_dir.exists():
             return
 
-        for file_path in self._data_dir.glob('*.json'):
+        for file_path in self._data_dir.glob("*.json"):
             test_id = file_path.stem
 
             if test_id not in self._tests_cache:
@@ -258,7 +256,7 @@ class JsonResultRepository(TestResultRepository):
         await self._load_all_tests()
 
         for test_id, test_dict in list(self._tests_cache.items()):
-            created_at = test_dict.get('created_at')
+            created_at = test_dict.get("created_at")
             if created_at:
                 try:
                     test_date = datetime.fromisoformat(created_at).timestamp()

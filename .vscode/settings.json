@@ -2,6 +2,7 @@
     "editor.formatOnSave": true,
     "editor.formatOnPaste": true,
     "python.defaultInterpreterPath": "./venv/bin/python",
+    "editor.rulers": [100],
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
@@ -17,6 +18,16 @@
         "--profile",
         "black"
     ],
+    "flake8.args": [
+        "--max-line-length=100"
+    ],
+    "pylint.args": [
+        "--max-line-length=100",
+        "--rcfile=.pylintrc"
+    ],
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.pylintEnabled": true,
     "cSpell.words": [
         "loadcell",
         "AJINEXTEK",

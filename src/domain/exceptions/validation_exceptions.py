@@ -39,13 +39,11 @@ class InvalidRangeException(ValidationException):
             max_value: Maximum acceptable value
             details: Additional context
         """
-        message = f"{field_name} value {value} is outside acceptable range [{min_value}, {max_value}]"
+        message = (
+            f"{field_name} value {value} is outside acceptable range [{min_value}, {max_value}]"
+        )
         details = details or {}
-        details.update({
-            'min_value': min_value,
-            'max_value': max_value,
-            'actual_value': value
-        })
+        details.update({"min_value": min_value, "max_value": max_value, "actual_value": value})
         super().__init__(field_name, value, message, details)
         self.min_value = min_value
         self.max_value = max_value
@@ -66,8 +64,5 @@ class InvalidFormatException(ValidationException):
         """
         message = f"{field_name} value '{value}' has invalid format. Expected: {expected_format}"
         details = details or {}
-        details.update({
-            'expected_format': expected_format,
-            'actual_value': str(value)
-        })
+        details.update({"expected_format": expected_format, "actual_value": str(value)})
         super().__init__(field_name, value, message, details)

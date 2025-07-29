@@ -55,11 +55,20 @@ class TestResultsDashboard:
         """Calculate dashboard summary statistics"""
         total_tests = len(self._test_results)
         if total_tests == 0:
-            return {"total_tests": 0, "passed": 0, "failed": 0, "in_progress": 0, "success_rate": 0.0, "last_updated": None}
+            return {
+                "total_tests": 0,
+                "passed": 0,
+                "failed": 0,
+                "in_progress": 0,
+                "success_rate": 0.0,
+                "last_updated": None,
+            }
 
         status_counts = {}
         for status in TestStatus:
-            status_counts[status.value] = sum(1 for result in self._test_results if result.status == status)
+            status_counts[status.value] = sum(
+                1 for result in self._test_results if result.status == status
+            )
 
         success_rate = (status_counts.get("COMPLETED", 0) / total_tests) * 100
 
@@ -74,7 +83,9 @@ class TestResultsDashboard:
 
     def get_recent_tests(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent test results for display"""
-        recent = sorted(self._test_results, key=lambda x: x.end_time or datetime.now(), reverse=True)[:limit]
+        recent = sorted(
+            self._test_results, key=lambda x: x.end_time or datetime.now(), reverse=True
+        )[:limit]
 
         return [
             {
@@ -131,14 +142,18 @@ class TestResultsDashboard:
 """
 
         if not recent:
-            dashboard += "║ No test results available                                                   ║\n"
+            dashboard += (
+                "║ No test results available                                                   ║\n"
+            )
         else:
             for test in recent:
                 status_icon = self._get_status_icon(test["status"])
                 duration = f"{test['duration']:.1f}s" if test["duration"] else "N/A"
                 dashboard += f"║ {status_icon} {test['dut_id'][:20]:>20} │ {test['status']:>12} │ {duration:>8} ║\n"
 
-        dashboard += "╚══════════════════════════════════════════════════════════════════════════════╝"
+        dashboard += (
+            "╚══════════════════════════════════════════════════════════════════════════════╝"
+        )
         return dashboard
 
     def _get_status_icon(self, status: str) -> str:
@@ -160,10 +175,25 @@ class MaterialDesignTokens:
     """Material Design 3.0 compatible design tokens"""
 
     COLORS = {
-        "primary": {"main": "#1976d2", "light": "#42a5f5", "dark": "#1565c0", "contrast": "#ffffff"},
-        "success": {"main": "#2e7d32", "light": "#4caf50", "dark": "#1b5e20", "contrast": "#ffffff"},
+        "primary": {
+            "main": "#1976d2",
+            "light": "#42a5f5",
+            "dark": "#1565c0",
+            "contrast": "#ffffff",
+        },
+        "success": {
+            "main": "#2e7d32",
+            "light": "#4caf50",
+            "dark": "#1b5e20",
+            "contrast": "#ffffff",
+        },
         "error": {"main": "#d32f2f", "light": "#f44336", "dark": "#c62828", "contrast": "#ffffff"},
-        "warning": {"main": "#ed6c02", "light": "#ff9800", "dark": "#e65100", "contrast": "#ffffff"},
+        "warning": {
+            "main": "#ed6c02",
+            "light": "#ff9800",
+            "dark": "#e65100",
+            "contrast": "#ffffff",
+        },
     }
 
     TYPOGRAPHY = {

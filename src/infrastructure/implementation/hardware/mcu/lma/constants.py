@@ -5,8 +5,8 @@ Constants and definitions for LMA MCU controller protocol.
 """
 
 # Protocol Frame Markers
-STX = b'\xFF\xFF'  # Start of frame
-ETX = b'\xFE\xFE'  # End of frame
+STX = b"\xff\xff"  # Start of frame
+ETX = b"\xfe\xfe"  # End of frame
 
 # Frame Structure
 FRAME_STX_SIZE = 2
@@ -85,7 +85,7 @@ STATUS_MESSAGES = {
     STATUS_OPERATING_TEMP_REACHED: "Operating temperature reached",
     STATUS_STANDBY_TEMP_REACHED: "Standby temperature reached",
     STATUS_COOLING_TEMP_REACHED: "Cooling temperature reached",
-    STATUS_LMA_INIT_COMPLETE: "LMA initialization complete"
+    STATUS_LMA_INIT_COMPLETE: "LMA initialization complete",
 }
 
 # Command Descriptions
@@ -97,5 +97,5 @@ COMMAND_MESSAGES = {
     CMD_SET_OPERATING_TEMP: "Set operating temperature",
     CMD_SET_COOLING_TEMP: "Set cooling temperature",
     CMD_REQUEST_TEMP: "Request temperature",
-    CMD_STROKE_INIT_COMPLETE: "Stroke initialization complete"
+    CMD_STROKE_INIT_COMPLETE: "Stroke initialization complete",
 }

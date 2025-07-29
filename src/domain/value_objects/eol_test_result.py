@@ -43,7 +43,9 @@ class EOLTestResult:
 
     def get_summary_value(self, key: str, default: Any = None) -> Any:
         """Get specific value from test summary with type safety"""
-        if isinstance(self.test_summary, dict) and not isinstance(self.test_summary, TestMeasurements):
+        if isinstance(self.test_summary, dict) and not isinstance(
+            self.test_summary, TestMeasurements
+        ):
             return self.test_summary.get(key, default)
         return default
 
@@ -56,17 +58,19 @@ class EOLTestResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary representation"""
         return {
-            'test_id': str(self.test_id),
-            'test_status': self.test_status.value,
-            'execution_duration_seconds': self.execution_duration.seconds if self.execution_duration else None,
-            'is_passed': self.is_passed,
-            'is_successful': self.is_successful,
-            'is_failed_execution': self.is_failed_execution,
-            'measurement_count': self.measurement_count,
-            'measurement_ids': [str(mid) for mid in self.measurement_ids],
-            'test_summary': self._convert_test_summary_to_dict(),
-            'error_message': self.error_message,
-            'operator_notes': self.operator_notes
+            "test_id": str(self.test_id),
+            "test_status": self.test_status.value,
+            "execution_duration_seconds": (
+                self.execution_duration.seconds if self.execution_duration else None
+            ),
+            "is_passed": self.is_passed,
+            "is_successful": self.is_successful,
+            "is_failed_execution": self.is_failed_execution,
+            "measurement_count": self.measurement_count,
+            "measurement_ids": [str(mid) for mid in self.measurement_ids],
+            "test_summary": self._convert_test_summary_to_dict(),
+            "error_message": self.error_message,
+            "operator_notes": self.operator_notes,
         }
 
     def _convert_test_summary_to_dict(self) -> Dict[str, Any]:

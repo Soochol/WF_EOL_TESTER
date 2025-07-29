@@ -15,19 +15,49 @@ from domain.value_objects.hardware_configuration import MCUConfig
 from driver.serial.serial import SerialManager, SerialError, SerialConnection
 
 from infrastructure.implementation.hardware.mcu.lma.constants import (
-    STX, ETX, FRAME_STX_SIZE, FRAME_CMD_SIZE, FRAME_LEN_SIZE, FRAME_ETX_SIZE,
-    CMD_ENTER_TEST_MODE, CMD_SET_UPPER_TEMP, CMD_SET_FAN_SPEED, CMD_LMA_INIT,
-    CMD_SET_OPERATING_TEMP, CMD_SET_COOLING_TEMP, CMD_REQUEST_TEMP,
-    STATUS_BOOT_COMPLETE, STATUS_TEST_MODE_COMPLETE, STATUS_TEMP_RESPONSE,
-    STATUS_OPERATING_TEMP_OK, STATUS_UPPER_TEMP_OK, STATUS_FAN_SPEED_OK,
-    STATUS_LMA_INIT_OK, STATUS_COOLING_TEMP_OK, STATUS_MESSAGES,
-    TEST_MODE_1, TEST_MODE_2, TEST_MODE_3, FAN_SPEED_MIN, FAN_SPEED_MAX,
-    TEMP_SCALE_FACTOR, DEFAULT_BAUDRATE, DEFAULT_TIMEOUT, BOOT_COMPLETE_TIMEOUT,
-    MIN_TEMPERATURE, MAX_TEMPERATURE, DEFAULT_TEMPERATURE
+    STX,
+    ETX,
+    FRAME_STX_SIZE,
+    FRAME_CMD_SIZE,
+    FRAME_LEN_SIZE,
+    FRAME_ETX_SIZE,
+    CMD_ENTER_TEST_MODE,
+    CMD_SET_UPPER_TEMP,
+    CMD_SET_FAN_SPEED,
+    CMD_LMA_INIT,
+    CMD_SET_OPERATING_TEMP,
+    CMD_SET_COOLING_TEMP,
+    CMD_REQUEST_TEMP,
+    STATUS_BOOT_COMPLETE,
+    STATUS_TEST_MODE_COMPLETE,
+    STATUS_TEMP_RESPONSE,
+    STATUS_OPERATING_TEMP_OK,
+    STATUS_UPPER_TEMP_OK,
+    STATUS_FAN_SPEED_OK,
+    STATUS_LMA_INIT_OK,
+    STATUS_COOLING_TEMP_OK,
+    STATUS_MESSAGES,
+    TEST_MODE_1,
+    TEST_MODE_2,
+    TEST_MODE_3,
+    FAN_SPEED_MIN,
+    FAN_SPEED_MAX,
+    TEMP_SCALE_FACTOR,
+    DEFAULT_BAUDRATE,
+    DEFAULT_TIMEOUT,
+    BOOT_COMPLETE_TIMEOUT,
+    MIN_TEMPERATURE,
+    MAX_TEMPERATURE,
+    DEFAULT_TEMPERATURE,
 )
 from infrastructure.implementation.hardware.mcu.lma.error_codes import (
-    LMAError, LMACommunicationError, LMAHardwareError, LMAOperationError,
-    LMAErrorCode, validate_temperature, validate_fan_speed
+    LMAError,
+    LMACommunicationError,
+    LMAHardwareError,
+    LMAOperationError,
+    LMAErrorCode,
+    validate_temperature,
+    validate_fan_speed,
 )
 
 
@@ -35,10 +65,7 @@ class LMAMCU(MCUService):
     """LMA MCU 통합 서비스"""
 
     def __init__(
-        self,
-        port: str,
-        baudrate: int = DEFAULT_BAUDRATE,
-        timeout: float = DEFAULT_TIMEOUT
+        self, port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = DEFAULT_TIMEOUT
     ):
         """
         초기화
@@ -79,9 +106,7 @@ class LMAMCU(MCUService):
             logger.info(f"Connecting to LMA MCU at {self._port} (baudrate: {self._baudrate})")
 
             self._connection = await SerialManager.create_connection(
-                port=self._port,
-                baudrate=self._baudrate,
-                timeout=self._timeout
+                port=self._port, baudrate=self._baudrate, timeout=self._timeout
             )
 
             # Wait for boot complete message
@@ -144,7 +169,7 @@ class LMAMCU(MCUService):
             await self._send_and_wait_for(
                 CMD_SET_OPERATING_TEMP,
                 self._encode_temperature(target_temp),
-                STATUS_OPERATING_TEMP_OK
+                STATUS_OPERATING_TEMP_OK,
             )
             self._target_temperature = target_temp
 
@@ -166,8 +191,8 @@ class LMAMCU(MCUService):
             raise ConnectionError("LMA MCU is not connected")
 
         try:
-            response = await self._send_and_wait_for(CMD_REQUEST_TEMP, b'', STATUS_TEMP_RESPONSE)
-            temp_data = response.get('data', b'\\x00\\x00')
+            response = await self._send_and_wait_for(CMD_REQUEST_TEMP, b"", STATUS_TEMP_RESPONSE)
+            temp_data = response.get("data", b"\\x00\\x00")
             self._current_temperature = self._decode_temperature(temp_data)
             return self._current_temperature
 
@@ -192,7 +217,7 @@ class LMAMCU(MCUService):
             mode_mapping = {
                 TestMode.MODE_1: TEST_MODE_1,
                 TestMode.MODE_2: TEST_MODE_2,
-                TestMode.MODE_3: TEST_MODE_3
+                TestMode.MODE_3: TEST_MODE_3,
             }
 
             lma_mode = mode_mapping.get(mode)
@@ -200,7 +225,7 @@ class LMAMCU(MCUService):
                 raise ValueError(f"Invalid test mode: {mode}")
 
             # Send test mode command and wait for confirmation
-            mode_data = struct.pack('<I', lma_mode)
+            mode_data = struct.pack("<I", lma_mode)
             await self._send_and_wait_for(CMD_ENTER_TEST_MODE, mode_data, STATUS_TEST_MODE_COMPLETE)
 
             self._current_test_mode = mode
@@ -264,7 +289,7 @@ class LMAMCU(MCUService):
             validate_fan_speed(fan_level, FAN_SPEED_MIN, FAN_SPEED_MAX)
 
             # Send fan speed command and wait for confirmation
-            fan_data = struct.pack('<B', fan_level)
+            fan_data = struct.pack("<B", fan_level)
             await self._send_and_wait_for(CMD_SET_FAN_SPEED, fan_data, STATUS_FAN_SPEED_OK)
 
             self._current_fan_speed = speed_percent
@@ -305,9 +330,7 @@ class LMAMCU(MCUService):
         try:
             # Send upper temperature command and wait for confirmation
             await self._send_and_wait_for(
-                CMD_SET_UPPER_TEMP,
-                self._encode_temperature(upper_temp),
-                STATUS_UPPER_TEMP_OK
+                CMD_SET_UPPER_TEMP, self._encode_temperature(upper_temp), STATUS_UPPER_TEMP_OK
             )
 
             logger.info(f"LMA upper temperature set to {upper_temp}°C")
@@ -329,7 +352,7 @@ class LMAMCU(MCUService):
 
         try:
             # Initialize LMA for heating and wait for confirmation
-            await self._send_and_wait_for(CMD_LMA_INIT, b'', STATUS_LMA_INIT_OK)
+            await self._send_and_wait_for(CMD_LMA_INIT, b"", STATUS_LMA_INIT_OK)
             self._mcu_status = MCUStatus.HEATING
 
             logger.info("LMA standby heating started")
@@ -353,9 +376,7 @@ class LMAMCU(MCUService):
             # Set cooling temperature (lower than current) and wait for confirmation
             cooling_temp = max(MIN_TEMPERATURE, self._current_temperature - 10.0)
             await self._send_and_wait_for(
-                CMD_SET_COOLING_TEMP,
-                self._encode_temperature(cooling_temp),
-                STATUS_COOLING_TEMP_OK
+                CMD_SET_COOLING_TEMP, self._encode_temperature(cooling_temp), STATUS_COOLING_TEMP_OK
             )
             self._mcu_status = MCUStatus.COOLING
 
@@ -381,7 +402,7 @@ class LMAMCU(MCUService):
             await self._send_and_wait_for(
                 CMD_SET_OPERATING_TEMP,
                 self._encode_temperature(self._current_temperature),
-                STATUS_OPERATING_TEMP_OK
+                STATUS_OPERATING_TEMP_OK,
             )
             self._mcu_status = MCUStatus.IDLE
 
@@ -400,25 +421,25 @@ class LMAMCU(MCUService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': await self.is_connected(),
-            'port': self._port,
-            'baudrate': self._baudrate,
-            'current_temperature': self._current_temperature,
-            'target_temperature': self._target_temperature,
-            'test_mode': self._current_test_mode.name,
-            'fan_speed': self._current_fan_speed,
-            'mcu_status': self._mcu_status.name,
-            'hardware_type': 'LMA'
+            "connected": await self.is_connected(),
+            "port": self._port,
+            "baudrate": self._baudrate,
+            "current_temperature": self._current_temperature,
+            "target_temperature": self._target_temperature,
+            "test_mode": self._current_test_mode.name,
+            "fan_speed": self._current_fan_speed,
+            "mcu_status": self._mcu_status.name,
+            "hardware_type": "LMA",
         }
 
         if await self.is_connected():
             try:
                 # Get current temperature
                 current_temp = await self.get_temperature()
-                status['current_temperature'] = current_temp
-                status['last_error'] = None
+                status["current_temperature"] = current_temp
+                status["last_error"] = None
             except Exception as e:
-                status['last_error'] = str(e)
+                status["last_error"] = str(e)
 
         return status
 
@@ -432,28 +453,27 @@ class LMAMCU(MCUService):
             while (asyncio.get_event_loop().time() - start_time) < BOOT_COMPLETE_TIMEOUT:
                 try:
                     response = await self._receive_response(timeout=1.0)
-                    if response and response.get('status') == STATUS_BOOT_COMPLETE:
+                    if response and response.get("status") == STATUS_BOOT_COMPLETE:
                         logger.info("LMA MCU boot complete")
                         return
                 except asyncio.TimeoutError:
                     continue
 
             raise LMAHardwareError(
-                "Boot complete timeout",
-                error_code=int(LMAErrorCode.HARDWARE_INITIALIZATION_FAILED)
+                "Boot complete timeout", error_code=int(LMAErrorCode.HARDWARE_INITIALIZATION_FAILED)
             )
 
         except Exception as e:
             raise LMAHardwareError(f"Boot wait failed: {e}")
 
-    async def _send_command(self, command: int, data: bytes = b'') -> None:
+    async def _send_command(self, command: int, data: bytes = b"") -> None:
         """Send command to LMA MCU (전송만)"""
         if not self._connection:
             raise LMACommunicationError("No connection available")
 
         try:
             # Build frame: STX + CMD + LEN + DATA + ETX
-            frame = STX + struct.pack('B', command) + struct.pack('B', len(data)) + data + ETX
+            frame = STX + struct.pack("B", command) + struct.pack("B", len(data)) + data + ETX
 
             # Send frame
             await self._connection.write(frame)
@@ -463,7 +483,9 @@ class LMAMCU(MCUService):
         except Exception as e:
             raise LMACommunicationError(f"Command send failed: {e}")
 
-    async def _wait_for_response(self, target_status: int, max_attempts: int = 10) -> Dict[str, Any]:
+    async def _wait_for_response(
+        self, target_status: int, max_attempts: int = 10
+    ) -> Dict[str, Any]:
         """
         특정 응답 상태를 기다림 (방법 2: 로그 남기고 버리기)
 
@@ -481,17 +503,23 @@ class LMAMCU(MCUService):
             try:
                 response = await self._receive_response()
 
-                if response and response['status'] == target_status:
-                    logger.debug(f"Got target response: status=0x{response['status']:02X}, "
-                               f"message='{response['message']}'")
+                if response and response["status"] == target_status:
+                    logger.debug(
+                        f"Got target response: status=0x{response['status']:02X}, "
+                        f"message='{response['message']}'"
+                    )
                     return response
                 else:
                     # 원하지 않는 응답은 로그 남기고 버림
                     if response:
-                        logger.debug(f"Discarding unwanted response: status=0x{response['status']:02X}, "
-                                   f"message='{response['message']}' (waiting for 0x{target_status:02X})")
+                        logger.debug(
+                            f"Discarding unwanted response: status=0x{response['status']:02X}, "
+                            f"message='{response['message']}' (waiting for 0x{target_status:02X})"
+                        )
                     else:
-                        logger.debug(f"Received None response (attempt {attempt + 1}/{max_attempts})")
+                        logger.debug(
+                            f"Received None response (attempt {attempt + 1}/{max_attempts})"
+                        )
 
             except Exception as e:
                 logger.debug(f"Response receive error (attempt {attempt + 1}/{max_attempts}): {e}")
@@ -500,7 +528,9 @@ class LMAMCU(MCUService):
             f"Target response 0x{target_status:02X} not received after {max_attempts} attempts"
         )
 
-    async def _send_and_wait_for(self, command: int, data: bytes, target_status: int) -> Dict[str, Any]:
+    async def _send_and_wait_for(
+        self, command: int, data: bytes, target_status: int
+    ) -> Dict[str, Any]:
         """
         명령 전송 + 특정 응답 대기
 
@@ -534,7 +564,7 @@ class LMAMCU(MCUService):
             data_len = header[1]
 
             # Read data if present
-            data = b''
+            data = b""
             if data_len > 0:
                 data = await self._connection.read(data_len, response_timeout)
 
@@ -544,9 +574,9 @@ class LMAMCU(MCUService):
                 raise LMACommunicationError("Invalid ETX")
 
             return {
-                'status': status,
-                'data': data,
-                'message': STATUS_MESSAGES.get(status, f"Unknown status: 0x{status:02X}")
+                "status": status,
+                "data": data,
+                "message": STATUS_MESSAGES.get(status, f"Unknown status: 0x{status:02X}"),
             }
 
         except Exception as e:
@@ -555,11 +585,11 @@ class LMAMCU(MCUService):
     def _encode_temperature(self, temperature: float) -> bytes:
         """Encode temperature for LMA protocol"""
         temp_int = int(temperature * TEMP_SCALE_FACTOR)
-        return struct.pack('<h', temp_int)  # signed short, little endian
+        return struct.pack("<h", temp_int)  # signed short, little endian
 
     def _decode_temperature(self, data: bytes) -> float:
         """Decode temperature from LMA protocol"""
         if len(data) >= 2:
-            temp_int = struct.unpack('<h', data[:2])[0]
+            temp_int = struct.unpack("<h", data[:2])[0]
             return temp_int / TEMP_SCALE_FACTOR
         return 0.0

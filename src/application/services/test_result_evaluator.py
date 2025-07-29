@@ -25,7 +25,9 @@ class TestResultEvaluator:
         """Initialize the test result evaluator"""
         pass
 
-    async def evaluate_measurements(self, measurements: Dict[str, Any], criteria: PassCriteria) -> None:
+    async def evaluate_measurements(
+        self, measurements: Dict[str, Any], criteria: PassCriteria
+    ) -> None:
         """
         Evaluate measurement results against pass criteria
 
@@ -62,7 +64,9 @@ class TestResultEvaluator:
             force_obj = measurement.get("force")
 
             # Extract numeric values from value objects
-            temperature = temperature_obj.value if hasattr(temperature_obj, "value") else temperature_obj
+            temperature = (
+                temperature_obj.value if hasattr(temperature_obj, "value") else temperature_obj
+            )
             force = force_obj.value if hasattr(force_obj, "value") else force_obj
 
             # Validate measurement completeness
@@ -85,7 +89,9 @@ class TestResultEvaluator:
 
             try:
                 # Evaluate this measurement point
-                evaluation_result = await self._evaluate_single_point(key, temperature, stroke, force, criteria)
+                evaluation_result = await self._evaluate_single_point(
+                    key, temperature, stroke, force, criteria
+                )
 
                 if not evaluation_result["passed"]:
                     failed_points.append(evaluation_result)
@@ -107,19 +113,25 @@ class TestResultEvaluator:
 
         # Log evaluation summary and raise exception if there are failures
         if failed_points:
-            logger.warning(f"❌ Evaluation FAILED: {len(failed_points)}/{total_points} measurements outside specification")
+            logger.warning(
+                f"❌ Evaluation FAILED: {len(failed_points)}/{total_points} measurements outside specification"
+            )
 
             # Log first few failures for debugging
             for i, failure in enumerate(failed_points[:3]):
                 if "force" in failure:
-                    logger.warning(f"  Failure {i+1}: {failure['key']} - {failure.get('message', 'Unknown error')}")
+                    logger.warning(
+                        f"  Failure {i+1}: {failure['key']} - {failure.get('message', 'Unknown error')}"
+                    )
 
             if len(failed_points) > 3:
                 logger.warning(f"  ... and {len(failed_points) - 3} more failures")
 
             raise create_test_evaluation_error(failed_points, total_points)
         else:
-            logger.info(f"✅ Evaluation PASSED: All {total_points} measurements within specification limits")
+            logger.info(
+                f"✅ Evaluation PASSED: All {total_points} measurements within specification limits"
+            )
 
     async def _evaluate_single_point(
         self, key: str, temperature: float, stroke: float, force: float, criteria: PassCriteria
@@ -158,9 +170,7 @@ class TestResultEvaluator:
                     "upper_limit": upper_limit,
                 }
             else:
-                failure_msg = (
-                    f"Force {force}N outside limits [{lower_limit:.2f}, {upper_limit:.2f}]N at {temperature}°C, {stroke}mm"
-                )
+                failure_msg = f"Force {force}N outside limits [{lower_limit:.2f}, {upper_limit:.2f}]N at {temperature}°C, {stroke}mm"
                 logger.warning(f"❌ {key}: {failure_msg}")
 
                 return {
@@ -176,8 +186,16 @@ class TestResultEvaluator:
                     "deviation": {
                         "from_lower": force - lower_limit,
                         "from_upper": force - upper_limit,
-                        "percentage_lower": ((force - lower_limit) / lower_limit * 100) if lower_limit != 0 else float("inf"),
-                        "percentage_upper": ((force - upper_limit) / upper_limit * 100) if upper_limit != 0 else float("inf"),
+                        "percentage_lower": (
+                            ((force - lower_limit) / lower_limit * 100)
+                            if lower_limit != 0
+                            else float("inf")
+                        ),
+                        "percentage_upper": (
+                            ((force - upper_limit) / upper_limit * 100)
+                            if upper_limit != 0
+                            else float("inf")
+                        ),
                     },
                 }
 
@@ -238,10 +256,14 @@ class TestResultEvaluator:
             "passed_count": passed_count,
             "failed_count": failed_count,
             "pass_rate_percentage": round(pass_rate, 2),
-            "failure_categories": {category: len(failures) for category, failures in failure_categories.items()},
+            "failure_categories": {
+                category: len(failures) for category, failures in failure_categories.items()
+            },
             "detailed_failures": failed_points,
         }
 
-        logger.info(f"Evaluation Summary: {passed_count}/{total_measurements} passed ({pass_rate:.1f}%)")
+        logger.info(
+            f"Evaluation Summary: {passed_count}/{total_measurements} passed ({pass_rate:.1f}%)"
+        )
 
         return summary

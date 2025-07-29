@@ -10,6 +10,7 @@ from enum import Enum
 
 class HardwareStatus(Enum):
     """Hardware connection status enumeration"""
+
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"

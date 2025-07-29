@@ -57,7 +57,9 @@ class RobotService(ABC):
         pass
 
     @abstractmethod
-    async def move_to_position(self, axis: int, position: float, velocity: Optional[float] = None) -> None:
+    async def move_to_position(
+        self, axis: int, position: float, velocity: Optional[float] = None
+    ) -> None:
         """
         Move axis to absolute position
 
@@ -72,7 +74,9 @@ class RobotService(ABC):
         pass
 
     @abstractmethod
-    async def move_relative(self, axis: int, distance: float, velocity: Optional[float] = None) -> None:
+    async def move_relative(
+        self, axis: int, distance: float, velocity: Optional[float] = None
+    ) -> None:
         """
         Move axis by relative distance
 
@@ -173,7 +177,9 @@ class RobotService(ABC):
         pass
 
     @abstractmethod
-    async def wait_for_completion(self, axis: Optional[int] = None, timeout: Optional[float] = None) -> None:
+    async def wait_for_completion(
+        self, axis: Optional[int] = None, timeout: Optional[float] = None
+    ) -> None:
         """
         Wait for motion to complete
 

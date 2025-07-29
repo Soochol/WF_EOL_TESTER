@@ -9,6 +9,7 @@ from enum import Enum
 
 class PinMode(Enum):
     """GPIO 핀 모드"""
+
     INPUT = "input"
     OUTPUT = "output"
     INPUT_PULLUP = "input_pullup"
@@ -17,5 +18,6 @@ class PinMode(Enum):
 
 class LogicLevel(Enum):
     """로직 레벨"""
+
     LOW = 0
     HIGH = 1

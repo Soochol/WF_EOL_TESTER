@@ -16,14 +16,18 @@ from application.interfaces.hardware.mcu import MCUService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
 from domain.value_objects.hardware_configuration import MCUConfig
 
+
 class TestMode(Enum):
     """테스트 모드"""
+
     MODE_1 = "mode_1"
     MODE_2 = "mode_2"
     MODE_3 = "mode_3"
 
+
 class MCUStatus(Enum):
     """MCU 상태"""
+
     IDLE = "idle"
     RUNNING = "running"
     ERROR = "error"
@@ -36,7 +40,7 @@ class MockMCU(MCUService):
         self,
         initial_temperature: float = 25.0,
         temperature_drift_rate: float = 0.1,
-        response_delay: float = 0.1
+        response_delay: float = 0.1,
     ):
         """
         초기화
@@ -73,7 +77,9 @@ class MockMCU(MCUService):
             HardwareConnectionError: If connection fails
         """
         try:
-            logger.info(f"Connecting to Mock MCU on {mcu_config.port} at {mcu_config.baudrate} baud")
+            logger.info(
+                f"Connecting to Mock MCU on {mcu_config.port} at {mcu_config.baudrate} baud"
+            )
 
             # Simulate connection delay
             await asyncio.sleep(self._response_delay)
@@ -124,7 +130,9 @@ class MockMCU(MCUService):
         """
         return self._is_connected
 
-    async def set_temperature_control(self, enabled: bool, target_temp: Optional[float] = None) -> None:
+    async def set_temperature_control(
+        self, enabled: bool, target_temp: Optional[float] = None
+    ) -> None:
         """
         Enable/disable temperature control (시뮬레이션)
 
@@ -145,12 +153,18 @@ class MockMCU(MCUService):
 
             if enabled:
                 if target_temp is None:
-                    raise HardwareOperationError("mock_mcu", "set_temperature_control",
-                                               "Target temperature required when enabling")
+                    raise HardwareOperationError(
+                        "mock_mcu",
+                        "set_temperature_control",
+                        "Target temperature required when enabling",
+                    )
 
                 if not (-40.0 <= target_temp <= 150.0):
-                    raise HardwareOperationError("mock_mcu", "set_temperature_control",
-                                               f"Temperature must be -40°C to 150°C, got {target_temp}°C")
+                    raise HardwareOperationError(
+                        "mock_mcu",
+                        "set_temperature_control",
+                        f"Temperature must be -40°C to 150°C, got {target_temp}°C",
+                    )
 
                 self._target_temperature = target_temp
 
@@ -303,7 +317,9 @@ class MockMCU(MCUService):
             logger.error(f"Mock MCU reset failed: {e}")
             raise HardwareOperationError("mock_mcu", "reset", str(e))
 
-    async def send_command(self, command: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def send_command(
+        self, command: str, data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Send command to MCU (시뮬레이션)
 
@@ -331,7 +347,7 @@ class MockMCU(MCUService):
             response = {
                 "status": "success",
                 "command": command,
-                "timestamp": asyncio.get_event_loop().time()
+                "timestamp": asyncio.get_event_loop().time(),
             }
 
             if command == "get_temp":
@@ -365,8 +381,9 @@ class MockMCU(MCUService):
             raise HardwareConnectionError("mock_mcu", "MCU is not connected")
 
         if not (0 <= speed_percent <= 100):
-            raise HardwareOperationError("mock_mcu", "set_fan_speed",
-                                       f"Fan speed must be 0-100%, got {speed_percent}%")
+            raise HardwareOperationError(
+                "mock_mcu", "set_fan_speed", f"Fan speed must be 0-100%, got {speed_percent}%"
+            )
 
         try:
             # Simulate response delay
@@ -474,16 +491,16 @@ class MockMCU(MCUService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': await self.is_connected(),
-            'current_temperature': self._current_temperature,
-            'target_temperature': self._target_temperature,
-            'test_mode': self._current_test_mode.name,
-            'fan_speed': self._current_fan_speed,
-            'mcu_status': self._mcu_status.name,
-            'heating_enabled': self._heating_enabled,
-            'cooling_enabled': self._cooling_enabled,
-            'hardware_type': 'Mock MCU',
-            'last_error': None
+            "connected": await self.is_connected(),
+            "current_temperature": self._current_temperature,
+            "target_temperature": self._target_temperature,
+            "test_mode": self._current_test_mode.name,
+            "fan_speed": self._current_fan_speed,
+            "mcu_status": self._mcu_status.name,
+            "heating_enabled": self._heating_enabled,
+            "cooling_enabled": self._cooling_enabled,
+            "hardware_type": "Mock MCU",
+            "last_error": None,
         }
 
         return status

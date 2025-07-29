@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 
 class AjinextekErrorCode(IntEnum):
     """Ajinextek DIO specific error codes"""
+
     # Hardware Connection Errors
     HARDWARE_NOT_FOUND = 2001
     HARDWARE_NOT_CONNECTED = 2002
@@ -76,21 +77,25 @@ class AjinextekDIOError(Exception):
 
 class AjinextekHardwareError(AjinextekDIOError):
     """Ajinextek hardware connection and initialization errors"""
+
     pass
 
 
 class AjinextekConfigurationError(AjinextekDIOError):
     """Ajinextek configuration and setup errors"""
+
     pass
 
 
 class AjinextekOperationError(AjinextekDIOError):
     """Ajinextek operation and runtime errors"""
+
     pass
 
 
 class AjinextekChannelError(AjinextekDIOError):
     """Ajinextek channel and pin related errors"""
+
     pass
 
 
@@ -108,7 +113,7 @@ def validate_board_number(board_number: int, max_boards: int = 32) -> None:
     if not (0 <= board_number < max_boards):
         raise AjinextekConfigurationError(
             f"Board number {board_number} is out of range [0, {max_boards-1}]",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
         )
 
 
@@ -126,7 +131,7 @@ def validate_channel_number(channel: int, max_channels: int = 32) -> None:
     if not (0 <= channel < max_channels):
         raise AjinextekChannelError(
             f"Channel {channel} is out of range [0, {max_channels-1}]",
-            error_code=int(AjinextekErrorCode.INVALID_CHANNEL_NUMBER)
+            error_code=int(AjinextekErrorCode.INVALID_CHANNEL_NUMBER),
         )
 
 
@@ -143,8 +148,7 @@ def validate_channel_list(channels: List[int], max_channels: int = 32) -> None:
     """
     if not channels:
         raise AjinextekChannelError(
-            "Channel list cannot be empty",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            "Channel list cannot be empty", error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
         )
 
     for channel in channels:
@@ -155,7 +159,7 @@ def validate_channel_list(channels: List[int], max_channels: int = 32) -> None:
         duplicates = [ch for ch in set(channels) if channels.count(ch) > 1]
         raise AjinextekChannelError(
             f"Duplicate channels found: {duplicates}",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
         )
 
 
@@ -173,7 +177,7 @@ def validate_pin_values(pin_values: Dict[int, int], max_channels: int = 32) -> N
     if not pin_values:
         raise AjinextekChannelError(
             "Pin values dictionary cannot be empty",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
         )
 
     for pin, value in pin_values.items():
@@ -182,7 +186,7 @@ def validate_pin_values(pin_values: Dict[int, int], max_channels: int = 32) -> N
         if value not in [0, 1]:
             raise AjinextekChannelError(
                 f"Invalid logic level {value} for pin {pin}. Must be 0 or 1",
-                error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+                error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
             )
 
 
@@ -200,7 +204,7 @@ def validate_module_position(position: int, max_modules: int = 4) -> None:
     if not (0 <= position < max_modules):
         raise AjinextekConfigurationError(
             f"Module position {position} is out of range [0, {max_modules-1}]",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
         )
 
 
@@ -218,11 +222,13 @@ def validate_debounce_time(debounce_ms: int, max_debounce: int = 1000) -> None:
     if not (0 <= debounce_ms <= max_debounce):
         raise AjinextekConfigurationError(
             f"Debounce time {debounce_ms}ms is out of range [0, {max_debounce}]",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
         )
 
 
-def create_hardware_error(message: str, axl_error_code: Optional[int] = None) -> AjinextekHardwareError:
+def create_hardware_error(
+    message: str, axl_error_code: Optional[int] = None
+) -> AjinextekHardwareError:
     """
     Create hardware error with AXL library error code mapping
 
@@ -249,7 +255,9 @@ def create_hardware_error(message: str, axl_error_code: Optional[int] = None) ->
             -6: AjinextekErrorCode.LIBRARY_NOT_LOADED,
         }
 
-        error_code = int(axl_error_mapping.get(axl_error_code, AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED))
+        error_code = int(
+            axl_error_mapping.get(axl_error_code, AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED)
+        )
 
     return AjinextekHardwareError(message, error_code, details)
 
@@ -289,44 +297,38 @@ ERROR_MESSAGES = {
     AjinextekErrorCode.HARDWARE_INITIALIZATION_FAILED: "DIO hardware initialization failed",
     AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED: "Communication with DIO hardware failed",
     AjinextekErrorCode.HARDWARE_TIMEOUT: "DIO hardware operation timeout",
-
     # Board and Module Errors
     AjinextekErrorCode.BOARD_NOT_DETECTED: "DIO board not detected",
     AjinextekErrorCode.BOARD_ALREADY_OPEN: "DIO board already open",
     AjinextekErrorCode.MODULE_NOT_FOUND: "DIO module not found",
     AjinextekErrorCode.MODULE_TYPE_MISMATCH: "DIO module type mismatch",
     AjinextekErrorCode.MODULE_CONFIGURATION_ERROR: "DIO module configuration error",
-
     # Channel and Pin Errors
     AjinextekErrorCode.INVALID_CHANNEL_NUMBER: "Invalid channel number",
     AjinextekErrorCode.CHANNEL_NOT_CONFIGURED: "Channel not configured",
     AjinextekErrorCode.CHANNEL_ACCESS_DENIED: "Channel access denied",
     AjinextekErrorCode.PIN_MODE_CONFLICT: "Pin mode conflict",
     AjinextekErrorCode.PIN_ALREADY_IN_USE: "Pin already in use",
-
     # Operation Errors
     AjinextekErrorCode.OPERATION_NOT_SUPPORTED: "Operation not supported",
     AjinextekErrorCode.OPERATION_TIMEOUT: "Operation timeout",
     AjinextekErrorCode.OPERATION_INTERRUPTED: "Operation interrupted",
     AjinextekErrorCode.INVALID_PARAMETER: "Invalid parameter",
     AjinextekErrorCode.BUFFER_OVERFLOW: "Buffer overflow",
-
     # Library and Driver Errors
     AjinextekErrorCode.LIBRARY_NOT_LOADED: "AXL library not loaded",
     AjinextekErrorCode.LIBRARY_VERSION_MISMATCH: "AXL library version mismatch",
     AjinextekErrorCode.DRIVER_NOT_INSTALLED: "AXL driver not installed",
     AjinextekErrorCode.DRIVER_VERSION_INCOMPATIBLE: "AXL driver version incompatible",
-
     # Configuration Errors
     AjinextekErrorCode.INVALID_CONFIGURATION: "Invalid configuration",
     AjinextekErrorCode.CONFIGURATION_CONFLICT: "Configuration conflict",
     AjinextekErrorCode.CONFIGURATION_NOT_APPLIED: "Configuration not applied",
-
     # Runtime Errors
     AjinextekErrorCode.INTERRUPT_HANDLING_ERROR: "Interrupt handling error",
     AjinextekErrorCode.DEBOUNCE_ERROR: "Debounce configuration error",
     AjinextekErrorCode.SIGNAL_INTEGRITY_ERROR: "Signal integrity error",
-    AjinextekErrorCode.POWER_SUPPLY_ERROR: "Power supply error"
+    AjinextekErrorCode.POWER_SUPPLY_ERROR: "Power supply error",
 }
 
 

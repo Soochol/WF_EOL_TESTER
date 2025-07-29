@@ -78,7 +78,7 @@ good-names=i,j,k,ex,Run,_,id,db,ui,e
 
 [FORMAT]
 # Maximum number of characters on a single line
-max-line-length=130
+max-line-length=100
 
 # Regexp for a line that is allowed to be longer than the limit
 ignore-long-lines=^\s*(# )?<?https?://\S+>?$

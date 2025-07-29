@@ -15,8 +15,10 @@ from application.interfaces.hardware.robot import RobotService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
 from domain.value_objects.hardware_configuration import RobotConfig
 
+
 class MotionStatus(Enum):
     """모션 상태"""
+
     IDLE = "idle"
     MOVING = "moving"
     HOMING = "homing"
@@ -32,7 +34,7 @@ class MockRobot(RobotService):
         axis_count: int = 6,
         max_position: float = 1000.0,
         default_velocity: float = 100.0,
-        response_delay: float = 0.1
+        response_delay: float = 0.1,
     ):
         """
         초기화
@@ -66,7 +68,9 @@ class MockRobot(RobotService):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        logger.info(f"Connecting to Mock Robot (IRQ: {robot_config.irq_no}, Axes: {robot_config.axis_count})...")
+        logger.info(
+            f"Connecting to Mock Robot (IRQ: {robot_config.irq_no}, Axes: {robot_config.axis_count})..."
+        )
 
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._response_delay * 2)
@@ -136,7 +140,9 @@ class MockRobot(RobotService):
             self._motion_status = MotionStatus.ERROR
             raise HardwareOperationError("mock_robot", "initialize_axes", str(e))
 
-    async def move_to_position(self, axis: int, position: float, velocity: Optional[float] = None) -> None:
+    async def move_to_position(
+        self, axis: int, position: float, velocity: Optional[float] = None
+    ) -> None:
         """
         단일 축을 절대 위치로 이동 (시뮬레이션)
 
@@ -155,13 +161,19 @@ class MockRobot(RobotService):
             raise HardwareOperationError("mock_robot", "move_to_position", f"Invalid axis {axis}")
 
         if abs(position) > self._max_position:
-            raise HardwareOperationError("mock_robot", "move_to_position",
-                                       f"Position {position} exceeds limit ±{self._max_position}mm")
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_to_position",
+                f"Position {position} exceeds limit ±{self._max_position}mm",
+            )
 
         vel = velocity or self._default_velocity
         if vel > self._max_velocity:
-            raise HardwareOperationError("mock_robot", "move_to_position",
-                                       f"Velocity {vel} exceeds maximum {self._max_velocity} mm/s")
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_to_position",
+                f"Velocity {vel} exceeds maximum {self._max_velocity} mm/s",
+            )
 
         try:
             logger.info(f"Mock robot moving axis {axis} to position {position} at {vel} mm/s")
@@ -178,7 +190,9 @@ class MockRobot(RobotService):
             for step in range(steps):
                 await asyncio.sleep(0.1)
                 progress = (step + 1) / steps
-                self._current_positions[axis] = start_position + (position - start_position) * progress
+                self._current_positions[axis] = (
+                    start_position + (position - start_position) * progress
+                )
 
             self._motion_status = MotionStatus.IDLE
             logger.info(f"Mock axis {axis} move completed")
@@ -188,7 +202,9 @@ class MockRobot(RobotService):
             self._motion_status = MotionStatus.ERROR
             raise HardwareOperationError("mock_robot", "move_to_position", str(e))
 
-    async def move_relative_single(self, axis: int, distance: float, velocity: Optional[float] = None) -> None:
+    async def move_relative_single(
+        self, axis: int, distance: float, velocity: Optional[float] = None
+    ) -> None:
         """
         단일 축을 상대 위치로 이동 (시뮬레이션)
 
@@ -204,7 +220,9 @@ class MockRobot(RobotService):
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
         if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "move_relative_single", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot", "move_relative_single", f"Invalid axis {axis}"
+            )
 
         # 목표 위치 계산
         target_position = self._current_positions[axis] + distance
@@ -265,23 +283,37 @@ class MockRobot(RobotService):
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
         if len(positions) != self._axis_count:
-            raise HardwareOperationError("mock_robot", "parameter_validation",f"Expected {self._axis_count} positions, got {len(positions)}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "parameter_validation",
+                f"Expected {self._axis_count} positions, got {len(positions)}",
+            )
 
         # 위치 범위 검증
         for i, pos in enumerate(positions):
             if abs(pos) > self._max_position:
-                raise HardwareOperationError("mock_robot", "parameter_validation",f"Position {pos} for axis {i} exceeds limit ±{self._max_position}mm")
+                raise HardwareOperationError(
+                    "mock_robot",
+                    "parameter_validation",
+                    f"Position {pos} for axis {i} exceeds limit ±{self._max_position}mm",
+                )
 
         vel = velocity or self._default_velocity
         if vel > self._max_velocity:
-            raise HardwareOperationError("mock_robot", "parameter_validation",f"Velocity {vel} exceeds maximum {self._max_velocity} mm/s")
+            raise HardwareOperationError(
+                "mock_robot",
+                "parameter_validation",
+                f"Velocity {vel} exceeds maximum {self._max_velocity} mm/s",
+            )
 
         try:
             logger.info(f"Mock robot moving to positions: {positions} at {vel} mm/s")
             self._motion_status = MotionStatus.MOVING
 
             # 이동 시간 계산 (가장 먼 축 기준)
-            max_distance = max(abs(pos - current) for pos, current in zip(positions, self._current_positions))
+            max_distance = max(
+                abs(pos - current) for pos, current in zip(positions, self._current_positions)
+            )
             motion_time = max_distance / vel if vel > 0 else 0.1
 
             # 실제 이동 시뮬레이션
@@ -293,7 +325,9 @@ class MockRobot(RobotService):
                 # 선형 보간으로 중간 위치 계산
                 progress = (step + 1) / steps
                 for i in range(self._axis_count):
-                    self._current_positions[i] = start_positions[i] + (positions[i] - start_positions[i]) * progress
+                    self._current_positions[i] = (
+                        start_positions[i] + (positions[i] - start_positions[i]) * progress
+                    )
 
             self._motion_status = MotionStatus.IDLE
             logger.info("Mock absolute move completed")
@@ -319,10 +353,16 @@ class MockRobot(RobotService):
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
         if len(distances) != self._axis_count:
-            raise HardwareOperationError("mock_robot", "parameter_validation",f"Expected {self._axis_count} distances, got {len(distances)}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "parameter_validation",
+                f"Expected {self._axis_count} distances, got {len(distances)}",
+            )
 
         # 목표 위치 계산
-        target_positions = [current + distance for current, distance in zip(self._current_positions, distances)]
+        target_positions = [
+            current + distance for current, distance in zip(self._current_positions, distances)
+        ]
 
         # 절대 이동으로 구현
         return await self.move_absolute(target_positions, velocity)
@@ -447,8 +487,11 @@ class MockRobot(RobotService):
             raise HardwareOperationError("mock_robot", "set_velocity", "Velocity must be positive")
 
         if velocity > self._max_velocity:
-            raise HardwareOperationError("mock_robot", "set_velocity",
-                                       f"Velocity {velocity} exceeds maximum {self._max_velocity} mm/s")
+            raise HardwareOperationError(
+                "mock_robot",
+                "set_velocity",
+                f"Velocity {velocity} exceeds maximum {self._max_velocity} mm/s",
+            )
 
         self._axis_velocities[axis] = velocity
         logger.info(f"Mock robot axis {axis} velocity set to {velocity} mm/s")
@@ -471,7 +514,9 @@ class MockRobot(RobotService):
 
         return self._axis_velocities[axis]
 
-    async def wait_for_completion(self, axis: Optional[int] = None, timeout: Optional[float] = None) -> None:
+    async def wait_for_completion(
+        self, axis: Optional[int] = None, timeout: Optional[float] = None
+    ) -> None:
         """
         모션 완료 대기
 
@@ -487,7 +532,9 @@ class MockRobot(RobotService):
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
         if axis is not None and (axis < 0 or axis >= self._axis_count):
-            raise HardwareOperationError("mock_robot", "wait_for_completion", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot", "wait_for_completion", f"Invalid axis {axis}"
+            )
 
         start_time = asyncio.get_event_loop().time()
 
@@ -498,7 +545,9 @@ class MockRobot(RobotService):
             await asyncio.sleep(0.1)
 
         if self._motion_status == MotionStatus.ERROR:
-            raise HardwareOperationError("mock_robot", "wait_for_completion", "Motion ended with error")
+            raise HardwareOperationError(
+                "mock_robot", "wait_for_completion", "Motion ended with error"
+            )
 
     async def set_velocity_limit(self, max_velocity: float) -> bool:
         """
@@ -514,7 +563,9 @@ class MockRobot(RobotService):
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
         if max_velocity <= 0:
-            raise HardwareOperationError("mock_robot", "parameter_validation","Max velocity must be positive")
+            raise HardwareOperationError(
+                "mock_robot", "parameter_validation", "Max velocity must be positive"
+            )
 
         self._max_velocity = max_velocity
         logger.info(f"Mock robot velocity limit set to {max_velocity} mm/s")
@@ -537,23 +588,23 @@ class MockRobot(RobotService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': self._is_connected,
-            'hardware_type': 'Mock Robot',
-            'axis_count': self._axis_count,
-            'motion_status': self._motion_status.value,
-            'max_position': self._max_position,
-            'default_velocity': self._default_velocity,
-            'max_velocity': self._max_velocity,
-            'response_delay': self._response_delay
+            "connected": self._is_connected,
+            "hardware_type": "Mock Robot",
+            "axis_count": self._axis_count,
+            "motion_status": self._motion_status.value,
+            "max_position": self._max_position,
+            "default_velocity": self._default_velocity,
+            "max_velocity": self._max_velocity,
+            "response_delay": self._response_delay,
         }
 
         if self._is_connected:
             try:
-                status['current_positions'] = await self.get_current_position()
-                status['last_error'] = None
+                status["current_positions"] = await self.get_current_position()
+                status["last_error"] = None
             except Exception as e:
-                status['current_positions'] = None
-                status['last_error'] = str(e)
+                status["current_positions"] = None
+                status["last_error"] = str(e)
 
         return status
 

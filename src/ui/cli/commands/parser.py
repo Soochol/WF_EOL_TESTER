@@ -55,7 +55,7 @@ class SlashCommandParser:
         user_input = user_input.strip()
 
         # Check if input starts with slash
-        if not user_input.startswith('/'):
+        if not user_input.startswith("/"):
             return None, []
 
         # Remove leading slash and split into parts
@@ -120,7 +120,7 @@ class SlashCommandParser:
         Returns:
             List of matching command suggestions
         """
-        if not partial_input.startswith('/'):
+        if not partial_input.startswith("/"):
             return []
 
         # Remove leading slash

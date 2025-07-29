@@ -10,7 +10,13 @@ from typing import Optional
 class RobotError(Exception):
     """Base robot domain error"""
 
-    def __init__(self, message: str, robot_type: str = "unknown", hardware_id: Optional[str] = None, details: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        robot_type: str = "unknown",
+        hardware_id: Optional[str] = None,
+        details: Optional[str] = None,
+    ):
         super().__init__(message)
         self.message = message
         self.robot_type = robot_type
@@ -60,6 +66,7 @@ class RobotSafetyError(RobotError):
 # AJINEXTEK AXL Robot Specific Errors
 # ============================================================================
 
+
 class AXLError(RobotError):
     """Base AJINEXTEK AXL error"""
 
@@ -79,22 +86,26 @@ class AXLError(RobotError):
 
 class AXLConnectionError(AXLError):
     """AXL library connection/initialization errors"""
+
     pass
 
 
 class AXLMotionError(AXLError):
     """AXL motion operation errors"""
+
     pass
 
 
 class AXLConfigurationError(AXLError):
     """AXL configuration errors"""
+
     pass
 
 
 # ============================================================================
 # Future Robot Vendors (for expansion)
 # ============================================================================
+
 
 class ABBError(RobotError):
     """ABB robot errors"""
@@ -136,16 +147,23 @@ class FANUCError(RobotError):
 # Convenience functions for creating common exceptions
 # ============================================================================
 
-def create_axl_connection_error(error_code: int, function_name: str, error_message: str) -> AXLConnectionError:
+
+def create_axl_connection_error(
+    error_code: int, function_name: str, error_message: str
+) -> AXLConnectionError:
     """Create a standardized AXL connection error"""
     return AXLConnectionError(error_message, error_code, function_name)
 
 
-def create_axl_motion_error(error_code: int, function_name: str, error_message: str) -> AXLMotionError:
+def create_axl_motion_error(
+    error_code: int, function_name: str, error_message: str
+) -> AXLMotionError:
     """Create a standardized AXL motion error"""
     return AXLMotionError(error_message, error_code, function_name)
 
 
-def create_axl_configuration_error(error_code: int, function_name: str, error_message: str) -> AXLConfigurationError:
+def create_axl_configuration_error(
+    error_code: int, function_name: str, error_message: str
+) -> AXLConfigurationError:
     """Create a standardized AXL configuration error"""
     return AXLConfigurationError(error_message, error_code, function_name)

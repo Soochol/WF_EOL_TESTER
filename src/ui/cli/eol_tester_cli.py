@@ -94,7 +94,10 @@ class EOLTesterCLI:
 
         # DUTCommandInfo 생성
         dut_command_info = DUTCommandInfo(
-            dut_id=dut_info["id"], model_number=dut_info["model"], serial_number=dut_info["serial"], manufacturer="Unknown"
+            dut_id=dut_info["id"],
+            model_number=dut_info["model"],
+            serial_number=dut_info["serial"],
+            manufacturer="Unknown",
         )
 
         # 테스트 명령 생성

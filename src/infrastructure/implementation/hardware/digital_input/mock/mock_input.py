@@ -8,11 +8,13 @@ Simulates digital I/O operations without requiring actual hardware.
 import asyncio
 import random
 from typing import Dict, List, Any, Optional
+
 # Conditional import for logging
 try:
     from loguru import logger
 except ImportError:
     import logging
+
     logger = logging.getLogger(__name__)
 from application.interfaces.hardware.digital_input import DigitalInputService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
@@ -43,7 +45,7 @@ class MockInput(DigitalInputService):
         initial_input_states: Optional[Dict[int, LogicLevel]] = None,
         simulate_noise: bool = False,
         noise_probability: float = 0.01,
-        response_delay_ms: float = 5.0
+        response_delay_ms: float = 5.0,
     ):
         """
         초기화
@@ -153,8 +155,9 @@ class MockInput(DigitalInputService):
             raise HardwareConnectionError("mock_dio", "DIO hardware not connected")
 
         if not (0 <= pin < self._total_pins):
-            raise HardwareOperationError("mock_dio", "configure_pin",
-                                       f"Pin {pin} is out of range [0, {self._total_pins-1}]")
+            raise HardwareOperationError(
+                "mock_dio", "configure_pin", f"Pin {pin} is out of range [0, {self._total_pins-1}]"
+            )
 
         try:
             # Simulate configuration delay
@@ -166,7 +169,9 @@ class MockInput(DigitalInputService):
             if mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]:
                 if pin not in self._input_states:
                     # INPUT_PULLUP defaults to HIGH, others to LOW
-                    default_level = LogicLevel.HIGH if mode == PinMode.INPUT_PULLUP else LogicLevel.LOW
+                    default_level = (
+                        LogicLevel.HIGH if mode == PinMode.INPUT_PULLUP else LogicLevel.LOW
+                    )
                     self._input_states[pin] = default_level
             elif mode == PinMode.OUTPUT:
                 if pin not in self._output_states:
@@ -233,14 +238,20 @@ class MockInput(DigitalInputService):
             raise HardwareConnectionError("mock_dio", "DIO hardware not connected")
 
         if not (0 <= pin < self._total_pins):
-            raise HardwareOperationError("mock_dio", "write_digital_output",
-                                       f"Pin {pin} is out of range [0, {self._total_pins-1}]")
+            raise HardwareOperationError(
+                "mock_dio",
+                "write_digital_output",
+                f"Pin {pin} is out of range [0, {self._total_pins-1}]",
+            )
 
         # Check if pin is configured as output
         pin_mode = self._pin_configurations.get(pin)
         if pin_mode != PinMode.OUTPUT:
-            raise HardwareOperationError("mock_dio", "write_digital_output",
-                                       f"Pin {pin} is not configured as output (current: {pin_mode})")
+            raise HardwareOperationError(
+                "mock_dio",
+                "write_digital_output",
+                f"Pin {pin} is not configured as output (current: {pin_mode})",
+            )
 
         try:
             # Simulate write delay
@@ -300,8 +311,9 @@ class MockInput(DigitalInputService):
                 failed_pins.append(pin)
 
         if failed_pins:
-            raise HardwareOperationError("mock_dio", "write_multiple_outputs",
-                                       f"Failed to write to pins: {failed_pins}")
+            raise HardwareOperationError(
+                "mock_dio", "write_multiple_outputs", f"Failed to write to pins: {failed_pins}"
+            )
 
         logger.debug(f"Mock: Write multiple outputs: {len(pin_values)} pins successful")
 
@@ -312,8 +324,11 @@ class MockInput(DigitalInputService):
         Returns:
             모든 입력 핀의 로직 레벨 딕셔너리
         """
-        input_pins = [pin for pin, mode in self._pin_configurations.items()
-                     if mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]]
+        input_pins = [
+            pin
+            for pin, mode in self._pin_configurations.items()
+            if mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]
+        ]
 
         if not input_pins:
             return {}
@@ -336,8 +351,9 @@ class MockInput(DigitalInputService):
         Raises:
             HardwareOperationError: If reset operation fails
         """
-        output_pins = [pin for pin, mode in self._pin_configurations.items()
-                      if mode == PinMode.OUTPUT]
+        output_pins = [
+            pin for pin, mode in self._pin_configurations.items() if mode == PinMode.OUTPUT
+        ]
 
         if not output_pins:
             return
@@ -359,24 +375,30 @@ class MockInput(DigitalInputService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': await self.is_connected(),
-            'hardware_type': 'Mock DIO',
-            'total_pins': self._total_pins,
-            'configured_pins': len(self._pin_configurations),
-            'input_pins': [pin for pin, mode in self._pin_configurations.items()
-                          if mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]],
-            'output_pins': [pin for pin, mode in self._pin_configurations.items()
-                           if mode == PinMode.OUTPUT],
-            'simulate_noise': self._simulate_noise,
-            'noise_probability': self._noise_probability,
-            'response_delay_ms': self._response_delay_s * 1000,
-            'statistics': {
-                'total_operations': self._operation_count,
-                'read_operations': self._read_count,
-                'write_operations': self._write_count
+            "connected": await self.is_connected(),
+            "hardware_type": "Mock DIO",
+            "total_pins": self._total_pins,
+            "configured_pins": len(self._pin_configurations),
+            "input_pins": [
+                pin
+                for pin, mode in self._pin_configurations.items()
+                if mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]
+            ],
+            "output_pins": [
+                pin for pin, mode in self._pin_configurations.items() if mode == PinMode.OUTPUT
+            ],
+            "simulate_noise": self._simulate_noise,
+            "noise_probability": self._noise_probability,
+            "response_delay_ms": self._response_delay_s * 1000,
+            "statistics": {
+                "total_operations": self._operation_count,
+                "read_operations": self._read_count,
+                "write_operations": self._write_count,
             },
-            'current_input_states': {pin: level.name for pin, level in self._input_states.items()},
-            'current_output_states': {pin: level.name for pin, level in self._output_states.items()}
+            "current_input_states": {pin: level.name for pin, level in self._input_states.items()},
+            "current_output_states": {
+                pin: level.name for pin, level in self._output_states.items()
+            },
         }
 
         return status
@@ -395,13 +417,19 @@ class MockInput(DigitalInputService):
             HardwareOperationError: If pin setting fails
         """
         if not (0 <= pin < self._total_pins):
-            raise HardwareOperationError("mock_dio", "set_input_state",
-                                       f"Pin {pin} is out of range [0, {self._total_pins-1}]")
+            raise HardwareOperationError(
+                "mock_dio",
+                "set_input_state",
+                f"Pin {pin} is out of range [0, {self._total_pins-1}]",
+            )
 
         pin_mode = self._pin_configurations.get(pin)
         if pin_mode not in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]:
-            raise HardwareOperationError("mock_dio", "set_input_state",
-                                       f"Pin {pin} is not configured as input (current: {pin_mode})")
+            raise HardwareOperationError(
+                "mock_dio",
+                "set_input_state",
+                f"Pin {pin} is not configured as input (current: {pin_mode})",
+            )
 
         self._input_states[pin] = level
         logger.debug(f"Mock: Set input pin {pin} to {level.name}")

@@ -10,10 +10,4 @@ from .mcu import MCUService
 from .power import PowerService
 from .robot import RobotService
 
-__all__ = [
-    'DigitalInputService',
-    'LoadCellService',
-    'MCUService',
-    'PowerService',
-    'RobotService'
-]
+__all__ = ["DigitalInputService", "LoadCellService", "MCUService", "PowerService", "RobotService"]

@@ -19,10 +19,7 @@ class ResultsCommand(Command):
     """Command for test results management"""
 
     def __init__(self, repository_service: Optional[RepositoryService] = None):
-        super().__init__(
-            name="results",
-            description="Test results management and analysis"
-        )
+        super().__init__(name="results", description="Test results management and analysis")
         self._repository_service = repository_service
 
     def set_repository_service(self, repository_service: RepositoryService) -> None:
@@ -73,7 +70,7 @@ class ResultsCommand(Command):
             "export [format]": "Export results (json, csv)",
             "clean [days]": "Clean old results (default: 30 days)",
             "search <query>": "Search results by DUT ID or model",
-            "help": "Show results command help"
+            "help": "Show results command help",
         }
 
     async def _list_recent_results(self, limit: int = 10) -> CommandResult:
@@ -86,11 +83,7 @@ class ResultsCommand(Command):
                 return CommandResult.info("No test results found")
 
             # Sort by creation time (most recent first)
-            sorted_tests = sorted(
-                all_tests,
-                key=lambda x: x.get('created_at', ''),
-                reverse=True
-            )
+            sorted_tests = sorted(all_tests, key=lambda x: x.get("created_at", ""), reverse=True)
 
             # Limit results
             recent_tests = sorted_tests[:limit]
@@ -100,10 +93,10 @@ class ResultsCommand(Command):
 
             # Return result with test data for rich display
             result_data = {
-                'test_results': recent_tests,
-                'title': title,
-                'total_count': len(all_tests),
-                'shown_count': len(recent_tests)
+                "test_results": recent_tests,
+                "title": title,
+                "total_count": len(all_tests),
+                "shown_count": len(recent_tests),
             }
 
             message = f"Showing {len(recent_tests)} of {len(all_tests)} test results"
@@ -160,7 +153,7 @@ class ResultsCommand(Command):
             result_text += f"Duration: {test.get_duration() or 'N/A'}\\n"
             result_text += f"Measurements: {len(test.measurement_ids)}\\n"
 
-            if hasattr(test, 'operator_id'):
+            if hasattr(test, "operator_id"):
                 result_text += f"Operator: {test.operator_id}\\n"
 
             # Show measurements summary
@@ -172,10 +165,12 @@ class ResultsCommand(Command):
                     result_text += f"  {i+1}. ID: {measurement_id}\\n"
 
                 if len(test.measurement_ids) > 5:
-                    result_text += f"  ... and {len(test.measurement_ids) - 5} more measurement IDs\\n"
+                    result_text += (
+                        f"  ... and {len(test.measurement_ids) - 5} more measurement IDs\\n"
+                    )
 
             # Show failure reasons if failed
-            if not test.is_passed() and hasattr(test, 'failure_reason'):
+            if not test.is_passed() and hasattr(test, "failure_reason"):
                 result_text += f"\\nFailure Reason: {test.failure_reason}\\n"
 
             return CommandResult.success(result_text)
@@ -195,7 +190,7 @@ class ResultsCommand(Command):
 
             # Calculate statistics
             total_tests = len(all_tests)
-            passed_tests = sum(1 for test in all_tests if test.get('passed', False))
+            passed_tests = sum(1 for test in all_tests if test.get("passed", False))
             failed_tests = total_tests - passed_tests
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
@@ -204,57 +199,59 @@ class ResultsCommand(Command):
             recent_tests = []
 
             for test in all_tests:
-                created_at = test.get('created_at')
+                created_at = test.get("created_at")
                 if created_at:
                     try:
-                        test_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        test_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
                         if test_date >= week_ago:
                             recent_tests.append(test)
                     except:
                         pass
 
             recent_total = len(recent_tests)
-            recent_passed = sum(1 for test in recent_tests if test.get('passed', False))
+            recent_passed = sum(1 for test in recent_tests if test.get("passed", False))
             recent_pass_rate = (recent_passed / recent_total * 100) if recent_total > 0 else 0
 
             # Prepare statistics data for rich display
             statistics_data = {
-                'overall': {
-                    'total_tests': total_tests,
-                    'passed_tests': passed_tests,
-                    'failed_tests': failed_tests,
-                    'pass_rate': pass_rate
+                "overall": {
+                    "total_tests": total_tests,
+                    "passed_tests": passed_tests,
+                    "failed_tests": failed_tests,
+                    "pass_rate": pass_rate,
                 },
-                'recent': {
-                    'total_tests': recent_total,
-                    'passed_tests': recent_passed,
-                    'pass_rate': recent_pass_rate
-                }
+                "recent": {
+                    "total_tests": recent_total,
+                    "passed_tests": recent_passed,
+                    "pass_rate": recent_pass_rate,
+                },
             }
 
             # DUT Model statistics
             models = {}
             for test in all_tests:
-                dut_info = test.get('dut', {})
-                model = dut_info.get('model_number', 'Unknown')
+                dut_info = test.get("dut", {})
+                model = dut_info.get("model_number", "Unknown")
                 if model not in models:
-                    models[model] = {'total': 0, 'passed': 0}
-                models[model]['total'] += 1
-                if test.get('passed', False):
-                    models[model]['passed'] += 1
+                    models[model] = {"total": 0, "passed": 0}
+                models[model]["total"] += 1
+                if test.get("passed", False):
+                    models[model]["passed"] += 1
 
             if models:
-                statistics_data['by_model'] = {}
+                statistics_data["by_model"] = {}
                 for model, data in models.items():
-                    model_pass_rate = (data['passed'] / data['total'] * 100) if data['total'] > 0 else 0
-                    statistics_data['by_model'][model] = {
-                        'total': data['total'],
-                        'passed': data['passed'],
-                        'pass_rate': model_pass_rate
+                    model_pass_rate = (
+                        (data["passed"] / data["total"] * 100) if data["total"] > 0 else 0
+                    )
+                    statistics_data["by_model"][model] = {
+                        "total": data["total"],
+                        "passed": data["passed"],
+                        "pass_rate": model_pass_rate,
                     }
 
             # Return result with statistics data for rich display
-            result_data = {'statistics': statistics_data}
+            result_data = {"statistics": statistics_data}
             message = f"Test statistics generated for {total_tests} total tests"
 
             return CommandResult.success(message, data=result_data)
@@ -285,40 +282,55 @@ class ResultsCommand(Command):
             if format_type == "json":
                 # Export as JSON
                 export_path = Path(filename)
-                with open(export_path, 'w', encoding='utf-8') as f:
+                with open(export_path, "w", encoding="utf-8") as f:
                     json.dump(all_tests, f, indent=2, ensure_ascii=False, default=str)
 
-                return CommandResult.success(f"Results exported to {filename} ({len(all_tests)} tests)")
+                return CommandResult.success(
+                    f"Results exported to {filename} ({len(all_tests)} tests)"
+                )
 
             elif format_type == "csv":
                 # Export as CSV
                 import csv
+
                 export_path = Path(filename)
 
-                with open(export_path, 'w', newline='', encoding='utf-8') as f:
+                with open(export_path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
 
                     # Write header
-                    writer.writerow([
-                        'Test ID', 'DUT ID', 'Model', 'Serial', 'Status',
-                        'Created At', 'Duration', 'Measurements Count'
-                    ])
+                    writer.writerow(
+                        [
+                            "Test ID",
+                            "DUT ID",
+                            "Model",
+                            "Serial",
+                            "Status",
+                            "Created At",
+                            "Duration",
+                            "Measurements Count",
+                        ]
+                    )
 
                     # Write data
                     for test in all_tests:
-                        dut_info = test.get('dut', {})
-                        writer.writerow([
-                            test.get('test_id', ''),
-                            dut_info.get('dut_id', ''),
-                            dut_info.get('model_number', ''),
-                            dut_info.get('serial_number', ''),
-                            'PASS' if test.get('passed', False) else 'FAIL',
-                            test.get('created_at', ''),
-                            test.get('duration', ''),
-                            len(test.get('measurements', []))
-                        ])
+                        dut_info = test.get("dut", {})
+                        writer.writerow(
+                            [
+                                test.get("test_id", ""),
+                                dut_info.get("dut_id", ""),
+                                dut_info.get("model_number", ""),
+                                dut_info.get("serial_number", ""),
+                                "PASS" if test.get("passed", False) else "FAIL",
+                                test.get("created_at", ""),
+                                test.get("duration", ""),
+                                len(test.get("measurements", [])),
+                            ]
+                        )
 
-                return CommandResult.success(f"Results exported to {filename} ({len(all_tests)} tests)")
+                return CommandResult.success(
+                    f"Results exported to {filename} ({len(all_tests)} tests)"
+                )
 
         except Exception as e:
             logger.error(f"Failed to export results: {e}")
@@ -340,7 +352,9 @@ class ResultsCommand(Command):
             deleted_count = await self._repository_service.test_repository.cleanup_old_tests(days)
 
             if deleted_count > 0:
-                return CommandResult.success(f"Cleaned up {deleted_count} test results older than {days} days")
+                return CommandResult.success(
+                    f"Cleaned up {deleted_count} test results older than {days} days"
+                )
             else:
                 return CommandResult.info(f"No test results older than {days} days found")
 
@@ -365,14 +379,14 @@ class ResultsCommand(Command):
             # Search through results
             matching_tests = []
             for test in all_tests:
-                dut_info = test.get('dut', {})
+                dut_info = test.get("dut", {})
 
                 # Search in DUT ID, model, serial number, test ID
                 search_fields = [
-                    test.get('test_id', '').lower(),
-                    dut_info.get('dut_id', '').lower(),
-                    dut_info.get('model_number', '').lower(),
-                    dut_info.get('serial_number', '').lower()
+                    test.get("test_id", "").lower(),
+                    dut_info.get("dut_id", "").lower(),
+                    dut_info.get("model_number", "").lower(),
+                    dut_info.get("serial_number", "").lower(),
                 ]
 
                 if any(query in field for field in search_fields):
@@ -386,11 +400,11 @@ class ResultsCommand(Command):
             title = f"Search Results for '{query}' ({len(matching_tests)} found)"
 
             result_data = {
-                'test_results': displayed_results,
-                'title': title,
-                'total_count': len(matching_tests),
-                'shown_count': len(displayed_results),
-                'search_query': query
+                "test_results": displayed_results,
+                "title": title,
+                "total_count": len(matching_tests),
+                "shown_count": len(displayed_results),
+                "search_query": query,
             }
 
             message = f"Found {len(matching_tests)} results for '{query}'"

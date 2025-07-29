@@ -91,7 +91,11 @@ class HardwareMonitorComponent:
         device_id = device.device_id
         self._devices[device_id] = device
         self._metrics[device_id] = MonitoringMetrics(
-            uptime_percentage=0.0, response_time_ms=0.0, error_count=0, last_communication=datetime.now(), health_score=100.0
+            uptime_percentage=0.0,
+            response_time_ms=0.0,
+            error_count=0,
+            last_communication=datetime.now(),
+            health_score=100.0,
         )
         self._notify_subscribers("device_registered", device_id)
 
@@ -101,7 +105,9 @@ class HardwareMonitorComponent:
             try:
                 await self._update_device_status(device_id, device)
             except Exception as e:
-                self._create_alert(device_id, AlertSeverity.ERROR, f"Failed to update device status: {str(e)}")
+                self._create_alert(
+                    device_id, AlertSeverity.ERROR, f"Failed to update device status: {str(e)}"
+                )
 
     async def _update_device_status(self, device_id: str, device: MonitoredDevice) -> None:
         """Update individual device status and metrics"""
@@ -123,16 +129,24 @@ class HardwareMonitorComponent:
 
             # Generate alerts based on health score
             if health_score < 30:
-                self._create_alert(device_id, AlertSeverity.CRITICAL, f"Device health critical: {health_score:.1f}%")
+                self._create_alert(
+                    device_id,
+                    AlertSeverity.CRITICAL,
+                    f"Device health critical: {health_score:.1f}%",
+                )
             elif health_score < 60:
-                self._create_alert(device_id, AlertSeverity.WARNING, f"Device health degraded: {health_score:.1f}%")
+                self._create_alert(
+                    device_id, AlertSeverity.WARNING, f"Device health degraded: {health_score:.1f}%"
+                )
 
             self._notify_subscribers("device_updated", device_id)
 
         except Exception as e:
             metrics = self._metrics[device_id]
             metrics.error_count += 1
-            self._create_alert(device_id, AlertSeverity.ERROR, f"Device communication failed: {str(e)}")
+            self._create_alert(
+                device_id, AlertSeverity.ERROR, f"Device communication failed: {str(e)}"
+            )
 
     def _calculate_health_score(self, device_id: str, metrics: MonitoringMetrics) -> float:
         """Calculate device health score (0-100)"""
@@ -159,7 +173,9 @@ class HardwareMonitorComponent:
 
     def _create_alert(self, device_id: str, severity: AlertSeverity, message: str) -> None:
         """Create new hardware alert"""
-        alert = HardwareAlert(device_id=device_id, severity=severity, message=message, timestamp=datetime.now())
+        alert = HardwareAlert(
+            device_id=device_id, severity=severity, message=message, timestamp=datetime.now()
+        )
         self._alerts.append(alert)
         self._notify_subscribers("alert_created", alert)
 
@@ -177,7 +193,11 @@ class HardwareMonitorComponent:
                 continue
 
             # Get recent alerts for this device
-            recent_alerts = [alert for alert in self._alerts[-10:] if alert.device_id == device_id and not alert.resolved]
+            recent_alerts = [
+                alert
+                for alert in self._alerts[-10:]
+                if alert.device_id == device_id and not alert.resolved
+            ]
 
             grid_data.append(
                 {
@@ -215,7 +235,9 @@ class HardwareMonitorComponent:
 
         severity_counts = {}
         for severity in AlertSeverity:
-            severity_counts[severity.value] = len([a for a in active_alerts if a.severity == severity])
+            severity_counts[severity.value] = len(
+                [a for a in active_alerts if a.severity == severity]
+            )
 
         return {
             "total_active": len(active_alerts),
@@ -246,7 +268,9 @@ class HardwareMonitorComponent:
 """
 
         if not devices:
-            dashboard += "║ No devices registered for monitoring                                        ║\n"
+            dashboard += (
+                "║ No devices registered for monitoring                                        ║\n"
+            )
         else:
             for device in devices[:10]:  # Show top 10 devices
                 health_icon = self._get_health_icon(device["health_score"])
@@ -261,7 +285,9 @@ class HardwareMonitorComponent:
                     f"{device['alert_count']:>6} ║\n"
                 )
 
-        dashboard += "╚══════════════════════════════════════════════════════════════════════════════╝"
+        dashboard += (
+            "╚══════════════════════════════════════════════════════════════════════════════╝"
+        )
         return dashboard
 
     def _get_health_icon(self, health_score: float) -> str:
@@ -277,7 +303,13 @@ class HardwareMonitorComponent:
 
     def _get_status_icon(self, status: str) -> str:
         """Get status icon"""
-        icons = {"CONNECTED": "✅", "DISCONNECTED": "❌", "ERROR": "⚠️", "CONNECTING": "🔧", "UNKNOWN": "❓"}
+        icons = {
+            "CONNECTED": "✅",
+            "DISCONNECTED": "❌",
+            "ERROR": "⚠️",
+            "CONNECTING": "🔧",
+            "UNKNOWN": "❓",
+        }
         return icons.get(status, "❓")
 
     def subscribe(self, callback: callable) -> None:
@@ -308,9 +340,13 @@ class HardwareMonitorComponent:
             ],
             "summary": {
                 "total_devices": len(self._devices),
-                "online_devices": len([d for d in self._devices.values() if d.status == HardwareStatus.CONNECTED]),
+                "online_devices": len(
+                    [d for d in self._devices.values() if d.status == HardwareStatus.CONNECTED]
+                ),
                 "average_health": (
-                    sum(m.health_score for m in self._metrics.values()) / len(self._metrics) if self._metrics else 0
+                    sum(m.health_score for m in self._metrics.values()) / len(self._metrics)
+                    if self._metrics
+                    else 0
                 ),
                 "last_update": datetime.now().isoformat(),
             },

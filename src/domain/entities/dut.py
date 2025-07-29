@@ -22,7 +22,7 @@ class DUT:
         firmware_version: Optional[str] = None,
         hardware_revision: Optional[str] = None,
         manufacturing_date: Optional[Timestamp] = None,
-        specifications: Optional[Dict[str, Any]] = None
+        specifications: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize DUT entity
@@ -52,7 +52,9 @@ class DUT:
         self._specifications = specifications or {}
         self._created_at = Timestamp.now()
 
-    def _validate_required_fields(self, dut_id: DUTId, model_number: str, serial_number: str, manufacturer: str) -> None:
+    def _validate_required_fields(
+        self, dut_id: DUTId, model_number: str, serial_number: str, manufacturer: str
+    ) -> None:
         """Validate required fields"""
         if not isinstance(dut_id, DUTId):
             raise ValidationException("dut_id", dut_id, "DUT ID must be DUTId instance")
@@ -68,11 +70,15 @@ class DUT:
 
         # Model number validation
         if len(model_number.strip()) > 100:
-            raise ValidationException("model_number", model_number, "Model number too long (max 100 characters)")
+            raise ValidationException(
+                "model_number", model_number, "Model number too long (max 100 characters)"
+            )
 
         # Serial number validation
         if len(serial_number.strip()) > 50:
-            raise ValidationException("serial_number", serial_number, "Serial number too long (max 50 characters)")
+            raise ValidationException(
+                "serial_number", serial_number, "Serial number too long (max 50 characters)"
+            )
 
     @property
     def dut_id(self) -> DUTId:
@@ -126,7 +132,9 @@ class DUT:
     def update_specifications(self, specifications: Dict[str, Any]) -> None:
         """Update device specifications"""
         if not isinstance(specifications, dict):
-            raise ValidationException("specifications", specifications, "Specifications must be a dictionary")
+            raise ValidationException(
+                "specifications", specifications, "Specifications must be a dictionary"
+            )
 
         self._specifications.update(specifications)
 
@@ -137,37 +145,39 @@ class DUT:
     def to_dict(self) -> Dict[str, Any]:
         """Convert DUT to dictionary representation"""
         return {
-            'dut_id': str(self._dut_id),
-            'model_number': self._model_number,
-            'serial_number': self._serial_number,
-            'manufacturer': self._manufacturer,
-            'firmware_version': self._firmware_version,
-            'hardware_revision': self._hardware_revision,
-            'manufacturing_date': self._manufacturing_date.to_iso() if self._manufacturing_date else None,
-            'specifications': self._specifications,
-            'created_at': self._created_at.to_iso()
+            "dut_id": str(self._dut_id),
+            "model_number": self._model_number,
+            "serial_number": self._serial_number,
+            "manufacturer": self._manufacturer,
+            "firmware_version": self._firmware_version,
+            "hardware_revision": self._hardware_revision,
+            "manufacturing_date": (
+                self._manufacturing_date.to_iso() if self._manufacturing_date else None
+            ),
+            "specifications": self._specifications,
+            "created_at": self._created_at.to_iso(),
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'DUT':
+    def from_dict(cls, data: Dict[str, Any]) -> "DUT":
         """Create DUT from dictionary representation"""
         manufacturing_date = None
-        if data.get('manufacturing_date'):
-            manufacturing_date = Timestamp.from_iso(data['manufacturing_date'])
+        if data.get("manufacturing_date"):
+            manufacturing_date = Timestamp.from_iso(data["manufacturing_date"])
 
         return cls(
-            dut_id=DUTId(data['dut_id']),
-            model_number=data['model_number'],
-            serial_number=data['serial_number'],
-            manufacturer=data['manufacturer'],
-            firmware_version=data.get('firmware_version'),
-            hardware_revision=data.get('hardware_revision'),
+            dut_id=DUTId(data["dut_id"]),
+            model_number=data["model_number"],
+            serial_number=data["serial_number"],
+            manufacturer=data["manufacturer"],
+            firmware_version=data.get("firmware_version"),
+            hardware_revision=data.get("hardware_revision"),
             manufacturing_date=manufacturing_date,
-            specifications=data.get('specifications', {})
+            specifications=data.get("specifications", {}),
         )
 
     @classmethod
-    def from_command_info(cls, command_info) -> 'DUT':
+    def from_command_info(cls, command_info) -> "DUT":
         """Create DUT from DUTCommandInfo
 
         Args:
@@ -180,7 +190,7 @@ class DUT:
             dut_id=DUTId(command_info.dut_id),
             model_number=command_info.model_number,
             serial_number=command_info.serial_number,
-            manufacturer=command_info.manufacturer
+            manufacturer=command_info.manufacturer,
         )
 
     def __str__(self) -> str:

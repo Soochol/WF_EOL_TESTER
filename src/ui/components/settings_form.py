@@ -84,7 +84,11 @@ class SettingsSchema:
                     required=True,
                     validation_rules=[
                         {"rule": "required", "message": "Serial port is required"},
-                        {"rule": "pattern", "pattern": r"^(/dev/tty|COM)\w+", "message": "Invalid port format"},
+                        {
+                            "rule": "pattern",
+                            "pattern": r"^(/dev/tty|COM)\w+",
+                            "message": "Invalid port format",
+                        },
                     ],
                 ),
                 FormField(
@@ -110,7 +114,11 @@ class SettingsSchema:
                     required=True,
                     validation_rules=[
                         {"rule": "required", "message": "IP address is required"},
-                        {"rule": "pattern", "pattern": r"^(\d{1,3}\.){3}\d{1,3}$", "message": "Invalid IP format"},
+                        {
+                            "rule": "pattern",
+                            "pattern": r"^(\d{1,3}\.){3}\d{1,3}$",
+                            "message": "Invalid IP format",
+                        },
                     ],
                 ),
                 FormField(
@@ -131,7 +139,12 @@ class SettingsSchema:
                     required=True,
                     validation_rules=[
                         {"rule": "required", "message": "Timeout is required"},
-                        {"rule": "range", "min": 10, "max": 3600, "message": "Timeout must be between 10-3600 seconds"},
+                        {
+                            "rule": "range",
+                            "min": 10,
+                            "max": 3600,
+                            "message": "Timeout must be between 10-3600 seconds",
+                        },
                     ],
                 ),
                 FormField(
@@ -141,7 +154,14 @@ class SettingsSchema:
                     value=10,
                     help_text="Number of samples per measurement",
                     required=True,
-                    validation_rules=[{"rule": "range", "min": 1, "max": 100, "message": "Samples must be between 1-100"}],
+                    validation_rules=[
+                        {
+                            "rule": "range",
+                            "min": 1,
+                            "max": 100,
+                            "message": "Samples must be between 1-100",
+                        }
+                    ],
                 ),
                 FormField(
                     name="retry_attempts",
@@ -149,7 +169,14 @@ class SettingsSchema:
                     field_type="number",
                     value=3,
                     help_text="Number of retry attempts for failed tests",
-                    validation_rules=[{"rule": "range", "min": 0, "max": 10, "message": "Retries must be between 0-10"}],
+                    validation_rules=[
+                        {
+                            "rule": "range",
+                            "min": 0,
+                            "max": 10,
+                            "message": "Retries must be between 0-10",
+                        }
+                    ],
                 ),
                 FormField(
                     name="auto_save_results",
@@ -167,7 +194,12 @@ class SettingsSchema:
                     value=5000,
                     help_text="Timeout for hardware connections",
                     validation_rules=[
-                        {"rule": "range", "min": 1000, "max": 30000, "message": "Timeout must be between 1000-30000ms"}
+                        {
+                            "rule": "range",
+                            "min": 1000,
+                            "max": 30000,
+                            "message": "Timeout must be between 1000-30000ms",
+                        }
                     ],
                 ),
                 FormField(
@@ -177,7 +209,12 @@ class SettingsSchema:
                     value=1000,
                     help_text="Delay between retry attempts",
                     validation_rules=[
-                        {"rule": "range", "min": 100, "max": 10000, "message": "Delay must be between 100-10000ms"}
+                        {
+                            "rule": "range",
+                            "min": 100,
+                            "max": 10000,
+                            "message": "Delay must be between 100-10000ms",
+                        }
                     ],
                 ),
                 FormField(
@@ -213,7 +250,14 @@ class SettingsSchema:
                     field_type="number",
                     value=5,
                     help_text="Dashboard refresh interval",
-                    validation_rules=[{"rule": "range", "min": 1, "max": 60, "message": "Interval must be between 1-60 seconds"}],
+                    validation_rules=[
+                        {
+                            "rule": "range",
+                            "min": 1,
+                            "max": 60,
+                            "message": "Interval must be between 1-60 seconds",
+                        }
+                    ],
                 ),
             ],
         }
@@ -260,7 +304,9 @@ class SettingsFormComponent:
         if validate:
             field_errors = self._validate_field(field_name, value)
             # Remove old errors for this field
-            self._validation_errors = [err for err in self._validation_errors if err.field_name != field_name]
+            self._validation_errors = [
+                err for err in self._validation_errors if err.field_name != field_name
+            ]
             # Add new errors
             self._validation_errors.extend(field_errors)
 
@@ -281,7 +327,10 @@ class SettingsFormComponent:
         if field.required and (value is None or value == ""):
             errors.append(
                 ValidationError(
-                    field_name=field_name, rule=ValidationRule.REQUIRED, message=f"{field.label} is required", value=value
+                    field_name=field_name,
+                    rule=ValidationRule.REQUIRED,
+                    message=f"{field.label} is required",
+                    value=value,
                 )
             )
             return errors  # Skip other validations if required field is empty
@@ -316,7 +365,9 @@ class SettingsFormComponent:
                             ValidationError(
                                 field_name=field_name,
                                 rule=ValidationRule.RANGE,
-                                message=rule_config.get("message", f"{field.label} must be at least {min_val}"),
+                                message=rule_config.get(
+                                    "message", f"{field.label} must be at least {min_val}"
+                                ),
                                 value=value,
                             )
                         )
@@ -325,7 +376,9 @@ class SettingsFormComponent:
                             ValidationError(
                                 field_name=field_name,
                                 rule=ValidationRule.RANGE,
-                                message=rule_config.get("message", f"{field.label} must be at most {max_val}"),
+                                message=rule_config.get(
+                                    "message", f"{field.label} must be at most {max_val}"
+                                ),
                                 value=value,
                             )
                         )
@@ -401,7 +454,11 @@ class SettingsFormComponent:
 
     def export_settings(self) -> Dict[str, Any]:
         """Export settings to dictionary"""
-        return {"settings": self._form_data.copy(), "exported_at": datetime.now().isoformat(), "version": "1.0"}
+        return {
+            "settings": self._form_data.copy(),
+            "exported_at": datetime.now().isoformat(),
+            "version": "1.0",
+        }
 
     def import_settings(self, settings_data: Dict[str, Any]) -> bool:
         """Import settings from dictionary"""
@@ -446,7 +503,9 @@ class SettingsFormComponent:
 """
 
         for category, fields in self.schema.categories.items():
-            form_output += f"┌─ {category.upper().replace('_', ' ')} ─" + "─" * (70 - len(category)) + "┐\n"
+            form_output += (
+                f"┌─ {category.upper().replace('_', ' ')} ─" + "─" * (70 - len(category)) + "┐\n"
+            )
 
             for field in fields:
                 value = self._form_data.get(field.name, "")

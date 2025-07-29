@@ -10,12 +10,14 @@ __all__ = []
 
 try:
     from driver.serial import SerialManager
-    __all__.append('SerialManager')
+
+    __all__.append("SerialManager")
 except ImportError:
     pass
 
 try:
     from driver.tcp import TCPCommunication
-    __all__.append('TCPCommunication')
+
+    __all__.append("TCPCommunication")
 except ImportError:
     pass

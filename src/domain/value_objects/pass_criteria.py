@@ -51,14 +51,12 @@ class PassCriteria:
             raise ValidationException(
                 "force_limit_min",
                 self.force_limit_min,
-                f"Force min ({self.force_limit_min}) must be less than max ({self.force_limit_max})"
+                f"Force min ({self.force_limit_min}) must be less than max ({self.force_limit_max})",
             )
 
         if self.force_limit_min < 0:
             raise ValidationException(
-                "force_limit_min",
-                self.force_limit_min,
-                "Force minimum cannot be negative"
+                "force_limit_min", self.force_limit_min, "Force minimum cannot be negative"
             )
 
     def _validate_temperature_limits(self) -> None:
@@ -67,7 +65,7 @@ class PassCriteria:
             raise ValidationException(
                 "temperature_limit_min",
                 self.temperature_limit_min,
-                f"Temperature min ({self.temperature_limit_min}) must be less than max ({self.temperature_limit_max})"
+                f"Temperature min ({self.temperature_limit_min}) must be less than max ({self.temperature_limit_max})",
             )
 
     def _validate_tolerances(self) -> None:
@@ -76,14 +74,12 @@ class PassCriteria:
             raise ValidationException(
                 "measurement_tolerance",
                 self.measurement_tolerance,
-                "Measurement tolerance must be positive"
+                "Measurement tolerance must be positive",
             )
 
         if self.position_tolerance <= 0:
             raise ValidationException(
-                "position_tolerance",
-                self.position_tolerance,
-                "Position tolerance must be positive"
+                "position_tolerance", self.position_tolerance, "Position tolerance must be positive"
             )
 
     def _validate_timing(self) -> None:
@@ -92,14 +88,14 @@ class PassCriteria:
             raise ValidationException(
                 "max_test_duration",
                 self.max_test_duration,
-                "Maximum test duration must be positive"
+                "Maximum test duration must be positive",
             )
 
         if self.min_stabilization_time < 0:
             raise ValidationException(
                 "min_stabilization_time",
                 self.min_stabilization_time,
-                "Minimum stabilization time cannot be negative"
+                "Minimum stabilization time cannot be negative",
             )
 
     def is_force_within_limits(self, force: float) -> bool:
@@ -165,14 +161,18 @@ class PassCriteria:
             target_point = np.array([[temperature, stroke]])
 
             # Perform 2D linear interpolation
-            upper_limit = griddata(points, upper_values, target_point, method='linear', fill_value=np.nan)[0]
-            lower_limit = griddata(points, lower_values, target_point, method='linear', fill_value=np.nan)[0]
+            upper_limit = griddata(
+                points, upper_values, target_point, method="linear", fill_value=np.nan
+            )[0]
+            lower_limit = griddata(
+                points, lower_values, target_point, method="linear", fill_value=np.nan
+            )[0]
 
             # Handle extrapolation cases (outside spec point range)
             if np.isnan(upper_limit) or np.isnan(lower_limit):
                 # Use nearest neighbor for extrapolation
-                upper_limit = griddata(points, upper_values, target_point, method='nearest')[0]
-                lower_limit = griddata(points, lower_values, target_point, method='nearest')[0]
+                upper_limit = griddata(points, upper_values, target_point, method="nearest")[0]
+                lower_limit = griddata(points, lower_values, target_point, method="nearest")[0]
 
             return (float(lower_limit), float(upper_limit))
 
@@ -191,43 +191,43 @@ class PassCriteria:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation"""
         return {
-            'force_limit_min': self.force_limit_min,
-            'force_limit_max': self.force_limit_max,
-            'temperature_limit_max': self.temperature_limit_max,
-            'temperature_limit_min': self.temperature_limit_min,
-            'measurement_tolerance': self.measurement_tolerance,
-            'force_precision': self.force_precision,
-            'temperature_precision': self.temperature_precision,
-            'position_tolerance': self.position_tolerance,
-            'max_test_duration': self.max_test_duration,
-            'min_stabilization_time': self.min_stabilization_time,
-            'spec_points': [list(point) for point in self.spec_points]
+            "force_limit_min": self.force_limit_min,
+            "force_limit_max": self.force_limit_max,
+            "temperature_limit_max": self.temperature_limit_max,
+            "temperature_limit_min": self.temperature_limit_min,
+            "measurement_tolerance": self.measurement_tolerance,
+            "force_precision": self.force_precision,
+            "temperature_precision": self.temperature_precision,
+            "position_tolerance": self.position_tolerance,
+            "max_test_duration": self.max_test_duration,
+            "min_stabilization_time": self.min_stabilization_time,
+            "spec_points": [list(point) for point in self.spec_points],
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PassCriteria':
+    def from_dict(cls, data: Dict[str, Any]) -> "PassCriteria":
         """Create PassCriteria from dictionary"""
         # Convert spec_points from list format back to tuples
         spec_points = []
-        if 'spec_points' in data:
-            spec_points = [tuple(point) for point in data['spec_points']]
+        if "spec_points" in data:
+            spec_points = [tuple(point) for point in data["spec_points"]]
 
         return cls(
-            force_limit_min=data.get('force_limit_min', 0.0),
-            force_limit_max=data.get('force_limit_max', 100.0),
-            temperature_limit_max=data.get('temperature_limit_max', 80.0),
-            temperature_limit_min=data.get('temperature_limit_min', -10.0),
-            measurement_tolerance=data.get('measurement_tolerance', 0.001),
-            force_precision=data.get('force_precision', 2),
-            temperature_precision=data.get('temperature_precision', 1),
-            position_tolerance=data.get('position_tolerance', 0.5),
-            max_test_duration=data.get('max_test_duration', 300.0),
-            min_stabilization_time=data.get('min_stabilization_time', 0.5),
-            spec_points=spec_points
+            force_limit_min=data.get("force_limit_min", 0.0),
+            force_limit_max=data.get("force_limit_max", 100.0),
+            temperature_limit_max=data.get("temperature_limit_max", 80.0),
+            temperature_limit_min=data.get("temperature_limit_min", -10.0),
+            measurement_tolerance=data.get("measurement_tolerance", 0.001),
+            force_precision=data.get("force_precision", 2),
+            temperature_precision=data.get("temperature_precision", 1),
+            position_tolerance=data.get("position_tolerance", 0.5),
+            max_test_duration=data.get("max_test_duration", 300.0),
+            min_stabilization_time=data.get("min_stabilization_time", 0.5),
+            spec_points=spec_points,
         )
 
     @classmethod
-    def default(cls) -> 'PassCriteria':
+    def default(cls) -> "PassCriteria":
         """Create default pass criteria"""
         return cls()
 

@@ -105,14 +105,20 @@ class HardwareConfiguration:
         # Validate model
         if self.robot.model not in SUPPORTED_ROBOT_MODELS:
             raise ValidationException(
-                "robot.model", self.robot.model, f"Unsupported robot model. Supported models: {', '.join(SUPPORTED_ROBOT_MODELS)}"
+                "robot.model",
+                self.robot.model,
+                f"Unsupported robot model. Supported models: {', '.join(SUPPORTED_ROBOT_MODELS)}",
             )
 
         if self.robot.irq_no < 0:
-            raise ValidationException("robot.irq_no", self.robot.irq_no, "IRQ number cannot be negative")
+            raise ValidationException(
+                "robot.irq_no", self.robot.irq_no, "IRQ number cannot be negative"
+            )
 
         if self.robot.axis_count <= 0:
-            raise ValidationException("robot.axis_count", self.robot.axis_count, "Axis count must be positive")
+            raise ValidationException(
+                "robot.axis_count", self.robot.axis_count, "Axis count must be positive"
+            )
 
     def _validate_communication_configs(self) -> None:
         """Validate communication configuration parameters"""
@@ -125,33 +131,47 @@ class HardwareConfiguration:
             )
 
         if not self.loadcell.port:
-            raise ValidationException("loadcell.port", self.loadcell.port, "LoadCell port cannot be empty")
+            raise ValidationException(
+                "loadcell.port", self.loadcell.port, "LoadCell port cannot be empty"
+            )
 
         if self.loadcell.baudrate <= 0:
-            raise ValidationException("loadcell.baudrate", self.loadcell.baudrate, "LoadCell baudrate must be positive")
+            raise ValidationException(
+                "loadcell.baudrate", self.loadcell.baudrate, "LoadCell baudrate must be positive"
+            )
 
         if self.loadcell.timeout <= 0:
-            raise ValidationException("loadcell.timeout", self.loadcell.timeout, "LoadCell timeout must be positive")
+            raise ValidationException(
+                "loadcell.timeout", self.loadcell.timeout, "LoadCell timeout must be positive"
+            )
 
         if self.loadcell.indicator_id < 0:
             raise ValidationException(
-                "loadcell.indicator_id", self.loadcell.indicator_id, "LoadCell indicator ID cannot be negative"
+                "loadcell.indicator_id",
+                self.loadcell.indicator_id,
+                "LoadCell indicator ID cannot be negative",
             )
 
         # MCU validation
         if self.mcu.model not in SUPPORTED_MCU_MODELS:
             raise ValidationException(
-                "mcu.model", self.mcu.model, f"Unsupported MCU model. Supported models: {', '.join(SUPPORTED_MCU_MODELS)}"
+                "mcu.model",
+                self.mcu.model,
+                f"Unsupported MCU model. Supported models: {', '.join(SUPPORTED_MCU_MODELS)}",
             )
 
         if not self.mcu.port:
             raise ValidationException("mcu.port", self.mcu.port, "MCU port cannot be empty")
 
         if self.mcu.baudrate <= 0:
-            raise ValidationException("mcu.baudrate", self.mcu.baudrate, "MCU baudrate must be positive")
+            raise ValidationException(
+                "mcu.baudrate", self.mcu.baudrate, "MCU baudrate must be positive"
+            )
 
         if self.mcu.timeout <= 0:
-            raise ValidationException("mcu.timeout", self.mcu.timeout, "MCU timeout must be positive")
+            raise ValidationException(
+                "mcu.timeout", self.mcu.timeout, "MCU timeout must be positive"
+            )
 
         # Digital Input validation
         if self.digital_input.model not in SUPPORTED_DIGITAL_INPUT_MODELS:
@@ -162,14 +182,24 @@ class HardwareConfiguration:
             )
 
         if self.digital_input.board_no < 0:
-            raise ValidationException("digital_input.board_no", self.digital_input.board_no, "Board number cannot be negative")
+            raise ValidationException(
+                "digital_input.board_no",
+                self.digital_input.board_no,
+                "Board number cannot be negative",
+            )
 
         if self.digital_input.input_count <= 0:
-            raise ValidationException("digital_input.input_count", self.digital_input.input_count, "Input count must be positive")
+            raise ValidationException(
+                "digital_input.input_count",
+                self.digital_input.input_count,
+                "Input count must be positive",
+            )
 
         if self.digital_input.debounce_time < 0:
             raise ValidationException(
-                "digital_input.debounce_time", self.digital_input.debounce_time, "Debounce time cannot be negative"
+                "digital_input.debounce_time",
+                self.digital_input.debounce_time,
+                "Debounce time cannot be negative",
             )
 
     def _validate_power_config(self) -> None:
@@ -186,13 +216,19 @@ class HardwareConfiguration:
             raise ValidationException("power.host", self.power.host, "Power host cannot be empty")
 
         if not (1 <= self.power.port <= 65535):
-            raise ValidationException("power.port", self.power.port, "Power port must be between 1 and 65535")
+            raise ValidationException(
+                "power.port", self.power.port, "Power port must be between 1 and 65535"
+            )
 
         if self.power.timeout <= 0:
-            raise ValidationException("power.timeout", self.power.timeout, "Power timeout must be positive")
+            raise ValidationException(
+                "power.timeout", self.power.timeout, "Power timeout must be positive"
+            )
 
         if self.power.channel <= 0:
-            raise ValidationException("power.channel", self.power.channel, "Power channel must be positive")
+            raise ValidationException(
+                "power.channel", self.power.channel, "Power channel must be positive"
+            )
 
     def is_valid(self) -> bool:
         """
@@ -253,7 +289,11 @@ class HardwareConfiguration:
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary representation"""
         return {
-            "robot": {"model": self.robot.model, "irq_no": self.robot.irq_no, "axis_count": self.robot.axis_count},
+            "robot": {
+                "model": self.robot.model,
+                "irq_no": self.robot.irq_no,
+                "axis_count": self.robot.axis_count,
+            },
             "loadcell": {
                 "model": self.loadcell.model,
                 "port": self.loadcell.port,
@@ -261,7 +301,12 @@ class HardwareConfiguration:
                 "timeout": self.loadcell.timeout,
                 "indicator_id": self.loadcell.indicator_id,
             },
-            "mcu": {"model": self.mcu.model, "port": self.mcu.port, "baudrate": self.mcu.baudrate, "timeout": self.mcu.timeout},
+            "mcu": {
+                "model": self.mcu.model,
+                "port": self.mcu.port,
+                "baudrate": self.mcu.baudrate,
+                "timeout": self.mcu.timeout,
+            },
             "power": {
                 "model": self.power.model,
                 "host": self.power.host,

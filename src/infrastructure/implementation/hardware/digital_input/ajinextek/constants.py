@@ -34,9 +34,9 @@ PIN_MODE_INPUT_PULLUP = 2
 PIN_MODE_INPUT_PULLDOWN = 3
 
 # Signal Types
-SIGNAL_TYPE_TTL = 0      # TTL 5V logic
-SIGNAL_TYPE_CMOS = 1     # CMOS 3.3V logic
-SIGNAL_TYPE_24V = 2      # 24V industrial logic
+SIGNAL_TYPE_TTL = 0  # TTL 5V logic
+SIGNAL_TYPE_CMOS = 1  # CMOS 3.3V logic
+SIGNAL_TYPE_24V = 2  # 24V industrial logic
 
 # Timing Constants
 DEFAULT_DEBOUNCE_TIME_MS = 10
@@ -63,8 +63,8 @@ AXL_LIBRARY_NAME = "AXL.dll"
 AXL_64BIT_LIBRARY_NAME = "AXL64.dll"
 
 # Module Types (Ajinextek specific)
-MODULE_TYPE_DI = "DI"    # Digital Input
-MODULE_TYPE_DO = "DO"    # Digital Output
+MODULE_TYPE_DI = "DI"  # Digital Input
+MODULE_TYPE_DO = "DO"  # Digital Output
 MODULE_TYPE_DIO = "DIO"  # Digital Input/Output
 MODULE_TYPE_RELAY = "RELAY"  # Relay Output
 
@@ -107,22 +107,22 @@ ERROR_LIBRARY_NOT_LOADED = 0x80
 
 # Default Hardware Configuration
 DEFAULT_CONFIG = {
-    'board_number': DEFAULT_BOARD_NUMBER,
-    'module_position': DEFAULT_MODULE_POSITION,
-    'signal_type': SIGNAL_TYPE_24V,
-    'debounce_time_ms': DEFAULT_DEBOUNCE_TIME_MS,
-    'output_delay_ms': DEFAULT_OUTPUT_DELAY_MS,
-    'retry_count': DEFAULT_RETRY_COUNT,
-    'auto_initialize': True,
-    'enable_interrupts': False
+    "board_number": DEFAULT_BOARD_NUMBER,
+    "module_position": DEFAULT_MODULE_POSITION,
+    "signal_type": SIGNAL_TYPE_24V,
+    "debounce_time_ms": DEFAULT_DEBOUNCE_TIME_MS,
+    "output_delay_ms": DEFAULT_OUTPUT_DELAY_MS,
+    "retry_count": DEFAULT_RETRY_COUNT,
+    "auto_initialize": True,
+    "enable_interrupts": False,
 }
 
 # Pin Configuration Presets
 PRESET_ALL_INPUTS = {i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)}
 PRESET_ALL_OUTPUTS = {i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)}
 PRESET_MIXED_IO = {
-    **{i: PIN_MODE_INPUT for i in range(0, 16)},      # First 16 as inputs
-    **{i: PIN_MODE_OUTPUT for i in range(16, 32)}     # Last 16 as outputs
+    **{i: PIN_MODE_INPUT for i in range(0, 16)},  # First 16 as inputs
+    **{i: PIN_MODE_OUTPUT for i in range(16, 32)},  # Last 16 as outputs
 }
 
 # Status Messages
@@ -136,7 +136,7 @@ STATUS_MESSAGES = {
     "output_written": "Digital output written successfully",
     "all_outputs_reset": "All outputs reset to LOW",
     "communication_ok": "Communication with DIO card OK",
-    "hardware_ready": "DIO hardware ready for operation"
+    "hardware_ready": "DIO hardware ready for operation",
 }
 
 # Command Descriptions
@@ -149,13 +149,13 @@ COMMAND_DESCRIPTIONS = {
     "read_multiple": "Read multiple input states",
     "write_multiple": "Write multiple output states",
     "reset_outputs": "Reset all outputs to LOW state",
-    "get_status": "Get hardware status and configuration"
+    "get_status": "Get hardware status and configuration",
 }
 
 # Performance Monitoring
 PERFORMANCE_THRESHOLDS = {
-    'max_read_time_ms': 10,
-    'max_write_time_ms': 10,
-    'max_init_time_ms': 5000,
-    'max_error_rate_percent': 1.0
+    "max_read_time_ms": 10,
+    "max_write_time_ms": 10,
+    "max_init_time_ms": 5000,
+    "max_error_rate_percent": 1.0,
 }

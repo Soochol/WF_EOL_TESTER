@@ -10,6 +10,7 @@ from typing import Optional
 
 class BS205ErrorCode(IntEnum):
     """BS205 specific error codes"""
+
     # Communication Errors
     COMM_TIMEOUT = 1001
     COMM_SERIAL_ERROR = 1002
@@ -66,25 +67,31 @@ class BS205Error(Exception):
 
 class BS205CommunicationError(BS205Error):
     """BS205 communication errors"""
+
     pass
 
 
 class BS205HardwareError(BS205Error):
     """BS205 hardware errors"""
+
     pass
 
 
 class BS205OperationError(BS205Error):
     """BS205 operation errors"""
+
     pass
 
 
 class BS205DataError(BS205Error):
     """BS205 data processing errors"""
+
     pass
 
 
-def validate_weight_range(weight_kg: float, min_weight: float = -500.0, max_weight: float = 500.0) -> None:
+def validate_weight_range(
+    weight_kg: float, min_weight: float = -500.0, max_weight: float = 500.0
+) -> None:
     """
     Validate weight measurement range
 
@@ -99,11 +106,13 @@ def validate_weight_range(weight_kg: float, min_weight: float = -500.0, max_weig
     if not (min_weight <= weight_kg <= max_weight):
         raise BS205OperationError(
             f"Weight {weight_kg}kg is out of range [{min_weight}, {max_weight}]",
-            error_code=int(BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE)
+            error_code=int(BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE),
         )
 
 
-def validate_force_range(force_n: float, min_force: float = -4905.0, max_force: float = 4905.0) -> None:
+def validate_force_range(
+    force_n: float, min_force: float = -4905.0, max_force: float = 4905.0
+) -> None:
     """
     Validate force measurement range
 
@@ -118,7 +127,7 @@ def validate_force_range(force_n: float, min_force: float = -4905.0, max_force: 
     if not (min_force <= force_n <= max_force):
         raise BS205OperationError(
             f"Force {force_n}N is out of range [{min_force}, {max_force}]",
-            error_code=int(BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE)
+            error_code=int(BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE),
         )
 
 
@@ -136,19 +145,19 @@ def validate_sample_parameters(count: int, interval_ms: int) -> None:
     if count < 1:
         raise BS205OperationError(
             f"Sample count must be positive, got {count}",
-            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED)
+            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED),
         )
 
     if count > 1000:
         raise BS205OperationError(
             f"Sample count {count} exceeds maximum of 1000",
-            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED)
+            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED),
         )
 
     if interval_ms < 50:
         raise BS205OperationError(
             f"Sample interval {interval_ms}ms is too short, minimum is 50ms",
-            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED)
+            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED),
         )
 
 
@@ -166,7 +175,7 @@ def validate_unit(unit: str, supported_units: list[str]) -> None:
     if unit not in supported_units:
         raise BS205OperationError(
             f"Unit '{unit}' not supported. Supported units: {supported_units}",
-            error_code=int(BS205ErrorCode.OPERATION_INVALID_UNIT)
+            error_code=int(BS205ErrorCode.OPERATION_INVALID_UNIT),
         )
 
 
@@ -185,29 +194,28 @@ def parse_weight_response(response: str) -> tuple[float, str]:
     """
     if not response or not response.strip():
         raise BS205DataError(
-            "Empty response from device",
-            error_code=int(BS205ErrorCode.DATA_INVALID_FORMAT)
+            "Empty response from device", error_code=int(BS205ErrorCode.DATA_INVALID_FORMAT)
         )
 
     try:
         # Expected format: "R,+012.34,kg"
-        parts = response.strip().split(',')
+        parts = response.strip().split(",")
         if len(parts) < 3:
             raise BS205DataError(
                 f"Invalid response format: expected 3 fields, got {len(parts)}",
                 error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
-                details=f"Response: {response}"
+                details=f"Response: {response}",
             )
 
         # Parse weight value (remove + sign and spaces)
-        weight_str = parts[1].replace('+', '').replace(' ', '')
+        weight_str = parts[1].replace("+", "").replace(" ", "")
         try:
             weight_value = float(weight_str)
         except ValueError as e:
             raise BS205DataError(
                 f"Cannot convert weight '{weight_str}' to float",
                 error_code=int(BS205ErrorCode.DATA_CONVERSION_ERROR),
-                details=str(e)
+                details=str(e),
             )
 
         # Extract unit
@@ -221,7 +229,7 @@ def parse_weight_response(response: str) -> tuple[float, str]:
         raise BS205DataError(
             f"Unexpected error parsing response: {response}",
             error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
-            details=str(e)
+            details=str(e),
         )
 
 
@@ -246,7 +254,7 @@ def convert_weight_to_force(weight_kg: float, gravity: float = 9.81) -> float:
         raise BS205DataError(
             f"Cannot convert weight {weight_kg}kg to force",
             error_code=int(BS205ErrorCode.DATA_CONVERSION_ERROR),
-            details=str(e)
+            details=str(e),
         )
 
 
@@ -258,13 +266,11 @@ ERROR_MESSAGES = {
     BS205ErrorCode.COMM_PORT_NOT_AVAILABLE: "Serial port not available",
     BS205ErrorCode.COMM_INVALID_RESPONSE: "Invalid response received",
     BS205ErrorCode.COMM_BUFFER_OVERFLOW: "Communication buffer overflow",
-
     # Protocol Errors
     BS205ErrorCode.PROTOCOL_INVALID_COMMAND: "Invalid command sent to device",
     BS205ErrorCode.PROTOCOL_MALFORMED_RESPONSE: "Malformed response from device",
     BS205ErrorCode.PROTOCOL_UNEXPECTED_RESPONSE: "Unexpected response from device",
     BS205ErrorCode.PROTOCOL_CHECKSUM_ERROR: "Response checksum error",
-
     # Hardware Errors
     BS205ErrorCode.HARDWARE_NOT_CONNECTED: "Device not connected",
     BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED: "Device initialization failed",
@@ -272,7 +278,6 @@ ERROR_MESSAGES = {
     BS205ErrorCode.HARDWARE_OVERLOAD: "Device overload detected",
     BS205ErrorCode.HARDWARE_UNDERLOAD: "Device underload detected",
     BS205ErrorCode.HARDWARE_UNSTABLE: "Device measurement unstable",
-
     # Operation Errors
     BS205ErrorCode.OPERATION_ZERO_FAILED: "Zero calibration failed",
     BS205ErrorCode.OPERATION_TARE_FAILED: "Tare operation failed",
@@ -280,12 +285,11 @@ ERROR_MESSAGES = {
     BS205ErrorCode.OPERATION_INVALID_UNIT: "Invalid measurement unit",
     BS205ErrorCode.OPERATION_SAMPLING_FAILED: "Sampling operation failed",
     BS205ErrorCode.OPERATION_TIMEOUT: "Operation timeout",
-
     # Data Errors
     BS205ErrorCode.DATA_CONVERSION_ERROR: "Data conversion error",
     BS205ErrorCode.DATA_PARSING_ERROR: "Data parsing error",
     BS205ErrorCode.DATA_VALIDATION_ERROR: "Data validation error",
-    BS205ErrorCode.DATA_INVALID_FORMAT: "Invalid data format"
+    BS205ErrorCode.DATA_INVALID_FORMAT: "Invalid data format",
 }
 
 

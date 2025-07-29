@@ -14,14 +14,20 @@ from loguru import logger
 # src가 Python path에 있을 때 최적의 방법
 from application.interfaces.hardware.robot import RobotService, MotionStatus
 from domain.exceptions.robot_exceptions import (
-    RobotConnectionError, RobotMotionError, RobotConfigurationError,
-    AXLConnectionError, AXLMotionError
+    RobotConnectionError,
+    RobotMotionError,
+    RobotConfigurationError,
+    AXLConnectionError,
+    AXLMotionError,
 )
 from domain.value_objects.hardware_configuration import RobotConfig
 
 from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
 from infrastructure.implementation.hardware.robot.ajinextek.constants import *
-from infrastructure.implementation.hardware.robot.ajinextek.error_codes import AXT_RT_SUCCESS, get_error_message
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+    AXT_RT_SUCCESS,
+    get_error_message,
+)
 
 
 class AjinextekRobot(RobotService):
@@ -31,27 +37,23 @@ class AjinextekRobot(RobotService):
         self,
         # Hardware model
         model: str = "AJINEXTEK",
-
         # Motion parameters
         axis: int = 0,
         velocity: float = 100.0,
         acceleration: float = 100.0,
         deceleration: float = 100.0,
-
         # Safety limits
         max_velocity: float = 500.0,
         max_acceleration: float = 1000.0,
         max_deceleration: float = 1000.0,
-
         # Positioning settings
         position_tolerance: float = 0.1,
         homing_velocity: float = 10.0,
         homing_acceleration: float = 100.0,
         homing_deceleration: float = 100.0,
-
         # Connection parameters (AJINEXTEK specific)
         irq_no: int = 7,
-        axis_count: int = 6
+        axis_count: int = 6,
     ):
         """
         초기화
@@ -115,7 +117,9 @@ class AjinextekRobot(RobotService):
         self._axis_count = robot_config.axis_count
 
         try:
-            logger.info(f"Connecting to AJINEXTEK robot controller (IRQ: {self._irq_no}, Axes: {self._axis_count})")
+            logger.info(
+                f"Connecting to AJINEXTEK robot controller (IRQ: {self._irq_no}, Axes: {self._axis_count})"
+            )
 
             # Open AXL library
             result = self._axl.open(self._irq_no)
@@ -125,7 +129,7 @@ class AjinextekRobot(RobotService):
                 raise RobotConnectionError(
                     f"Failed to open AXL library: {error_msg}",
                     "AJINEXTEK",
-                    details=f"IRQ: {self._irq_no}, Error: {result}"
+                    details=f"IRQ: {self._irq_no}, Error: {result}",
                 )
 
             # Get board count for verification
@@ -135,9 +139,7 @@ class AjinextekRobot(RobotService):
             except Exception as e:
                 logger.error(f"Failed to get board count: {e}")
                 raise RobotConnectionError(
-                    f"Failed to get board count: {e}",
-                    "AJINEXTEK",
-                    details=str(e)
+                    f"Failed to get board count: {e}", "AJINEXTEK", details=str(e)
                 )
 
             # Get axis count (use auto-detection if not specified)
@@ -150,9 +152,7 @@ class AjinextekRobot(RobotService):
                 logger.error(f"Failed to get axis count: {e}")
                 if self._axis_count == 0:
                     raise RobotConnectionError(
-                        f"Failed to get axis count: {e}",
-                        "AJINEXTEK",
-                        details=str(e)
+                        f"Failed to get axis count: {e}", "AJINEXTEK", details=str(e)
                     )
 
             # Get library version for info
@@ -170,7 +170,9 @@ class AjinextekRobot(RobotService):
             self._is_connected = True
             self._motion_status = MotionStatus.IDLE
 
-            logger.info(f"AJINEXTEK robot controller connected successfully (IRQ: {self._irq_no}, Axes: {self._axis_count})")
+            logger.info(
+                f"AJINEXTEK robot controller connected successfully (IRQ: {self._irq_no}, Axes: {self._axis_count})"
+            )
             return True
 
         except RobotConnectionError:
@@ -181,9 +183,7 @@ class AjinextekRobot(RobotService):
             logger.error(f"Failed to connect to AJINEXTEK robot: {e}")
             self._is_connected = False
             raise RobotConnectionError(
-                f"Robot controller initialization failed: {e}",
-                "AJINEXTEK",
-                details=str(e)
+                f"Robot controller initialization failed: {e}", "AJINEXTEK", details=str(e)
             )
 
     async def disconnect(self) -> bool:
@@ -235,7 +235,13 @@ class AjinextekRobot(RobotService):
         """
         return self._is_connected
 
-    async def home_axis(self, axis: int, velocity: float = 10.0, acceleration: float = 100.0, deceleration: float = 100.0) -> bool:
+    async def home_axis(
+        self,
+        axis: int,
+        velocity: float = 10.0,
+        acceleration: float = 100.0,
+        deceleration: float = 100.0,
+    ) -> bool:
         """
         지정된 축을 홈 위치로 이동
 
@@ -278,7 +284,7 @@ class AjinextekRobot(RobotService):
                 vel_first=velocity,
                 vel_second=velocity * 0.5,
                 accel=accel,
-                decel=decel
+                decel=decel,
             )
 
             # Wait for homing to complete
@@ -298,9 +304,13 @@ class AjinextekRobot(RobotService):
         except Exception as e:
             logger.error(f"Homing failed on axis {axis}: {e}")
             self._motion_status = MotionStatus.ERROR
-            raise RobotMotionError(f"Homing failed on axis {axis}: {e}", "AJINEXTEK", details=str(e))
+            raise RobotMotionError(
+                f"Homing failed on axis {axis}: {e}", "AJINEXTEK", details=str(e)
+            )
 
-    async def home_all_axes(self, velocity: float = 10.0, acceleration: float = 100.0, deceleration: float = 100.0) -> bool:
+    async def home_all_axes(
+        self, velocity: float = 10.0, acceleration: float = 100.0, deceleration: float = 100.0
+    ) -> bool:
         """
         모든 축 홈 위치로 이동
 
@@ -334,8 +344,7 @@ class AjinextekRobot(RobotService):
                 error_details = "; ".join([f"Axis {axis}: {error}" for axis, error in failed_axes])
                 self._motion_status = MotionStatus.ERROR
                 raise RobotMotionError(
-                    f"Failed to home {len(failed_axes)} axes: {error_details}",
-                    "AJINEXTEK"
+                    f"Failed to home {len(failed_axes)} axes: {error_details}", "AJINEXTEK"
                 )
 
             self._motion_status = MotionStatus.IDLE
@@ -350,7 +359,14 @@ class AjinextekRobot(RobotService):
             self._motion_status = MotionStatus.ERROR
             raise RobotMotionError(f"Homing failed: {e}", "AJINEXTEK", details=str(e))
 
-    async def move_absolute(self, axis: int, position: float, velocity: float = 100.0, acceleration: float = 100.0, deceleration: float = 100.0) -> bool:
+    async def move_absolute(
+        self,
+        axis: int,
+        position: float,
+        velocity: float = 100.0,
+        acceleration: float = 100.0,
+        deceleration: float = 100.0,
+    ) -> bool:
         """
         지정된 축을 절대 위치로 이동
 
@@ -393,8 +409,7 @@ class AjinextekRobot(RobotService):
                 self._motion_status = MotionStatus.ERROR
                 logger.error(f"Failed to start movement on axis {axis}: {error_msg}")
                 raise RobotMotionError(
-                    f"Failed to start movement on axis {axis}: {error_msg}",
-                    "AJINEXTEK"
+                    f"Failed to start movement on axis {axis}: {error_msg}", "AJINEXTEK"
                 )
 
             # Wait for motion to complete
@@ -414,9 +429,18 @@ class AjinextekRobot(RobotService):
         except Exception as e:
             logger.error(f"Absolute move failed on axis {axis}: {e}")
             self._motion_status = MotionStatus.ERROR
-            raise RobotMotionError(f"Absolute move failed on axis {axis}: {e}", "AJINEXTEK", details=str(e))
+            raise RobotMotionError(
+                f"Absolute move failed on axis {axis}: {e}", "AJINEXTEK", details=str(e)
+            )
 
-    async def move_relative(self, axis: int, distance: float, velocity: float = 100.0, acceleration: float = 100.0, deceleration: float = 100.0) -> bool:
+    async def move_relative(
+        self,
+        axis: int,
+        distance: float,
+        velocity: float = 100.0,
+        acceleration: float = 100.0,
+        deceleration: float = 100.0,
+    ) -> bool:
         """
         지정된 축을 상대 위치로 이동
 
@@ -629,23 +653,23 @@ class AjinextekRobot(RobotService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': await self.is_connected(),
-            'irq_no': self._irq_no,
-            'axis_count': self._axis_count,
-            'motion_status': self._motion_status.value,
-            'servo_states': self._servo_states.copy(),
-            'default_velocity': self._default_velocity,
-            'default_acceleration': self._default_acceleration,
-            'hardware_type': 'AJINEXTEK'
+            "connected": await self.is_connected(),
+            "irq_no": self._irq_no,
+            "axis_count": self._axis_count,
+            "motion_status": self._motion_status.value,
+            "servo_states": self._servo_states.copy(),
+            "default_velocity": self._default_velocity,
+            "default_acceleration": self._default_acceleration,
+            "hardware_type": "AJINEXTEK",
         }
 
         if await self.is_connected():
             try:
-                status['current_positions'] = await self.get_all_positions()
-                status['last_error'] = None
+                status["current_positions"] = await self.get_all_positions()
+                status["last_error"] = None
             except Exception as e:
-                status['current_positions'] = None
-                status['last_error'] = str(e)
+                status["current_positions"] = None
+                status["last_error"] = str(e)
 
         return status
 
@@ -658,8 +682,7 @@ class AjinextekRobot(RobotService):
 
         if axis_no < 0 or axis_no >= self._axis_count:
             raise RobotMotionError(
-                f"Invalid axis number: {axis_no} (valid: 0-{self._axis_count-1})",
-                "AJINEXTEK"
+                f"Invalid axis number: {axis_no} (valid: 0-{self._axis_count-1})", "AJINEXTEK"
             )
 
     def _set_servo_on(self, axis_no: int) -> None:
@@ -674,7 +697,9 @@ class AjinextekRobot(RobotService):
             else:
                 error_msg = get_error_message(result)
                 logger.error(f"Failed to turn on servo {axis_no}: {error_msg}")
-                raise RobotMotionError(f"Failed to turn on servo {axis_no}: {error_msg}", "AJINEXTEK")
+                raise RobotMotionError(
+                    f"Failed to turn on servo {axis_no}: {error_msg}", "AJINEXTEK"
+                )
 
         except RobotMotionError:
             raise
@@ -694,7 +719,9 @@ class AjinextekRobot(RobotService):
             else:
                 error_msg = get_error_message(result)
                 logger.error(f"Failed to turn off servo {axis_no}: {error_msg}")
-                raise RobotMotionError(f"Failed to turn off servo {axis_no}: {error_msg}", "AJINEXTEK")
+                raise RobotMotionError(
+                    f"Failed to turn off servo {axis_no}: {error_msg}", "AJINEXTEK"
+                )
 
         except RobotMotionError:
             raise
@@ -702,10 +729,18 @@ class AjinextekRobot(RobotService):
             logger.error(f"Failed to turn off servo {axis_no}: {e}")
             raise RobotMotionError(f"Failed to turn off servo {axis_no}: {e}", "AJINEXTEK")
 
-    async def _home_axis(self, axis_no: int, home_dir: int = HOME_DIR_CCW,
-                        signal_level: int = LIMIT_LEVEL_LOW, mode: int = HOME_MODE_0,
-                        offset: float = 0.0, vel_first: float = 10.0, vel_second: float = 5.0,
-                        accel: float = 100.0, decel: float = 100.0) -> None:
+    async def _home_axis(
+        self,
+        axis_no: int,
+        home_dir: int = HOME_DIR_CCW,
+        signal_level: int = LIMIT_LEVEL_LOW,
+        mode: int = HOME_MODE_0,
+        offset: float = 0.0,
+        vel_first: float = 10.0,
+        vel_second: float = 5.0,
+        accel: float = 100.0,
+        decel: float = 100.0,
+    ) -> None:
         """
         Perform homing for specified axis
 
@@ -726,7 +761,9 @@ class AjinextekRobot(RobotService):
         self._check_axis(axis_no)
 
         if not self._servo_states.get(axis_no, False):
-            raise RobotMotionError(f"Servo {axis_no} is not ON - cannot perform homing", "AJINEXTEK")
+            raise RobotMotionError(
+                f"Servo {axis_no} is not ON - cannot perform homing", "AJINEXTEK"
+            )
 
         try:
             # Set homing method
@@ -734,14 +771,18 @@ class AjinextekRobot(RobotService):
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
                 logger.error(f"Failed to set homing method for axis {axis_no}: {error_msg}")
-                raise RobotMotionError(f"Failed to set homing method for axis {axis_no}: {error_msg}", "AJINEXTEK")
+                raise RobotMotionError(
+                    f"Failed to set homing method for axis {axis_no}: {error_msg}", "AJINEXTEK"
+                )
 
             # Set homing velocities
             result = self._axl.home_set_vel(axis_no, vel_first, vel_second, accel, decel)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
                 logger.error(f"Failed to set homing velocities for axis {axis_no}: {error_msg}")
-                raise RobotMotionError(f"Failed to set homing velocities for axis {axis_no}: {error_msg}", "AJINEXTEK")
+                raise RobotMotionError(
+                    f"Failed to set homing velocities for axis {axis_no}: {error_msg}", "AJINEXTEK"
+                )
 
             # Start homing
             result = self._axl.home_set_start(axis_no)
@@ -750,7 +791,9 @@ class AjinextekRobot(RobotService):
             else:
                 error_msg = get_error_message(result)
                 logger.error(f"Failed to start homing for axis {axis_no}: {error_msg}")
-                raise RobotMotionError(f"Failed to start homing for axis {axis_no}: {error_msg}", "AJINEXTEK")
+                raise RobotMotionError(
+                    f"Failed to start homing for axis {axis_no}: {error_msg}", "AJINEXTEK"
+                )
 
         except RobotMotionError:
             raise
@@ -780,12 +823,16 @@ class AjinextekRobot(RobotService):
                     return
             except Exception as e:
                 logger.error(f"Failed to check motion status for axis {axis_no}: {e}")
-                raise RobotMotionError(f"Failed to check motion status for axis {axis_no}: {e}", "AJINEXTEK")
+                raise RobotMotionError(
+                    f"Failed to check motion status for axis {axis_no}: {e}", "AJINEXTEK"
+                )
 
             await asyncio.sleep(0.01)  # Check every 10ms
 
         logger.warning(f"Timeout waiting for axis {axis_no} to stop")
-        raise RobotMotionError(f"Timeout waiting for axis {axis_no} to stop after {timeout} seconds", "AJINEXTEK")
+        raise RobotMotionError(
+            f"Timeout waiting for axis {axis_no} to stop after {timeout} seconds", "AJINEXTEK"
+        )
 
     async def _wait_for_homing_complete(self, axis_no: int, timeout: float = 30.0) -> None:
         """

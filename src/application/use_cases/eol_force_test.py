@@ -131,14 +131,18 @@ class EOLForceTestUseCase:
             await self._hardware.setup_test(self._test_config, self._hardware_config)
 
             # Main Test phase - Use hardware facade
-            measurements = await self._hardware.perform_force_test_sequence(self._test_config, self._hardware_config)
+            measurements = await self._hardware.perform_force_test_sequence(
+                self._test_config, self._hardware_config
+            )
 
             # Test Teardown test sequence
             await self._hardware.teardown_test(self._test_config, self._hardware_config)
 
             # Evaluate results using test result evaluator
             try:
-                await self._test_result_evaluator.evaluate_measurements(measurements, self._test_config.pass_criteria)
+                await self._test_result_evaluator.evaluate_measurements(
+                    measurements, self._test_config.pass_criteria
+                )
                 # If no exception, test passed
                 test.complete_test()
                 passed = True
@@ -161,7 +165,10 @@ class EOLForceTestUseCase:
                 execution_duration=TestDuration.from_seconds(duration),
                 is_passed=passed,
                 measurement_ids=[
-                    MeasurementId.generate() for _ in range(measurements.get_total_measurement_count() if measurements else 0)
+                    MeasurementId.generate()
+                    for _ in range(
+                        measurements.get_total_measurement_count() if measurements else 0
+                    )
                 ],
                 test_summary=measurements,
                 error_message=None,
@@ -173,7 +180,9 @@ class EOLForceTestUseCase:
                 "operation": "execute_eol_test",
                 "test_id": str(test.test_id),
                 "dut_id": command.dut_info.dut_id,
-                "measurements_count": (measurements.get_total_measurement_count() if measurements else 0),
+                "measurements_count": (
+                    measurements.get_total_measurement_count() if measurements else 0
+                ),
             }
             handled_exception = await self._exception_handler.handle_exception(e, context)
 
@@ -188,7 +197,10 @@ class EOLForceTestUseCase:
                 execution_duration=TestDuration.from_seconds(duration),
                 is_passed=False,
                 measurement_ids=[
-                    MeasurementId.generate() for _ in range(measurements.get_total_measurement_count() if measurements else 0)
+                    MeasurementId.generate()
+                    for _ in range(
+                        measurements.get_total_measurement_count() if measurements else 0
+                    )
                 ],
                 test_summary=measurements,
                 error_message=str(handled_exception),
@@ -234,7 +246,9 @@ class EOLForceTestUseCase:
             logger.info("Configuration validation passed")
         except MultiConfigurationValidationError as e:
             logger.error(f"Configuration validation failed: {e.message}")
-            raise TestExecutionException(f"Configuration validation failed: {e.get_context('total_errors')} errors found")
+            raise TestExecutionException(
+                f"Configuration validation failed: {e.get_context('total_errors')} errors found"
+            )
 
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:

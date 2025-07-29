@@ -16,9 +16,12 @@ from application.interfaces.configuration.configuration import Configuration
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.exceptions.configuration_exceptions import (
-    ConfigurationException, InvalidConfigurationException,
-    MissingConfigurationException, ConfigurationConflictException,
-    ConfigurationSecurityException, ConfigurationFormatException
+    ConfigurationException,
+    InvalidConfigurationException,
+    MissingConfigurationException,
+    ConfigurationConflictException,
+    ConfigurationSecurityException,
+    ConfigurationFormatException,
 )
 
 
@@ -76,11 +79,11 @@ class JsonConfiguration(Configuration):
             raise MissingConfigurationException(
                 missing_parameters=[profile_name],
                 config_source=str(profile_file),
-                details={"available_profiles": await self.list_available_profiles()}
+                details={"available_profiles": await self.list_available_profiles()},
             )
 
         try:
-            with open(profile_file, 'r', encoding='utf-8') as f:
+            with open(profile_file, "r", encoding="utf-8") as f:
                 json_data = json.load(f)
 
             if json_data is None:
@@ -88,7 +91,7 @@ class JsonConfiguration(Configuration):
                     parameter_name="profile_content",
                     invalid_format="empty_file",
                     expected_format="JSON configuration data",
-                    config_source=str(profile_file)
+                    config_source=str(profile_file),
                 )
 
             # Flatten nested JSON structure for TestConfiguration
@@ -108,19 +111,19 @@ class JsonConfiguration(Configuration):
                 parameter_name="json_syntax",
                 invalid_format=str(e),
                 expected_format="Valid JSON syntax",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
         except TypeError as e:
             raise InvalidConfigurationException(
                 parameter_name="configuration_structure",
                 invalid_value=str(e),
                 validation_rule="TestConfiguration parameter requirements",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to load configuration profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
     async def load_hardware_config(self, profile_name: str) -> HardwareConfiguration:
@@ -144,11 +147,11 @@ class JsonConfiguration(Configuration):
             raise MissingConfigurationException(
                 missing_parameters=[profile_name],
                 config_source=str(profile_file),
-                details={"available_profiles": await self.list_available_profiles()}
+                details={"available_profiles": await self.list_available_profiles()},
             )
 
         try:
-            with open(profile_file, 'r', encoding='utf-8') as f:
+            with open(profile_file, "r", encoding="utf-8") as f:
                 json_data = json.load(f)
 
             if json_data is None:
@@ -156,16 +159,18 @@ class JsonConfiguration(Configuration):
                     parameter_name="profile_content",
                     invalid_format="empty_file",
                     expected_format="JSON configuration data",
-                    config_source=str(profile_file)
+                    config_source=str(profile_file),
                 )
 
             # Extract hardware_config section
-            if 'hardware_config' not in json_data:
+            if "hardware_config" not in json_data:
                 # Return default hardware configuration if section not found
-                logger.warning(f"No hardware_config section found in {profile_name}, using defaults")
+                logger.warning(
+                    f"No hardware_config section found in {profile_name}, using defaults"
+                )
                 return HardwareConfiguration()
 
-            hardware_data = json_data['hardware_config']
+            hardware_data = json_data["hardware_config"]
 
             # Create hardware configuration object
             hardware_config = HardwareConfiguration.from_dict(hardware_data)
@@ -178,12 +183,12 @@ class JsonConfiguration(Configuration):
                 parameter_name="json_syntax",
                 invalid_format=str(e),
                 expected_format="Valid JSON syntax",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to load hardware configuration from profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
     def _flatten_json_data(self, json_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -199,93 +204,121 @@ class JsonConfiguration(Configuration):
         flattened = {}
 
         # Hardware section
-        if 'hardware' in json_data:
-            hardware = json_data['hardware']
-            flattened.update({
-                'voltage': hardware.get('voltage', 18.0),
-                'current': hardware.get('current', 20.0),
-                'upper_temperature': hardware.get('upper_temperature', 80.0),
-                'fan_speed': hardware.get('fan_speed', 10),
-                'max_stroke': hardware.get('max_stroke', 240.0),
-                'initial_position': hardware.get('initial_position', 10.0)
-            })
+        if "hardware" in json_data:
+            hardware = json_data["hardware"]
+            flattened.update(
+                {
+                    "voltage": hardware.get("voltage", 18.0),
+                    "current": hardware.get("current", 20.0),
+                    "upper_temperature": hardware.get("upper_temperature", 80.0),
+                    "fan_speed": hardware.get("fan_speed", 10),
+                    "max_stroke": hardware.get("max_stroke", 240.0),
+                    "initial_position": hardware.get("initial_position", 10.0),
+                }
+            )
 
         # Test parameters section
-        if 'test_parameters' in json_data:
-            test_params = json_data['test_parameters']
-            flattened.update({
-                'temperature_list': test_params.get('temperature_list', [25.0, 30.0, 35.0, 40.0, 45.0, 50.0]),
-                'stroke_positions': test_params.get('stroke_positions', [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0]),
-                'standby_position': test_params.get('standby_position', 10.0)
-            })
+        if "test_parameters" in json_data:
+            test_params = json_data["test_parameters"]
+            flattened.update(
+                {
+                    "temperature_list": test_params.get(
+                        "temperature_list", [25.0, 30.0, 35.0, 40.0, 45.0, 50.0]
+                    ),
+                    "stroke_positions": test_params.get(
+                        "stroke_positions", [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0]
+                    ),
+                    "standby_position": test_params.get("standby_position", 10.0),
+                }
+            )
 
         # Timing section
-        if 'timing' in json_data:
-            timing = json_data['timing']
-            flattened.update({
-                'stabilization_delay': timing.get('stabilization_delay', 0.5),
-                'temperature_stabilization': timing.get('temperature_stabilization', 1.0),
-                'power_stabilization': timing.get('power_stabilization', 0.5),
-                'loadcell_zero_delay': timing.get('loadcell_zero_delay', 0.1)
-            })
+        if "timing" in json_data:
+            timing = json_data["timing"]
+            flattened.update(
+                {
+                    "stabilization_delay": timing.get("stabilization_delay", 0.5),
+                    "temperature_stabilization": timing.get("temperature_stabilization", 1.0),
+                    "power_stabilization": timing.get("power_stabilization", 0.5),
+                    "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
+                }
+            )
 
         # Tolerances section
-        if 'tolerances' in json_data:
-            tolerances = json_data['tolerances']
-            flattened.update({
-                'measurement_tolerance': tolerances.get('measurement_tolerance', 0.001),
-                'force_precision': tolerances.get('force_precision', 2),
-                'temperature_precision': tolerances.get('temperature_precision', 1)
-            })
+        if "tolerances" in json_data:
+            tolerances = json_data["tolerances"]
+            flattened.update(
+                {
+                    "measurement_tolerance": tolerances.get("measurement_tolerance", 0.001),
+                    "force_precision": tolerances.get("force_precision", 2),
+                    "temperature_precision": tolerances.get("temperature_precision", 1),
+                }
+            )
 
         # Execution section
-        if 'execution' in json_data:
-            execution = json_data['execution']
-            flattened.update({
-                'retry_attempts': execution.get('retry_attempts', 3),
-                'timeout_seconds': execution.get('timeout_seconds', 300.0)
-            })
+        if "execution" in json_data:
+            execution = json_data["execution"]
+            flattened.update(
+                {
+                    "retry_attempts": execution.get("retry_attempts", 3),
+                    "timeout_seconds": execution.get("timeout_seconds", 300.0),
+                }
+            )
 
         # Safety section
-        if 'safety' in json_data:
-            safety = json_data['safety']
-            flattened.update({
-                'max_voltage': safety.get('max_voltage', 30.0),
-                'max_current': safety.get('max_current', 50.0)
-            })
+        if "safety" in json_data:
+            safety = json_data["safety"]
+            flattened.update(
+                {
+                    "max_voltage": safety.get("max_voltage", 30.0),
+                    "max_current": safety.get("max_current", 50.0),
+                }
+            )
 
         # Pass criteria section
-        if 'pass_criteria' in json_data:
-            pass_criteria = json_data['pass_criteria']
+        if "pass_criteria" in json_data:
+            pass_criteria = json_data["pass_criteria"]
 
             # Convert spec_points from list format to tuple format
-            spec_points = pass_criteria.get('spec_points', [])
+            spec_points = pass_criteria.get("spec_points", [])
             if spec_points:
                 # Convert each spec point from list to tuple
-                spec_points_tuples = [tuple(point) if isinstance(point, list) else point for point in spec_points]
+                spec_points_tuples = [
+                    tuple(point) if isinstance(point, list) else point for point in spec_points
+                ]
             else:
                 spec_points_tuples = []
 
             # Create pass_criteria dictionary for PassCriteria.from_dict()
             pass_criteria_dict = {
-                'force_limit_min': pass_criteria.get('force_limit_min', 0.0),
-                'force_limit_max': pass_criteria.get('force_limit_max', 100.0),
-                'temperature_limit_min': pass_criteria.get('temperature_limit_min', -10.0),
-                'temperature_limit_max': pass_criteria.get('temperature_limit_max', 80.0),
-                'spec_points': spec_points_tuples,
-                'measurement_tolerance': pass_criteria.get('measurement_tolerance', 0.001),
-                'force_precision': pass_criteria.get('force_precision', 2),
-                'temperature_precision': pass_criteria.get('temperature_precision', 1),
-                'position_tolerance': pass_criteria.get('position_tolerance', 0.5),
-                'max_test_duration': pass_criteria.get('max_test_duration', 300.0),
-                'min_stabilization_time': pass_criteria.get('min_stabilization_time', 0.5)
+                "force_limit_min": pass_criteria.get("force_limit_min", 0.0),
+                "force_limit_max": pass_criteria.get("force_limit_max", 100.0),
+                "temperature_limit_min": pass_criteria.get("temperature_limit_min", -10.0),
+                "temperature_limit_max": pass_criteria.get("temperature_limit_max", 80.0),
+                "spec_points": spec_points_tuples,
+                "measurement_tolerance": pass_criteria.get("measurement_tolerance", 0.001),
+                "force_precision": pass_criteria.get("force_precision", 2),
+                "temperature_precision": pass_criteria.get("temperature_precision", 1),
+                "position_tolerance": pass_criteria.get("position_tolerance", 0.5),
+                "max_test_duration": pass_criteria.get("max_test_duration", 300.0),
+                "min_stabilization_time": pass_criteria.get("min_stabilization_time", 0.5),
             }
 
-            flattened['pass_criteria'] = pass_criteria_dict
+            flattened["pass_criteria"] = pass_criteria_dict
 
         # Handle direct top-level parameters (backward compatibility)
         for key, value in json_data.items():
-            if key not in ['hardware', 'test_parameters', 'timing', 'tolerances', 'execution', 'safety', 'pass_criteria', 'hardware_config', 'metadata']:
+            if key not in [
+                "hardware",
+                "test_parameters",
+                "timing",
+                "tolerances",
+                "execution",
+                "safety",
+                "pass_criteria",
+                "hardware_config",
+                "metadata",
+            ]:
                 flattened[key] = value
 
         return flattened
@@ -312,8 +345,10 @@ class JsonConfiguration(Configuration):
                 raise InvalidConfigurationException(
                     parameter_name="test_configuration",
                     invalid_value="TestConfiguration object",
-                    validation_rule="; ".join(errors) if errors else "Configuration validation failed",
-                    config_source="validate_configuration"
+                    validation_rule=(
+                        "; ".join(errors) if errors else "Configuration validation failed"
+                    ),
+                    config_source="validate_configuration",
                 )
         except Exception as e:
             if isinstance(e, InvalidConfigurationException):
@@ -323,13 +358,11 @@ class JsonConfiguration(Configuration):
                 parameter_name="test_configuration",
                 invalid_value="TestConfiguration object",
                 validation_rule=str(e),
-                config_source="validate_configuration"
+                config_source="validate_configuration",
             )
 
     async def merge_configurations(
-        self,
-        base: TestConfiguration,
-        override: Dict[str, Any]
+        self, base: TestConfiguration, override: Dict[str, Any]
     ) -> TestConfiguration:
         """
         Merge base configuration with runtime overrides
@@ -355,15 +388,16 @@ class JsonConfiguration(Configuration):
             # Validate merged configuration (will raise exception if invalid)
             await self.validate_configuration(merged_config)
 
-            logger.debug(f"Successfully merged configuration with overrides: {list(override.keys())}")
+            logger.debug(
+                f"Successfully merged configuration with overrides: {list(override.keys())}"
+            )
             return merged_config
 
         except Exception as e:
             if isinstance(e, (InvalidConfigurationException, ConfigurationConflictException)):
                 raise
             raise ConfigurationException(
-                f"Failed to merge configurations: {str(e)}",
-                config_source="merge_operation"
+                f"Failed to merge configurations: {str(e)}", config_source="merge_operation"
             )
 
     def _validate_override_safety(self, base: TestConfiguration, override: Dict[str, Any]) -> None:
@@ -380,18 +414,22 @@ class JsonConfiguration(Configuration):
         safety_conflicts = {}
 
         # Check voltage safety
-        if 'voltage' in override and override['voltage'] > base.max_voltage:
-            safety_conflicts['voltage'] = f"Override voltage {override['voltage']} exceeds safety limit {base.max_voltage}"
+        if "voltage" in override and override["voltage"] > base.max_voltage:
+            safety_conflicts["voltage"] = (
+                f"Override voltage {override['voltage']} exceeds safety limit {base.max_voltage}"
+            )
 
         # Check current safety
-        if 'current' in override and override['current'] > base.max_current:
-            safety_conflicts['current'] = f"Override current {override['current']} exceeds safety limit {base.max_current}"
+        if "current" in override and override["current"] > base.max_current:
+            safety_conflicts["current"] = (
+                f"Override current {override['current']} exceeds safety limit {base.max_current}"
+            )
 
         if safety_conflicts:
             raise ConfigurationConflictException(
                 conflicting_parameters=safety_conflicts,
                 conflict_description="Override values violate safety constraints",
-                config_source="runtime_override"
+                config_source="runtime_override",
             )
 
     async def list_available_profiles(self) -> List[str]:
@@ -406,7 +444,7 @@ class JsonConfiguration(Configuration):
             profiles = [f.stem for f in json_files if f.is_file()]
 
             # Filter out backup files
-            profiles = [p for p in profiles if not p.startswith('backup_')]
+            profiles = [p for p in profiles if not p.startswith("backup_")]
 
             logger.debug(f"Found {len(profiles)} configuration profiles")
             return sorted(profiles)
@@ -432,8 +470,7 @@ class JsonConfiguration(Configuration):
 
         if not profile_file.exists():
             raise MissingConfigurationException(
-                missing_parameters=[profile_name],
-                config_source=str(profile_file)
+                missing_parameters=[profile_name], config_source=str(profile_file)
             )
 
         try:
@@ -444,22 +481,22 @@ class JsonConfiguration(Configuration):
             config = await self.load_profile(profile_name)
 
             return {
-                'profile_name': profile_name,
-                'file_path': str(profile_file),
-                'file_size_bytes': stat.st_size,
-                'created_time': datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                'modified_time': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                'measurement_points': config.get_total_measurement_points(),
-                'estimated_duration_seconds': config.estimate_test_duration_seconds(),
-                'temperature_count': config.get_temperature_count(),
-                'position_count': config.get_position_count(),
-                'is_valid': True  # If we get here, validation passed
+                "profile_name": profile_name,
+                "file_path": str(profile_file),
+                "file_size_bytes": stat.st_size,
+                "created_time": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "measurement_points": config.get_total_measurement_points(),
+                "estimated_duration_seconds": config.estimate_test_duration_seconds(),
+                "temperature_count": config.get_temperature_count(),
+                "position_count": config.get_position_count(),
+                "is_valid": True,  # If we get here, validation passed
             }
 
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to get profile info for '{profile_name}': {str(e)}",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
     async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
@@ -483,15 +520,15 @@ class JsonConfiguration(Configuration):
             json_data = self._config_to_json_structure(config)
 
             # Add metadata
-            json_data['metadata'] = {
-                'profile_name': profile_name,
-                'created_by': 'JsonConfiguration',
-                'created_time': datetime.now().isoformat(),
-                'version': '1.0'
+            json_data["metadata"] = {
+                "profile_name": profile_name,
+                "created_by": "JsonConfiguration",
+                "created_time": datetime.now().isoformat(),
+                "version": "1.0",
             }
 
             # Write to file
-            with open(profile_file, 'w', encoding='utf-8') as f:
+            with open(profile_file, "w", encoding="utf-8") as f:
                 json.dump(json_data, f, indent=2, ensure_ascii=False)
 
             # Update cache
@@ -502,7 +539,7 @@ class JsonConfiguration(Configuration):
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to save profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
     def _config_to_json_structure(self, config: TestConfiguration) -> Dict[str, Any]:
@@ -516,38 +553,35 @@ class JsonConfiguration(Configuration):
             Dictionary in structured JSON format
         """
         return {
-            'hardware': {
-                'voltage': config.voltage,
-                'current': config.current,
-                'upper_temperature': config.upper_temperature,
-                'fan_speed': config.fan_speed,
-                'max_stroke': config.max_stroke,
-                'initial_position': config.initial_position
+            "hardware": {
+                "voltage": config.voltage,
+                "current": config.current,
+                "upper_temperature": config.upper_temperature,
+                "fan_speed": config.fan_speed,
+                "max_stroke": config.max_stroke,
+                "initial_position": config.initial_position,
             },
-            'test_parameters': {
-                'temperature_list': config.temperature_list,
-                'stroke_positions': config.stroke_positions,
-                'standby_position': config.standby_position
+            "test_parameters": {
+                "temperature_list": config.temperature_list,
+                "stroke_positions": config.stroke_positions,
+                "standby_position": config.standby_position,
             },
-            'timing': {
-                'stabilization_delay': config.stabilization_delay,
-                'temperature_stabilization': config.temperature_stabilization,
-                'power_stabilization': config.power_stabilization,
-                'loadcell_zero_delay': config.loadcell_zero_delay
+            "timing": {
+                "stabilization_delay": config.stabilization_delay,
+                "temperature_stabilization": config.temperature_stabilization,
+                "power_stabilization": config.power_stabilization,
+                "loadcell_zero_delay": config.loadcell_zero_delay,
             },
-            'tolerances': {
-                'measurement_tolerance': config.measurement_tolerance,
-                'force_precision': config.force_precision,
-                'temperature_precision': config.temperature_precision
+            "tolerances": {
+                "measurement_tolerance": config.measurement_tolerance,
+                "force_precision": config.force_precision,
+                "temperature_precision": config.temperature_precision,
             },
-            'execution': {
-                'retry_attempts': config.retry_attempts,
-                'timeout_seconds': config.timeout_seconds
+            "execution": {
+                "retry_attempts": config.retry_attempts,
+                "timeout_seconds": config.timeout_seconds,
             },
-            'safety': {
-                'max_voltage': config.max_voltage,
-                'max_current': config.max_current
-            }
+            "safety": {"max_voltage": config.max_voltage, "max_current": config.max_current},
         }
 
     async def delete_profile(self, profile_name: str) -> None:
@@ -565,17 +599,16 @@ class JsonConfiguration(Configuration):
 
         if not profile_file.exists():
             raise MissingConfigurationException(
-                missing_parameters=[profile_name],
-                config_source=str(profile_file)
+                missing_parameters=[profile_name], config_source=str(profile_file)
             )
 
         # Check if profile is protected (default profiles)
-        if profile_name in ['default', 'factory', 'safety']:
+        if profile_name in ["default", "factory", "safety"]:
             raise ConfigurationSecurityException(
                 security_violation=f"Cannot delete protected profile '{profile_name}'",
                 affected_parameters=[profile_name],
                 risk_level="medium",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
         try:
@@ -594,14 +627,11 @@ class JsonConfiguration(Configuration):
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to delete profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
     async def create_profile_from_template(
-        self,
-        template_name: str,
-        new_profile_name: str,
-        customizations: Dict[str, Any] = None
+        self, template_name: str, new_profile_name: str, customizations: Dict[str, Any] = None
     ) -> TestConfiguration:
         """
         Create a new profile based on an existing template
@@ -644,8 +674,7 @@ class JsonConfiguration(Configuration):
 
         if not profile_file.exists():
             raise MissingConfigurationException(
-                missing_parameters=[profile_name],
-                config_source=str(profile_file)
+                missing_parameters=[profile_name], config_source=str(profile_file)
             )
 
         # Generate backup name if not provided
@@ -663,7 +692,7 @@ class JsonConfiguration(Configuration):
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to create backup for profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file)
+                config_source=str(profile_file),
             )
 
     async def restore_profile(self, backup_name: str, target_profile_name: str) -> None:
@@ -678,8 +707,7 @@ class JsonConfiguration(Configuration):
 
         if not backup_file.exists():
             raise MissingConfigurationException(
-                missing_parameters=[backup_name],
-                config_source=str(backup_file)
+                missing_parameters=[backup_name], config_source=str(backup_file)
             )
 
         target_file = self._config_path / f"{target_profile_name}.json"
@@ -696,14 +724,10 @@ class JsonConfiguration(Configuration):
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to restore profile '{target_profile_name}' from backup '{backup_name}': {str(e)}",
-                config_source=str(backup_file)
+                config_source=str(backup_file),
             )
 
-    async def compare_profiles(
-        self,
-        profile1_name: str,
-        profile2_name: str
-    ) -> Dict[str, Any]:
+    async def compare_profiles(self, profile1_name: str, profile2_name: str) -> Dict[str, Any]:
         """
         Compare two configuration profiles and return differences
 
@@ -729,17 +753,20 @@ class JsonConfiguration(Configuration):
 
             if val1 != val2:
                 differences[key] = {
-                    'profile1': val1,
-                    'profile2': val2,
-                    'type': 'modified' if key in config1_dict and key in config2_dict else
-                           'only_in_profile1' if key in config1_dict else 'only_in_profile2'
+                    "profile1": val1,
+                    "profile2": val2,
+                    "type": (
+                        "modified"
+                        if key in config1_dict and key in config2_dict
+                        else "only_in_profile1" if key in config1_dict else "only_in_profile2"
+                    ),
                 }
 
         return {
-            'profile1_name': profile1_name,
-            'profile2_name': profile2_name,
-            'differences': differences,
-            'identical': len(differences) == 0
+            "profile1_name": profile1_name,
+            "profile2_name": profile2_name,
+            "differences": differences,
+            "identical": len(differences) == 0,
         }
 
     async def get_default_configuration(self) -> TestConfiguration:
@@ -750,16 +777,14 @@ class JsonConfiguration(Configuration):
             TestConfiguration with default values
         """
         try:
-            return await self.load_profile('default')
+            return await self.load_profile("default")
         except MissingConfigurationException:
             # Return built-in default if no default profile exists
             logger.info("No default profile found, returning built-in default configuration")
             return TestConfiguration()
 
     async def validate_profile_compatibility(
-        self,
-        profile_name: str,
-        system_version: str = None
+        self, profile_name: str, system_version: str = None
     ) -> Dict[str, Any]:
         """
         Validate if a profile is compatible with current system
@@ -774,18 +799,18 @@ class JsonConfiguration(Configuration):
         config = await self.load_profile(profile_name)
 
         compatibility = {
-            'profile_name': profile_name,
-            'compatible': True,
-            'issues': [],
-            'warnings': []
+            "profile_name": profile_name,
+            "compatible": True,
+            "issues": [],
+            "warnings": [],
         }
 
         # Check if configuration is valid
         try:
             await self.validate_configuration(config)
         except InvalidConfigurationException as e:
-            compatibility['compatible'] = False
-            compatibility['issues'].append(str(e))
+            compatibility["compatible"] = False
+            compatibility["issues"].append(str(e))
 
         # Add system-specific compatibility checks here
         # For now, just basic validation

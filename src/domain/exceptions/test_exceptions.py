@@ -33,7 +33,7 @@ class InvalidTestStateException(TestExecutionException):
         required_state: str,
         operation: str,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize invalid test state exception
@@ -48,11 +48,13 @@ class InvalidTestStateException(TestExecutionException):
         message = f"Cannot perform '{operation}' in state '{current_state}'. Required state: '{required_state}'"
 
         exception_details = details or {}
-        exception_details.update({
-            'current_state': current_state,
-            'required_state': required_state,
-            'operation': operation
-        })
+        exception_details.update(
+            {
+                "current_state": current_state,
+                "required_state": required_state,
+                "operation": operation,
+            }
+        )
 
         super().__init__(message, test_id, exception_details)
         self.current_state = current_state
@@ -69,7 +71,7 @@ class TestSequenceException(TestExecutionException):
         sequence_violation: str,
         expected_previous_step: str = None,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize test sequence exception
@@ -87,11 +89,13 @@ class TestSequenceException(TestExecutionException):
             message = f"Test sequence violation at step '{step_name}': {sequence_violation}"
 
         exception_details = details or {}
-        exception_details.update({
-            'step_name': step_name,
-            'sequence_violation': sequence_violation,
-            'expected_previous_step': expected_previous_step
-        })
+        exception_details.update(
+            {
+                "step_name": step_name,
+                "sequence_violation": sequence_violation,
+                "expected_previous_step": expected_previous_step,
+            }
+        )
 
         super().__init__(message, test_id, exception_details)
         self.step_name = step_name
@@ -109,7 +113,7 @@ class MeasurementValidationException(TestExecutionException):
         validation_failure: str,
         expected_range: Dict[str, float] = None,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize measurement validation exception
@@ -129,12 +133,14 @@ class MeasurementValidationException(TestExecutionException):
             message = f"Measurement validation failed for {measurement_type}: {measured_value}. {validation_failure}"
 
         exception_details = details or {}
-        exception_details.update({
-            'measurement_type': measurement_type,
-            'measured_value': measured_value,
-            'validation_failure': validation_failure,
-            'expected_range': expected_range
-        })
+        exception_details.update(
+            {
+                "measurement_type": measurement_type,
+                "measured_value": measured_value,
+                "validation_failure": validation_failure,
+                "expected_range": expected_range,
+            }
+        )
 
         super().__init__(message, test_id, exception_details)
         self.measurement_type = measurement_type
@@ -151,7 +157,7 @@ class TestTimeoutException(TestExecutionException):
         step_name: str,
         timeout_seconds: float,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize test timeout exception
@@ -165,10 +171,7 @@ class TestTimeoutException(TestExecutionException):
         message = f"Test step '{step_name}' timed out after {timeout_seconds} seconds"
 
         exception_details = details or {}
-        exception_details.update({
-            'step_name': step_name,
-            'timeout_seconds': timeout_seconds
-        })
+        exception_details.update({"step_name": step_name, "timeout_seconds": timeout_seconds})
 
         super().__init__(message, test_id, exception_details)
         self.step_name = step_name
@@ -185,7 +188,7 @@ class TestResourceException(TestExecutionException):
         required_resources: List[str] = None,
         available_resources: List[str] = None,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize test resource exception
@@ -206,12 +209,14 @@ class TestResourceException(TestExecutionException):
                 message += f". Missing resources: {list(missing)}"
 
         exception_details = details or {}
-        exception_details.update({
-            'resource_type': resource_type,
-            'resource_issue': resource_issue,
-            'required_resources': required_resources,
-            'available_resources': available_resources
-        })
+        exception_details.update(
+            {
+                "resource_type": resource_type,
+                "resource_issue": resource_issue,
+                "required_resources": required_resources,
+                "available_resources": available_resources,
+            }
+        )
 
         super().__init__(message, test_id, exception_details)
         self.resource_type = resource_type
@@ -229,7 +234,7 @@ class TestDataException(TestExecutionException):
         data_issue: str,
         invalid_data: Any = None,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize test data exception
@@ -242,16 +247,16 @@ class TestDataException(TestExecutionException):
             details: Additional data context
         """
         if invalid_data is not None:
-            message = f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
+            message = (
+                f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
+            )
         else:
             message = f"Test data issue with {data_type}: {data_issue}"
 
         exception_details = details or {}
-        exception_details.update({
-            'data_type': data_type,
-            'data_issue': data_issue,
-            'invalid_data': invalid_data
-        })
+        exception_details.update(
+            {"data_type": data_type, "data_issue": data_issue, "invalid_data": invalid_data}
+        )
 
         super().__init__(message, test_id, exception_details)
         self.data_type = data_type
@@ -269,7 +274,7 @@ class TestCriteriaException(TestExecutionException):
         actual_value: Any = None,
         expected_criteria: Dict[str, Any] = None,
         test_id: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize test criteria exception
@@ -288,12 +293,14 @@ class TestCriteriaException(TestExecutionException):
             message = f"Test criteria violation for {criteria_type}: {criteria_violation}"
 
         exception_details = details or {}
-        exception_details.update({
-            'criteria_type': criteria_type,
-            'criteria_violation': criteria_violation,
-            'actual_value': actual_value,
-            'expected_criteria': expected_criteria
-        })
+        exception_details.update(
+            {
+                "criteria_type": criteria_type,
+                "criteria_violation": criteria_violation,
+                "actual_value": actual_value,
+                "expected_criteria": expected_criteria,
+            }
+        )
 
         super().__init__(message, test_id, exception_details)
         self.criteria_type = criteria_type

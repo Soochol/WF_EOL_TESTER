@@ -13,11 +13,21 @@ The architecture provides:
 
 # Configuration constants (always available)
 from driver.serial.constants import (
-    DEFAULT_BAUDRATE, DEFAULT_TIMEOUT, CONNECT_TIMEOUT,
-    COMMAND_TERMINATOR, RESPONSE_TERMINATOR, ENCODING,
-    READ_BUFFER_SIZE, MAX_COMMAND_LENGTH, MAX_RESPONSE_LENGTH,
-    MAX_RETRY_ATTEMPTS, RETRY_DELAY, FLUSH_TIMEOUT,
-    BS205_BAUDRATE, BS205_TIMEOUT, BS205_TERMINATOR
+    DEFAULT_BAUDRATE,
+    DEFAULT_TIMEOUT,
+    CONNECT_TIMEOUT,
+    COMMAND_TERMINATOR,
+    RESPONSE_TERMINATOR,
+    ENCODING,
+    READ_BUFFER_SIZE,
+    MAX_COMMAND_LENGTH,
+    MAX_RESPONSE_LENGTH,
+    MAX_RETRY_ATTEMPTS,
+    RETRY_DELAY,
+    FLUSH_TIMEOUT,
+    BS205_BAUDRATE,
+    BS205_TIMEOUT,
+    BS205_TERMINATOR,
 )
 
 # Exception classes (always available)
@@ -27,12 +37,13 @@ from driver.serial.exceptions import (
     SerialCommunicationError,
     SerialTimeoutError,
     SerialConfigurationError,
-    SerialBufferError
+    SerialBufferError,
 )
 
 # Core serial communication classes (conditional import for dependencies)
 try:
     from driver.serial.serial import SerialConnection, SerialManager
+
     _SERIAL_AVAILABLE = True
 except ImportError:
     _SERIAL_AVAILABLE = False
@@ -41,31 +52,29 @@ except ImportError:
 
 __all__ = [
     # Core classes
-    'SerialConnection',
-    'SerialManager',
-
+    "SerialConnection",
+    "SerialManager",
     # Constants
-    'DEFAULT_BAUDRATE',
-    'DEFAULT_TIMEOUT',
-    'CONNECT_TIMEOUT',
-    'COMMAND_TERMINATOR',
-    'RESPONSE_TERMINATOR',
-    'ENCODING',
-    'READ_BUFFER_SIZE',
-    'MAX_COMMAND_LENGTH',
-    'MAX_RESPONSE_LENGTH',
-    'MAX_RETRY_ATTEMPTS',
-    'RETRY_DELAY',
-    'FLUSH_TIMEOUT',
-    'BS205_BAUDRATE',
-    'BS205_TIMEOUT',
-    'BS205_TERMINATOR',
-
+    "DEFAULT_BAUDRATE",
+    "DEFAULT_TIMEOUT",
+    "CONNECT_TIMEOUT",
+    "COMMAND_TERMINATOR",
+    "RESPONSE_TERMINATOR",
+    "ENCODING",
+    "READ_BUFFER_SIZE",
+    "MAX_COMMAND_LENGTH",
+    "MAX_RESPONSE_LENGTH",
+    "MAX_RETRY_ATTEMPTS",
+    "RETRY_DELAY",
+    "FLUSH_TIMEOUT",
+    "BS205_BAUDRATE",
+    "BS205_TIMEOUT",
+    "BS205_TERMINATOR",
     # Exceptions
-    'SerialError',
-    'SerialConnectionError',
-    'SerialCommunicationError',
-    'SerialTimeoutError',
-    'SerialConfigurationError',
-    'SerialBufferError'
+    "SerialError",
+    "SerialConnectionError",
+    "SerialCommunicationError",
+    "SerialTimeoutError",
+    "SerialConfigurationError",
+    "SerialBufferError",
 ]

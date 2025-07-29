@@ -44,7 +44,9 @@ class UnsafeOperationException(BusinessRuleViolationException):
 class InvalidTestStateException(BusinessRuleViolationException):
     """Exception raised when test is in invalid state for operation"""
 
-    def __init__(self, current_state: str, required_state: str, operation: str, context: dict = None):
+    def __init__(
+        self, current_state: str, required_state: str, operation: str, context: dict = None
+    ):
         """
         Initialize invalid test state exception
 
@@ -56,11 +58,13 @@ class InvalidTestStateException(BusinessRuleViolationException):
         """
         message = f"Cannot perform '{operation}' in state '{current_state}'. Required state: '{required_state}'"
         context = context or {}
-        context.update({
-            'current_state': current_state,
-            'required_state': required_state,
-            'operation': operation
-        })
+        context.update(
+            {
+                "current_state": current_state,
+                "required_state": required_state,
+                "operation": operation,
+            }
+        )
         super().__init__("TEST_STATE_RULE", message, context)
         self.current_state = current_state
         self.required_state = required_state
@@ -70,7 +74,9 @@ class InvalidTestStateException(BusinessRuleViolationException):
 class HardwareNotReadyException(BusinessRuleViolationException):
     """Exception raised when hardware is not ready for operation"""
 
-    def __init__(self, hardware_type: str, current_status: str, operation: str, context: dict = None):
+    def __init__(
+        self, hardware_type: str, current_status: str, operation: str, context: dict = None
+    ):
         """
         Initialize hardware not ready exception
 
@@ -82,11 +88,13 @@ class HardwareNotReadyException(BusinessRuleViolationException):
         """
         message = f"Hardware '{hardware_type}' not ready for '{operation}'. Current status: {current_status}"
         context = context or {}
-        context.update({
-            'hardware_type': hardware_type,
-            'current_status': current_status,
-            'operation': operation
-        })
+        context.update(
+            {
+                "hardware_type": hardware_type,
+                "current_status": current_status,
+                "operation": operation,
+            }
+        )
         super().__init__("HARDWARE_READY_RULE", message, context)
         self.hardware_type = hardware_type
         self.current_status = current_status

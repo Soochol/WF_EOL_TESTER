@@ -18,10 +18,7 @@ class ConfigCommand(Command):
     """Command for configuration management"""
 
     def __init__(self):
-        super().__init__(
-            name="config",
-            description="Configuration management"
-        )
+        super().__init__(name="config", description="Configuration management")
         self._config_file = "config/application/app_config.json"
         self._current_config: Optional[Dict[str, Any]] = None
 
@@ -66,7 +63,7 @@ class ConfigCommand(Command):
             "save <name>": "Save current config with name",
             "load <name>": "Load saved configuration",
             "reset": "Reset to default configuration",
-            "help": "Show config command help"
+            "help": "Show config command help",
         }
 
     async def _show_config(self) -> CommandResult:
@@ -88,7 +85,7 @@ class ConfigCommand(Command):
         """Show detailed hardware configuration"""
         try:
             config = await self._get_current_config()
-            hardware_config = config.get('hardware', {})
+            hardware_config = config.get("hardware", {})
 
             if not hardware_config:
                 return CommandResult.warning("No hardware configuration found")
@@ -134,9 +131,9 @@ class ConfigCommand(Command):
     async def _edit_config(self) -> CommandResult:
         """Edit configuration interactively"""
         try:
-            print("\\n" + "="*60)
+            print("\\n" + "=" * 60)
             print("Configuration Editor")
-            print("="*60)
+            print("=" * 60)
             print("This feature will allow interactive configuration editing.")
             print("Currently showing current config for reference.")
 
@@ -184,12 +181,14 @@ class ConfigCommand(Command):
             # Ensure directory exists
             config_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(default_config, f, indent=2, ensure_ascii=False)
 
             self._current_config = None  # Clear cache
 
-            return CommandResult.success(f"Configuration reset to defaults and saved to {self._config_file}")
+            return CommandResult.success(
+                f"Configuration reset to defaults and saved to {self._config_file}"
+            )
 
         except Exception as e:
             logger.error(f"Config reset failed: {e}")
@@ -209,7 +208,7 @@ class ConfigCommand(Command):
             # Create directory and save default config
             try:
                 config_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(config_path, 'w', encoding='utf-8') as f:
+                with open(config_path, "w", encoding="utf-8") as f:
                     json.dump(self._current_config, f, indent=2, ensure_ascii=False)
                 logger.info(f"Default configuration saved to {self._config_file}")
             except Exception as e:
@@ -217,7 +216,7 @@ class ConfigCommand(Command):
 
         else:
             try:
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     self._current_config = json.load(f)
                 logger.debug(f"Configuration loaded from {self._config_file}")
             except json.JSONDecodeError as e:

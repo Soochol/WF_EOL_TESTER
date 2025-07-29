@@ -56,7 +56,7 @@ class JsonProfilePreference(ProfilePreference):
         if not profile_name or not isinstance(profile_name, str):
             raise RepositoryException(
                 f"Invalid profile name for saving: '{profile_name}'",
-                operation="save_last_used_profile"
+                operation="save_last_used_profile",
             )
 
         try:
@@ -77,7 +77,7 @@ class JsonProfilePreference(ProfilePreference):
         except Exception as e:
             raise RepositoryException(
                 f"Failed to save last used profile '{profile_name}': {str(e)}",
-                operation="save_last_used_profile"
+                operation="save_last_used_profile",
             ) from e
 
     async def load_last_used_profile(self) -> Optional[str]:
@@ -132,8 +132,7 @@ class JsonProfilePreference(ProfilePreference):
 
         except Exception as e:
             raise RepositoryException(
-                f"Failed to clear profile preferences: {str(e)}",
-                operation="clear_preferences"
+                f"Failed to clear profile preferences: {str(e)}", operation="clear_preferences"
             ) from e
 
     async def get_preference_metadata(self) -> Dict[str, Any]:
@@ -150,26 +149,27 @@ class JsonProfilePreference(ProfilePreference):
                 "file_size": 0,
                 "last_modified": None,
                 "is_readable": False,
-                "is_writable": False
+                "is_writable": False,
             }
 
             if self._preference_file.exists():
                 stat = self._preference_file.stat()
-                metadata.update({
-                    "file_size": stat.st_size,
-                    "last_modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
-                    "is_readable": os.access(self._preference_file, os.R_OK),
-                    "is_writable": os.access(self._preference_file, os.W_OK)
-                })
+                metadata.update(
+                    {
+                        "file_size": stat.st_size,
+                        "last_modified": datetime.fromtimestamp(
+                            stat.st_mtime, timezone.utc
+                        ).isoformat(),
+                        "is_readable": os.access(self._preference_file, os.R_OK),
+                        "is_writable": os.access(self._preference_file, os.W_OK),
+                    }
+                )
 
             return metadata
 
         except Exception as e:
             logger.warning(f"Failed to get preference metadata: {e}")
-            return {
-                "preference_file": str(self._preference_file),
-                "error": str(e)
-            }
+            return {"preference_file": str(self._preference_file), "error": str(e)}
 
     async def update_usage_history(self, profile_name: str) -> None:
         """
@@ -184,7 +184,7 @@ class JsonProfilePreference(ProfilePreference):
         if not profile_name or not isinstance(profile_name, str):
             raise RepositoryException(
                 f"Invalid profile name for history update: '{profile_name}'",
-                operation="update_usage_history"
+                operation="update_usage_history",
             )
 
         try:
@@ -199,7 +199,7 @@ class JsonProfilePreference(ProfilePreference):
 
                 # Keep only recent entries
                 if len(history) > self._max_history_entries:
-                    history = history[-self._max_history_entries:]
+                    history = history[-self._max_history_entries :]
 
                 preferences["usage_history"] = history
                 preferences["last_updated"] = datetime.now(timezone.utc).isoformat()
@@ -210,7 +210,7 @@ class JsonProfilePreference(ProfilePreference):
         except Exception as e:
             raise RepositoryException(
                 f"Failed to update usage history for '{profile_name}': {str(e)}",
-                operation="update_usage_history"
+                operation="update_usage_history",
             ) from e
 
     async def is_available(self) -> bool:
@@ -226,8 +226,9 @@ class JsonProfilePreference(ProfilePreference):
 
             # Try to access the file or its parent directory
             if self._preference_file.exists():
-                return (os.access(self._preference_file, os.R_OK) and
-                       os.access(self._preference_file, os.W_OK))
+                return os.access(self._preference_file, os.R_OK) and os.access(
+                    self._preference_file, os.W_OK
+                )
             else:
                 return os.access(self._preference_file.parent, os.W_OK)
 
@@ -247,7 +248,7 @@ class JsonProfilePreference(ProfilePreference):
             return {}
 
         try:
-            with open(self._preference_file, 'r', encoding='utf-8') as f:
+            with open(self._preference_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             # Basic validation
@@ -280,14 +281,14 @@ class JsonProfilePreference(ProfilePreference):
             "version": "1.0",
             "created_by": "JsonProfilePreference",
             "description": "User profile preferences and usage history",
-            "schema_version": "1.0"
+            "schema_version": "1.0",
         }
 
         # Write to temporary file first, then rename (atomic operation)
-        temp_file = self._preference_file.with_suffix('.tmp')
+        temp_file = self._preference_file.with_suffix(".tmp")
 
         try:
-            with open(temp_file, 'w', encoding='utf-8') as f:
+            with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(preferences, f, indent=2, ensure_ascii=False)
                 f.flush()
                 os.fsync(f.fileno())  # Force write to disk

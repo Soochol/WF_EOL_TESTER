@@ -33,7 +33,7 @@ class HardwareNotReadyException(HardwareException):
         current_status: str,
         required_status: str,
         operation: str,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware not ready exception
@@ -48,11 +48,13 @@ class HardwareNotReadyException(HardwareException):
         message = f"Hardware '{hardware_type}' not ready for '{operation}'. Current: {current_status}, Required: {required_status}"
 
         exception_details = details or {}
-        exception_details.update({
-            'current_status': current_status,
-            'required_status': required_status,
-            'operation': operation
-        })
+        exception_details.update(
+            {
+                "current_status": current_status,
+                "required_status": required_status,
+                "operation": operation,
+            }
+        )
 
         super().__init__(message, hardware_type, exception_details)
         self.current_status = current_status
@@ -68,7 +70,7 @@ class HardwareConnectionException(HardwareException):
         hardware_type: str,
         connection_status: str,
         operation: str,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware connection exception
@@ -82,10 +84,7 @@ class HardwareConnectionException(HardwareException):
         message = f"Hardware '{hardware_type}' connection issue for '{operation}'. Status: {connection_status}"
 
         exception_details = details or {}
-        exception_details.update({
-            'connection_status': connection_status,
-            'operation': operation
-        })
+        exception_details.update({"connection_status": connection_status, "operation": operation})
 
         super().__init__(message, hardware_type, exception_details)
         self.connection_status = connection_status
@@ -102,7 +101,7 @@ class UnsafeOperationException(HardwareException):
         hardware_type: str = None,
         current_value: Any = None,
         safe_limit: Any = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize unsafe operation exception
@@ -121,12 +120,14 @@ class UnsafeOperationException(HardwareException):
             message = f"Unsafe operation '{operation}': {safety_violation}"
 
         exception_details = details or {}
-        exception_details.update({
-            'operation': operation,
-            'safety_violation': safety_violation,
-            'current_value': current_value,
-            'safe_limit': safe_limit
-        })
+        exception_details.update(
+            {
+                "operation": operation,
+                "safety_violation": safety_violation,
+                "current_value": current_value,
+                "safe_limit": safe_limit,
+            }
+        )
 
         super().__init__(message, hardware_type, exception_details)
         self.operation = operation
@@ -143,7 +144,7 @@ class HardwareCalibrationException(HardwareException):
         hardware_type: str,
         calibration_issue: str,
         operation: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware calibration exception
@@ -160,10 +161,7 @@ class HardwareCalibrationException(HardwareException):
             message = f"Hardware '{hardware_type}' calibration issue: {calibration_issue}"
 
         exception_details = details or {}
-        exception_details.update({
-            'calibration_issue': calibration_issue,
-            'operation': operation
-        })
+        exception_details.update({"calibration_issue": calibration_issue, "operation": operation})
 
         super().__init__(message, hardware_type, exception_details)
         self.calibration_issue = calibration_issue
@@ -178,7 +176,7 @@ class HardwareTimeoutException(HardwareException):
         hardware_type: str,
         operation: str,
         timeout_seconds: float,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware timeout exception
@@ -192,10 +190,7 @@ class HardwareTimeoutException(HardwareException):
         message = f"Hardware '{hardware_type}' timeout during '{operation}' after {timeout_seconds} seconds"
 
         exception_details = details or {}
-        exception_details.update({
-            'operation': operation,
-            'timeout_seconds': timeout_seconds
-        })
+        exception_details.update({"operation": operation, "timeout_seconds": timeout_seconds})
 
         super().__init__(message, hardware_type, exception_details)
         self.operation = operation
@@ -212,7 +207,7 @@ class HardwareLimitExceededException(HardwareException):
         current_value: float,
         limit_value: float,
         operation: str = None,
-        details: Dict[str, Any] = None
+        details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware limit exceeded exception
@@ -231,12 +226,14 @@ class HardwareLimitExceededException(HardwareException):
             message = f"Hardware '{hardware_type}' {limit_type} limit exceeded: {current_value} > {limit_value}"
 
         exception_details = details or {}
-        exception_details.update({
-            'limit_type': limit_type,
-            'current_value': current_value,
-            'limit_value': limit_value,
-            'operation': operation
-        })
+        exception_details.update(
+            {
+                "limit_type": limit_type,
+                "current_value": current_value,
+                "limit_value": limit_value,
+                "operation": operation,
+            }
+        )
 
         super().__init__(message, hardware_type, exception_details)
         self.limit_type = limit_type

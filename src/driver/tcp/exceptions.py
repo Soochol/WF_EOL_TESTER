@@ -10,7 +10,13 @@ from typing import Optional
 class TCPError(Exception):
     """Base TCP communication error"""
 
-    def __init__(self, message: str, host: Optional[str] = None, port: Optional[int] = None, details: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        details: Optional[str] = None,
+    ):
         super().__init__(message)
         self.message = message
         self.host = host
@@ -32,14 +38,17 @@ class TCPError(Exception):
 
 class TCPConnectionError(TCPError):
     """TCP connection establishment errors"""
+
     pass
 
 
 class TCPCommunicationError(TCPError):
     """TCP communication errors (send/receive failures)"""
+
     pass
 
 
 class TCPTimeoutError(TCPError):
     """TCP operation timeout errors"""
+
     pass

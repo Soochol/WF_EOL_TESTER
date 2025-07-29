@@ -12,6 +12,7 @@ from enum import Enum
 
 class CommandStatus(Enum):
     """Command execution status"""
+
     SUCCESS = "success"
     ERROR = "error"
     WARNING = "warning"
@@ -21,27 +22,28 @@ class CommandStatus(Enum):
 @dataclass
 class CommandResult:
     """Result of command execution"""
+
     status: CommandStatus
     message: str
     data: Optional[Dict[str, Any]] = None
 
     @classmethod
-    def success(cls, message: str, data: Optional[Dict[str, Any]] = None) -> 'CommandResult':
+    def success(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
         """Create success result"""
         return cls(CommandStatus.SUCCESS, message, data)
 
     @classmethod
-    def error(cls, message: str, data: Optional[Dict[str, Any]] = None) -> 'CommandResult':
+    def error(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
         """Create error result"""
         return cls(CommandStatus.ERROR, message, data)
 
     @classmethod
-    def warning(cls, message: str, data: Optional[Dict[str, Any]] = None) -> 'CommandResult':
+    def warning(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
         """Create warning result"""
         return cls(CommandStatus.WARNING, message, data)
 
     @classmethod
-    def info(cls, message: str, data: Optional[Dict[str, Any]] = None) -> 'CommandResult':
+    def info(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
         """Create info result"""
         return cls(CommandStatus.INFO, message, data)
 
@@ -105,7 +107,9 @@ class Command(ABC):
 
         return help_text
 
-    def validate_args(self, args: List[str], min_args: int = 0, max_args: Optional[int] = None) -> bool:
+    def validate_args(
+        self, args: List[str], min_args: int = 0, max_args: Optional[int] = None
+    ) -> bool:
         """
         Validate command arguments
 

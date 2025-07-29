@@ -14,14 +14,14 @@ from ui.cli.commands.exit_command import ExitCommand
 from ui.cli.commands.results_command import ResultsCommand
 
 __all__ = [
-    'Command',
-    'CommandResult',
-    'CommandStatus',
-    'SlashCommandParser',
-    'HelpCommand',
-    'TestCommand',
-    'ConfigCommand',
-    'HardwareCommand',
-    'ExitCommand',
-    'ResultsCommand'
+    "Command",
+    "CommandResult",
+    "CommandStatus",
+    "SlashCommandParser",
+    "HelpCommand",
+    "TestCommand",
+    "ConfigCommand",
+    "HardwareCommand",
+    "ExitCommand",
+    "ResultsCommand",
 ]

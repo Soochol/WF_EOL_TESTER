@@ -15,10 +15,7 @@ class HardwareCommand(Command):
     """Command for hardware operations"""
 
     def __init__(self, hardware_services: Optional[HardwareServiceFacade] = None):
-        super().__init__(
-            name="hardware",
-            description="Hardware operations and status"
-        )
+        super().__init__(name="hardware", description="Hardware operations and status")
         self._hardware_services = hardware_services
 
     def set_hardware_services(self, hardware_services: HardwareServiceFacade) -> None:
@@ -60,7 +57,7 @@ class HardwareCommand(Command):
             "list": "List connected hardware devices",
             "test <device>": "Test specific hardware device",
             "reconnect": "Reconnect all hardware devices",
-            "help": "Show hardware command help"
+            "help": "Show hardware command help",
         }
 
     async def _show_hardware_status(self) -> CommandResult:
@@ -159,7 +156,9 @@ class HardwareCommand(Command):
             elif device_name in ["power", "supply"]:
                 result = await self._test_power()
             else:
-                return CommandResult.error(f"Unknown device: {device_name}. Available: robot, mcu, loadcell, power")
+                return CommandResult.error(
+                    f"Unknown device: {device_name}. Available: robot, mcu, loadcell, power"
+                )
 
             return result
 
@@ -182,7 +181,9 @@ class HardwareCommand(Command):
             reconnect_text += "🔄 MCU Service: Reconnecting...\\n"
             reconnect_text += "🔄 LoadCell Service: Reconnecting...\\n"
             reconnect_text += "🔄 Power Service: Reconnecting...\\n"
-            reconnect_text += "\\nReconnection will be implemented with actual hardware services.\\n"
+            reconnect_text += (
+                "\\nReconnection will be implemented with actual hardware services.\\n"
+            )
 
             return CommandResult.info(reconnect_text)
 

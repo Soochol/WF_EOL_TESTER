@@ -9,7 +9,10 @@ from domain.value_objects.identifiers import TestId, DUTId, OperatorId, Measurem
 from domain.value_objects.time_values import Timestamp, TestDuration
 from domain.enums.test_status import TestStatus
 from domain.exceptions.validation_exceptions import ValidationException
-from domain.exceptions.business_rule_exceptions import BusinessRuleViolationException, InvalidTestStateException
+from domain.exceptions.business_rule_exceptions import (
+    BusinessRuleViolationException,
+    InvalidTestStateException,
+)
 from domain.entities.dut import DUT
 from domain.entities.test_result import TestResult
 
@@ -24,7 +27,7 @@ class EOLTest:
         operator_id: OperatorId,
         test_configuration: Optional[Dict[str, Any]] = None,
         pass_criteria: Optional[Dict[str, Any]] = None,
-        created_at: Optional[Timestamp] = None
+        created_at: Optional[Timestamp] = None,
     ):
         """
         Initialize EOL test
@@ -76,7 +79,9 @@ class EOLTest:
             raise ValidationException("dut", dut, "DUT must be DUT instance")
 
         if not isinstance(operator_id, OperatorId):
-            raise ValidationException("operator_id", operator_id, "Operator ID must be OperatorId instance")
+            raise ValidationException(
+                "operator_id", operator_id, "Operator ID must be OperatorId instance"
+            )
 
     @property
     def test_id(self) -> TestId:
@@ -223,7 +228,7 @@ class EOLTest:
                 self._status.value,
                 TestStatus.NOT_STARTED.value,
                 "start_test",
-                {"test_id": str(self._test_id)}
+                {"test_id": str(self._test_id)},
             )
 
         if total_steps < 1:
@@ -243,7 +248,7 @@ class EOLTest:
                 self._status.value,
                 TestStatus.PREPARING.value,
                 "begin_execution",
-                {"test_id": str(self._test_id)}
+                {"test_id": str(self._test_id)},
             )
 
         self._status = TestStatus.RUNNING
@@ -263,7 +268,7 @@ class EOLTest:
                 self._status.value,
                 TestStatus.RUNNING.value,
                 "advance_step",
-                {"test_id": str(self._test_id)}
+                {"test_id": str(self._test_id)},
             )
 
         if self._current_step < self._total_steps:
@@ -273,7 +278,9 @@ class EOLTest:
     def add_measurement_id(self, measurement_id: MeasurementId) -> None:
         """Add measurement ID to test"""
         if not isinstance(measurement_id, MeasurementId):
-            raise ValidationException("measurement_id", measurement_id, "Measurement ID must be MeasurementId instance")
+            raise ValidationException(
+                "measurement_id", measurement_id, "Measurement ID must be MeasurementId instance"
+            )
 
         if measurement_id not in self._measurement_ids:
             self._measurement_ids.append(measurement_id)
@@ -293,11 +300,13 @@ class EOLTest:
                 self._status.value,
                 TestStatus.RUNNING.value,
                 "complete_test",
-                {"test_id": str(self._test_id)}
+                {"test_id": str(self._test_id)},
             )
 
         if not isinstance(test_result, TestResult):
-            raise ValidationException("test_result", test_result, "Test result must be TestResult instance")
+            raise ValidationException(
+                "test_result", test_result, "Test result must be TestResult instance"
+            )
 
         self._status = TestStatus.COMPLETED
         self._end_time = Timestamp.now()
@@ -322,7 +331,7 @@ class EOLTest:
                 self._status.value,
                 "RUNNING or PREPARING",
                 "fail_test",
-                {"test_id": str(self._test_id)}
+                {"test_id": str(self._test_id)},
             )
 
         if not error_message or not error_message.strip():
@@ -348,7 +357,7 @@ class EOLTest:
                 self._status.value,
                 "PREPARING or RUNNING",
                 "cancel_test",
-                {"test_id": str(self._test_id)}
+                {"test_id": str(self._test_id)},
             )
 
         self._status = TestStatus.CANCELLED
@@ -363,7 +372,9 @@ class EOLTest:
     def set_required_hardware(self, hardware_types: List[str]) -> None:
         """Set required hardware types for this test"""
         if not isinstance(hardware_types, list):
-            raise ValidationException("hardware_types", hardware_types, "Hardware types must be a list")
+            raise ValidationException(
+                "hardware_types", hardware_types, "Hardware types must be a list"
+            )
 
         self._required_hardware = [hw.lower().strip() for hw in hardware_types]
         # Initialize connection status
@@ -386,64 +397,64 @@ class EOLTest:
     def to_dict(self) -> Dict[str, Any]:
         """Convert EOL test to dictionary representation"""
         return {
-            'test_id': str(self._test_id),
-            'dut': self._dut.to_dict(),
-            'operator_id': str(self._operator_id),
-            'test_configuration': self._test_configuration,
-            'pass_criteria': self._pass_criteria,
-            'created_at': self._created_at.to_iso(),
-            'status': self._status.value,
-            'start_time': self._start_time.to_iso() if self._start_time else None,
-            'end_time': self._end_time.to_iso() if self._end_time else None,
-            'current_step': self._current_step,
-            'total_steps': self._total_steps,
-            'progress_percentage': self._progress_percentage,
-            'duration_seconds': self.get_duration().seconds if self.get_duration() else None,
-            'measurement_ids': [str(mid) for mid in self._measurement_ids],
-            'test_result': self._test_result.to_dict() if self._test_result else None,
-            'error_message': self._error_message,
-            'operator_notes': self._operator_notes,
-            'required_hardware': self._required_hardware,
-            'connected_hardware': self._connected_hardware,
-            'is_active': self.is_active(),
-            'is_finished': self.is_finished(),
-            'is_passed': self.is_passed()
+            "test_id": str(self._test_id),
+            "dut": self._dut.to_dict(),
+            "operator_id": str(self._operator_id),
+            "test_configuration": self._test_configuration,
+            "pass_criteria": self._pass_criteria,
+            "created_at": self._created_at.to_iso(),
+            "status": self._status.value,
+            "start_time": self._start_time.to_iso() if self._start_time else None,
+            "end_time": self._end_time.to_iso() if self._end_time else None,
+            "current_step": self._current_step,
+            "total_steps": self._total_steps,
+            "progress_percentage": self._progress_percentage,
+            "duration_seconds": self.get_duration().seconds if self.get_duration() else None,
+            "measurement_ids": [str(mid) for mid in self._measurement_ids],
+            "test_result": self._test_result.to_dict() if self._test_result else None,
+            "error_message": self._error_message,
+            "operator_notes": self._operator_notes,
+            "required_hardware": self._required_hardware,
+            "connected_hardware": self._connected_hardware,
+            "is_active": self.is_active(),
+            "is_finished": self.is_finished(),
+            "is_passed": self.is_passed(),
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'EOLTest':
+    def from_dict(cls, data: Dict[str, Any]) -> "EOLTest":
         """Create EOL test from dictionary representation"""
-        dut = DUT.from_dict(data['dut'])
+        dut = DUT.from_dict(data["dut"])
 
         test = cls(
-            test_id=TestId(data['test_id']),
+            test_id=TestId(data["test_id"]),
             dut=dut,
-            operator_id=OperatorId(data['operator_id']),
-            test_configuration=data.get('test_configuration', {}),
-            pass_criteria=data.get('pass_criteria', {}),
-            created_at=Timestamp.from_iso(data['created_at'])
+            operator_id=OperatorId(data["operator_id"]),
+            test_configuration=data.get("test_configuration", {}),
+            pass_criteria=data.get("pass_criteria", {}),
+            created_at=Timestamp.from_iso(data["created_at"]),
         )
 
         # Restore state
-        test._status = TestStatus(data['status'])
-        if data.get('start_time'):
-            test._start_time = Timestamp.from_iso(data['start_time'])
-        if data.get('end_time'):
-            test._end_time = Timestamp.from_iso(data['end_time'])
+        test._status = TestStatus(data["status"])
+        if data.get("start_time"):
+            test._start_time = Timestamp.from_iso(data["start_time"])
+        if data.get("end_time"):
+            test._end_time = Timestamp.from_iso(data["end_time"])
 
-        test._current_step = data.get('current_step', 0)
-        test._total_steps = data.get('total_steps', 0)
-        test._progress_percentage = data.get('progress_percentage', 0.0)
+        test._current_step = data.get("current_step", 0)
+        test._total_steps = data.get("total_steps", 0)
+        test._progress_percentage = data.get("progress_percentage", 0.0)
 
-        test._measurement_ids = [MeasurementId(mid) for mid in data.get('measurement_ids', [])]
+        test._measurement_ids = [MeasurementId(mid) for mid in data.get("measurement_ids", [])]
 
-        if data.get('test_result'):
-            test._test_result = TestResult.from_dict(data['test_result'])
+        if data.get("test_result"):
+            test._test_result = TestResult.from_dict(data["test_result"])
 
-        test._error_message = data.get('error_message')
-        test._operator_notes = data.get('operator_notes')
-        test._required_hardware = data.get('required_hardware', [])
-        test._connected_hardware = data.get('connected_hardware', {})
+        test._error_message = data.get("error_message")
+        test._operator_notes = data.get("operator_notes")
+        test._required_hardware = data.get("required_hardware", [])
+        test._connected_hardware = data.get("connected_hardware", {})
 
         return test
 

@@ -12,10 +12,7 @@ class ExitCommand(Command):
     """Command for exiting the application"""
 
     def __init__(self):
-        super().__init__(
-            name="exit",
-            description="Exit the application"
-        )
+        super().__init__(name="exit", description="Exit the application")
 
     async def execute(self, args: List[str]) -> CommandResult:
         """

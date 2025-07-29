@@ -9,6 +9,7 @@ from enum import Enum
 
 class TestStatus(Enum):
     """Test execution status enumeration"""
+
     NOT_STARTED = "not_started"
     PREPARING = "preparing"
     RUNNING = "running"
@@ -28,7 +29,12 @@ class TestStatus(Enum):
     @property
     def is_finished(self) -> bool:
         """Check if test execution has finished (success or failure)"""
-        return self in (TestStatus.COMPLETED, TestStatus.FAILED, TestStatus.CANCELLED, TestStatus.ERROR)
+        return self in (
+            TestStatus.COMPLETED,
+            TestStatus.FAILED,
+            TestStatus.CANCELLED,
+            TestStatus.ERROR,
+        )
 
     @property
     def is_successful(self) -> bool:

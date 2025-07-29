@@ -23,7 +23,7 @@ class MockPower(PowerService):
         max_current: float = 50.0,  # Updated default to 50.0A
         voltage_accuracy: float = 0.01,
         current_accuracy: float = 0.001,
-        connection_delay: float = 0.2
+        connection_delay: float = 0.2,
     ):
         """
         초기화
@@ -67,7 +67,9 @@ class MockPower(PowerService):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        logger.info(f"Connecting to mock Power Supply at {power_config.host}:{power_config.port}...")
+        logger.info(
+            f"Connecting to mock Power Supply at {power_config.host}:{power_config.port}..."
+        )
 
         try:
             # 연결 지연 시뮬레이션
@@ -80,7 +82,9 @@ class MockPower(PowerService):
 
             self._is_connected = True
             self._output_enabled = False  # 안전을 위해 비활성화
-            logger.info(f"Mock Power Supply connected successfully (Channel: {power_config.channel})")
+            logger.info(
+                f"Mock Power Supply connected successfully (Channel: {power_config.channel})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to connect to mock Power Supply: {e}")
@@ -135,8 +139,11 @@ class MockPower(PowerService):
         try:
             # 값 범위 검증
             if not (0 <= voltage <= self._max_voltage):
-                raise HardwareOperationError("mock_power", "set_voltage",
-                                           f"Voltage must be 0-{self._max_voltage}V, got {voltage}V")
+                raise HardwareOperationError(
+                    "mock_power",
+                    "set_voltage",
+                    f"Voltage must be 0-{self._max_voltage}V, got {voltage}V",
+                )
 
             # 설정 지연 시뮬레이션
             await asyncio.sleep(0.05)
@@ -196,8 +203,11 @@ class MockPower(PowerService):
         try:
             # 값 범위 검증
             if not (0 <= current <= self._max_current):
-                raise HardwareOperationError("mock_power", "set_current_limit",
-                                           f"Current must be 0-{self._max_current}A, got {current}A")
+                raise HardwareOperationError(
+                    "mock_power",
+                    "set_current_limit",
+                    f"Current must be 0-{self._max_current}A, got {current}A",
+                )
 
             # 설정 지연 시뮬레이션
             await asyncio.sleep(0.05)
@@ -297,7 +307,6 @@ class MockPower(PowerService):
 
         return self._output_enabled
 
-
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
@@ -306,28 +315,28 @@ class MockPower(PowerService):
             상태 정보 딕셔너리
         """
         status = {
-            'connected': self._is_connected,
-            'hardware_type': 'Mock',
-            'max_voltage': self._max_voltage,
-            'max_current': self._max_current,
-            'output_enabled': self._output_enabled,
-            'set_voltage': self._set_voltage,
-            'set_current': self._set_current,
-            'voltage_accuracy': self._voltage_accuracy,
-            'current_accuracy': self._current_accuracy
+            "connected": self._is_connected,
+            "hardware_type": "Mock",
+            "max_voltage": self._max_voltage,
+            "max_current": self._max_current,
+            "output_enabled": self._output_enabled,
+            "set_voltage": self._set_voltage,
+            "set_current": self._set_current,
+            "voltage_accuracy": self._voltage_accuracy,
+            "current_accuracy": self._current_accuracy,
         }
 
         if self._is_connected:
             try:
-                status['measured_voltage'] = await self.get_voltage()
-                status['measured_current'] = await self.get_current()
-                status['output_enabled'] = await self.is_output_enabled()
-                status['last_error'] = None
+                status["measured_voltage"] = await self.get_voltage()
+                status["measured_current"] = await self.get_current()
+                status["output_enabled"] = await self.is_output_enabled()
+                status["last_error"] = None
             except Exception as e:
-                status['measured_voltage'] = None
-                status['measured_current'] = None
-                status['output_enabled'] = None
-                status['last_error'] = str(e)
+                status["measured_voltage"] = None
+                status["measured_current"] = None
+                status["output_enabled"] = None
+                status["last_error"] = str(e)
 
         return status
 
@@ -384,5 +393,7 @@ class MockPower(PowerService):
         actual_voltage = max(0, actual_voltage + voltage_error)
         actual_current = max(0, actual_current + current_error)
 
-        logger.debug(f"Mock load simulation ({resistance}Ω): {actual_voltage:.3f}V, {actual_current:.3f}A")
+        logger.debug(
+            f"Mock load simulation ({resistance}Ω): {actual_voltage:.3f}V, {actual_current:.3f}A"
+        )
         return actual_voltage, actual_current

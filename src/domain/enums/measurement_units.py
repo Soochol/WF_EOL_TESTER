@@ -9,6 +9,7 @@ from enum import Enum
 
 class MeasurementUnit(Enum):
     """Measurement unit enumeration"""
+
     # Force units
     NEWTON = "N"
     KILOGRAM_FORCE = "kgf"
@@ -49,18 +50,31 @@ class MeasurementUnit(Enum):
     @property
     def is_force_unit(self) -> bool:
         """Check if unit is for force measurement"""
-        return self in (MeasurementUnit.NEWTON, MeasurementUnit.KILOGRAM_FORCE, MeasurementUnit.POUND_FORCE)
+        return self in (
+            MeasurementUnit.NEWTON,
+            MeasurementUnit.KILOGRAM_FORCE,
+            MeasurementUnit.POUND_FORCE,
+        )
 
     @property
     def is_electrical_unit(self) -> bool:
         """Check if unit is for electrical measurement"""
         return self in (
-            MeasurementUnit.VOLT, MeasurementUnit.MILLIVOLT,
-            MeasurementUnit.AMPERE, MeasurementUnit.MILLIAMPERE, MeasurementUnit.MICROAMPERE,
-            MeasurementUnit.OHM, MeasurementUnit.KILOOHM, MeasurementUnit.MEGAOHM
+            MeasurementUnit.VOLT,
+            MeasurementUnit.MILLIVOLT,
+            MeasurementUnit.AMPERE,
+            MeasurementUnit.MILLIAMPERE,
+            MeasurementUnit.MICROAMPERE,
+            MeasurementUnit.OHM,
+            MeasurementUnit.KILOOHM,
+            MeasurementUnit.MEGAOHM,
         )
 
     @property
     def is_time_unit(self) -> bool:
         """Check if unit is for time measurement"""
-        return self in (MeasurementUnit.SECOND, MeasurementUnit.MILLISECOND, MeasurementUnit.MICROSECOND)
+        return self in (
+            MeasurementUnit.SECOND,
+            MeasurementUnit.MILLISECOND,
+            MeasurementUnit.MICROSECOND,
+        )

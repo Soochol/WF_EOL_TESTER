@@ -10,13 +10,21 @@ from typing import Optional
 from loguru import logger
 
 from driver.serial.constants import (
-    DEFAULT_BAUDRATE, DEFAULT_TIMEOUT, CONNECT_TIMEOUT,
-    COMMAND_TERMINATOR, RESPONSE_TERMINATOR, ENCODING,
-    READ_BUFFER_SIZE, MAX_COMMAND_LENGTH
+    DEFAULT_BAUDRATE,
+    DEFAULT_TIMEOUT,
+    CONNECT_TIMEOUT,
+    COMMAND_TERMINATOR,
+    RESPONSE_TERMINATOR,
+    ENCODING,
+    READ_BUFFER_SIZE,
+    MAX_COMMAND_LENGTH,
 )
 from driver.serial.exceptions import (
-    SerialError, SerialConnectionError, SerialCommunicationError,
-    SerialTimeoutError, SerialConfigurationError
+    SerialError,
+    SerialConnectionError,
+    SerialCommunicationError,
+    SerialTimeoutError,
+    SerialConfigurationError,
 )
 
 try:
@@ -42,7 +50,9 @@ class SerialConnection:
         self._is_connected = True
 
     @staticmethod
-    async def connect(port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = CONNECT_TIMEOUT) -> 'SerialConnection':
+    async def connect(
+        port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = CONNECT_TIMEOUT
+    ) -> "SerialConnection":
         """
         Connect to serial port
 
@@ -62,16 +72,12 @@ class SerialConnection:
                 "pyserial-asyncio not installed",
                 port=port,
                 baudrate=baudrate,
-                details="Install with: pip install pyserial-asyncio"
+                details="Install with: pip install pyserial-asyncio",
             )
 
         try:
             reader, writer = await asyncio.wait_for(
-                serial_asyncio.open_serial_connection(
-                    url=port,
-                    baudrate=baudrate
-                ),
-                timeout=timeout
+                serial_asyncio.open_serial_connection(url=port, baudrate=baudrate), timeout=timeout
             )
 
             logger.info(f"Serial connected to {port} at {baudrate} baud")
@@ -79,16 +85,11 @@ class SerialConnection:
 
         except asyncio.TimeoutError:
             raise SerialConnectionError(
-                f"Connection timeout to {port}",
-                port=port,
-                baudrate=baudrate
+                f"Connection timeout to {port}", port=port, baudrate=baudrate
             )
         except Exception as e:
             raise SerialConnectionError(
-                f"Failed to connect to {port}",
-                port=port,
-                baudrate=baudrate,
-                details=str(e)
+                f"Failed to connect to {port}", port=port, baudrate=baudrate, details=str(e)
             )
 
     async def disconnect(self) -> None:
@@ -122,10 +123,7 @@ class SerialConnection:
             await self._writer.drain()
 
         except Exception as e:
-            raise SerialCommunicationError(
-                "Write failed",
-                details=str(e)
-            )
+            raise SerialCommunicationError("Write failed", details=str(e))
 
     async def read_until(self, separator: bytes, timeout: Optional[float] = None) -> bytes:
         """
@@ -146,10 +144,7 @@ class SerialConnection:
 
         try:
             if timeout:
-                data = await asyncio.wait_for(
-                    self._reader.readuntil(separator),
-                    timeout=timeout
-                )
+                data = await asyncio.wait_for(self._reader.readuntil(separator), timeout=timeout)
             else:
                 data = await self._reader.readuntil(separator)
 
@@ -158,10 +153,7 @@ class SerialConnection:
         except asyncio.TimeoutError:
             raise SerialTimeoutError("Read timeout")
         except Exception as e:
-            raise SerialCommunicationError(
-                "Read failed",
-                details=str(e)
-            )
+            raise SerialCommunicationError("Read failed", details=str(e))
 
     async def read(self, size: int = -1, timeout: Optional[float] = None) -> bytes:
         """
@@ -182,10 +174,7 @@ class SerialConnection:
 
         try:
             if timeout:
-                data = await asyncio.wait_for(
-                    self._reader.read(size),
-                    timeout=timeout
-                )
+                data = await asyncio.wait_for(self._reader.read(size), timeout=timeout)
             else:
                 data = await self._reader.read(size)
 
@@ -194,12 +183,11 @@ class SerialConnection:
         except asyncio.TimeoutError:
             raise SerialTimeoutError("Read timeout")
         except Exception as e:
-            raise SerialCommunicationError(
-                "Read failed",
-                details=str(e)
-            )
+            raise SerialCommunicationError("Read failed", details=str(e))
 
-    async def send_command(self, command: str, terminator: str = COMMAND_TERMINATOR, timeout: float = DEFAULT_TIMEOUT) -> str:
+    async def send_command(
+        self, command: str, terminator: str = COMMAND_TERMINATOR, timeout: float = DEFAULT_TIMEOUT
+    ) -> str:
         """
         Send command and read response (convenience method)
 
@@ -230,22 +218,18 @@ class SerialConnection:
             return response
 
         except UnicodeDecodeError as e:
-            raise SerialCommunicationError(
-                "Response decode failed",
-                details=str(e)
-            )
+            raise SerialCommunicationError("Response decode failed", details=str(e))
         except Exception as e:
-            raise SerialCommunicationError(
-                "Command failed",
-                details=str(e)
-            )
+            raise SerialCommunicationError("Command failed", details=str(e))
 
 
 class SerialManager:
     """Simple serial manager for creating connections"""
 
     @staticmethod
-    async def create_connection(port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = CONNECT_TIMEOUT) -> SerialConnection:
+    async def create_connection(
+        port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = CONNECT_TIMEOUT
+    ) -> SerialConnection:
         """
         Create serial connection (convenience method)
 

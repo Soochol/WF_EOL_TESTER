@@ -12,10 +12,10 @@ from .configuration_validator import ConfigurationValidator
 from .test_result_evaluator import TestResultEvaluator
 
 __all__ = [
-    'RepositoryService',
-    'ConfigurationService',
-    'HardwareServiceFacade',
-    'ExceptionHandler',
-    'ConfigurationValidator',
-    'TestResultEvaluator'
+    "RepositoryService",
+    "ConfigurationService",
+    "HardwareServiceFacade",
+    "ExceptionHandler",
+    "ConfigurationValidator",
+    "TestResultEvaluator",
 ]

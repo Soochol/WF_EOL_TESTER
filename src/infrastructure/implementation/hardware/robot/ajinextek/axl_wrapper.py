@@ -11,7 +11,11 @@ import os
 import platform
 
 from infrastructure.implementation.hardware.robot.ajinextek.constants import DLL_PATH
-from infrastructure.implementation.hardware.robot.ajinextek.error_codes import AXT_RT_SUCCESS, get_error_message
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+    AXT_RT_SUCCESS,
+    get_error_message,
+)
+
 # 절대 import 사용 (권장)
 from domain.exceptions.robot_exceptions import AXLError, AXLConnectionError, AXLMotionError
 
@@ -28,8 +32,9 @@ class AXLWrapper:
             self._setup_functions()
         else:
             # Linux/개발환경에서는 경고 메시지만 출력
-            print("Warning: Running on non-Windows platform. "
-                  "DLL functions will not be available.")
+            print(
+                "Warning: Running on non-Windows platform. " "DLL functions will not be available."
+            )
 
     def _load_library(self):
         """Load the AXL DLL (Windows only)"""
@@ -41,7 +46,7 @@ class AXLWrapper:
 
         try:
             # Load DLL with Windows calling convention
-            WinDLL = getattr(ctypes, 'WinDLL')
+            WinDLL = getattr(ctypes, "WinDLL")
             self.dll = WinDLL(str(DLL_PATH))
         except OSError as e:
             raise RuntimeError(f"Failed to load AXL DLL: {e}")
@@ -82,8 +87,7 @@ class AXLWrapper:
         self.dll.AxmMotSetPulseOutMethod.restype = c_long
 
         # AxmMotSetMoveUnitPerPulse
-        self.dll.AxmMotSetMoveUnitPerPulse.argtypes = [
-            c_long, c_double, c_long]
+        self.dll.AxmMotSetMoveUnitPerPulse.argtypes = [c_long, c_double, c_long]
         self.dll.AxmMotSetMoveUnitPerPulse.restype = c_long
 
         # AxmSignalServoOn
@@ -111,8 +115,7 @@ class AXLWrapper:
         self.dll.AxmStatusGetActPos.restype = c_long
 
         # AxmMoveStartPos
-        self.dll.AxmMoveStartPos.argtypes = [
-            c_long, c_double, c_double, c_double, c_double]
+        self.dll.AxmMoveStartPos.argtypes = [c_long, c_double, c_double, c_double, c_double]
         self.dll.AxmMoveStartPos.restype = c_long
 
         # AxmMoveStop
@@ -124,13 +127,11 @@ class AXLWrapper:
         self.dll.AxmStatusReadInMotion.restype = c_long
 
         # AxmHomeSetMethod
-        self.dll.AxmHomeSetMethod.argtypes = [
-            c_long, c_long, c_long, c_long, c_double]
+        self.dll.AxmHomeSetMethod.argtypes = [c_long, c_long, c_long, c_long, c_double]
         self.dll.AxmHomeSetMethod.restype = c_long
 
         # AxmHomeSetVel
-        self.dll.AxmHomeSetVel.argtypes = [
-            c_long, c_double, c_double, c_double, c_double]
+        self.dll.AxmHomeSetVel.argtypes = [c_long, c_double, c_double, c_double, c_double]
         self.dll.AxmHomeSetVel.restype = c_long
 
         # AxmHomeSetStart
@@ -176,7 +177,7 @@ class AXLWrapper:
         result = self.dll.AxlGetLibVersion(version)
         if result != AXT_RT_SUCCESS:
             raise AXLError(get_error_message(result), result, "AxlGetLibVersion")
-        return version.value.decode('ascii')
+        return version.value.decode("ascii")
 
     # === Motion Functions ===
     def get_axis_count(self) -> int:
@@ -196,8 +197,7 @@ class AXLWrapper:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
         return self.dll.AxmMotSetPulseOutMethod(axis_no, method)
 
-    def set_move_unit_per_pulse(self, axis_no: int, unit: float,
-                                pulse: int) -> int:
+    def set_move_unit_per_pulse(self, axis_no: int, unit: float, pulse: int) -> int:
         """Set movement unit per pulse"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
@@ -260,13 +260,13 @@ class AXLWrapper:
             raise AXLMotionError(get_error_message(result), result, "AxmStatusGetActPos")
         return position.value
 
-    def move_start_pos(self, axis_no: int, position: float,
-                       velocity: float, accel: float, decel: float) -> int:
+    def move_start_pos(
+        self, axis_no: int, position: float, velocity: float, accel: float, decel: float
+    ) -> int:
         """Start position move"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
-        return self.dll.AxmMoveStartPos(axis_no, position, velocity,
-                                        accel, decel)
+        return self.dll.AxmMoveStartPos(axis_no, position, velocity, accel, decel)
 
     def move_stop(self, axis_no: int, decel: float) -> int:
         """Stop motion"""
@@ -285,21 +285,21 @@ class AXLWrapper:
             raise AXLMotionError(get_error_message(result), result, "AxmStatusReadInMotion")
         return status.value == 1
 
-    def home_set_method(self, axis_no: int, home_dir: int,
-                        signal_level: int, mode: int, offset: float) -> int:
+    def home_set_method(
+        self, axis_no: int, home_dir: int, signal_level: int, mode: int, offset: float
+    ) -> int:
         """Set homing method"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
-        return self.dll.AxmHomeSetMethod(axis_no, home_dir, signal_level,
-                                         mode, offset)
+        return self.dll.AxmHomeSetMethod(axis_no, home_dir, signal_level, mode, offset)
 
-    def home_set_vel(self, axis_no: int, vel_first: float,
-                     vel_second: float, accel: float, decel: float) -> int:
+    def home_set_vel(
+        self, axis_no: int, vel_first: float, vel_second: float, accel: float, decel: float
+    ) -> int:
         """Set homing velocities"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
-        return self.dll.AxmHomeSetVel(axis_no, vel_first, vel_second,
-                                      accel, decel)
+        return self.dll.AxmHomeSetVel(axis_no, vel_first, vel_second, accel, decel)
 
     def home_set_start(self, axis_no: int) -> int:
         """Start homing"""

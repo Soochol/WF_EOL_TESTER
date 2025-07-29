@@ -25,7 +25,7 @@ class TestResult:
         actual_results: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,
         operator_notes: Optional[str] = None,
-        test_parameters: Optional[Dict[str, Any]] = None
+        test_parameters: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize test result
@@ -61,25 +61,35 @@ class TestResult:
 
         self._created_at = Timestamp.now()
 
-    def _validate_required_fields(self, test_id: TestId, test_status: TestStatus, start_time: Timestamp) -> None:
+    def _validate_required_fields(
+        self, test_id: TestId, test_status: TestStatus, start_time: Timestamp
+    ) -> None:
         """Validate required fields"""
         if not isinstance(test_id, TestId):
             raise ValidationException("test_id", test_id, "Test ID must be TestId instance")
 
         if not isinstance(test_status, TestStatus):
-            raise ValidationException("test_status", test_status, "Test status must be TestStatus enum")
+            raise ValidationException(
+                "test_status", test_status, "Test status must be TestStatus enum"
+            )
 
         if not isinstance(start_time, Timestamp):
-            raise ValidationException("start_time", start_time, "Start time must be Timestamp instance")
+            raise ValidationException(
+                "start_time", start_time, "Start time must be Timestamp instance"
+            )
 
-    def _validate_time_consistency(self, start_time: Timestamp, end_time: Optional[Timestamp], test_status: TestStatus) -> None:
+    def _validate_time_consistency(
+        self, start_time: Timestamp, end_time: Optional[Timestamp], test_status: TestStatus
+    ) -> None:
         """Validate time consistency"""
         if end_time and end_time < start_time:
             raise ValidationException("end_time", end_time, "End time cannot be before start time")
 
         # If test is finished, end time should be provided
         if test_status.is_finished and not end_time:
-            raise ValidationException("end_time", end_time, f"End time required for status {test_status.value}")
+            raise ValidationException(
+                "end_time", end_time, f"End time required for status {test_status.value}"
+            )
 
     @property
     def test_id(self) -> TestId:
@@ -157,7 +167,9 @@ class TestResult:
     def add_measurement_id(self, measurement_id: MeasurementId) -> None:
         """Add measurement ID to results"""
         if not isinstance(measurement_id, MeasurementId):
-            raise ValidationException("measurement_id", measurement_id, "Measurement ID must be MeasurementId instance")
+            raise ValidationException(
+                "measurement_id", measurement_id, "Measurement ID must be MeasurementId instance"
+            )
 
         if measurement_id not in self._measurement_ids:
             self._measurement_ids.append(measurement_id)
@@ -246,42 +258,42 @@ class TestResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert test result to dictionary representation"""
         return {
-            'test_id': str(self._test_id),
-            'test_status': self._test_status.value,
-            'start_time': self._start_time.to_iso(),
-            'end_time': self._end_time.to_iso() if self._end_time else None,
-            'duration_seconds': self.get_duration().seconds if self.get_duration() else None,
-            'measurement_ids': [str(mid) for mid in self._measurement_ids],
-            'pass_criteria': self._pass_criteria,
-            'actual_results': self._actual_results,
-            'error_message': self._error_message,
-            'operator_notes': self._operator_notes,
-            'test_parameters': self._test_parameters,
-            'created_at': self._created_at.to_iso(),
-            'is_passed': self.is_passed(),
-            'is_finished': self.is_finished()
+            "test_id": str(self._test_id),
+            "test_status": self._test_status.value,
+            "start_time": self._start_time.to_iso(),
+            "end_time": self._end_time.to_iso() if self._end_time else None,
+            "duration_seconds": self.get_duration().seconds if self.get_duration() else None,
+            "measurement_ids": [str(mid) for mid in self._measurement_ids],
+            "pass_criteria": self._pass_criteria,
+            "actual_results": self._actual_results,
+            "error_message": self._error_message,
+            "operator_notes": self._operator_notes,
+            "test_parameters": self._test_parameters,
+            "created_at": self._created_at.to_iso(),
+            "is_passed": self.is_passed(),
+            "is_finished": self.is_finished(),
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TestResult':
+    def from_dict(cls, data: Dict[str, Any]) -> "TestResult":
         """Create test result from dictionary representation"""
         end_time = None
-        if data.get('end_time'):
-            end_time = Timestamp.from_iso(data['end_time'])
+        if data.get("end_time"):
+            end_time = Timestamp.from_iso(data["end_time"])
 
-        measurement_ids = [MeasurementId(mid) for mid in data.get('measurement_ids', [])]
+        measurement_ids = [MeasurementId(mid) for mid in data.get("measurement_ids", [])]
 
         return cls(
-            test_id=TestId(data['test_id']),
-            test_status=TestStatus(data['test_status']),
-            start_time=Timestamp.from_iso(data['start_time']),
+            test_id=TestId(data["test_id"]),
+            test_status=TestStatus(data["test_status"]),
+            start_time=Timestamp.from_iso(data["start_time"]),
             end_time=end_time,
             measurement_ids=measurement_ids,
-            pass_criteria=data.get('pass_criteria', {}),
-            actual_results=data.get('actual_results', {}),
-            error_message=data.get('error_message'),
-            operator_notes=data.get('operator_notes'),
-            test_parameters=data.get('test_parameters', {})
+            pass_criteria=data.get("pass_criteria", {}),
+            actual_results=data.get("actual_results", {}),
+            error_message=data.get("error_message"),
+            operator_notes=data.get("operator_notes"),
+            test_parameters=data.get("test_parameters", {}),
         )
 
     def __str__(self) -> str:
