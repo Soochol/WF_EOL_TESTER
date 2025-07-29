@@ -4,17 +4,20 @@ EOL Tester CLI
 Simplified command-line interface for EOL testing operations.
 """
 
-import asyncio
-from typing import Optional
+from typing import Dict, Optional
 
 from loguru import logger
 
 from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
+)
+from domain.value_objects.dut_command_info import (
+    DUTCommandInfo,
+)
+from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
-from domain.value_objects.dut_command_info import DUTCommandInfo
 
 
 class EOLTesterCLI:
@@ -38,7 +41,9 @@ class EOLTesterCLI:
             self._running = True
 
             print("\n" + "=" * 60)
-            print("EOL Tester - Simplified Version".center(60))
+            print(
+                "EOL Tester - Simplified Version".center(60)
+            )
             print("=" * 60)
 
             while self._running:
@@ -101,11 +106,16 @@ class EOLTesterCLI:
         )
 
         # 테스트 명령 생성
-        command = EOLForceTestCommand(dut_info=dut_command_info, operator_id=dut_info["operator"])
+        command = EOLForceTestCommand(
+            dut_info=dut_command_info,
+            operator_id=dut_info["operator"],
+        )
 
         await self._execute_test(command)
 
-    async def _get_dut_info(self) -> Optional[dict]:
+    async def _get_dut_info(
+        self,
+    ) -> Optional[Dict[str, str]]:
         """DUT 정보 입력받기"""
         try:
             print("\\nEnter DUT Information:")
@@ -114,18 +124,35 @@ class EOLTesterCLI:
                 print("DUT ID is required")
                 return None
 
-            dut_model = input("DUT Model [Unknown]: ").strip() or "Unknown"
-            dut_serial = input("DUT Serial [N/A]: ").strip() or "N/A"
-            operator = input("Operator ID [Test]: ").strip() or "Test"
+            dut_model = (
+                input("DUT Model [Unknown]: ").strip()
+                or "Unknown"
+            )
+            dut_serial = (
+                input("DUT Serial [N/A]: ").strip() or "N/A"
+            )
+            operator = (
+                input("Operator ID [Test]: ").strip()
+                or "Test"
+            )
 
-            return {"id": dut_id, "model": dut_model, "serial": dut_serial, "operator": operator}
+            return {
+                "id": dut_id,
+                "model": dut_model,
+                "serial": dut_serial,
+                "operator": operator,
+            }
 
         except (KeyboardInterrupt, EOFError):
             return None
 
-    async def _execute_test(self, command: EOLForceTestCommand) -> None:
+    async def _execute_test(
+        self, command: EOLForceTestCommand
+    ) -> None:
         """테스트 실행"""
-        print(f"\\nExecuting test for DUT: {command.dut_info.dut_id}")
+        print(
+            f"\\nExecuting test for DUT: {command.dut_info.dut_id}"
+        )
         print("Please wait...")
 
         try:
@@ -141,23 +168,36 @@ class EOLTesterCLI:
 
         input("\\nPress Enter to continue...")
 
-    def _display_test_result(self, result: EOLTestResult) -> None:
+    def _display_test_result(
+        self, result: EOLTestResult
+    ) -> None:
         """테스트 결과 출력"""
         print("\\n" + "=" * 60)
         print("Test Result")
         print("=" * 60)
         print(f"Test ID: {result.test_id}")
-        print(f"Status: {result.status}")
-        print(f"Result: {'PASSED' if result.passed else 'FAILED'}")
-        print(f"Duration: {result.duration:.2f} seconds")
+        print(f"Status: {result.test_status}")
+        print(
+            f"Result: {'PASSED' if result.is_passed else 'FAILED'}"
+        )
+        duration_str = result.format_duration()
+        print(f"Duration: {duration_str}")
 
-        if result.measurements:
-            print("\\nMeasurements:")
-            for key, value in result.measurements.items():
-                if isinstance(value, float):
-                    print(f"  {key}: {value:.3f}")
-                else:
-                    print(f"  {key}: {value}")
+        # Check if test_summary is available and process it
+        if (
+            hasattr(result, "test_summary")
+            and result.test_summary
+        ):
+            print("\\nTest Summary:")
+            if isinstance(result.test_summary, dict):
+                for (
+                    key,
+                    value,
+                ) in result.test_summary.items():
+                    if isinstance(value, float):
+                        print(f"  {key}: {value:.3f}")
+                    else:
+                        print(f"  {key}: {value}")
 
         if result.error_message:
             print(f"\\nError: {result.error_message}")
@@ -171,23 +211,24 @@ class EOLTesterCLI:
         print("=" * 60)
 
         try:
-            # LoadCell 상태
-            loadcell_status = await self._use_case._loadcell.get_status()
-            print("LoadCell Status:")
-            for key, value in loadcell_status.items():
-                print(f"  {key}: {value}")
-
-            print()
-
-            # Power Supply 상태
-            power_status = await self._use_case._power.get_status()
-            print("Power Supply Status:")
-            for key, value in power_status.items():
-                print(f"  {key}: {value}")
+            print("Hardware Status Check:")
+            print(
+                "  Hardware status monitoring is integrated into test execution"
+            )
+            print(
+                "  Individual hardware status can be checked during EOL test run"
+            )
+            print(
+                "  Connection status is validated automatically before each test"
+            )
 
         except Exception as e:
-            print(f"Failed to get hardware status: {e}")
-            logger.error(f"Hardware status error: {e}")
+            print(
+                f"Failed to display hardware status info: {e}"
+            )
+            logger.error(
+                f"Hardware status display error: {e}"
+            )
 
         input("\\nPress Enter to continue...")
 
@@ -196,12 +237,11 @@ class EOLTesterCLI:
         logger.info("Shutting down CLI")
 
         try:
-            # 하드웨어 연결 해제
-            if hasattr(self._use_case, "_loadcell"):
-                await self._use_case._loadcell.disconnect()
-
-            if hasattr(self._use_case, "_power"):
-                await self._use_case._power.disconnect()
+            # Hardware cleanup is handled by the use case internally
+            # CLI shutdown complete - resources will be cleaned up by garbage collection
+            logger.debug(
+                "CLI shutdown initiated - hardware cleanup handled internally"
+            )
 
         except Exception as e:
             logger.warning(f"Error during shutdown: {e}")

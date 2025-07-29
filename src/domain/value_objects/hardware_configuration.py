@@ -5,7 +5,7 @@ Immutable configuration object containing all hardware device connection paramet
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Set
+from typing import Any, cast, Dict, Set
 
 from domain.exceptions.validation_exceptions import (
     ValidationException,
@@ -16,7 +16,10 @@ SUPPORTED_ROBOT_MODELS: Set[str] = {"AJINEXTEK", "MOCK"}
 SUPPORTED_LOADCELL_MODELS: Set[str] = {"BS205", "MOCK"}
 SUPPORTED_MCU_MODELS: Set[str] = {"LMA", "MOCK"}
 SUPPORTED_POWER_MODELS: Set[str] = {"ODA", "MOCK"}
-SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {"AJINEXTEK", "MOCK"}
+SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {
+    "AJINEXTEK",
+    "MOCK",
+}
 
 
 @dataclass(frozen=True)
@@ -91,10 +94,14 @@ class HardwareConfiguration:
     """
 
     robot: RobotConfig = field(default_factory=RobotConfig)
-    loadcell: LoadCellConfig = field(default_factory=LoadCellConfig)
+    loadcell: LoadCellConfig = field(
+        default_factory=LoadCellConfig
+    )
     mcu: MCUConfig = field(default_factory=MCUConfig)
     power: PowerConfig = field(default_factory=PowerConfig)
-    digital_input: DigitalInputConfig = field(default_factory=DigitalInputConfig)
+    digital_input: DigitalInputConfig = field(
+        default_factory=DigitalInputConfig
+    )
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization"""
@@ -114,18 +121,25 @@ class HardwareConfiguration:
 
         if self.robot.irq_no < 0:
             raise ValidationException(
-                "robot.irq_no", self.robot.irq_no, "IRQ number cannot be negative"
+                "robot.irq_no",
+                self.robot.irq_no,
+                "IRQ number cannot be negative",
             )
 
         if self.robot.axis_count <= 0:
             raise ValidationException(
-                "robot.axis_count", self.robot.axis_count, "Axis count must be positive"
+                "robot.axis_count",
+                self.robot.axis_count,
+                "Axis count must be positive",
             )
 
     def _validate_communication_configs(self) -> None:
         """Validate communication configuration parameters"""
         # LoadCell validation
-        if self.loadcell.model not in SUPPORTED_LOADCELL_MODELS:
+        if (
+            self.loadcell.model
+            not in SUPPORTED_LOADCELL_MODELS
+        ):
             raise ValidationException(
                 "loadcell.model",
                 self.loadcell.model,
@@ -134,17 +148,23 @@ class HardwareConfiguration:
 
         if not self.loadcell.port:
             raise ValidationException(
-                "loadcell.port", self.loadcell.port, "LoadCell port cannot be empty"
+                "loadcell.port",
+                self.loadcell.port,
+                "LoadCell port cannot be empty",
             )
 
         if self.loadcell.baudrate <= 0:
             raise ValidationException(
-                "loadcell.baudrate", self.loadcell.baudrate, "LoadCell baudrate must be positive"
+                "loadcell.baudrate",
+                self.loadcell.baudrate,
+                "LoadCell baudrate must be positive",
             )
 
         if self.loadcell.timeout <= 0:
             raise ValidationException(
-                "loadcell.timeout", self.loadcell.timeout, "LoadCell timeout must be positive"
+                "loadcell.timeout",
+                self.loadcell.timeout,
+                "LoadCell timeout must be positive",
             )
 
         if self.loadcell.indicator_id < 0:
@@ -163,20 +183,31 @@ class HardwareConfiguration:
             )
 
         if not self.mcu.port:
-            raise ValidationException("mcu.port", self.mcu.port, "MCU port cannot be empty")
+            raise ValidationException(
+                "mcu.port",
+                self.mcu.port,
+                "MCU port cannot be empty",
+            )
 
         if self.mcu.baudrate <= 0:
             raise ValidationException(
-                "mcu.baudrate", self.mcu.baudrate, "MCU baudrate must be positive"
+                "mcu.baudrate",
+                self.mcu.baudrate,
+                "MCU baudrate must be positive",
             )
 
         if self.mcu.timeout <= 0:
             raise ValidationException(
-                "mcu.timeout", self.mcu.timeout, "MCU timeout must be positive"
+                "mcu.timeout",
+                self.mcu.timeout,
+                "MCU timeout must be positive",
             )
 
         # Digital Input validation
-        if self.digital_input.model not in SUPPORTED_DIGITAL_INPUT_MODELS:
+        if (
+            self.digital_input.model
+            not in SUPPORTED_DIGITAL_INPUT_MODELS
+        ):
             raise ValidationException(
                 "digital_input.model",
                 self.digital_input.model,
@@ -215,21 +246,31 @@ class HardwareConfiguration:
             )
 
         if not self.power.host:
-            raise ValidationException("power.host", self.power.host, "Power host cannot be empty")
-
-        if not (1 <= self.power.port <= 65535):
             raise ValidationException(
-                "power.port", self.power.port, "Power port must be between 1 and 65535"
+                "power.host",
+                self.power.host,
+                "Power host cannot be empty",
+            )
+
+        if not 1 <= self.power.port <= 65535:
+            raise ValidationException(
+                "power.port",
+                self.power.port,
+                "Power port must be between 1 and 65535",
             )
 
         if self.power.timeout <= 0:
             raise ValidationException(
-                "power.timeout", self.power.timeout, "Power timeout must be positive"
+                "power.timeout",
+                self.power.timeout,
+                "Power timeout must be positive",
             )
 
         if self.power.channel <= 0:
             raise ValidationException(
-                "power.channel", self.power.channel, "Power channel must be positive"
+                "power.channel",
+                self.power.channel,
+                "Power channel must be positive",
             )
 
     def is_valid(self) -> bool:
@@ -245,7 +286,9 @@ class HardwareConfiguration:
         except ValidationException:
             return False
 
-    def with_overrides(self, **overrides) -> "HardwareConfiguration":
+    def with_overrides(
+        self, **overrides
+    ) -> "HardwareConfiguration":
         """
         Create new configuration with specific field overrides
 
@@ -271,8 +314,16 @@ class HardwareConfiguration:
         current_values.update(overrides)
 
         # Handle nested config overrides
-        for config_name in ["robot", "loadcell", "mcu", "power", "digital_input"]:
-            if config_name in overrides and isinstance(overrides[config_name], dict):
+        for config_name in [
+            "robot",
+            "loadcell",
+            "mcu",
+            "power",
+            "digital_input",
+        ]:
+            if config_name in overrides and isinstance(
+                overrides[config_name], dict
+            ):
                 # Get the appropriate config class
                 config_class = {
                     "robot": RobotConfig,
@@ -283,10 +334,37 @@ class HardwareConfiguration:
                 }[config_name]
 
                 # Create new config instance from dict
-                current_values[config_name] = config_class(**overrides[config_name])
+                current_values[config_name] = config_class(
+                    **overrides[config_name]
+                )
 
-        # Create new instance
-        return HardwareConfiguration(**current_values)
+        # Create new instance with properly typed config objects
+        return HardwareConfiguration(
+            robot=cast(
+                RobotConfig,
+                current_values.get("robot", self.robot),
+            ),
+            loadcell=cast(
+                LoadCellConfig,
+                current_values.get(
+                    "loadcell", self.loadcell
+                ),
+            ),
+            mcu=cast(
+                MCUConfig,
+                current_values.get("mcu", self.mcu),
+            ),
+            power=cast(
+                PowerConfig,
+                current_values.get("power", self.power),
+            ),
+            digital_input=cast(
+                DigitalInputConfig,
+                current_values.get(
+                    "digital_input", self.digital_input
+                ),
+            ),
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary representation"""
@@ -325,7 +403,9 @@ class HardwareConfiguration:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HardwareConfiguration":
+    def from_dict(
+        cls, data: Dict[str, Any]
+    ) -> "HardwareConfiguration":
         """
         Create configuration from dictionary
 
@@ -350,11 +430,41 @@ class HardwareConfiguration:
             "digital_input": DigitalInputConfig,
         }
 
-        for config_name, config_class in config_classes.items():
-            if config_name in data_copy and isinstance(data_copy[config_name], dict):
-                data_copy[config_name] = config_class(**data_copy[config_name])
+        for (
+            config_name,
+            config_class,
+        ) in config_classes.items():
+            if config_name in data_copy and isinstance(
+                data_copy[config_name], dict
+            ):
+                data_copy[config_name] = config_class(
+                    **data_copy[config_name]
+                )
 
-        return cls(**data_copy)
+        # Create instance with properly typed config objects
+        return cls(
+            robot=cast(
+                RobotConfig,
+                data_copy.get("robot", RobotConfig()),
+            ),
+            loadcell=cast(
+                LoadCellConfig,
+                data_copy.get("loadcell", LoadCellConfig()),
+            ),
+            mcu=cast(
+                MCUConfig, data_copy.get("mcu", MCUConfig())
+            ),
+            power=cast(
+                PowerConfig,
+                data_copy.get("power", PowerConfig()),
+            ),
+            digital_input=cast(
+                DigitalInputConfig,
+                data_copy.get(
+                    "digital_input", DigitalInputConfig()
+                ),
+            ),
+        )
 
     def __str__(self) -> str:
         return f"HardwareConfig({self.robot.model}/{self.loadcell.model}/{self.mcu.model}/{self.power.model}/{self.digital_input.model})"

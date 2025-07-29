@@ -19,6 +19,7 @@ Requires-Dist: black>=22.0.0; extra == "dev"
 Requires-Dist: isort>=5.0.0; extra == "dev"
 Requires-Dist: mypy>=1.0.0; extra == "dev"
 Requires-Dist: flake8>=4.0.0; extra == "dev"
+Requires-Dist: pylint>=2.15.0; extra == "dev"
 
 # EOL Tester - Simplified Architecture
 

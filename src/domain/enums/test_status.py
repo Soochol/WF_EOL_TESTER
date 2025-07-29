@@ -24,7 +24,10 @@ class TestStatus(Enum):
     @property
     def is_active(self) -> bool:
         """Check if test is currently active/running"""
-        return self in (TestStatus.PREPARING, TestStatus.RUNNING)
+        return self in (
+            TestStatus.PREPARING,
+            TestStatus.RUNNING,
+        )
 
     @property
     def is_finished(self) -> bool:
@@ -44,4 +47,8 @@ class TestStatus(Enum):
     @property
     def requires_cleanup(self) -> bool:
         """Check if test status requires cleanup actions"""
-        return self in (TestStatus.FAILED, TestStatus.ERROR, TestStatus.CANCELLED)
+        return self in (
+            TestStatus.FAILED,
+            TestStatus.ERROR,
+            TestStatus.CANCELLED,
+        )

@@ -60,7 +60,12 @@ class AjinextekErrorCode(IntEnum):
 class AjinextekDIOError(Exception):
     """Base Ajinextek DIO error"""
 
-    def __init__(self, message: str, error_code: int = 0, details: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        error_code: int = 0,
+        details: Optional[str] = None,
+    ):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
@@ -71,7 +76,9 @@ class AjinextekDIOError(Exception):
         if self.error_code:
             base_msg = f"[{self.error_code}] {base_msg}"
         if self.details:
-            base_msg = f"{base_msg}. Details: {self.details}"
+            base_msg = (
+                f"{base_msg}. Details: {self.details}"
+            )
         return base_msg
 
 
@@ -99,7 +106,9 @@ class AjinextekChannelError(AjinextekDIOError):
     pass
 
 
-def validate_board_number(board_number: int, max_boards: int = 32) -> None:
+def validate_board_number(
+    board_number: int, max_boards: int = 32
+) -> None:
     """
     Validate board number range
 
@@ -113,11 +122,15 @@ def validate_board_number(board_number: int, max_boards: int = 32) -> None:
     if not (0 <= board_number < max_boards):
         raise AjinextekConfigurationError(
             f"Board number {board_number} is out of range [0, {max_boards-1}]",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
+            error_code=int(
+                AjinextekErrorCode.INVALID_PARAMETER
+            ),
         )
 
 
-def validate_channel_number(channel: int, max_channels: int = 32) -> None:
+def validate_channel_number(
+    channel: int, max_channels: int = 32
+) -> None:
     """
     Validate channel number range
 
@@ -131,11 +144,15 @@ def validate_channel_number(channel: int, max_channels: int = 32) -> None:
     if not (0 <= channel < max_channels):
         raise AjinextekChannelError(
             f"Channel {channel} is out of range [0, {max_channels-1}]",
-            error_code=int(AjinextekErrorCode.INVALID_CHANNEL_NUMBER),
+            error_code=int(
+                AjinextekErrorCode.INVALID_CHANNEL_NUMBER
+            ),
         )
 
 
-def validate_channel_list(channels: List[int], max_channels: int = 32) -> None:
+def validate_channel_list(
+    channels: List[int], max_channels: int = 32
+) -> None:
     """
     Validate list of channel numbers
 
@@ -148,7 +165,10 @@ def validate_channel_list(channels: List[int], max_channels: int = 32) -> None:
     """
     if not channels:
         raise AjinextekChannelError(
-            "Channel list cannot be empty", error_code=int(AjinextekErrorCode.INVALID_PARAMETER)
+            "Channel list cannot be empty",
+            error_code=int(
+                AjinextekErrorCode.INVALID_PARAMETER
+            ),
         )
 
     for channel in channels:
@@ -156,14 +176,22 @@ def validate_channel_list(channels: List[int], max_channels: int = 32) -> None:
 
     # Check for duplicates
     if len(channels) != len(set(channels)):
-        duplicates = [ch for ch in set(channels) if channels.count(ch) > 1]
+        duplicates = [
+            ch
+            for ch in set(channels)
+            if channels.count(ch) > 1
+        ]
         raise AjinextekChannelError(
             f"Duplicate channels found: {duplicates}",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
+            error_code=int(
+                AjinextekErrorCode.INVALID_PARAMETER
+            ),
         )
 
 
-def validate_pin_values(pin_values: Dict[int, int], max_channels: int = 32) -> None:
+def validate_pin_values(
+    pin_values: Dict[int, int], max_channels: int = 32
+) -> None:
     """
     Validate pin-value mapping
 
@@ -177,7 +205,9 @@ def validate_pin_values(pin_values: Dict[int, int], max_channels: int = 32) -> N
     if not pin_values:
         raise AjinextekChannelError(
             "Pin values dictionary cannot be empty",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
+            error_code=int(
+                AjinextekErrorCode.INVALID_PARAMETER
+            ),
         )
 
     for pin, value in pin_values.items():
@@ -186,11 +216,15 @@ def validate_pin_values(pin_values: Dict[int, int], max_channels: int = 32) -> N
         if value not in [0, 1]:
             raise AjinextekChannelError(
                 f"Invalid logic level {value} for pin {pin}. Must be 0 or 1",
-                error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
+                error_code=int(
+                    AjinextekErrorCode.INVALID_PARAMETER
+                ),
             )
 
 
-def validate_module_position(position: int, max_modules: int = 4) -> None:
+def validate_module_position(
+    position: int, max_modules: int = 4
+) -> None:
     """
     Validate module position
 
@@ -204,11 +238,15 @@ def validate_module_position(position: int, max_modules: int = 4) -> None:
     if not (0 <= position < max_modules):
         raise AjinextekConfigurationError(
             f"Module position {position} is out of range [0, {max_modules-1}]",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
+            error_code=int(
+                AjinextekErrorCode.INVALID_PARAMETER
+            ),
         )
 
 
-def validate_debounce_time(debounce_ms: int, max_debounce: int = 1000) -> None:
+def validate_debounce_time(
+    debounce_ms: int, max_debounce: int = 1000
+) -> None:
     """
     Validate debounce time setting
 
@@ -222,7 +260,9 @@ def validate_debounce_time(debounce_ms: int, max_debounce: int = 1000) -> None:
     if not (0 <= debounce_ms <= max_debounce):
         raise AjinextekConfigurationError(
             f"Debounce time {debounce_ms}ms is out of range [0, {max_debounce}]",
-            error_code=int(AjinextekErrorCode.INVALID_PARAMETER),
+            error_code=int(
+                AjinextekErrorCode.INVALID_PARAMETER
+            ),
         )
 
 
@@ -239,7 +279,9 @@ def create_hardware_error(
     Returns:
         AjinextekHardwareError instance
     """
-    error_code = int(AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED)
+    error_code = int(
+        AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED
+    )
     details = None
 
     if axl_error_code is not None:
@@ -256,10 +298,15 @@ def create_hardware_error(
         }
 
         error_code = int(
-            axl_error_mapping.get(axl_error_code, AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED)
+            axl_error_mapping.get(
+                axl_error_code,
+                AjinextekErrorCode.HARDWARE_COMMUNICATION_FAILED,
+            )
         )
 
-    return AjinextekHardwareError(message, error_code, details)
+    return AjinextekHardwareError(
+        message, error_code, details
+    )
 
 
 def parse_axl_error(axl_return_code: int) -> str:
@@ -286,7 +333,10 @@ def parse_axl_error(axl_return_code: int) -> str:
         -10: "Operation not supported by this module",
     }
 
-    return axl_error_messages.get(axl_return_code, f"Unknown AXL error code: {axl_return_code}")
+    return axl_error_messages.get(
+        axl_return_code,
+        f"Unknown AXL error code: {axl_return_code}",
+    )
 
 
 # Error code to message mapping
@@ -332,7 +382,9 @@ ERROR_MESSAGES = {
 }
 
 
-def get_error_message(error_code: AjinextekErrorCode) -> str:
+def get_error_message(
+    error_code: AjinextekErrorCode,
+) -> str:
     """
     Get error message for error code
 
@@ -342,4 +394,6 @@ def get_error_message(error_code: AjinextekErrorCode) -> str:
     Returns:
         Human readable error message
     """
-    return ERROR_MESSAGES.get(error_code, f"Unknown error code: {error_code}")
+    return ERROR_MESSAGES.get(
+        error_code, f"Unknown error code: {error_code}"
+    )

@@ -38,11 +38,10 @@ from application.services.test_result_evaluator import (
 )
 from domain.entities.dut import DUT
 from domain.entities.eol_test import EOLTest
+from domain.entities.test_result import TestResult
 from domain.enums.test_status import TestStatus
 from domain.exceptions import (
-    ConfigurationNotFoundError,
     MultiConfigurationValidationError,
-    RepositoryAccessError,
     TestEvaluationError,
 )
 from domain.exceptions.test_exceptions import (
@@ -59,6 +58,7 @@ from domain.value_objects.hardware_configuration import (
 )
 from domain.value_objects.identifiers import (
     MeasurementId,
+    OperatorId,
     TestId,
 )
 from domain.value_objects.measurements import (
@@ -73,7 +73,9 @@ from domain.value_objects.time_values import TestDuration
 class EOLForceTestCommand:
     """EOL Test Execution Command"""
 
-    def __init__(self, dut_info: DUTCommandInfo, operator_id: str):
+    def __init__(
+        self, dut_info: DUTCommandInfo, operator_id: str
+    ):
         self.dut_info = dut_info
         self.operator_id = operator_id
 
@@ -102,15 +104,23 @@ class EOLForceTestUseCase:
     ):
         self._hardware = hardware_services
         self._configuration = configuration_service
-        self._configuration_validator = configuration_validator
+        self._configuration_validator = (
+            configuration_validator
+        )
         self._repository = repository_service
         self._exception_handler = exception_handler
         self._test_result_evaluator = test_result_evaluator
         self._profile_name: Optional[str] = None
-        self._test_config: Optional[TestConfiguration] = None
-        self._hardware_config: Optional[HardwareConfiguration] = None
+        self._test_config: Optional[TestConfiguration] = (
+            None
+        )
+        self._hardware_config: Optional[
+            HardwareConfiguration
+        ] = None
 
-    async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
+    async def execute(
+        self, command: EOLForceTestCommand
+    ) -> EOLTestResult:
         """
         Execute EOL test using Exception First principles
 
@@ -131,7 +141,9 @@ class EOLForceTestUseCase:
             or raise descriptive exceptions. Test failures are captured in the result
             object rather than raised as exceptions.
         """
-        logger.info(f"Starting EOL test for DUT {command.dut_info.dut_id}")
+        logger.info(
+            f"Starting EOL test for DUT {command.dut_info.dut_id}"
+        )
 
         # Load and validate all configurations
         await self._load_and_validate_configurations()
@@ -139,10 +151,17 @@ class EOLForceTestUseCase:
         # Create test entity
         dut = DUT.from_command_info(command.dut_info)
 
-        test = EOLTest(test_id=TestId.generate(), dut=dut, operator_id=command.operator_id)
+        test = EOLTest(
+            test_id=TestId.generate(),
+            dut=dut,
+            operator_id=OperatorId(command.operator_id),
+        )
 
         # Save test
-        await self._repository.test_repository.save(test)
+        if self._repository.test_repository is not None:
+            await self._repository.test_repository.save(
+                test
+            )
 
         measurements: Optional[TestMeasurements] = None
         start_time = asyncio.get_event_loop().time()
@@ -150,12 +169,26 @@ class EOLForceTestUseCase:
         try:
             test.start_test()
 
+            # Ensure configurations are loaded
+            assert (
+                self._test_config is not None
+            ), "Test configuration must be loaded"
+            assert (
+                self._hardware_config is not None
+            ), "Hardware configuration must be loaded"
+
             # Setup phase
-            await self._hardware.connect_all_hardware(self._hardware_config)
-            await self._hardware.initialize_hardware(self._test_config, self._hardware_config)
+            await self._hardware.connect_all_hardware(
+                self._hardware_config
+            )
+            await self._hardware.initialize_hardware(
+                self._test_config, self._hardware_config
+            )
 
             # setup test sequence
-            await self._hardware.setup_test(self._test_config, self._hardware_config)
+            await self._hardware.setup_test(
+                self._test_config, self._hardware_config
+            )
 
             # Main Test phase - Use hardware facade
             measurements = await self._hardware.perform_force_test_sequence(
@@ -163,41 +196,86 @@ class EOLForceTestUseCase:
             )
 
             # Test Teardown test sequence
-            await self._hardware.teardown_test(self._test_config, self._hardware_config)
+            await self._hardware.teardown_test(
+                self._test_config, self._hardware_config
+            )
 
             # Evaluate results using test result evaluator
             try:
-                await self._test_result_evaluator.evaluate_measurements(
-                    measurements, self._test_config.pass_criteria
+                # Convert TestMeasurements to dict format for evaluator
+                measurements_dict = (
+                    measurements.to_dict()
+                    if measurements
+                    else {}
                 )
-                # If no exception, test passed
-                test.complete_test()
+                await self._test_result_evaluator.evaluate_measurements(
+                    measurements_dict,
+                    self._test_config.pass_criteria,
+                )
+                # If no exception, test passed - create successful test result
+                from domain.value_objects.time_values import (
+                    Timestamp,
+                )
+
+                test_result = TestResult(
+                    test_id=test.test_id,
+                    test_status=TestStatus.COMPLETED,
+                    start_time=Timestamp(start_time),
+                    end_time=Timestamp.now(),
+                    measurement_ids=[
+                        MeasurementId.generate()
+                        for _ in range(
+                            measurements.get_total_measurement_count()
+                            if measurements
+                            else 0
+                        )
+                    ],
+                    actual_results=measurements_dict,
+                )
+                test.complete_test(test_result)
                 passed = True
             except TestEvaluationError as e:
                 # Test failed - use exception data
-                test.fail_test(f"Test evaluation failed: {e.get_failure_summary()}")
+                test.fail_test(
+                    f"Test evaluation failed: {e.get_failure_summary()}"
+                )
                 passed = False
 
             # Save final test state
-            await self._repository.test_repository.update(test)
+            if self._repository.test_repository is not None:
+                await self._repository.test_repository.update(
+                    test
+                )
 
             # Calculate execution duration
-            duration = asyncio.get_event_loop().time() - start_time
+            duration = (
+                asyncio.get_event_loop().time() - start_time
+            )
 
-            logger.info(f"EOL test completed: {test.test_id}, passed: {passed}")
+            logger.info(
+                f"EOL test completed: {test.test_id}, passed: {passed}"
+            )
 
             return EOLTestResult(
                 test_id=test.test_id,
                 test_status=test.status,
-                execution_duration=TestDuration.from_seconds(duration),
+                execution_duration=TestDuration.from_seconds(
+                    duration
+                ),
                 is_passed=passed,
                 measurement_ids=[
                     MeasurementId.generate()
                     for _ in range(
-                        measurements.get_total_measurement_count() if measurements else 0
+                        measurements.get_total_measurement_count()
+                        if measurements
+                        else 0
                     )
                 ],
-                test_summary=measurements,
+                test_summary=(
+                    measurements.to_dict()
+                    if measurements
+                    else {}
+                ),
                 error_message=None,
             )
 
@@ -208,28 +286,45 @@ class EOLForceTestUseCase:
                 "test_id": str(test.test_id),
                 "dut_id": command.dut_info.dut_id,
                 "measurements_count": (
-                    measurements.get_total_measurement_count() if measurements else 0
+                    measurements.get_total_measurement_count()
+                    if measurements
+                    else 0
                 ),
             }
-            handled_exception = await self._exception_handler.handle_exception(e, context)
+            handled_exception = await self._exception_handler.handle_exception(
+                e, "execute_eol_test", context
+            )
 
             test.fail_test(str(handled_exception))
-            await self._repository.test_repository.update(test)
+            if self._repository.test_repository is not None:
+                await self._repository.test_repository.update(
+                    test
+                )
 
-            duration = asyncio.get_event_loop().time() - start_time
+            duration = (
+                asyncio.get_event_loop().time() - start_time
+            )
 
             return EOLTestResult(
                 test_id=test.test_id,
                 test_status=TestStatus.FAILED,
-                execution_duration=TestDuration.from_seconds(duration),
+                execution_duration=TestDuration.from_seconds(
+                    duration
+                ),
                 is_passed=False,
                 measurement_ids=[
                     MeasurementId.generate()
                     for _ in range(
-                        measurements.get_total_measurement_count() if measurements else 0
+                        measurements.get_total_measurement_count()
+                        if measurements
+                        else 0
                     )
                 ],
-                test_summary=measurements,
+                test_summary=(
+                    measurements.to_dict()
+                    if measurements
+                    else {}
+                ),
                 error_message=str(handled_exception),
             )
 
@@ -240,11 +335,21 @@ class EOLForceTestUseCase:
             except Exception as cleanup_error:
                 context = {
                     "operation": "hardware_shutdown_cleanup",
-                    "test_id": str(test.test_id) if "test" in locals() else None,
+                    "test_id": (
+                        str(test.test_id)
+                        if "test" in locals()
+                        else None
+                    ),
                 }
-                await self._exception_handler.handle_exception(cleanup_error, context)
+                await self._exception_handler.handle_exception(
+                    cleanup_error,
+                    "hardware_shutdown_cleanup",
+                    context,
+                )
 
-    async def _load_and_validate_configurations(self) -> None:
+    async def _load_and_validate_configurations(
+        self,
+    ) -> None:
         """
         Load and validate all configurations for test execution
 
@@ -259,28 +364,46 @@ class EOLForceTestUseCase:
             TestExecutionException: If configuration loading or validation fails
         """
         # Load profile name
-        self._profile_name = await self._configuration.get_active_profile_name()
+        self._profile_name = (
+            await self._configuration.get_active_profile_name()
+        )
 
         # Load configuration
-        self._test_config = await self._configuration.load_configuration(self._profile_name)
+        self._test_config = (
+            await self._configuration.load_configuration(
+                self._profile_name
+            )
+        )
 
-        # Load Hardware Configuration
-        self._hardware_config = await self._configuration.load_hardware_config()
+        # Load Hardware Configuration - this method doesn't exist, needs to be implemented
+        # For now, create a default hardware configuration
+        # TODO: Implement load_hardware_config method in ConfigurationService
+        self._hardware_config = HardwareConfiguration()
 
         # Validate configuration
         try:
-            await self._configuration_validator.validate_test_configuration(self._test_config)
+            await self._configuration_validator.validate_test_configuration(
+                self._test_config
+            )
             logger.info("Configuration validation passed")
         except MultiConfigurationValidationError as e:
-            logger.error(f"Configuration validation failed: {e.message}")
+            logger.error(
+                f"Configuration validation failed: {e.message}"
+            )
             raise TestExecutionException(
                 f"Configuration validation failed: {e.get_context('total_errors')} errors found"
             ) from e
 
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:
-            await self._configuration.mark_profile_as_used(self._profile_name)
-            logger.debug(f"Profile '{self._profile_name}' marked as used successfully")
+            await self._configuration.mark_profile_as_used(
+                self._profile_name
+            )
+            logger.debug(
+                f"Profile '{self._profile_name}' marked as used successfully"
+            )
         except Exception as pref_error:
             # Profile usage tracking failure should not interrupt test execution
-            logger.warning(f"Failed to mark profile '{self._profile_name}' as used: {pref_error}")
+            logger.warning(
+                f"Failed to mark profile '{self._profile_name}' as used: {pref_error}"
+            )

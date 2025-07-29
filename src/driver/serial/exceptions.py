@@ -27,7 +27,9 @@ class SerialError(Exception):
     def __str__(self) -> str:
         base_msg = self.message
         if self.details:
-            base_msg = f"{base_msg}. Details: {self.details}"
+            base_msg = (
+                f"{base_msg}. Details: {self.details}"
+            )
 
         if self.port and self.baudrate:
             base_msg = f"{base_msg} (Port: {self.port} @ {self.baudrate} baud)"
@@ -39,7 +41,7 @@ class SerialError(Exception):
 
 class SerialConnectionError(SerialError):
     """Serial connection establishment errors.
-    
+
     Raised when unable to establish a connection to the serial port,
     including port access issues, hardware not found, or permission errors.
     """
@@ -47,7 +49,7 @@ class SerialConnectionError(SerialError):
 
 class SerialCommunicationError(SerialError):
     """Serial communication errors (send/receive failures).
-    
+
     Raised when data transmission or reception fails during serial communication,
     including checksum errors, protocol violations, or unexpected responses.
     """
@@ -55,7 +57,7 @@ class SerialCommunicationError(SerialError):
 
 class SerialTimeoutError(SerialError):
     """Serial operation timeout errors.
-    
+
     Raised when serial operations exceed their configured timeout limits,
     including read timeouts, write timeouts, or handshake timeouts.
     """
@@ -63,7 +65,7 @@ class SerialTimeoutError(SerialError):
 
 class SerialConfigurationError(SerialError):
     """Serial configuration errors.
-    
+
     Raised when serial port configuration is invalid or cannot be applied,
     including unsupported baud rates, parity settings, or data bits.
     """
@@ -71,7 +73,7 @@ class SerialConfigurationError(SerialError):
 
 class SerialBufferError(SerialError):
     """Serial buffer operation errors.
-    
+
     Raised when buffer operations fail, including buffer overflow,
     buffer underrun, or memory allocation issues for serial buffers.
     """

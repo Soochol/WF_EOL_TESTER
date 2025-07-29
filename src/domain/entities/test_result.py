@@ -4,11 +4,20 @@ Test Result Entity
 Represents the outcome and results of an EOL test execution.
 """
 
-from typing import Dict, Any, List, Optional
-from domain.value_objects.identifiers import TestId, MeasurementId
-from domain.value_objects.time_values import Timestamp, TestDuration
+from typing import Any, Dict, List, Optional
+
 from domain.enums.test_status import TestStatus
-from domain.exceptions.validation_exceptions import ValidationException
+from domain.exceptions.validation_exceptions import (
+    ValidationException,
+)
+from domain.value_objects.identifiers import (
+    MeasurementId,
+    TestId,
+)
+from domain.value_objects.time_values import (
+    TestDuration,
+    Timestamp,
+)
 
 
 class TestResult:
@@ -20,7 +29,9 @@ class TestResult:
         test_status: TestStatus,
         start_time: Timestamp,
         end_time: Optional[Timestamp] = None,
-        measurement_ids: Optional[List[MeasurementId]] = None,
+        measurement_ids: Optional[
+            List[MeasurementId]
+        ] = None,
         pass_criteria: Optional[Dict[str, Any]] = None,
         actual_results: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,
@@ -45,8 +56,12 @@ class TestResult:
         Raises:
             ValidationException: If required fields are invalid
         """
-        self._validate_required_fields(test_id, test_status, start_time)
-        self._validate_time_consistency(start_time, end_time, test_status)
+        self._validate_required_fields(
+            test_id, test_status, start_time
+        )
+        self._validate_time_consistency(
+            start_time, end_time, test_status
+        )
 
         self._test_id = test_id
         self._test_status = test_status
@@ -62,33 +77,53 @@ class TestResult:
         self._created_at = Timestamp.now()
 
     def _validate_required_fields(
-        self, test_id: TestId, test_status: TestStatus, start_time: Timestamp
+        self,
+        test_id: TestId,
+        test_status: TestStatus,
+        start_time: Timestamp,
     ) -> None:
         """Validate required fields"""
         if not isinstance(test_id, TestId):
-            raise ValidationException("test_id", test_id, "Test ID must be TestId instance")
+            raise ValidationException(
+                "test_id",
+                test_id,
+                "Test ID must be TestId instance",
+            )
 
         if not isinstance(test_status, TestStatus):
             raise ValidationException(
-                "test_status", test_status, "Test status must be TestStatus enum"
+                "test_status",
+                test_status,
+                "Test status must be TestStatus enum",
             )
 
         if not isinstance(start_time, Timestamp):
             raise ValidationException(
-                "start_time", start_time, "Start time must be Timestamp instance"
+                "start_time",
+                start_time,
+                "Start time must be Timestamp instance",
             )
 
     def _validate_time_consistency(
-        self, start_time: Timestamp, end_time: Optional[Timestamp], test_status: TestStatus
+        self,
+        start_time: Timestamp,
+        end_time: Optional[Timestamp],
+        test_status: TestStatus,
     ) -> None:
         """Validate time consistency"""
         if end_time and end_time < start_time:
-            raise ValidationException("end_time", end_time, "End time cannot be before start time")
+            raise ValidationException(
+                "end_time",
+                end_time,
+                "End time cannot be before start time",
+            )
 
         # If test is finished, end time should be provided
         if test_status.is_finished and not end_time:
             raise ValidationException(
-                "end_time", end_time, f"End time required for status {test_status.value}"
+                "end_time",
+                end_time,
+                f"End time required for status {test_status.value}",
             )
 
     @property
@@ -150,7 +185,9 @@ class TestResult:
         """Get test execution duration"""
         if not self._end_time:
             return None
-        return TestDuration.between_timestamps(self._start_time, self._end_time)
+        return TestDuration.between_timestamps(
+            self._start_time, self._end_time
+        )
 
     def is_passed(self) -> bool:
         """Check if test passed"""
@@ -164,11 +201,15 @@ class TestResult:
         """Check if test execution is finished"""
         return self._test_status.is_finished
 
-    def add_measurement_id(self, measurement_id: MeasurementId) -> None:
+    def add_measurement_id(
+        self, measurement_id: MeasurementId
+    ) -> None:
         """Add measurement ID to results"""
         if not isinstance(measurement_id, MeasurementId):
             raise ValidationException(
-                "measurement_id", measurement_id, "Measurement ID must be MeasurementId instance"
+                "measurement_id",
+                measurement_id,
+                "Measurement ID must be MeasurementId instance",
             )
 
         if measurement_id not in self._measurement_ids:
@@ -177,41 +218,72 @@ class TestResult:
     def set_end_time(self, end_time: Timestamp) -> None:
         """Set test end time"""
         if not isinstance(end_time, Timestamp):
-            raise ValidationException("end_time", end_time, "End time must be Timestamp instance")
+            raise ValidationException(
+                "end_time",
+                end_time,
+                "End time must be Timestamp instance",
+            )
 
         if end_time < self._start_time:
-            raise ValidationException("end_time", end_time, "End time cannot be before start time")
+            raise ValidationException(
+                "end_time",
+                end_time,
+                "End time cannot be before start time",
+            )
 
         self._end_time = end_time
 
-    def update_status(self, status: TestStatus, error_message: Optional[str] = None) -> None:
+    def update_status(
+        self,
+        status: TestStatus,
+        error_message: Optional[str] = None,
+    ) -> None:
         """Update test status"""
         if not isinstance(status, TestStatus):
-            raise ValidationException("status", status, "Status must be TestStatus enum")
+            raise ValidationException(
+                "status",
+                status,
+                "Status must be TestStatus enum",
+            )
 
         self._test_status = status
 
-        if status in (TestStatus.FAILED, TestStatus.ERROR) and error_message:
+        if (
+            status in (TestStatus.FAILED, TestStatus.ERROR)
+            and error_message
+        ):
             self._error_message = error_message
         elif status == TestStatus.COMPLETED:
             self._error_message = None
 
-    def update_actual_results(self, results: Dict[str, Any]) -> None:
+    def update_actual_results(
+        self, results: Dict[str, Any]
+    ) -> None:
         """Update actual test results"""
         if not isinstance(results, dict):
-            raise ValidationException("results", results, "Results must be a dictionary")
+            raise ValidationException(
+                "results",
+                results,
+                "Results must be a dictionary",
+            )
 
         self._actual_results.update(results)
 
-    def get_pass_criterion(self, key: str, default: Any = None) -> Any:
+    def get_pass_criterion(
+        self, key: str, default: Any = None
+    ) -> Any:
         """Get specific pass criterion"""
         return self._pass_criteria.get(key, default)
 
-    def get_actual_result(self, key: str, default: Any = None) -> Any:
+    def get_actual_result(
+        self, key: str, default: Any = None
+    ) -> Any:
         """Get specific actual result"""
         return self._actual_results.get(key, default)
 
-    def get_test_parameter(self, key: str, default: Any = None) -> Any:
+    def get_test_parameter(
+        self, key: str, default: Any = None
+    ) -> Any:
         """Get specific test parameter"""
         return self._test_parameters.get(key, default)
 
@@ -222,48 +294,78 @@ class TestResult:
         Returns:
             True if test should pass, False otherwise
         """
-        if not self._pass_criteria or not self._actual_results:
+        if (
+            not self._pass_criteria
+            or not self._actual_results
+        ):
             return False
 
-        for criterion_name, criterion_value in self._pass_criteria.items():
-            actual_value = self._actual_results.get(criterion_name)
+        for (
+            criterion_name,
+            criterion_value,
+        ) in self._pass_criteria.items():
+            actual_value = self._actual_results.get(
+                criterion_name
+            )
 
             if actual_value is None:
                 return False  # Missing required result
 
-            if not self._evaluate_single_criterion(criterion_name, criterion_value, actual_value):
+            if not self._evaluate_single_criterion(
+                criterion_name,
+                criterion_value,
+                actual_value,
+            ):
                 return False
 
         return True
 
-    def _evaluate_single_criterion(self, name: str, criterion: Any, actual: Any) -> bool:
+    def _evaluate_single_criterion(
+        self, name: str, criterion: Any, actual: Any
+    ) -> bool:
         """Evaluate a single pass/fail criterion"""
         if isinstance(criterion, dict):
             # Range criterion: {"min": 10, "max": 20}
-            if "min" in criterion and actual < criterion["min"]:
+            if (
+                "min" in criterion
+                and actual < criterion["min"]
+            ):
                 return False
-            if "max" in criterion and actual > criterion["max"]:
+            if (
+                "max" in criterion
+                and actual > criterion["max"]
+            ):
                 return False
             return True
-        elif isinstance(criterion, (int, float)):
+        if isinstance(criterion, (int, float)):
             # Exact value criterion
-            return abs(actual - criterion) < 1e-9
-        elif isinstance(criterion, str):
+            return bool(abs(actual - criterion) < 1e-9)
+        if isinstance(criterion, str):
             # String comparison
             return str(actual) == criterion
-        else:
-            # Direct comparison
-            return actual == criterion
+        # Direct comparison
+        return bool(actual == criterion)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert test result to dictionary representation"""
+        duration = self.get_duration()
         return {
             "test_id": str(self._test_id),
             "test_status": self._test_status.value,
             "start_time": self._start_time.to_iso(),
-            "end_time": self._end_time.to_iso() if self._end_time else None,
-            "duration_seconds": self.get_duration().seconds if self.get_duration() else None,
-            "measurement_ids": [str(mid) for mid in self._measurement_ids],
+            "end_time": (
+                self._end_time.to_iso()
+                if self._end_time
+                else None
+            ),
+            "duration_seconds": (
+                duration.seconds
+                if duration is not None
+                else None
+            ),
+            "measurement_ids": [
+                str(mid) for mid in self._measurement_ids
+            ],
             "pass_criteria": self._pass_criteria,
             "actual_results": self._actual_results,
             "error_message": self._error_message,
@@ -275,18 +377,25 @@ class TestResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TestResult":
+    def from_dict(
+        cls, data: Dict[str, Any]
+    ) -> "TestResult":
         """Create test result from dictionary representation"""
         end_time = None
         if data.get("end_time"):
             end_time = Timestamp.from_iso(data["end_time"])
 
-        measurement_ids = [MeasurementId(mid) for mid in data.get("measurement_ids", [])]
+        measurement_ids = [
+            MeasurementId(mid)
+            for mid in data.get("measurement_ids", [])
+        ]
 
         return cls(
             test_id=TestId(data["test_id"]),
             test_status=TestStatus(data["test_status"]),
-            start_time=Timestamp.from_iso(data["start_time"]),
+            start_time=Timestamp.from_iso(
+                data["start_time"]
+            ),
             end_time=end_time,
             measurement_ids=measurement_ids,
             pass_criteria=data.get("pass_criteria", {}),

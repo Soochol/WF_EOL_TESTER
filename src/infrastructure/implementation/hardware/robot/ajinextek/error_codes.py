@@ -13,11 +13,17 @@ AXT_RT_SUCCESS = 0x0000  # 함수 실행 성공
 
 # Library Open/Close Errors (1000-1099)
 AXT_RT_OPEN_ERROR = 1001  # 라이브러리가 오픈 되어있지 않음
-AXT_RT_OPEN_ALREADY = 1002  # 라이브러리가 오픈 되어있고 사용 중임
-AXT_RT_NOT_INITIAL = 1052  # Serial module이 초기화되어있지 않음
+AXT_RT_OPEN_ALREADY = (
+    1002  # 라이브러리가 오픈 되어있고 사용 중임
+)
+AXT_RT_NOT_INITIAL = (
+    1052  # Serial module이 초기화되어있지 않음
+)
 AXT_RT_NOT_OPEN = 1053  # 라이브러리 초기화 실패
 AXT_RT_NOT_SUPPORT_VERSION = 1054  # 지원하지않는 하드웨어
-AXT_RT_BAD_PARAMETER = 1070  # 사용자가 입력한 파라미터가 적절하지 않음
+AXT_RT_BAD_PARAMETER = (
+    1070  # 사용자가 입력한 파라미터가 적절하지 않음
+)
 
 # Hardware Validation Errors (1100-1159)
 AXT_RT_INVALID_HARDWARE = 1100  # 유효하지 않는 보드
@@ -27,26 +33,48 @@ AXT_RT_INVALID_LEVEL = 1103  # 유효하지 않는 레벨
 AXT_RT_INVALID_VARIABLE = 1104  # 유효하지 않는 변수
 AXT_RT_INVALID_MODULE_NO = 1105  # 유효하지 않는 모듈
 AXT_RT_INVALID_NO = 1106  # 유효하지 않는 번호
-AXT_RT_ERROR_VERSION_READ = 1151  # 라이브러리 버전을 읽을수 없음
+AXT_RT_ERROR_VERSION_READ = (
+    1151  # 라이브러리 버전을 읽을수 없음
+)
 AXT_RT_NETWORK_ERROR = 1152  # 하드웨어 네트워크 에러
 
 # Motion Module Errors (4000-4999)
 AXT_RT_MOTION_OPEN_ERROR = 4001  # 모션 라이브러리 Open 실패
-AXT_RT_MOTION_NOT_MODULE = 4051  # 시스템에 장착된 모션 모듈이 없음
-AXT_RT_MOTION_NOT_INTERRUPT = 4052  # 인터럽트 결과 읽기 실패
-AXT_RT_MOTION_INVALID_AXIS_NO = 4101  # 해당 축이 존재하지 않음
-AXT_RT_MOTION_INVALID_METHOD = 4102  # 해당 축 구동에 필요한 설정이 잘못됨
-AXT_RT_MOTION_INVALID_VELOCITY = 4113  # 모션 구동 속도값이 0으로 설정되어 모션 에러 발생
-AXT_RT_MOTION_ERROR_IN_MOTION = 4152  # 모션 구동 중에 다른 모션 구동 함수를 실행함
-AXT_RT_MOTION_ERROR_IN_NONMOTION = 4151  # 모션 구동중이어야 되는데 모션 구동중이 아닐 때
+AXT_RT_MOTION_NOT_MODULE = (
+    4051  # 시스템에 장착된 모션 모듈이 없음
+)
+AXT_RT_MOTION_NOT_INTERRUPT = (
+    4052  # 인터럽트 결과 읽기 실패
+)
+AXT_RT_MOTION_INVALID_AXIS_NO = (
+    4101  # 해당 축이 존재하지 않음
+)
+AXT_RT_MOTION_INVALID_METHOD = (
+    4102  # 해당 축 구동에 필요한 설정이 잘못됨
+)
+AXT_RT_MOTION_INVALID_VELOCITY = (
+    4113  # 모션 구동 속도값이 0으로 설정되어 모션 에러 발생
+)
+AXT_RT_MOTION_ERROR_IN_MOTION = (
+    4152  # 모션 구동 중에 다른 모션 구동 함수를 실행함
+)
+AXT_RT_MOTION_ERROR_IN_NONMOTION = (
+    4151  # 모션 구동중이어야 되는데 모션 구동중이 아닐 때
+)
 AXT_RT_MOTION_HOME_SEARCHING = 4201  # 홈을 찾고 있는 중일 때 다른 모션 함수들을 사용할 때
-AXT_RT_PROTECTED_DURING_SERVOON = 4260  # 서보 온 되어 있는 상태에서 사용 못 함
+AXT_RT_PROTECTED_DURING_SERVOON = (
+    4260  # 서보 온 되어 있는 상태에서 사용 못 함
+)
 
 # DIO Module Errors (3000-3199)
 AXT_RT_DIO_OPEN_ERROR = 3001  # DIO 모듈 오픈실패
 AXT_RT_DIO_NOT_MODULE = 3051  # DIO 모듈 없음
-AXT_RT_DIO_INVALID_MODULE_NO = 3101  # 유효하지않는 DIO 모듈 번호
-AXT_RT_DIO_INVALID_OFFSET_NO = 3102  # 유효하지않는 DIO OFFSET 번호
+AXT_RT_DIO_INVALID_MODULE_NO = (
+    3101  # 유효하지않는 DIO 모듈 번호
+)
+AXT_RT_DIO_INVALID_OFFSET_NO = (
+    3102  # 유효하지않는 DIO OFFSET 번호
+)
 AXT_RT_DIO_INVALID_VALUE = 3105  # 유효하지않는 값 설정
 
 # ============================================================================
@@ -100,7 +128,9 @@ def get_error_message(error_code: int) -> str:
     Returns:
         str: Error description in English
     """
-    return ERROR_MESSAGES.get(error_code, f"Unknown error code: {error_code}")
+    return ERROR_MESSAGES.get(
+        error_code, f"Unknown error code: {error_code}"
+    )
 
 
 def is_success(error_code: int) -> bool:

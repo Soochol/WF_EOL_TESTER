@@ -50,7 +50,12 @@ class BS205ErrorCode(IntEnum):
 class BS205Error(Exception):
     """Base BS205 LoadCell error"""
 
-    def __init__(self, message: str, error_code: int = 0, details: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        error_code: int = 0,
+        details: Optional[str] = None,
+    ):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
@@ -61,7 +66,9 @@ class BS205Error(Exception):
         if self.error_code:
             base_msg = f"[{self.error_code}] {base_msg}"
         if self.details:
-            base_msg = f"{base_msg}. Details: {self.details}"
+            base_msg = (
+                f"{base_msg}. Details: {self.details}"
+            )
         return base_msg
 
 
@@ -90,7 +97,9 @@ class BS205DataError(BS205Error):
 
 
 def validate_weight_range(
-    weight_kg: float, min_weight: float = -500.0, max_weight: float = 500.0
+    weight_kg: float,
+    min_weight: float = -500.0,
+    max_weight: float = 500.0,
 ) -> None:
     """
     Validate weight measurement range
@@ -106,12 +115,16 @@ def validate_weight_range(
     if not (min_weight <= weight_kg <= max_weight):
         raise BS205OperationError(
             f"Weight {weight_kg}kg is out of range [{min_weight}, {max_weight}]",
-            error_code=int(BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE),
+            error_code=int(
+                BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE
+            ),
         )
 
 
 def validate_force_range(
-    force_n: float, min_force: float = -4905.0, max_force: float = 4905.0
+    force_n: float,
+    min_force: float = -4905.0,
+    max_force: float = 4905.0,
 ) -> None:
     """
     Validate force measurement range
@@ -127,11 +140,15 @@ def validate_force_range(
     if not (min_force <= force_n <= max_force):
         raise BS205OperationError(
             f"Force {force_n}N is out of range [{min_force}, {max_force}]",
-            error_code=int(BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE),
+            error_code=int(
+                BS205ErrorCode.OPERATION_WEIGHT_OUT_OF_RANGE
+            ),
         )
 
 
-def validate_sample_parameters(count: int, interval_ms: int) -> None:
+def validate_sample_parameters(
+    count: int, interval_ms: int
+) -> None:
     """
     Validate sampling parameters
 
@@ -145,23 +162,31 @@ def validate_sample_parameters(count: int, interval_ms: int) -> None:
     if count < 1:
         raise BS205OperationError(
             f"Sample count must be positive, got {count}",
-            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED),
+            error_code=int(
+                BS205ErrorCode.OPERATION_SAMPLING_FAILED
+            ),
         )
 
     if count > 1000:
         raise BS205OperationError(
             f"Sample count {count} exceeds maximum of 1000",
-            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED),
+            error_code=int(
+                BS205ErrorCode.OPERATION_SAMPLING_FAILED
+            ),
         )
 
     if interval_ms < 50:
         raise BS205OperationError(
             f"Sample interval {interval_ms}ms is too short, minimum is 50ms",
-            error_code=int(BS205ErrorCode.OPERATION_SAMPLING_FAILED),
+            error_code=int(
+                BS205ErrorCode.OPERATION_SAMPLING_FAILED
+            ),
         )
 
 
-def validate_unit(unit: str, supported_units: list[str]) -> None:
+def validate_unit(
+    unit: str, supported_units: list[str]
+) -> None:
     """
     Validate measurement unit
 
@@ -175,11 +200,15 @@ def validate_unit(unit: str, supported_units: list[str]) -> None:
     if unit not in supported_units:
         raise BS205OperationError(
             f"Unit '{unit}' not supported. Supported units: {supported_units}",
-            error_code=int(BS205ErrorCode.OPERATION_INVALID_UNIT),
+            error_code=int(
+                BS205ErrorCode.OPERATION_INVALID_UNIT
+            ),
         )
 
 
-def parse_weight_response(response: str) -> tuple[float, str]:
+def parse_weight_response(
+    response: str,
+) -> tuple[float, str]:
     """
     Parse weight response from BS205
 
@@ -194,7 +223,10 @@ def parse_weight_response(response: str) -> tuple[float, str]:
     """
     if not response or not response.strip():
         raise BS205DataError(
-            "Empty response from device", error_code=int(BS205ErrorCode.DATA_INVALID_FORMAT)
+            "Empty response from device",
+            error_code=int(
+                BS205ErrorCode.DATA_INVALID_FORMAT
+            ),
         )
 
     try:
@@ -203,18 +235,24 @@ def parse_weight_response(response: str) -> tuple[float, str]:
         if len(parts) < 3:
             raise BS205DataError(
                 f"Invalid response format: expected 3 fields, got {len(parts)}",
-                error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
+                error_code=int(
+                    BS205ErrorCode.DATA_PARSING_ERROR
+                ),
                 details=f"Response: {response}",
             )
 
         # Parse weight value (remove + sign and spaces)
-        weight_str = parts[1].replace("+", "").replace(" ", "")
+        weight_str = (
+            parts[1].replace("+", "").replace(" ", "")
+        )
         try:
             weight_value = float(weight_str)
         except ValueError as e:
             raise BS205DataError(
                 f"Cannot convert weight '{weight_str}' to float",
-                error_code=int(BS205ErrorCode.DATA_CONVERSION_ERROR),
+                error_code=int(
+                    BS205ErrorCode.DATA_CONVERSION_ERROR
+                ),
                 details=str(e),
             )
 
@@ -228,12 +266,16 @@ def parse_weight_response(response: str) -> tuple[float, str]:
     except Exception as e:
         raise BS205DataError(
             f"Unexpected error parsing response: {response}",
-            error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
+            error_code=int(
+                BS205ErrorCode.DATA_PARSING_ERROR
+            ),
             details=str(e),
         )
 
 
-def convert_weight_to_force(weight_kg: float, gravity: float = 9.81) -> float:
+def convert_weight_to_force(
+    weight_kg: float, gravity: float = 9.81
+) -> float:
     """
     Convert weight in kg to force in Newtons
 
@@ -249,11 +291,15 @@ def convert_weight_to_force(weight_kg: float, gravity: float = 9.81) -> float:
     """
     try:
         force_n = weight_kg * gravity
-        return round(force_n, 3)  # Round to 3 decimal places
+        return round(
+            force_n, 3
+        )  # Round to 3 decimal places
     except (TypeError, ValueError) as e:
         raise BS205DataError(
             f"Cannot convert weight {weight_kg}kg to force",
-            error_code=int(BS205ErrorCode.DATA_CONVERSION_ERROR),
+            error_code=int(
+                BS205ErrorCode.DATA_CONVERSION_ERROR
+            ),
             details=str(e),
         )
 
@@ -303,4 +349,6 @@ def get_error_message(error_code: BS205ErrorCode) -> str:
     Returns:
         Human readable error message
     """
-    return ERROR_MESSAGES.get(error_code, f"Unknown error code: {error_code}")
+    return ERROR_MESSAGES.get(
+        error_code, f"Unknown error code: {error_code}"
+    )

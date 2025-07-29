@@ -5,7 +5,7 @@ Abstract interface for profile preference persistence operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 
 class ProfilePreference(ABC):
@@ -18,7 +18,9 @@ class ProfilePreference(ABC):
     """
 
     @abstractmethod
-    async def save_last_used_profile(self, profile_name: str) -> None:
+    async def save_last_used_profile(
+        self, profile_name: str
+    ) -> None:
         """
         Save the last used profile name
 
@@ -28,7 +30,7 @@ class ProfilePreference(ABC):
         Raises:
             RepositoryException: If saving fails
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def load_last_used_profile(self) -> Optional[str]:
@@ -38,7 +40,7 @@ class ProfilePreference(ABC):
         Returns:
             Last used profile name, or None if not found/error
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def get_usage_history(self) -> List[str]:
@@ -48,7 +50,7 @@ class ProfilePreference(ABC):
         Returns:
             List of recently used profile names (most recent last)
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def clear_preferences(self) -> None:
@@ -58,20 +60,24 @@ class ProfilePreference(ABC):
         Raises:
             RepositoryException: If clearing fails
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
-    async def get_preference_metadata(self) -> Dict[str, Any]:
+    async def get_preference_metadata(
+        self,
+    ) -> Dict[str, Any]:
         """
         Get metadata about preferences storage
 
         Returns:
             Dictionary with metadata information (file existence, size, etc.)
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
-    async def update_usage_history(self, profile_name: str) -> None:
+    async def update_usage_history(
+        self, profile_name: str
+    ) -> None:
         """
         Update usage history with a new profile usage
 
@@ -81,7 +87,7 @@ class ProfilePreference(ABC):
         Raises:
             RepositoryException: If update fails
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     async def is_available(self) -> bool:
@@ -91,4 +97,4 @@ class ProfilePreference(ABC):
         Returns:
             True if storage is available, False otherwise
         """
-        raise NotImplementedError
+        ...

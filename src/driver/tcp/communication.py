@@ -5,26 +5,24 @@ Generic TCP/IP communication driver for network-based devices.
 Supports command/response protocols commonly used in test equipment.
 """
 
-import asyncio
-from typing import Optional
+from typing import Any, cast
 
+import asyncio
 from loguru import logger
 
 from driver.tcp.constants import (
+    COMMAND_BUFFER_SIZE,
+    COMMAND_TERMINATOR,
+    CONNECT_TIMEOUT,
     DEFAULT_PORT,
     DEFAULT_TIMEOUT,
-    CONNECT_TIMEOUT,
-    COMMAND_TERMINATOR,
-    RESPONSE_TERMINATOR,
-    COMMAND_BUFFER_SIZE,
-    MAX_COMMAND_LENGTH,
-    RECV_BUFFER_SIZE,
     FLUSH_TIMEOUT,
+    RECV_BUFFER_SIZE,
+    RESPONSE_TERMINATOR,
 )
 from driver.tcp.exceptions import (
-    TCPError,
-    TCPConnectionError,
     TCPCommunicationError,
+    TCPConnectionError,
     TCPTimeoutError,
 )
 
@@ -32,7 +30,12 @@ from driver.tcp.exceptions import (
 class TCPCommunication:
     """Generic TCP/IP communication handler for network devices"""
 
-    def __init__(self, host: str, port: int = DEFAULT_PORT, timeout: float = DEFAULT_TIMEOUT):
+    def __init__(
+        self,
+        host: str,
+        port: int = DEFAULT_PORT,
+        timeout: float = DEFAULT_TIMEOUT,
+    ):
         """
         Initialize TCP communication
 
@@ -56,21 +59,33 @@ class TCPCommunication:
             TCPConnectionError: If connection fails
         """
         try:
-            self.reader, self.writer = await asyncio.wait_for(
-                asyncio.open_connection(self.host, self.port), timeout=CONNECT_TIMEOUT
+            self.reader, self.writer = (
+                await asyncio.wait_for(
+                    cast(
+                        Any,
+                        asyncio.open_connection(
+                            self.host, self.port
+                        ),
+                    ),
+                    timeout=CONNECT_TIMEOUT,
+                )
             )
             self.is_connected = True
-            logger.info(f"TCP connected to {self.host}:{self.port}")
+            logger.info(
+                f"TCP connected to {self.host}:{self.port}"
+            )
 
         except (OSError, asyncio.TimeoutError) as e:
-            logger.error(f"TCP connection failed ({type(e).__name__}): {e}")
+            logger.error(
+                f"TCP connection failed ({type(e).__name__}): {e}"
+            )
             self.is_connected = False
             raise TCPConnectionError(
                 f"Failed to connect to {self.host}:{self.port}",
                 host=self.host,
                 port=self.port,
                 details=str(e),
-            )
+            ) from e
 
     async def disconnect(self) -> bool:
         """
@@ -86,11 +101,15 @@ class TCPCommunication:
                 self.writer = None
                 self.reader = None
             self.is_connected = False
-            logger.info(f"TCP disconnected from {self.host}:{self.port}")
+            logger.info(
+                f"TCP disconnected from {self.host}:{self.port}"
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Error during TCP disconnect: {e}")
+            logger.error(
+                f"Error during TCP disconnect: {e}"
+            )
             return False
 
     async def send_command(self, command: str) -> None:
@@ -105,7 +124,11 @@ class TCPCommunication:
         """
         if not self.is_connected or not self.writer:
             logger.error("TCP not connected to device")
-            raise TCPConnectionError("Not connected to device", host=self.host, port=self.port)
+            raise TCPConnectionError(
+                "Not connected to device",
+                host=self.host,
+                port=self.port,
+            )
 
         try:
             # Add terminator if not present
@@ -128,14 +151,16 @@ class TCPCommunication:
             logger.debug(f"TCP sent: {repr(command)}")
 
         except (OSError, ConnectionError) as e:
-            logger.error(f"Failed to send TCP command '{command}': {e}")
+            logger.error(
+                f"Failed to send TCP command '{command}': {e}"
+            )
             self.is_connected = False
             raise TCPCommunicationError(
                 f"Failed to send command '{command}'",
                 host=self.host,
                 port=self.port,
                 details=str(e),
-            )
+            ) from e
 
     async def receive_response(self) -> str:
         """
@@ -149,7 +174,11 @@ class TCPCommunication:
         """
         if not self.is_connected or not self.reader:
             logger.error("TCP not connected to device")
-            raise TCPConnectionError("Not connected to device", host=self.host, port=self.port)
+            raise TCPConnectionError(
+                "Not connected to device",
+                host=self.host,
+                port=self.port,
+            )
 
         try:
             response_data = b""
@@ -158,7 +187,8 @@ class TCPCommunication:
             while True:
                 try:
                     data = await asyncio.wait_for(
-                        self.reader.read(RECV_BUFFER_SIZE), timeout=self.timeout
+                        self.reader.read(RECV_BUFFER_SIZE),
+                        timeout=self.timeout,
                     )
                     if not data:
                         break
@@ -166,7 +196,10 @@ class TCPCommunication:
                     response_data += data
 
                     # Check if we have complete response
-                    if RESPONSE_TERMINATOR.encode() in response_data:
+                    if (
+                        RESPONSE_TERMINATOR.encode()
+                        in response_data
+                    ):
                         break
 
                 except asyncio.TimeoutError:
@@ -174,20 +207,29 @@ class TCPCommunication:
 
             if response_data:
                 response = response_data.decode().strip()
-                logger.debug(f"TCP received: {repr(response)}")
-                return response
-            else:
-                logger.warning("No TCP response received")
-                raise TCPTimeoutError(
-                    "No response received within timeout", host=self.host, port=self.port
+                logger.debug(
+                    f"TCP received: {repr(response)}"
                 )
+                return response
+
+            logger.warning("No TCP response received")
+            raise TCPTimeoutError(
+                "No response received within timeout",
+                host=self.host,
+                port=self.port,
+            )
 
         except (OSError, ConnectionError) as e:
-            logger.error(f"Failed to receive TCP response: {e}")
+            logger.error(
+                f"Failed to receive TCP response: {e}"
+            )
             self.is_connected = False
             raise TCPCommunicationError(
-                "Failed to receive response", host=self.host, port=self.port, details=str(e)
-            )
+                "Failed to receive response",
+                host=self.host,
+                port=self.port,
+                details=str(e),
+            ) from e
 
     async def query(self, command: str) -> str:
         """
@@ -214,7 +256,8 @@ class TCPCommunication:
             while True:
                 try:
                     data = await asyncio.wait_for(
-                        self.reader.read(RECV_BUFFER_SIZE), timeout=FLUSH_TIMEOUT
+                        self.reader.read(RECV_BUFFER_SIZE),
+                        timeout=FLUSH_TIMEOUT,
                     )
                     if not data:
                         break
@@ -236,7 +279,7 @@ class TCPCommunication:
 
         try:
             # Send identity query as connection test (common SCPI command)
-            response = await self.query("*IDN?")
+            await self.query("*IDN?")
             return True
 
         except Exception as e:
@@ -251,17 +294,22 @@ class TCPCommunication:
         Raises:
             TCPConnectionError: If reconnection fails
         """
-        logger.info(f"Attempting to reconnect to {self.host}:{self.port}...")
+        logger.info(
+            f"Attempting to reconnect to {self.host}:{self.port}..."
+        )
         await self.disconnect()
-        await asyncio.sleep(1)  # Brief delay before reconnect
+        await asyncio.sleep(
+            1
+        )  # Brief delay before reconnect
         await self.connect()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "TCPCommunication":
         """Async context manager entry"""
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self, exc_type: Any, exc_val: Any, exc_tb: Any
+    ) -> None:
         """Async context manager exit"""
         await self.disconnect()
-        return False

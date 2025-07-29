@@ -5,28 +5,45 @@ Handles test results management and display commands.
 """
 
 import json
-from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, cast, Dict, List, Optional
+
 from loguru import logger
 
+from application.interfaces.repository.test_result_repository import (
+    TestResultRepository,
+)
+from application.services.repository_service import (
+    RepositoryService,
+)
 from ui.cli.commands.base import Command, CommandResult
-from application.services.repository_service import RepositoryService
-from domain.entities.eol_test import EOLTest
 
 
 class ResultsCommand(Command):
     """Command for test results management"""
 
-    def __init__(self, repository_service: Optional[RepositoryService] = None):
-        super().__init__(name="results", description="Test results management and analysis")
+    def __init__(
+        self,
+        repository_service: Optional[
+            RepositoryService
+        ] = None,
+    ):
+        super().__init__(
+            name="results",
+            description="Test results management and analysis",
+        )
         self._repository_service = repository_service
 
-    def set_repository_service(self, repository_service: RepositoryService) -> None:
+    def set_repository_service(
+        self, repository_service: RepositoryService
+    ) -> None:
         """Set the repository service for results access"""
         self._repository_service = repository_service
 
-    async def execute(self, args: List[str]) -> CommandResult:
+    async def execute(
+        self, args: List[str]
+    ) -> CommandResult:
         """
         Execute results command
 
@@ -37,7 +54,11 @@ class ResultsCommand(Command):
             CommandResult with results operation results
         """
         if not self._repository_service:
-            return CommandResult.error("Repository service not initialized")
+            return CommandResult.error(
+                "Repository service not initialized"
+            )
+        # Type narrowing for mypy
+        assert self._repository_service is not None
 
         if not args:
             return await self._list_recent_results()
@@ -46,20 +67,21 @@ class ResultsCommand(Command):
 
         if subcommand == "list":
             return await self._list_results(args[1:])
-        elif subcommand == "view":
+        if subcommand == "view":
             return await self._view_result(args[1:])
-        elif subcommand == "stats":
+        if subcommand == "stats":
             return await self._show_statistics()
-        elif subcommand == "export":
+        if subcommand == "export":
             return await self._export_results(args[1:])
-        elif subcommand == "clean":
+        if subcommand == "clean":
             return await self._clean_old_results(args[1:])
-        elif subcommand == "search":
+        if subcommand == "search":
             return await self._search_results(args[1:])
-        elif subcommand == "help":
+        if subcommand == "help":
             return CommandResult.info(self.get_help())
-        else:
-            return CommandResult.error(f"Unknown results subcommand: {subcommand}")
+        return CommandResult.error(
+            f"Unknown results subcommand: {subcommand}"
+        )
 
     def get_subcommands(self) -> Dict[str, str]:
         """Get available subcommands"""
@@ -73,17 +95,37 @@ class ResultsCommand(Command):
             "help": "Show results command help",
         }
 
-    async def _list_recent_results(self, limit: int = 10) -> CommandResult:
+    async def _list_recent_results(
+        self, limit: int = 10
+    ) -> CommandResult:
         """List recent test results"""
         try:
+            if not self._repository_service:
+                return CommandResult.error(
+                    "Repository service not initialized"
+                )
             # Get all test results from repository
-            all_tests = await self._repository_service.test_repository.get_all_tests()
+            repo_service = cast(
+                "RepositoryService",
+                self._repository_service,
+            )
+            test_repo = cast(
+                "TestResultRepository",
+                repo_service.test_repository,
+            )
+            all_tests = await test_repo.get_all_tests()
 
             if not all_tests:
-                return CommandResult.info("No test results found")
+                return CommandResult.info(
+                    "No test results found"
+                )
 
             # Sort by creation time (most recent first)
-            sorted_tests = sorted(all_tests, key=lambda x: x.get("created_at", ""), reverse=True)
+            sorted_tests = sorted(
+                all_tests,
+                key=lambda x: x.get("created_at", ""),
+                reverse=True,
+            )
 
             # Limit results
             recent_tests = sorted_tests[:limit]
@@ -103,13 +145,19 @@ class ResultsCommand(Command):
             if len(all_tests) > limit:
                 message += f". Use '/results list {len(all_tests)}' to see all results."
 
-            return CommandResult.success(message, data=result_data)
+            return CommandResult.success(
+                message, data=result_data
+            )
 
         except Exception as e:
             logger.error(f"Failed to list results: {e}")
-            return CommandResult.error(f"Failed to list results: {str(e)}")
+            return CommandResult.error(
+                f"Failed to list results: {str(e)}"
+            )
 
-    async def _list_results(self, args: List[str]) -> CommandResult:
+    async def _list_results(
+        self, args: List[str]
+    ) -> CommandResult:
         """List test results with optional limit"""
         try:
             limit = 10  # Default
@@ -117,185 +165,335 @@ class ResultsCommand(Command):
                 try:
                     limit = int(args[0])
                     if limit <= 0:
-                        return CommandResult.error("Limit must be a positive number")
+                        return CommandResult.error(
+                            "Limit must be a positive number"
+                        )
                 except ValueError:
-                    return CommandResult.error("Invalid limit. Must be a number.")
+                    return CommandResult.error(
+                        "Invalid limit. Must be a number."
+                    )
 
             return await self._list_recent_results(limit)
 
         except Exception as e:
             logger.error(f"Failed to list results: {e}")
-            return CommandResult.error(f"Failed to list results: {str(e)}")
+            return CommandResult.error(
+                f"Failed to list results: {str(e)}"
+            )
 
-    async def _view_result(self, args: List[str]) -> CommandResult:
+    async def _view_result(
+        self, args: List[str]
+    ) -> CommandResult:
         """View detailed test result"""
         if not args:
-            return CommandResult.error("Test ID is required. Usage: /results view <test_id>")
+            return CommandResult.error(
+                "Test ID is required. Usage: /results view <test_id>"
+            )
 
         test_id = args[0]
 
         try:
+            if not self._repository_service:
+                return CommandResult.error(
+                    "Repository service not initialized"
+                )
             # Find test by ID
-            test = await self._repository_service.test_repository.find_by_id(test_id)
+            repo_service = cast(
+                "RepositoryService",
+                self._repository_service,
+            )
+            test_repo = cast(
+                "TestResultRepository",
+                repo_service.test_repository,
+            )
+            test = await test_repo.find_by_id(test_id)
 
             if not test:
-                return CommandResult.error(f"Test result not found: {test_id}")
+                return CommandResult.error(
+                    f"Test result not found: {test_id}"
+                )
 
             # Format detailed view
-            result_text = f"Test Result Details:\\n"
+            result_text = "Test Result Details:\\n"
             result_text += "=" * 60 + "\\n"
-            result_text += f"Test ID: {test.test_id}\\n"
-            result_text += f"Status: {'PASS' if test.is_passed() else 'FAIL'}\\n"
-            result_text += f"DUT ID: {test.dut.dut_id}\\n"
-            result_text += f"Model: {test.dut.model_number}\\n"
-            result_text += f"Serial: {test.dut.serial_number}\\n"
-            result_text += f"Created: {test.created_at}\\n"
-            result_text += f"Duration: {test.get_duration() or 'N/A'}\\n"
-            result_text += f"Measurements: {len(test.measurement_ids)}\\n"
+            # Handle test as dictionary (from repository)
+            test_dict = (
+                test
+                if isinstance(test, dict)
+                else test.__dict__
+            )
+            dut_info = test_dict.get("dut", {})
 
-            if hasattr(test, "operator_id"):
-                result_text += f"Operator: {test.operator_id}\\n"
+            result_text += f"Test ID: {test_dict.get('test_id', 'N/A')}\\n"
+            result_text += f"Status: {'PASS' if test_dict.get('passed', False) else 'FAIL'}\\n"
+            result_text += f"DUT ID: {dut_info.get('dut_id', 'N/A')}\\n"
+            result_text += f"Model: {dut_info.get('model_number', 'N/A')}\\n"
+            result_text += f"Serial: {dut_info.get('serial_number', 'N/A')}\\n"
+            result_text += f"Created: {test_dict.get('created_at', 'N/A')}\\n"
+            result_text += f"Duration: {test_dict.get('duration', 'N/A')}\\n"
+            measurement_ids = test_dict.get(
+                "measurement_ids", []
+            )
+            result_text += f"Measurements: {len(measurement_ids) if measurement_ids else 0}\\n"
+
+            if "operator_id" in test_dict:
+                result_text += f"Operator: {test_dict['operator_id']}\\n"
 
             # Show measurements summary
-            if test.measurement_ids:
+            if measurement_ids:
                 result_text += "\\nMeasurement IDs:\\n"
                 result_text += "-" * 40 + "\\n"
 
-                for i, measurement_id in enumerate(test.measurement_ids[:5]):  # Show first 5
-                    result_text += f"  {i+1}. ID: {measurement_id}\\n"
-
-                if len(test.measurement_ids) > 5:
+                for i, measurement_id in enumerate(
+                    measurement_ids[:5]
+                ):  # Show first 5
                     result_text += (
-                        f"  ... and {len(test.measurement_ids) - 5} more measurement IDs\\n"
+                        f"  {i+1}. ID: {measurement_id}\\n"
                     )
 
+                if len(measurement_ids) > 5:
+                    remaining_count = (
+                        len(measurement_ids) - 5
+                    )
+                    result_text += f"  ... and {remaining_count} more measurement IDs\\n"
+
             # Show failure reasons if failed
-            if not test.is_passed() and hasattr(test, "failure_reason"):
-                result_text += f"\\nFailure Reason: {test.failure_reason}\\n"
+            if (
+                not test_dict.get("passed", False)
+                and "failure_reason" in test_dict
+            ):
+                result_text += f"\\nFailure Reason: {test_dict['failure_reason']}\\n"
 
             return CommandResult.success(result_text)
 
         except Exception as e:
             logger.error(f"Failed to view result: {e}")
-            return CommandResult.error(f"Failed to view result: {str(e)}")
+            return CommandResult.error(
+                f"Failed to view result: {str(e)}"
+            )
+
+    def _calculate_overall_stats(
+        self, all_tests: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Calculate overall test statistics"""
+        total_tests = len(all_tests)
+        passed_tests = sum(
+            1
+            for test in all_tests
+            if test.get("passed", False)
+        )
+        failed_tests = total_tests - passed_tests
+        pass_rate = (
+            (passed_tests / total_tests * 100)
+            if total_tests > 0
+            else 0
+        )
+
+        return {
+            "total_tests": total_tests,
+            "passed_tests": passed_tests,
+            "failed_tests": failed_tests,
+            "pass_rate": pass_rate,
+        }
+
+    def _calculate_recent_stats(
+        self, all_tests: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Calculate recent test statistics (last 7 days)"""
+        week_ago = datetime.now() - timedelta(days=7)
+        recent_tests = []
+
+        for test in all_tests:
+            created_at = test.get("created_at")
+            if created_at:
+                try:
+                    test_date = datetime.fromisoformat(
+                        created_at.replace("Z", "+00:00")
+                    )
+                    if test_date >= week_ago:
+                        recent_tests.append(test)
+                except (ValueError, AttributeError):
+                    pass
+
+        recent_total = len(recent_tests)
+        recent_passed = sum(
+            1
+            for test in recent_tests
+            if test.get("passed", False)
+        )
+        recent_pass_rate = (
+            (recent_passed / recent_total * 100)
+            if recent_total > 0
+            else 0
+        )
+
+        return {
+            "total_tests": recent_total,
+            "passed_tests": recent_passed,
+            "pass_rate": recent_pass_rate,
+        }
+
+    def _calculate_model_stats(
+        self, all_tests: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Calculate statistics by DUT model"""
+        models: Dict[str, Dict[str, int]] = {}
+
+        for test in all_tests:
+            dut_info = test.get("dut", {})
+            model = dut_info.get("model_number", "Unknown")
+            if model not in models:
+                models[model] = {
+                    "total": 0,
+                    "passed": 0,
+                }
+            models[model]["total"] += 1
+            if test.get("passed", False):
+                models[model]["passed"] += 1
+
+        model_stats = {}
+        for model, data in models.items():
+            model_pass_rate = (
+                (data["passed"] / data["total"] * 100)
+                if data["total"] > 0
+                else 0
+            )
+            model_stats[model] = {
+                "total": data["total"],
+                "passed": data["passed"],
+                "pass_rate": model_pass_rate,
+            }
+
+        return model_stats
 
     async def _show_statistics(self) -> CommandResult:
         """Show test statistics"""
         try:
+            if not self._repository_service:
+                return CommandResult.error(
+                    "Repository service not initialized"
+                )
             # Get all test results
-            all_tests = await self._repository_service.test_repository.get_all_tests()
+            repo_service = cast(
+                "RepositoryService",
+                self._repository_service,
+            )
+            test_repo = cast(
+                "TestResultRepository",
+                repo_service.test_repository,
+            )
+            all_tests = await test_repo.get_all_tests()
 
             if not all_tests:
-                return CommandResult.info("No test results available for statistics")
+                return CommandResult.info(
+                    "No test results available for statistics"
+                )
 
-            # Calculate statistics
-            total_tests = len(all_tests)
-            passed_tests = sum(1 for test in all_tests if test.get("passed", False))
-            failed_tests = total_tests - passed_tests
-            pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
-
-            # Calculate recent statistics (last 7 days)
-            week_ago = datetime.now() - timedelta(days=7)
-            recent_tests = []
-
-            for test in all_tests:
-                created_at = test.get("created_at")
-                if created_at:
-                    try:
-                        test_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                        if test_date >= week_ago:
-                            recent_tests.append(test)
-                    except:
-                        pass
-
-            recent_total = len(recent_tests)
-            recent_passed = sum(1 for test in recent_tests if test.get("passed", False))
-            recent_pass_rate = (recent_passed / recent_total * 100) if recent_total > 0 else 0
+            # Calculate statistics using helper methods
+            overall_stats = self._calculate_overall_stats(
+                all_tests
+            )
+            recent_stats = self._calculate_recent_stats(
+                all_tests
+            )
+            model_stats = self._calculate_model_stats(
+                all_tests
+            )
 
             # Prepare statistics data for rich display
             statistics_data = {
-                "overall": {
-                    "total_tests": total_tests,
-                    "passed_tests": passed_tests,
-                    "failed_tests": failed_tests,
-                    "pass_rate": pass_rate,
-                },
-                "recent": {
-                    "total_tests": recent_total,
-                    "passed_tests": recent_passed,
-                    "pass_rate": recent_pass_rate,
-                },
+                "overall": overall_stats,
+                "recent": recent_stats,
             }
 
-            # DUT Model statistics
-            models = {}
-            for test in all_tests:
-                dut_info = test.get("dut", {})
-                model = dut_info.get("model_number", "Unknown")
-                if model not in models:
-                    models[model] = {"total": 0, "passed": 0}
-                models[model]["total"] += 1
-                if test.get("passed", False):
-                    models[model]["passed"] += 1
-
-            if models:
-                statistics_data["by_model"] = {}
-                for model, data in models.items():
-                    model_pass_rate = (
-                        (data["passed"] / data["total"] * 100) if data["total"] > 0 else 0
-                    )
-                    statistics_data["by_model"][model] = {
-                        "total": data["total"],
-                        "passed": data["passed"],
-                        "pass_rate": model_pass_rate,
-                    }
+            if model_stats:
+                statistics_data["by_model"] = model_stats
 
             # Return result with statistics data for rich display
             result_data = {"statistics": statistics_data}
-            message = f"Test statistics generated for {total_tests} total tests"
+            message = f"Test statistics generated for {overall_stats['total_tests']} total tests"
 
-            return CommandResult.success(message, data=result_data)
+            return CommandResult.success(
+                message, data=result_data
+            )
 
         except Exception as e:
-            logger.error(f"Failed to generate statistics: {e}")
-            return CommandResult.error(f"Failed to generate statistics: {str(e)}")
+            logger.error(
+                f"Failed to generate statistics: {e}"
+            )
+            return CommandResult.error(
+                f"Failed to generate statistics: {str(e)}"
+            )
 
-    async def _export_results(self, args: List[str]) -> CommandResult:
+    async def _export_results(
+        self, args: List[str]
+    ) -> CommandResult:
         """Export test results"""
         format_type = "json"  # Default
         if args:
             format_type = args[0].lower()
             if format_type not in ["json", "csv"]:
-                return CommandResult.error("Supported formats: json, csv")
+                return CommandResult.error(
+                    "Supported formats: json, csv"
+                )
 
         try:
+            if not self._repository_service:
+                return CommandResult.error(
+                    "Repository service not initialized"
+                )
             # Get all test results
-            all_tests = await self._repository_service.test_repository.get_all_tests()
+            repo_service = cast(
+                "RepositoryService",
+                self._repository_service,
+            )
+            test_repo = cast(
+                "TestResultRepository",
+                repo_service.test_repository,
+            )
+            all_tests = await test_repo.get_all_tests()
 
             if not all_tests:
-                return CommandResult.info("No test results to export")
+                return CommandResult.info(
+                    "No test results to export"
+                )
 
             # Generate filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now().strftime(
+                "%Y%m%d_%H%M%S"
+            )
             filename = f"eol_test_results_{timestamp}.{format_type}"
 
             if format_type == "json":
                 # Export as JSON
                 export_path = Path(filename)
-                with open(export_path, "w", encoding="utf-8") as f:
-                    json.dump(all_tests, f, indent=2, ensure_ascii=False, default=str)
+                with open(
+                    export_path, "w", encoding="utf-8"
+                ) as f:
+                    json.dump(
+                        all_tests,
+                        f,
+                        indent=2,
+                        ensure_ascii=False,
+                        default=str,
+                    )
 
                 return CommandResult.success(
                     f"Results exported to {filename} ({len(all_tests)} tests)"
                 )
 
-            elif format_type == "csv":
+            if format_type == "csv":
                 # Export as CSV
                 import csv
 
                 export_path = Path(filename)
 
-                with open(export_path, "w", newline="", encoding="utf-8") as f:
+                with open(
+                    export_path,
+                    "w",
+                    newline="",
+                    encoding="utf-8",
+                ) as f:
                     writer = csv.writer(f)
 
                     # Write header
@@ -319,12 +517,26 @@ class ResultsCommand(Command):
                             [
                                 test.get("test_id", ""),
                                 dut_info.get("dut_id", ""),
-                                dut_info.get("model_number", ""),
-                                dut_info.get("serial_number", ""),
-                                "PASS" if test.get("passed", False) else "FAIL",
+                                dut_info.get(
+                                    "model_number", ""
+                                ),
+                                dut_info.get(
+                                    "serial_number", ""
+                                ),
+                                (
+                                    "PASS"
+                                    if test.get(
+                                        "passed", False
+                                    )
+                                    else "FAIL"
+                                ),
                                 test.get("created_at", ""),
                                 test.get("duration", ""),
-                                len(test.get("measurements", [])),
+                                len(
+                                    test.get(
+                                        "measurements", []
+                                    )
+                                ),
                             ]
                         )
 
@@ -332,49 +544,97 @@ class ResultsCommand(Command):
                     f"Results exported to {filename} ({len(all_tests)} tests)"
                 )
 
+            # This should not be reached due to format validation above
+            return CommandResult.error(
+                f"Unsupported export format: {format_type}"
+            )
+
         except Exception as e:
             logger.error(f"Failed to export results: {e}")
-            return CommandResult.error(f"Failed to export results: {str(e)}")
+            return CommandResult.error(
+                f"Failed to export results: {str(e)}"
+            )
 
-    async def _clean_old_results(self, args: List[str]) -> CommandResult:
+    async def _clean_old_results(
+        self, args: List[str]
+    ) -> CommandResult:
         """Clean old test results"""
         days = 30  # Default
         if args:
             try:
                 days = int(args[0])
                 if days <= 0:
-                    return CommandResult.error("Days must be a positive number")
+                    return CommandResult.error(
+                        "Days must be a positive number"
+                    )
             except ValueError:
-                return CommandResult.error("Invalid days. Must be a number.")
+                return CommandResult.error(
+                    "Invalid days. Must be a number."
+                )
 
         try:
+            if not self._repository_service:
+                return CommandResult.error(
+                    "Repository service not initialized"
+                )
             # Use repository's cleanup method
-            deleted_count = await self._repository_service.test_repository.cleanup_old_tests(days)
+            repo_service = cast(
+                "RepositoryService",
+                self._repository_service,
+            )
+            test_repo = cast(
+                "TestResultRepository",
+                repo_service.test_repository,
+            )
+            deleted_count = (
+                await test_repo.cleanup_old_tests(days)
+            )
 
             if deleted_count > 0:
                 return CommandResult.success(
                     f"Cleaned up {deleted_count} test results older than {days} days"
                 )
-            else:
-                return CommandResult.info(f"No test results older than {days} days found")
+            return CommandResult.info(
+                f"No test results older than {days} days found"
+            )
 
         except Exception as e:
             logger.error(f"Failed to clean results: {e}")
-            return CommandResult.error(f"Failed to clean results: {str(e)}")
+            return CommandResult.error(
+                f"Failed to clean results: {str(e)}"
+            )
 
-    async def _search_results(self, args: List[str]) -> CommandResult:
+    async def _search_results(
+        self, args: List[str]
+    ) -> CommandResult:
         """Search test results"""
         if not args:
-            return CommandResult.error("Search query is required. Usage: /results search <query>")
+            return CommandResult.error(
+                "Search query is required. Usage: /results search <query>"
+            )
 
         query = " ".join(args).lower()
 
         try:
+            if not self._repository_service:
+                return CommandResult.error(
+                    "Repository service not initialized"
+                )
             # Get all test results
-            all_tests = await self._repository_service.test_repository.get_all_tests()
+            repo_service = cast(
+                "RepositoryService",
+                self._repository_service,
+            )
+            test_repo = cast(
+                "TestResultRepository",
+                repo_service.test_repository,
+            )
+            all_tests = await test_repo.get_all_tests()
 
             if not all_tests:
-                return CommandResult.info("No test results to search")
+                return CommandResult.info(
+                    "No test results to search"
+                )
 
             # Search through results
             matching_tests = []
@@ -385,18 +645,29 @@ class ResultsCommand(Command):
                 search_fields = [
                     test.get("test_id", "").lower(),
                     dut_info.get("dut_id", "").lower(),
-                    dut_info.get("model_number", "").lower(),
-                    dut_info.get("serial_number", "").lower(),
+                    dut_info.get(
+                        "model_number", ""
+                    ).lower(),
+                    dut_info.get(
+                        "serial_number", ""
+                    ).lower(),
                 ]
 
-                if any(query in field for field in search_fields):
+                if any(
+                    query in field
+                    for field in search_fields
+                ):
                     matching_tests.append(test)
 
             if not matching_tests:
-                return CommandResult.info(f"No results found for: {query}")
+                return CommandResult.info(
+                    f"No results found for: {query}"
+                )
 
             # Prepare search results for rich display
-            displayed_results = matching_tests[:20]  # Limit to 20 results
+            displayed_results = matching_tests[
+                :20
+            ]  # Limit to 20 results
             title = f"Search Results for '{query}' ({len(matching_tests)} found)"
 
             result_data = {
@@ -409,10 +680,14 @@ class ResultsCommand(Command):
 
             message = f"Found {len(matching_tests)} results for '{query}'"
             if len(matching_tests) > 20:
-                message += f". Showing first 20 results."
+                message += ". Showing first 20 results."
 
-            return CommandResult.success(message, data=result_data)
+            return CommandResult.success(
+                message, data=result_data
+            )
 
         except Exception as e:
             logger.error(f"Failed to search results: {e}")
-            return CommandResult.error(f"Failed to search results: {str(e)}")
+            return CommandResult.error(
+                f"Failed to search results: {str(e)}"
+            )

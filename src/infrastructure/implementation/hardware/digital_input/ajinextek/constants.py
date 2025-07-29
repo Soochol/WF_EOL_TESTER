@@ -70,15 +70,39 @@ MODULE_TYPE_RELAY = "RELAY"  # Relay Output
 
 # Standard Module Configurations
 STANDARD_DI_MODULES = {
-    "AX5A16": {"channels": 16, "type": MODULE_TYPE_DI, "voltage": "24V"},
-    "AX5A32": {"channels": 32, "type": MODULE_TYPE_DI, "voltage": "24V"},
-    "AX5B16": {"channels": 16, "type": MODULE_TYPE_DI, "voltage": "12V"},
+    "AX5A16": {
+        "channels": 16,
+        "type": MODULE_TYPE_DI,
+        "voltage": "24V",
+    },
+    "AX5A32": {
+        "channels": 32,
+        "type": MODULE_TYPE_DI,
+        "voltage": "24V",
+    },
+    "AX5B16": {
+        "channels": 16,
+        "type": MODULE_TYPE_DI,
+        "voltage": "12V",
+    },
 }
 
 STANDARD_DO_MODULES = {
-    "AX5C16": {"channels": 16, "type": MODULE_TYPE_DO, "voltage": "24V"},
-    "AX5C32": {"channels": 32, "type": MODULE_TYPE_DO, "voltage": "24V"},
-    "AX5D16": {"channels": 16, "type": MODULE_TYPE_RELAY, "voltage": "240V"},
+    "AX5C16": {
+        "channels": 16,
+        "type": MODULE_TYPE_DO,
+        "voltage": "24V",
+    },
+    "AX5C32": {
+        "channels": 32,
+        "type": MODULE_TYPE_DO,
+        "voltage": "24V",
+    },
+    "AX5D16": {
+        "channels": 16,
+        "type": MODULE_TYPE_RELAY,
+        "voltage": "240V",
+    },
 }
 
 # Interrupt Configuration
@@ -118,11 +142,19 @@ DEFAULT_CONFIG = {
 }
 
 # Pin Configuration Presets
-PRESET_ALL_INPUTS = {i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)}
-PRESET_ALL_OUTPUTS = {i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)}
+PRESET_ALL_INPUTS = {
+    i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)
+}
+PRESET_ALL_OUTPUTS = {
+    i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)
+}
 PRESET_MIXED_IO = {
-    **{i: PIN_MODE_INPUT for i in range(0, 16)},  # First 16 as inputs
-    **{i: PIN_MODE_OUTPUT for i in range(16, 32)},  # Last 16 as outputs
+    **{
+        i: PIN_MODE_INPUT for i in range(0, 16)
+    },  # First 16 as inputs
+    **{
+        i: PIN_MODE_OUTPUT for i in range(16, 32)
+    },  # Last 16 as outputs
 }
 
 # Status Messages

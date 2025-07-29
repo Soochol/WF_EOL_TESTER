@@ -9,7 +9,13 @@ from pathlib import Path
 
 # Library paths
 BASE_DIR = Path(__file__).parent.parent.parent.parent.parent
-AXL_LIBRARY_DIR = BASE_DIR / "vendor" / "ajinextek" / "AXL(Library)" / "Library"
+AXL_LIBRARY_DIR = (
+    BASE_DIR
+    / "vendor"
+    / "ajinextek"
+    / "AXL(Library)"
+    / "Library"
+)
 
 # Select DLL based on system architecture
 if platform.machine().endswith("64"):
@@ -17,10 +23,6 @@ if platform.machine().endswith("64"):
 else:
     DLL_PATH = AXL_LIBRARY_DIR / "32Bit" / "AXL.dll"
 
-# Import error codes from separate file
-from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
-    AXT_RT_SUCCESS,
-)
 
 # Servo control
 SERVO_OFF = 0

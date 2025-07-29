@@ -57,13 +57,21 @@ SUPPORTED_UNITS = [UNIT_KG, UNIT_G, UNIT_LB, UNIT_OZ]
 # Weight Range and Precision
 MAX_WEIGHT_KG = 500.0  # Maximum weight capacity
 MIN_WEIGHT_KG = -500.0  # Minimum weight (for signed values)
-WEIGHT_PRECISION = 0.001  # Weight measurement precision in kg
+WEIGHT_PRECISION = (
+    0.001  # Weight measurement precision in kg
+)
 FORCE_PRECISION = 0.01  # Force measurement precision in N
 
 # Timing Constants
-ZERO_OPERATION_DELAY = 2.0  # Seconds to wait after zero operation
-STABILITY_CHECK_INTERVAL = 0.5  # Seconds between stability checks
-CONNECTION_RETRY_DELAY = 1.0  # Seconds between connection retries
+ZERO_OPERATION_DELAY = (
+    2.0  # Seconds to wait after zero operation
+)
+STABILITY_CHECK_INTERVAL = (
+    0.5  # Seconds between stability checks
+)
+CONNECTION_RETRY_DELAY = (
+    1.0  # Seconds between connection retries
+)
 COMMAND_RETRY_DELAY = 0.5  # Seconds between command retries
 
 # Multiple Sampling

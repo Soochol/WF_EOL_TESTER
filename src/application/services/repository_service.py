@@ -5,13 +5,14 @@ Service layer that manages test result repository operations and data persistenc
 Uses Exception First principles for error handling.
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from loguru import logger
 
 from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
+from domain.entities.eol_test import EOLTest
 from domain.exceptions import RepositoryAccessError
 
 
@@ -23,34 +24,45 @@ class RepositoryService:
     a unified interface for test data persistence.
     """
 
-    def __init__(self, test_repository: TestResultRepository = None):
+    def __init__(
+        self,
+        test_repository: Optional[
+            TestResultRepository
+        ] = None,
+    ):
         self._test_repository = test_repository
 
     @property
-    def test_repository(self) -> Optional[TestResultRepository]:
+    def test_repository(
+        self,
+    ) -> Optional[TestResultRepository]:
         """Get the test repository"""
         return self._test_repository
 
-    async def save_test_result(self, test_data: Dict[str, Any]) -> None:
+    async def save_test_result(self, test: EOLTest) -> None:
         """
         Save test result to repository
 
         Args:
-            test_data: Test result data to save
+            test: EOL test to save
 
         Raises:
             RepositoryAccessError: If saving fails
         """
         if not self._test_repository:
-            logger.warning("No test repository configured, skipping test result save")
+            logger.warning(
+                "No test repository configured, skipping test result save"
+            )
             return
 
         try:
-            await self._test_repository.save_test_result(test_data)
+            await self._test_repository.save(test)
             logger.debug("Test result saved successfully")
         except Exception as e:
             logger.error(f"Failed to save test result: {e}")
-            raise RepositoryAccessError(operation="save_test_result", reason=str(e))
+            raise RepositoryAccessError(
+                operation="save_test_result", reason=str(e)
+            ) from e
 
     def get_all_repositories(self) -> dict:
         """Get all repositories as a dictionary (for debugging/testing)"""

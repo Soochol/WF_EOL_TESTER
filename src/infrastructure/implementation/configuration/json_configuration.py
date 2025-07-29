@@ -7,7 +7,7 @@ Concrete implementation of Configuration interface using JSON files.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, cast, Dict, List, Optional
 
 from loguru import logger
 
@@ -38,7 +38,9 @@ class JsonConfiguration(Configuration):
     Provides CRUD operations for configuration profiles with validation and backup support.
     """
 
-    def __init__(self, config_path: str = "config/test_profiles"):
+    def __init__(
+        self, config_path: str = "config/test_profiles"
+    ):
         """
         Initialize JSON configuration service
 
@@ -52,9 +54,13 @@ class JsonConfiguration(Configuration):
         # Ensure configuration directory exists
         self._config_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"JSON Configuration Service initialized with path: {self._config_path}")
+        logger.info(
+            f"JSON Configuration Service initialized with path: {self._config_path}"
+        )
 
-    async def load_profile(self, profile_name: str) -> TestConfiguration:
+    async def load_profile(
+        self, profile_name: str
+    ) -> TestConfiguration:
         """
         Load a configuration profile from JSON file
 
@@ -71,20 +77,28 @@ class JsonConfiguration(Configuration):
         """
         # Check cache first
         if profile_name in self._cache:
-            logger.debug(f"Returning cached configuration for profile '{profile_name}'")
+            logger.debug(
+                f"Returning cached configuration for profile '{profile_name}'"
+            )
             return self._cache[profile_name]
 
-        profile_file = self._config_path / f"{profile_name}.json"
+        profile_file = (
+            self._config_path / f"{profile_name}.json"
+        )
 
         if not profile_file.exists():
             raise MissingConfigurationException(
                 missing_parameters=[profile_name],
                 config_source=str(profile_file),
-                details={"available_profiles": await self.list_available_profiles()},
+                details={
+                    "available_profiles": await self.list_available_profiles()
+                },
             )
 
         try:
-            with open(profile_file, "r", encoding="utf-8") as f:
+            with open(
+                profile_file, "r", encoding="utf-8"
+            ) as f:
                 json_data = json.load(f)
 
             if json_data is None:
@@ -96,12 +110,16 @@ class JsonConfiguration(Configuration):
                 )
 
             # Create configuration object from structured JSON data
-            config = TestConfiguration.from_structured_dict(json_data)
+            config = TestConfiguration.from_structured_dict(
+                json_data
+            )
 
             # Cache the configuration
             self._cache[profile_name] = config
 
-            logger.info(f"Successfully loaded configuration profile '{profile_name}'")
+            logger.info(
+                f"Successfully loaded configuration profile '{profile_name}'"
+            )
             return config
 
         except json.JSONDecodeError as e:
@@ -124,7 +142,9 @@ class JsonConfiguration(Configuration):
                 config_source=str(profile_file),
             ) from e
 
-    async def load_hardware_config(self) -> HardwareConfiguration:
+    async def load_hardware_config(
+        self,
+    ) -> HardwareConfiguration:
         """
         Load hardware configuration from fixed hardware.json file.
         If file does not exist, creates it with default hardware configuration.
@@ -137,7 +157,9 @@ class JsonConfiguration(Configuration):
             InvalidConfigurationException: If hardware configuration values are invalid
             ConfigurationException: If file operations fail
         """
-        hardware_file = Path("configuration") / "hardware.json"
+        hardware_file = (
+            Path("configuration") / "hardware.json"
+        )
 
         # If file doesn't exist, create it with default hardware configuration
         if not hardware_file.exists():
@@ -147,7 +169,9 @@ class JsonConfiguration(Configuration):
             await self._create_default_hardware_profile()
 
         try:
-            with open(hardware_file, "r", encoding="utf-8") as f:
+            with open(
+                hardware_file, "r", encoding="utf-8"
+            ) as f:
                 json_data = json.load(f)
 
             if json_data is None:
@@ -161,15 +185,23 @@ class JsonConfiguration(Configuration):
             # Extract hardware_config section
             if "hardware_config" not in json_data:
                 # Return default hardware configuration if section not found
-                logger.warning("No hardware_config section found in hardware.json, using defaults")
+                logger.warning(
+                    "No hardware_config section found in hardware.json, using defaults"
+                )
                 return HardwareConfiguration()
 
             hardware_data = json_data["hardware_config"]
 
             # Create hardware configuration object
-            hardware_config = HardwareConfiguration.from_dict(hardware_data)
+            hardware_config = (
+                HardwareConfiguration.from_dict(
+                    hardware_data
+                )
+            )
 
-            logger.info("Successfully loaded hardware configuration from hardware.json")
+            logger.info(
+                "Successfully loaded hardware configuration from hardware.json"
+            )
             return hardware_config
 
         except json.JSONDecodeError as e:
@@ -185,7 +217,9 @@ class JsonConfiguration(Configuration):
                 config_source=str(hardware_file),
             ) from e
 
-    async def validate_configuration(self, config: TestConfiguration) -> None:
+    async def validate_configuration(
+        self, config: TestConfiguration
+    ) -> None:
         """
         Validate a configuration object against business rules
 
@@ -208,14 +242,18 @@ class JsonConfiguration(Configuration):
                     parameter_name="test_configuration",
                     invalid_value="TestConfiguration object",
                     validation_rule=(
-                        "; ".join(errors) if errors else "Configuration validation failed"
+                        "; ".join(errors)
+                        if errors
+                        else "Configuration validation failed"
                     ),
                     config_source="validate_configuration",
                 )
         except Exception as e:
             if isinstance(e, InvalidConfigurationException):
                 raise
-            logger.error(f"Configuration validation failed: {e}")
+            logger.error(
+                f"Configuration validation failed: {e}"
+            )
             raise InvalidConfigurationException(
                 parameter_name="test_configuration",
                 invalid_value="TestConfiguration object",
@@ -224,7 +262,9 @@ class JsonConfiguration(Configuration):
             ) from e
 
     async def merge_configurations(
-        self, base: TestConfiguration, override: Dict[str, Any]
+        self,
+        base: TestConfiguration,
+        override: Dict[str, Any],
     ) -> TestConfiguration:
         """
         Merge base configuration with runtime overrides
@@ -256,13 +296,24 @@ class JsonConfiguration(Configuration):
             return merged_config
 
         except Exception as e:
-            if isinstance(e, (InvalidConfigurationException, ConfigurationConflictException)):
+            if isinstance(
+                e,
+                (
+                    InvalidConfigurationException,
+                    ConfigurationConflictException,
+                ),
+            ):
                 raise
             raise ConfigurationException(
-                f"Failed to merge configurations: {str(e)}", config_source="merge_operation"
+                f"Failed to merge configurations: {str(e)}",
+                config_source="merge_operation",
             ) from e
 
-    def _validate_override_safety(self, base: TestConfiguration, override: Dict[str, Any]) -> None:
+    def _validate_override_safety(
+        self,
+        base: TestConfiguration,
+        override: Dict[str, Any],
+    ) -> None:
         """
         Validate that override values don't violate safety constraints
 
@@ -276,13 +327,19 @@ class JsonConfiguration(Configuration):
         safety_conflicts = {}
 
         # Check voltage safety
-        if "voltage" in override and override["voltage"] > base.max_voltage:
+        if (
+            "voltage" in override
+            and override["voltage"] > base.max_voltage
+        ):
             safety_conflicts["voltage"] = (
                 f"Override voltage {override['voltage']} exceeds safety limit {base.max_voltage}"
             )
 
         # Check current safety
-        if "current" in override and override["current"] > base.max_current:
+        if (
+            "current" in override
+            and override["current"] > base.max_current
+        ):
             safety_conflicts["current"] = (
                 f"Override current {override['current']} exceeds safety limit {base.max_current}"
             )
@@ -302,20 +359,34 @@ class JsonConfiguration(Configuration):
             List of profile names that can be loaded
         """
         try:
-            json_files = list(self._config_path.glob("*.json"))
-            profiles = [f.stem for f in json_files if f.is_file()]
+            json_files = list(
+                self._config_path.glob("*.json")
+            )
+            profiles = [
+                f.stem for f in json_files if f.is_file()
+            ]
 
             # Filter out backup files
-            profiles = [p for p in profiles if not p.startswith("backup_")]
+            profiles = [
+                p
+                for p in profiles
+                if not p.startswith("backup_")
+            ]
 
-            logger.debug(f"Found {len(profiles)} configuration profiles")
+            logger.debug(
+                f"Found {len(profiles)} configuration profiles"
+            )
             return sorted(profiles)
 
         except Exception as e:
-            logger.warning(f"Failed to list available profiles: {e}")
+            logger.warning(
+                f"Failed to list available profiles: {e}"
+            )
             return []
 
-    async def get_profile_info(self, profile_name: str) -> Dict[str, Any]:
+    async def get_profile_info(
+        self, profile_name: str
+    ) -> Dict[str, Any]:
         """
         Get metadata information about a configuration profile
 
@@ -328,11 +399,14 @@ class JsonConfiguration(Configuration):
         Raises:
             MissingConfigurationException: If profile does not exist
         """
-        profile_file = self._config_path / f"{profile_name}.json"
+        profile_file = (
+            self._config_path / f"{profile_name}.json"
+        )
 
         if not profile_file.exists():
             raise MissingConfigurationException(
-                missing_parameters=[profile_name], config_source=str(profile_file)
+                missing_parameters=[profile_name],
+                config_source=str(profile_file),
             )
 
         try:
@@ -346,8 +420,12 @@ class JsonConfiguration(Configuration):
                 "profile_name": profile_name,
                 "file_path": str(profile_file),
                 "file_size_bytes": stat.st_size,
-                "created_time": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "created_time": datetime.fromtimestamp(
+                    stat.st_ctime
+                ).isoformat(),
+                "modified_time": datetime.fromtimestamp(
+                    stat.st_mtime
+                ).isoformat(),
                 "measurement_points": config.get_total_measurement_points(),
                 "estimated_duration_seconds": config.estimate_test_duration_seconds(),
                 "temperature_count": config.get_temperature_count(),
@@ -361,7 +439,9 @@ class JsonConfiguration(Configuration):
                 config_source=str(profile_file),
             ) from e
 
-    async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
+    async def save_profile(
+        self, profile_name: str, config: TestConfiguration
+    ) -> None:
         """
         Save a configuration as a named profile
 
@@ -375,11 +455,15 @@ class JsonConfiguration(Configuration):
         # Validate configuration first (will raise exception if invalid)
         await self.validate_configuration(config)
 
-        profile_file = self._config_path / f"{profile_name}.json"
+        profile_file = (
+            self._config_path / f"{profile_name}.json"
+        )
 
         try:
             # Convert configuration to structured JSON format
-            json_data = self._config_to_json_structure(config)
+            json_data = self._config_to_json_structure(
+                config
+            )
 
             # Add metadata
             json_data["metadata"] = {
@@ -390,13 +474,22 @@ class JsonConfiguration(Configuration):
             }
 
             # Write to file
-            with open(profile_file, "w", encoding="utf-8") as f:
-                json.dump(json_data, f, indent=2, ensure_ascii=False)
+            with open(
+                profile_file, "w", encoding="utf-8"
+            ) as f:
+                json.dump(
+                    json_data,
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
 
             # Update cache
             self._cache[profile_name] = config
 
-            logger.info(f"Successfully saved configuration profile '{profile_name}'")
+            logger.info(
+                f"Successfully saved configuration profile '{profile_name}'"
+            )
 
         except Exception as e:
             raise ConfigurationException(
@@ -404,7 +497,9 @@ class JsonConfiguration(Configuration):
                 config_source=str(profile_file),
             ) from e
 
-    def _config_to_json_structure(self, config: TestConfiguration) -> Dict[str, Any]:
+    def _config_to_json_structure(
+        self, config: TestConfiguration
+    ) -> Dict[str, Any]:
         """
         Convert TestConfiguration to structured JSON format
 
@@ -442,10 +537,15 @@ class JsonConfiguration(Configuration):
                 "retry_attempts": config.retry_attempts,
                 "timeout_seconds": config.timeout_seconds,
             },
-            "safety": {"max_voltage": config.max_voltage, "max_current": config.max_current},
+            "safety": {
+                "max_voltage": config.max_voltage,
+                "max_current": config.max_current,
+            },
         }
 
-    async def delete_profile(self, profile_name: str) -> None:
+    async def delete_profile(
+        self, profile_name: str
+    ) -> None:
         """
         Delete a configuration profile
 
@@ -456,11 +556,14 @@ class JsonConfiguration(Configuration):
             MissingConfigurationException: If profile does not exist
             ConfigurationSecurityException: If profile is protected
         """
-        profile_file = self._config_path / f"{profile_name}.json"
+        profile_file = (
+            self._config_path / f"{profile_name}.json"
+        )
 
         if not profile_file.exists():
             raise MissingConfigurationException(
-                missing_parameters=[profile_name], config_source=str(profile_file)
+                missing_parameters=[profile_name],
+                config_source=str(profile_file),
             )
 
         # Check if profile is protected (default profiles)
@@ -480,7 +583,9 @@ class JsonConfiguration(Configuration):
             if profile_name in self._cache:
                 del self._cache[profile_name]
 
-            logger.info(f"Successfully deleted configuration profile '{profile_name}'")
+            logger.info(
+                f"Successfully deleted configuration profile '{profile_name}'"
+            )
 
         except Exception as e:
             raise ConfigurationException(
@@ -489,7 +594,10 @@ class JsonConfiguration(Configuration):
             ) from e
 
     async def create_profile_from_template(
-        self, template_name: str, new_profile_name: str, customizations: Dict[str, Any] = None
+        self,
+        template_name: str,
+        new_profile_name: str,
+        customizations: Optional[Dict[str, Any]] = None,
     ) -> TestConfiguration:
         """
         Create a new profile based on an existing template
@@ -503,21 +611,31 @@ class JsonConfiguration(Configuration):
             TestConfiguration object for the new profile
         """
         # Load template configuration
-        template_config = await self.load_profile(template_name)
+        template_config = await self.load_profile(
+            template_name
+        )
 
         # Apply customizations if provided
         if customizations:
-            new_config = await self.merge_configurations(template_config, customizations)
+            new_config = await self.merge_configurations(
+                template_config, customizations
+            )
         else:
             new_config = template_config
 
         # Save as new profile
-        await self.save_profile(new_profile_name, new_config)
+        await self.save_profile(
+            new_profile_name, new_config
+        )
 
-        logger.info(f"Created profile '{new_profile_name}' from template '{template_name}'")
+        logger.info(
+            f"Created profile '{new_profile_name}' from template '{template_name}'"
+        )
         return new_config
 
-    async def get_default_configuration(self) -> TestConfiguration:
+    async def get_default_configuration(
+        self,
+    ) -> TestConfiguration:
         """
         Get the default configuration
 
@@ -528,11 +646,15 @@ class JsonConfiguration(Configuration):
             return await self.load_profile("default")
         except MissingConfigurationException:
             # Return built-in default if no default profile exists
-            logger.info("No default profile found, returning built-in default configuration")
+            logger.info(
+                "No default profile found, returning built-in default configuration"
+            )
             return TestConfiguration()
 
     async def validate_profile_compatibility(
-        self, profile_name: str, system_version: str = None
+        self,
+        profile_name: str,
+        system_version: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Validate if a profile is compatible with current system
@@ -558,31 +680,45 @@ class JsonConfiguration(Configuration):
             await self.validate_configuration(config)
         except InvalidConfigurationException as e:
             compatibility["compatible"] = False
-            compatibility["issues"].append(str(e))
+            cast(List[str], compatibility["issues"]).append(
+                str(e)
+            )
 
         # Add system-specific compatibility checks here
         # For now, just basic validation
 
         return compatibility
 
-    async def _create_default_hardware_profile(self) -> None:
+    async def _create_default_hardware_profile(
+        self,
+    ) -> None:
         """
         Create default hardware.json file with default hardware configuration
 
         Raises:
             ConfigurationException: If file creation fails
         """
-        hardware_file = Path("configuration") / "hardware.json"
+        hardware_file = (
+            Path("configuration") / "hardware.json"
+        )
 
         # Ensure configuration directory exists
-        hardware_file.parent.mkdir(parents=True, exist_ok=True)
+        hardware_file.parent.mkdir(
+            parents=True, exist_ok=True
+        )
 
         try:
             # Create default hardware configuration
-            default_hardware_config = HardwareConfiguration()
+            default_hardware_config = (
+                HardwareConfiguration()
+            )
 
             # Convert to JSON structure
-            json_data = self._hardware_config_to_json_structure(default_hardware_config)
+            json_data = (
+                self._hardware_config_to_json_structure(
+                    default_hardware_config
+                )
+            )
 
             # Add metadata
             json_data["metadata"] = {
@@ -593,10 +729,19 @@ class JsonConfiguration(Configuration):
             }
 
             # Write to file
-            with open(hardware_file, "w", encoding="utf-8") as f:
-                json.dump(json_data, f, indent=2, ensure_ascii=False)
+            with open(
+                hardware_file, "w", encoding="utf-8"
+            ) as f:
+                json.dump(
+                    json_data,
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
 
-            logger.info("Successfully created default hardware.json")
+            logger.info(
+                "Successfully created default hardware.json"
+            )
 
         except Exception as e:
             raise ConfigurationException(

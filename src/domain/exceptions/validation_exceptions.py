@@ -4,13 +4,23 @@ Validation Exceptions
 Contains exceptions related to domain object validation and constraints.
 """
 
-from domain.exceptions.domain_exceptions import DomainException
+from typing import Any, Dict, Optional
+
+from domain.exceptions.domain_exceptions import (
+    DomainException,
+)
 
 
 class ValidationException(DomainException):
     """Exception raised when domain object validation fails"""
 
-    def __init__(self, field_name: str, value, message: str, details: dict = None):
+    def __init__(
+        self,
+        field_name: str,
+        value,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize validation exception
 
@@ -28,7 +38,14 @@ class ValidationException(DomainException):
 class InvalidRangeException(ValidationException):
     """Exception raised when a value is outside acceptable range"""
 
-    def __init__(self, field_name: str, value, min_value, max_value, details: dict = None):
+    def __init__(
+        self,
+        field_name: str,
+        value,
+        min_value,
+        max_value,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize range validation exception
 
@@ -39,12 +56,18 @@ class InvalidRangeException(ValidationException):
             max_value: Maximum acceptable value
             details: Additional context
         """
-        message = (
-            f"{field_name} value {value} is outside acceptable range [{min_value}, {max_value}]"
-        )
+        message = f"{field_name} value {value} is outside acceptable range [{min_value}, {max_value}]"
         details = details or {}
-        details.update({"min_value": min_value, "max_value": max_value, "actual_value": value})
-        super().__init__(field_name, value, message, details)
+        details.update(
+            {
+                "min_value": min_value,
+                "max_value": max_value,
+                "actual_value": value,
+            }
+        )
+        super().__init__(
+            field_name, value, message, details
+        )
         self.min_value = min_value
         self.max_value = max_value
 
@@ -52,7 +75,13 @@ class InvalidRangeException(ValidationException):
 class InvalidFormatException(ValidationException):
     """Exception raised when a value has invalid format"""
 
-    def __init__(self, field_name: str, value, expected_format: str, details: dict = None):
+    def __init__(
+        self,
+        field_name: str,
+        value,
+        expected_format: str,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize format validation exception
 
@@ -64,5 +93,21 @@ class InvalidFormatException(ValidationException):
         """
         message = f"{field_name} value '{value}' has invalid format. Expected: {expected_format}"
         details = details or {}
-        details.update({"expected_format": expected_format, "actual_value": str(value)})
-        super().__init__(field_name, value, message, details)
+        details.update(
+            {
+                "expected_format": expected_format,
+                "actual_value": str(value),
+            }
+        )
+        super().__init__(
+            field_name, value, message, details
+        )
+        details.update(
+            {
+                "expected_format": expected_format,
+                "actual_value": str(value),
+            }
+        )
+        super().__init__(
+            field_name, value, message, details
+        )

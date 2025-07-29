@@ -70,11 +70,17 @@ class MockRobot(RobotService):
         self._current_positions = [0.0] * axis_count
         self._motion_status = MotionStatus.IDLE
         self._max_velocity = 1000.0
-        self._axis_velocities = [default_velocity] * axis_count
+        self._axis_velocities = [
+            default_velocity
+        ] * axis_count
 
-        logger.info(f"MockRobotAdapter initialized with {axis_count} axes")
+        logger.info(
+            f"MockRobotAdapter initialized with {axis_count} axes"
+        )
 
-    async def connect(self, robot_config: RobotConfig) -> None:
+    async def connect(
+        self, robot_config: RobotConfig
+    ) -> None:
         """
         하드웨어 연결 (시뮬레이션)
 
@@ -100,7 +106,9 @@ class MockRobot(RobotService):
             logger.info("Mock Robot connected successfully")
         else:
             logger.warning("Mock Robot connection failed")
-            raise HardwareConnectionError("mock_robot", "Simulated connection failure")
+            raise HardwareConnectionError(
+                "mock_robot", "Simulated connection failure"
+            )
 
     async def disconnect(self) -> None:
         """
@@ -136,7 +144,9 @@ class MockRobot(RobotService):
             HardwareOperationError: If initialization fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         try:
             logger.info("Starting mock axis initialization")
@@ -146,18 +156,29 @@ class MockRobot(RobotService):
             await asyncio.sleep(2.0)
 
             # 모든 축을 0 위치로 설정
-            self._current_positions = [0.0] * self._axis_count
+            self._current_positions = [
+                0.0
+            ] * self._axis_count
             self._motion_status = MotionStatus.IDLE
 
-            logger.info("Mock axis initialization completed successfully")
+            logger.info(
+                "Mock axis initialization completed successfully"
+            )
 
         except Exception as e:
-            logger.error(f"Mock axis initialization failed: {e}")
+            logger.error(
+                f"Mock axis initialization failed: {e}"
+            )
             self._motion_status = MotionStatus.ERROR
-            raise HardwareOperationError("mock_robot", "initialize_axes", str(e)) from e
+            raise HardwareOperationError(
+                "mock_robot", "initialize_axes", str(e)
+            ) from e
 
     async def move_to_position(
-        self, axis: int, position: float, velocity: Optional[float] = None
+        self,
+        axis: int,
+        position: float,
+        velocity: Optional[float] = None,
     ) -> None:
         """
         단일 축을 절대 위치로 이동 (시뮬레이션)
@@ -171,10 +192,16 @@ class MockRobot(RobotService):
             HardwareOperationError: If movement fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "move_to_position", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_to_position",
+                f"Invalid axis {axis}",
+            )
 
         if abs(position) > self._max_position:
             raise HardwareOperationError(
@@ -192,11 +219,15 @@ class MockRobot(RobotService):
             )
 
         try:
-            logger.info(f"Mock robot moving axis {axis} to position {position} at {vel} mm/s")
+            logger.info(
+                f"Mock robot moving axis {axis} to position {position} at {vel} mm/s"
+            )
             self._motion_status = MotionStatus.MOVING
 
             # 이동 시간 계산
-            distance = abs(position - self._current_positions[axis])
+            distance = abs(
+                position - self._current_positions[axis]
+            )
             motion_time = distance / vel if vel > 0 else 0.1
 
             # 이동 시뮬레이션
@@ -207,19 +238,27 @@ class MockRobot(RobotService):
                 await asyncio.sleep(0.1)
                 progress = (step + 1) / steps
                 self._current_positions[axis] = (
-                    start_position + (position - start_position) * progress
+                    start_position
+                    + (position - start_position) * progress
                 )
 
             self._motion_status = MotionStatus.IDLE
             logger.info(f"Mock axis {axis} move completed")
 
         except Exception as e:
-            logger.error(f"Mock axis {axis} move failed: {e}")
+            logger.error(
+                f"Mock axis {axis} move failed: {e}"
+            )
             self._motion_status = MotionStatus.ERROR
-            raise HardwareOperationError("mock_robot", "move_to_position", str(e)) from e
+            raise HardwareOperationError(
+                "mock_robot", "move_to_position", str(e)
+            ) from e
 
     async def move_relative_single(
-        self, axis: int, distance: float, velocity: Optional[float] = None
+        self,
+        axis: int,
+        distance: float,
+        velocity: Optional[float] = None,
     ) -> None:
         """
         단일 축을 상대 위치로 이동 (시뮬레이션)
@@ -233,18 +272,26 @@ class MockRobot(RobotService):
             HardwareOperationError: If movement fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if axis < 0 or axis >= self._axis_count:
             raise HardwareOperationError(
-                "mock_robot", "move_relative_single", f"Invalid axis {axis}"
+                "mock_robot",
+                "move_relative_single",
+                f"Invalid axis {axis}",
             )
 
         # 목표 위치 계산
-        target_position = self._current_positions[axis] + distance
+        target_position = (
+            self._current_positions[axis] + distance
+        )
 
         # 절대 이동으로 구현
-        await self.move_to_position(axis, target_position, velocity)
+        await self.move_to_position(
+            axis, target_position, velocity
+        )
 
     async def get_position(self, axis: int) -> float:
         """
@@ -257,13 +304,21 @@ class MockRobot(RobotService):
             현재 위치 (mm)
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "get_position", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "get_position",
+                f"Invalid axis {axis}",
+            )
 
         # 작은 노이즈 추가로 실제 하드웨어 시뮬레이션
-        noise = random.uniform(-0.01, 0.01)  # ±0.01mm 노이즈
+        noise = random.uniform(
+            -0.01, 0.01
+        )  # ±0.01mm 노이즈
         return self._current_positions[axis] + noise
 
     async def get_all_positions(self) -> List[float]:
@@ -274,19 +329,158 @@ class MockRobot(RobotService):
             각 축의 현재 위치 (mm)
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         # 작은 노이즈 추가로 실제 하드웨어 시뮬레이션
         positions = []
         for pos in self._current_positions:
-            noise = random.uniform(-0.01, 0.01)  # ±0.01mm 노이즈
+            noise = random.uniform(
+                -0.01, 0.01
+            )  # ±0.01mm 노이즈
             positions.append(pos + noise)
 
         return positions
 
-    async def move_absolute(self, positions: List[float], velocity: float = None) -> bool:
+    async def move_absolute(
+        self,
+        axis: int,
+        position: float,
+        velocity: Optional[float] = None,
+        acceleration: Optional[float] = None,
+        deceleration: Optional[float] = None,
+    ) -> None:
         """
-        절대 위치로 이동 (시뮬레이션)
+        Move axis to absolute position with motion parameters
+
+        Args:
+            axis: Axis number to move
+            position: Target position in mm
+            velocity: Optional velocity override in mm/s
+            acceleration: Optional acceleration override in mm/s²
+            deceleration: Optional deceleration override in mm/s²
+
+        Raises:
+            HardwareOperationError: If movement fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_absolute",
+                f"Invalid axis {axis}",
+            )
+
+        if abs(position) > self._max_position:
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_absolute",
+                f"Position {position} exceeds limit ±{self._max_position}mm",
+            )
+
+        # Use default values if not provided
+        vel = velocity or self._default_velocity
+        acc = acceleration or self._default_acceleration
+        dec = deceleration or self._default_deceleration
+
+        if vel > self._max_velocity:
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_absolute",
+                f"Velocity {vel} exceeds maximum {self._max_velocity} mm/s",
+            )
+
+        try:
+            logger.info(
+                f"Moving mock robot axis {axis} to position {position}mm "
+                f"(vel: {vel}mm/s, acc: {acc}mm/s², dec: {dec}mm/s²)"
+            )
+
+            self._motion_status = MotionStatus.MOVING
+
+            # Calculate motion time
+            distance = abs(
+                position - self._current_positions[axis]
+            )
+            motion_time = distance / vel if vel > 0 else 0.1
+
+            # Simulate motion with steps
+            start_position = self._current_positions[axis]
+            steps = max(int(motion_time / 0.1), 1)
+
+            for step in range(steps):
+                await asyncio.sleep(0.1)
+                progress = (step + 1) / steps
+                self._current_positions[axis] = (
+                    start_position
+                    + (position - start_position) * progress
+                )
+
+            self._motion_status = MotionStatus.IDLE
+            logger.info(
+                f"Mock robot axis {axis} moved to position {position}mm"
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to move mock robot axis {axis} to position {position}mm: {e}"
+            )
+            self._motion_status = MotionStatus.ERROR
+            raise HardwareOperationError(
+                "mock_robot", "move_absolute", str(e)
+            ) from e
+
+    async def move_relative(
+        self,
+        axis: int,
+        distance: float,
+        velocity: Optional[float] = None,
+    ) -> None:
+        """
+        Move axis by relative distance
+
+        Args:
+            axis: Axis number to move
+            distance: Distance to move in mm
+            velocity: Optional velocity override in mm/s
+
+        Raises:
+            HardwareOperationError: If movement fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_relative",
+                f"Invalid axis {axis}",
+            )
+
+        # Calculate target position
+        target_position = (
+            self._current_positions[axis] + distance
+        )
+
+        # Use absolute move to reach target
+        await self.move_absolute(
+            axis, target_position, velocity
+        )
+
+    async def move_absolute_multi(
+        self,
+        positions: List[float],
+        velocity: Optional[float] = None,
+    ) -> bool:
+        """
+        절대 위치로 이동 (다중 축 시뮬레이션)
 
         Args:
             positions: 각 축의 절대 위치 (mm)
@@ -296,7 +490,9 @@ class MockRobot(RobotService):
             이동 성공 여부
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if len(positions) != self._axis_count:
             raise HardwareOperationError(
@@ -323,18 +519,27 @@ class MockRobot(RobotService):
             )
 
         try:
-            logger.info(f"Mock robot moving to positions: {positions} at {vel} mm/s")
+            logger.info(
+                f"Mock robot moving to positions: {positions} at {vel} mm/s"
+            )
             self._motion_status = MotionStatus.MOVING
 
             # 이동 시간 계산 (가장 먼 축 기준)
             max_distance = max(
-                abs(pos - current) for pos, current in zip(positions, self._current_positions)
+                abs(pos - current)
+                for pos, current in zip(
+                    positions, self._current_positions
+                )
             )
-            motion_time = max_distance / vel if vel > 0 else 0.1
+            motion_time = (
+                max_distance / vel if vel > 0 else 0.1
+            )
 
             # 실제 이동 시뮬레이션
             start_positions = self._current_positions.copy()
-            steps = max(int(motion_time / 0.1), 1)  # 0.1초마다 위치 업데이트
+            steps = max(
+                int(motion_time / 0.1), 1
+            )  # 0.1초마다 위치 업데이트
 
             for step in range(steps):
                 await asyncio.sleep(0.1)
@@ -342,7 +547,12 @@ class MockRobot(RobotService):
                 progress = (step + 1) / steps
                 for i in range(self._axis_count):
                     self._current_positions[i] = (
-                        start_positions[i] + (positions[i] - start_positions[i]) * progress
+                        start_positions[i]
+                        + (
+                            positions[i]
+                            - start_positions[i]
+                        )
+                        * progress
                     )
 
             self._motion_status = MotionStatus.IDLE
@@ -354,9 +564,13 @@ class MockRobot(RobotService):
             self._motion_status = MotionStatus.ERROR
             return False
 
-    async def move_relative(self, distances: List[float], velocity: float = None) -> bool:
+    async def move_relative_multi(
+        self,
+        distances: List[float],
+        velocity: Optional[float] = None,
+    ) -> bool:
         """
-        상대 위치로 이동 (시뮬레이션)
+        상대 위치로 이동 (다중 축 시뮬레이션)
 
         Args:
             distances: 각 축의 상대 거리 (mm)
@@ -366,7 +580,9 @@ class MockRobot(RobotService):
             이동 성공 여부
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if len(distances) != self._axis_count:
             raise HardwareOperationError(
@@ -377,11 +593,16 @@ class MockRobot(RobotService):
 
         # 목표 위치 계산
         target_positions = [
-            current + distance for current, distance in zip(self._current_positions, distances)
+            current + distance
+            for current, distance in zip(
+                self._current_positions, distances
+            )
         ]
 
         # 절대 이동으로 구현
-        return await self.move_absolute(target_positions, velocity)
+        return await self.move_absolute_multi(
+            target_positions, velocity
+        )
 
     async def get_current_position(self) -> List[float]:
         """
@@ -391,12 +612,16 @@ class MockRobot(RobotService):
             각 축의 현재 위치 (mm)
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         # 작은 노이즈 추가로 실제 하드웨어 시뮬레이션
         positions = []
         for pos in self._current_positions:
-            noise = random.uniform(-0.01, 0.01)  # ±0.01mm 노이즈
+            noise = random.uniform(
+                -0.01, 0.01
+            )  # ±0.01mm 노이즈
             positions.append(pos + noise)
 
         return positions
@@ -409,11 +634,15 @@ class MockRobot(RobotService):
             현재 모션 상태
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         return self._motion_status
 
-    async def stop_motion(self, axis: int, deceleration: float) -> None:
+    async def stop_motion(
+        self, axis: int, deceleration: float
+    ) -> None:
         """
         지정된 축의 모션 정지 (시뮬레이션)
 
@@ -425,10 +654,16 @@ class MockRobot(RobotService):
             HardwareOperationError: If stop operation fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "stop_motion", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "stop_motion",
+                f"Invalid axis {axis}",
+            )
 
         try:
             logger.info(
@@ -438,11 +673,17 @@ class MockRobot(RobotService):
             await asyncio.sleep(self._response_delay)
 
             self._motion_status = MotionStatus.IDLE
-            logger.info(f"Mock robot axis {axis} motion stopped")
+            logger.info(
+                f"Mock robot axis {axis} motion stopped"
+            )
 
         except Exception as e:
-            logger.error(f"Failed to stop mock robot axis {axis}: {e}")
-            raise HardwareOperationError("mock_robot", "stop_motion", str(e)) from e
+            logger.error(
+                f"Failed to stop mock robot axis {axis}: {e}"
+            )
+            raise HardwareOperationError(
+                "mock_robot", "stop_motion", str(e)
+            ) from e
 
     async def emergency_stop(self) -> None:
         """
@@ -452,19 +693,27 @@ class MockRobot(RobotService):
             HardwareOperationError: If emergency stop fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         try:
             logger.warning("MOCK EMERGENCY STOP activated")
 
             # 즉시 정지
-            self._motion_status = MotionStatus.EMERGENCY_STOP
+            self._motion_status = (
+                MotionStatus.EMERGENCY_STOP
+            )
 
         except Exception as e:
             logger.error(f"Mock emergency stop failed: {e}")
-            raise HardwareOperationError("mock_robot", "emergency_stop", str(e)) from e
+            raise HardwareOperationError(
+                "mock_robot", "emergency_stop", str(e)
+            ) from e
 
-    async def is_moving(self, axis: Optional[int] = None) -> bool:
+    async def is_moving(
+        self, axis: Optional[int] = None
+    ) -> bool:
         """
         축이 현재 이동 중인지 확인
 
@@ -477,12 +726,16 @@ class MockRobot(RobotService):
         if not self._is_connected:
             return False
 
-        if axis is not None and (axis < 0 or axis >= self._axis_count):
+        if axis is not None and (
+            axis < 0 or axis >= self._axis_count
+        ):
             return False
 
         return self._motion_status == MotionStatus.MOVING
 
-    async def set_velocity(self, axis: int, velocity: float) -> None:
+    async def set_velocity(
+        self, axis: int, velocity: float
+    ) -> None:
         """
         축의 기본 속도 설정
 
@@ -494,13 +747,23 @@ class MockRobot(RobotService):
             HardwareOperationError: If velocity setting fails
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "set_velocity", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "set_velocity",
+                f"Invalid axis {axis}",
+            )
 
         if velocity <= 0:
-            raise HardwareOperationError("mock_robot", "set_velocity", "Velocity must be positive")
+            raise HardwareOperationError(
+                "mock_robot",
+                "set_velocity",
+                "Velocity must be positive",
+            )
 
         if velocity > self._max_velocity:
             raise HardwareOperationError(
@@ -510,7 +773,9 @@ class MockRobot(RobotService):
             )
 
         self._axis_velocities[axis] = velocity
-        logger.info(f"Mock robot axis {axis} velocity set to {velocity} mm/s")
+        logger.info(
+            f"Mock robot axis {axis} velocity set to {velocity} mm/s"
+        )
 
     async def get_velocity(self, axis: int) -> float:
         """
@@ -523,15 +788,23 @@ class MockRobot(RobotService):
             현재 속도 (mm/s)
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
         if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "get_velocity", f"Invalid axis {axis}")
+            raise HardwareOperationError(
+                "mock_robot",
+                "get_velocity",
+                f"Invalid axis {axis}",
+            )
 
         return self._axis_velocities[axis]
 
     async def wait_for_completion(
-        self, axis: Optional[int] = None, timeout: Optional[float] = None
+        self,
+        axis: Optional[int] = None,
+        timeout: Optional[float] = None,
     ) -> None:
         """
         모션 완료 대기
@@ -545,24 +818,41 @@ class MockRobot(RobotService):
             TimeoutError: If motion doesn't complete within timeout
         """
         if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+            raise HardwareConnectionError(
+                "mock_robot", "Robot is not connected"
+            )
 
-        if axis is not None and (axis < 0 or axis >= self._axis_count):
+        if axis is not None and (
+            axis < 0 or axis >= self._axis_count
+        ):
             raise HardwareOperationError(
-                "mock_robot", "wait_for_completion", f"Invalid axis {axis}"
+                "mock_robot",
+                "wait_for_completion",
+                f"Invalid axis {axis}",
             )
 
         start_time = asyncio.get_event_loop().time()
 
         while self._motion_status == MotionStatus.MOVING:
-            if timeout and (asyncio.get_event_loop().time() - start_time) > timeout:
-                raise TimeoutError(f"Motion did not complete within {timeout} seconds")
+            if (
+                timeout
+                and (
+                    asyncio.get_event_loop().time()
+                    - start_time
+                )
+                > timeout
+            ):
+                raise TimeoutError(
+                    f"Motion did not complete within {timeout} seconds"
+                )
 
             await asyncio.sleep(0.1)
 
         if self._motion_status == MotionStatus.ERROR:
             raise HardwareOperationError(
-                "mock_robot", "wait_for_completion", "Motion ended with error"
+                "mock_robot",
+                "wait_for_completion",
+                "Motion ended with error",
             )
 
     async def get_axis_count(self) -> int:
@@ -594,7 +884,9 @@ class MockRobot(RobotService):
 
         if self._is_connected:
             try:
-                status["current_positions"] = await self.get_current_position()
+                status["current_positions"] = (
+                    await self.get_current_position()
+                )
                 status["last_error"] = None
             except Exception as e:
                 status["current_positions"] = None
@@ -604,7 +896,9 @@ class MockRobot(RobotService):
 
     # Mock-specific utility methods
 
-    def set_position_directly(self, positions: List[float]) -> None:
+    def set_position_directly(
+        self, positions: List[float]
+    ) -> None:
         """
         Mock용: 위치를 직접 설정 (테스트용)
 
@@ -613,9 +907,13 @@ class MockRobot(RobotService):
         """
         if len(positions) == self._axis_count:
             self._current_positions = positions.copy()
-            logger.debug(f"Mock robot positions set directly to: {positions}")
+            logger.debug(
+                f"Mock robot positions set directly to: {positions}"
+            )
 
-    def simulate_error(self, error_type: str = "general") -> None:
+    def simulate_error(
+        self, error_type: str = "general"
+    ) -> None:
         """
         Mock용: 에러 상황 시뮬레이션 (테스트용)
 
@@ -623,70 +921,14 @@ class MockRobot(RobotService):
             error_type: 에러 타입 ("general", "emergency", "connection")
         """
         if error_type == "emergency":
-            self._motion_status = MotionStatus.EMERGENCY_STOP
+            self._motion_status = (
+                MotionStatus.EMERGENCY_STOP
+            )
         elif error_type == "connection":
             self._is_connected = False
         else:
             self._motion_status = MotionStatus.ERROR
 
-        logger.debug(f"Mock robot error simulated: {error_type}")
-
-    async def move_absolute(
-        self,
-        axis: int,
-        position: float,
-        velocity: Optional[float] = None,
-        acceleration: Optional[float] = None,
-        deceleration: Optional[float] = None,
-    ) -> None:
-        """
-        Move axis to absolute position with motion parameters
-
-        Args:
-            axis: Axis number to move
-            position: Target position in mm
-            velocity: Optional velocity override in mm/s
-            acceleration: Optional acceleration override in mm/s²
-            deceleration: Optional deceleration override in mm/s²
-
-        Raises:
-            HardwareOperationError: If movement fails
-        """
-        if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
-
-        if axis < 0 or axis >= self._axis_count:
-            raise HardwareOperationError("mock_robot", "move_absolute", f"Invalid axis {axis}")
-
-        if abs(position) > self._max_position:
-            raise HardwareOperationError(
-                "mock_robot",
-                "move_absolute",
-                f"Position {position} exceeds limit ±{self._max_position}mm",
-            )
-
-        # Use default values if not provided
-        vel = velocity or self._default_velocity
-        acc = acceleration or self._default_acceleration
-        dec = deceleration or self._default_deceleration
-
-        try:
-            logger.info(
-                f"Moving mock robot axis {axis} to position {position}mm "
-                f"(vel: {vel}mm/s, acc: {acc}mm/s², dec: {dec}mm/s²)"
-            )
-
-            await asyncio.sleep(self._response_delay)
-
-            self._motion_status = MotionStatus.MOVING
-            self._current_positions[axis] = position
-            
-            # Simulate motion completion
-            await asyncio.sleep(0.1)
-            self._motion_status = MotionStatus.COMPLETED
-
-            logger.info(f"Mock robot axis {axis} moved to position {position}mm")
-
-        except Exception as e:
-            logger.error(f"Failed to move mock robot axis {axis} to position {position}mm: {e}")
-            raise HardwareOperationError("mock_robot", "move_absolute", str(e)) from e
+        logger.debug(
+            f"Mock robot error simulated: {error_type}"
+        )

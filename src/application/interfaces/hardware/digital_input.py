@@ -5,15 +5,21 @@ Interface for digital input operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
-from domain.enums.digital_input_enums import PinMode, LogicLevel
+from typing import Any, Dict, List
+
+from domain.enums.digital_input_enums import (
+    LogicLevel,
+    PinMode,
+)
 
 
 class DigitalInputService(ABC):
     """Abstract interface for digital input operations"""
 
     @abstractmethod
-    async def initialize(self, config: Dict[str, Any]) -> None:
+    async def initialize(
+        self, config: Dict[str, Any]
+    ) -> None:
         """
         Initialize the digital input service
 

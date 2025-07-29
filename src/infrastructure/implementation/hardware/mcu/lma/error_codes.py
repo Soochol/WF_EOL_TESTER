@@ -5,6 +5,7 @@ This module defines error codes and error handling utilities for LMA MCU control
 """
 
 from enum import IntEnum
+from typing import Optional
 
 
 class LMAErrorCode(IntEnum):
@@ -48,7 +49,12 @@ class LMAErrorCode(IntEnum):
 class LMAError(Exception):
     """Base LMA MCU error"""
 
-    def __init__(self, message: str, error_code: int = 0, details: str = None):
+    def __init__(
+        self,
+        message: str,
+        error_code: int = 0,
+        details: Optional[str] = None,
+    ):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
@@ -59,7 +65,9 @@ class LMAError(Exception):
         if self.error_code:
             base_msg = f"[{self.error_code}] {base_msg}"
         if self.details:
-            base_msg = f"{base_msg}. Details: {self.details}"
+            base_msg = (
+                f"{base_msg}. Details: {self.details}"
+            )
         return base_msg
 
 
@@ -82,7 +90,9 @@ class LMAOperationError(LMAError):
 
 
 def validate_temperature(
-    temperature: float, min_temp: float = -40.0, max_temp: float = 150.0
+    temperature: float,
+    min_temp: float = -40.0,
+    max_temp: float = 150.0,
 ) -> None:
     """
     Validate temperature range
@@ -98,11 +108,15 @@ def validate_temperature(
     if not (min_temp <= temperature <= max_temp):
         raise LMAOperationError(
             f"Temperature {temperature}°C is out of range [{min_temp}, {max_temp}]",
-            error_code=int(LMAErrorCode.OPERATION_TEMPERATURE_OUT_OF_RANGE),
+            error_code=int(
+                LMAErrorCode.OPERATION_TEMPERATURE_OUT_OF_RANGE
+            ),
         )
 
 
-def validate_fan_speed(fan_speed: int, min_speed: int = 1, max_speed: int = 10) -> None:
+def validate_fan_speed(
+    fan_speed: int, min_speed: int = 1, max_speed: int = 10
+) -> None:
     """
     Validate fan speed range
 
@@ -117,5 +131,7 @@ def validate_fan_speed(fan_speed: int, min_speed: int = 1, max_speed: int = 10) 
     if not (min_speed <= fan_speed <= max_speed):
         raise LMAOperationError(
             f"Fan speed {fan_speed} is out of range [{min_speed}, {max_speed}]",
-            error_code=int(LMAErrorCode.OPERATION_FAN_SPEED_OUT_OF_RANGE),
+            error_code=int(
+                LMAErrorCode.OPERATION_FAN_SPEED_OUT_OF_RANGE
+            ),
         )

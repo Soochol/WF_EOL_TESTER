@@ -4,13 +4,14 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "editor.detectIndentation": false,
-    "editor.rulers": [100],
+    "editor.rulers": [
+        100
+    ],
     "editor.wordWrap": "off",
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "python.defaultInterpreterPath": "./venv/bin/python",
-    
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
@@ -19,18 +20,27 @@
             "source.fixAll": "explicit"
         }
     },
-    
-    "black-formatter.args": ["--config", "pyproject.toml"],
-    "isort.args": ["--settings-path", "pyproject.toml"],
-    "flake8.args": ["--config", "setup.cfg"],
-    "pylint.args": ["--rcfile", ".pylintrc"],
-    
+    "black-formatter.args": [
+        "--config",
+        "pyproject.toml"
+    ],
+    "isort.args": [
+        "--settings-path",
+        "pyproject.toml"
+    ],
+    "flake8.args": [
+        "--config",
+        "setup.cfg"
+    ],
+    "pylint.args": [
+        "--rcfile",
+        ".pylintrc"
+    ],
     "python.linting.enabled": true,
     "python.linting.lintOnSave": true,
     "python.linting.flake8Enabled": true,
     "python.linting.pylintEnabled": true,
     "python.linting.mypyEnabled": false,
-    
     "cSpell.words": [
         "loadcell",
         "AJINEXTEK",

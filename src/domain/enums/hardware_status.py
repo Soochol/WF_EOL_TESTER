@@ -33,4 +33,7 @@ class HardwareStatus(Enum):
     @property
     def requires_attention(self) -> bool:
         """Check if hardware status requires attention"""
-        return self in (HardwareStatus.ERROR, HardwareStatus.UNKNOWN)
+        return self in (
+            HardwareStatus.ERROR,
+            HardwareStatus.UNKNOWN,
+        )

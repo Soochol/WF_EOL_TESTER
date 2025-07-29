@@ -71,7 +71,9 @@ class BS205LoadCell(LoadCellService):
         self._connection = None
         self._is_connected = False
 
-    async def connect(self, loadcell_config: LoadCellConfig) -> None:
+    async def connect(
+        self, loadcell_config: LoadCellConfig
+    ) -> None:
         """
         하드웨어 연결
 
@@ -92,26 +94,40 @@ class BS205LoadCell(LoadCellService):
                 f"Connecting to BS205 LoadCell on {self._port} at {self._baudrate} baud (ID: {self._indicator_id})"
             )
 
-            self._connection = await SerialManager.create_connection(
-                port=self._port, baudrate=self._baudrate, timeout=self._timeout
+            self._connection = (
+                await SerialManager.create_connection(
+                    port=self._port,
+                    baudrate=self._baudrate,
+                    timeout=self._timeout,
+                )
             )
 
             # 연결 테스트 명령 전송
-            response = await self._send_command(CMD_IDENTITY)
+            response = await self._send_command(
+                CMD_IDENTITY
+            )
             if response and DEVICE_ID_PATTERN in response:
                 self._is_connected = True
                 logger.info(STATUS_MESSAGES["connected"])
                 return True
 
-            logger.warning("Connection test failed: expected %s in response", DEVICE_ID_PATTERN)
+            logger.warning(
+                "Connection test failed: expected %s in response",
+                DEVICE_ID_PATTERN,
+            )
             return False
 
         except SerialError as e:
-            error_msg = f"Failed to connect to BS205 LoadCell: {e}"
+            error_msg = (
+                f"Failed to connect to BS205 LoadCell: {e}"
+            )
             logger.error(error_msg)
             self._is_connected = False
             raise BS205CommunicationError(
-                error_msg, error_code=int(BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED)
+                error_msg,
+                error_code=int(
+                    BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED
+                ),
             ) from e
 
     async def disconnect(self) -> bool:
@@ -131,7 +147,9 @@ class BS205LoadCell(LoadCellService):
             return True
 
         except Exception as e:
-            logger.error("Error disconnecting BS205 LoadCell: %s", e)
+            logger.error(
+                "Error disconnecting BS205 LoadCell: %s", e
+            )
             return False
 
     async def is_connected(self) -> bool:
@@ -141,7 +159,10 @@ class BS205LoadCell(LoadCellService):
         Returns:
             연결 상태
         """
-        return self._is_connected and self._connection is not None
+        return (
+            self._is_connected
+            and self._connection is not None
+        )
 
     async def read_force(self) -> ForceValue:
         """
@@ -158,16 +179,23 @@ class BS205LoadCell(LoadCellService):
         if not await self.is_connected():
             raise BS205HardwareError(
                 "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
+                error_code=int(
+                    BS205ErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
         try:
             # 현재 무게 읽기 명령
-            response = await self._send_command(CMD_READ_WEIGHT)
+            response = await self._send_command(
+                CMD_READ_WEIGHT
+            )
 
             if not response:
                 raise BS205CommunicationError(
-                    "No response from BS205 LoadCell", error_code=int(BS205ErrorCode.COMM_TIMEOUT)
+                    "No response from BS205 LoadCell",
+                    error_code=int(
+                        BS205ErrorCode.COMM_TIMEOUT
+                    ),
                 )
 
             # 응답 파싱 및 검증
@@ -177,21 +205,34 @@ class BS205LoadCell(LoadCellService):
             validate_weight_range(weight_kg)
 
             # kg을 Newton으로 변환
-            force_n = convert_weight_to_force(weight_kg, KG_TO_NEWTON)
+            force_n = convert_weight_to_force(
+                weight_kg, KG_TO_NEWTON
+            )
 
-            logger.debug("BS205 LoadCell reading: %skg = %.3fN", weight_kg, force_n)
-            return ForceValue.from_raw_data(force_n, MeasurementUnit.NEWTON)
+            logger.debug(
+                "BS205 LoadCell reading: %skg = %.3fN",
+                weight_kg,
+                force_n,
+            )
+            return ForceValue.from_raw_data(
+                force_n, MeasurementUnit.NEWTON
+            )
 
         except BS205Error:
             raise  # Re-raise BS205 specific errors
         except SerialError as e:
             raise BS205CommunicationError(
-                f"Communication error: {e}", error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR)
+                f"Communication error: {e}",
+                error_code=int(
+                    BS205ErrorCode.COMM_SERIAL_ERROR
+                ),
             ) from e
         except Exception as e:
             raise BS205OperationError(
                 f"Unexpected error reading force: {e}",
-                error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
+                error_code=int(
+                    BS205ErrorCode.OPERATION_TIMEOUT
+                ),
             ) from e
 
     async def zero(self) -> bool:
@@ -208,7 +249,9 @@ class BS205LoadCell(LoadCellService):
         if not await self.is_connected():
             raise BS205HardwareError(
                 "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
+                error_code=int(
+                    BS205ErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
         try:
@@ -221,18 +264,25 @@ class BS205LoadCell(LoadCellService):
             await asyncio.sleep(ZERO_OPERATION_DELAY)
 
             # 영점 조정 결과 확인
-            if response and ("OK" in response or "Z" in response):
+            if response and (
+                "OK" in response or "Z" in response
+            ):
                 logger.info(STATUS_MESSAGES["zeroed"])
                 return True
 
-            logger.warning("BS205 zero command unclear response: %s", response)
+            logger.warning(
+                "BS205 zero command unclear response: %s",
+                response,
+            )
             return True  # BS205는 응답이 애매할 수 있음
 
         except SerialError as e:
             logger.error(STATUS_MESSAGES["zero_failed"])
             raise BS205OperationError(
                 f"Failed to zero BS205 LoadCell: {e}",
-                error_code=int(BS205ErrorCode.OPERATION_ZERO_FAILED),
+                error_code=int(
+                    BS205ErrorCode.OPERATION_ZERO_FAILED
+                ),
             ) from e
 
     async def zero_calibration(self) -> None:
@@ -250,11 +300,15 @@ class BS205LoadCell(LoadCellService):
             success = await self.zero()
             if not success:
                 raise HardwareOperationError(
-                    "bs205_loadcell", "zero_calibration", "Zero calibration failed"
+                    "bs205_loadcell",
+                    "zero_calibration",
+                    "Zero calibration failed",
                 )
         except Exception as e:
             raise HardwareOperationError(
-                "bs205_loadcell", "zero_calibration", f"Zero calibration failed: {e}"
+                "bs205_loadcell",
+                "zero_calibration",
+                f"Zero calibration failed: {e}",
             ) from e
 
     async def read_raw_value(self) -> float:
@@ -266,32 +320,6 @@ class BS205LoadCell(LoadCellService):
         """
         force_value = await self.read_force()
         return force_value.value
-
-    async def set_measurement_rate(self, rate_hz: int) -> None:
-        """
-        측정 샘플링 속도 설정 (BS205는 고정 속도 사용)
-
-        Args:
-            rate_hz: Sampling rate in Hz
-
-        Raises:
-            HardwareOperationError: If rate setting fails
-        """
-        # BS205는 고정 측정 속도를 사용하므로 경고만 출력
-        logger.warning(
-            "BS205 LoadCell uses fixed measurement rate, ignoring requested %sHz", rate_hz
-        )
-        # 실제 하드웨어에서는 이 기능을 지원하지 않을 수 있음
-
-    async def get_measurement_rate(self) -> int:
-        """
-        현재 측정 샘플링 속도 조회
-
-        Returns:
-            Current sampling rate in Hz
-        """
-        # BS205의 기본 측정 속도 (추정값)
-        return 10  # 10Hz 추정
 
     async def get_status(self) -> Dict[str, Any]:
         """
@@ -306,7 +334,6 @@ class BS205LoadCell(LoadCellService):
             "baudrate": self._baudrate,
             "indicator_id": self._indicator_id,
             "hardware_type": "BS205",
-            "measurement_rate_hz": await self.get_measurement_rate(),
         }
 
         if await self.is_connected():
@@ -314,7 +341,9 @@ class BS205LoadCell(LoadCellService):
                 # 현재 측정값도 포함
                 force_value = await self.read_force()
                 status["current_force"] = force_value.value
-                status["current_force_unit"] = force_value.unit.value
+                status["current_force_unit"] = (
+                    force_value.unit.value
+                )
                 status["last_error"] = None
             except Exception as e:
                 status["current_force"] = None
@@ -323,7 +352,9 @@ class BS205LoadCell(LoadCellService):
 
         return status
 
-    async def _send_command(self, command: str) -> Optional[str]:
+    async def _send_command(
+        self, command: str
+    ) -> Optional[str]:
         """
         BS205에 명령 전송
 
@@ -338,23 +369,39 @@ class BS205LoadCell(LoadCellService):
         """
         if not self._connection:
             raise BS205CommunicationError(
-                "No connection available", error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED)
+                "No connection available",
+                error_code=int(
+                    BS205ErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
         try:
             # 새로운 간단한 API 사용
-            response = await self._connection.send_command(command, "\r", self._timeout)
+            response = await self._connection.send_command(
+                command, "\r", self._timeout
+            )
 
-            logger.debug("BS205 command: %s -> response: %s", command, response)
+            logger.debug(
+                "BS205 command: %s -> response: %s",
+                command,
+                response,
+            )
             return response
 
         except Exception as e:
-            logger.error("BS205 command '%s' failed: %s", command, e)
+            logger.error(
+                "BS205 command '%s' failed: %s", command, e
+            )
             raise BS205CommunicationError(
-                f"Command '{command}' failed: {e}", error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR)
+                f"Command '{command}' failed: {e}",
+                error_code=int(
+                    BS205ErrorCode.COMM_SERIAL_ERROR
+                ),
             ) from e
 
-    async def read_multiple_samples(self, count: int, interval_ms: int = 100) -> list[float]:
+    async def read_multiple_samples(
+        self, count: int, interval_ms: int = 100
+    ) -> list[float]:
         """
         여러 샘플 연속 측정
 
@@ -372,7 +419,9 @@ class BS205LoadCell(LoadCellService):
         if not await self.is_connected():
             raise BS205HardwareError(
                 "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
+                error_code=int(
+                    BS205ErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
         # 샘플링 파라미터 검증
@@ -381,7 +430,11 @@ class BS205LoadCell(LoadCellService):
         samples = []
         interval_sec = interval_ms / 1000.0
 
-        logger.info("Reading %d samples with %dms interval", count, interval_ms)
+        logger.info(
+            "Reading %d samples with %dms interval",
+            count,
+            interval_ms,
+        )
 
         for i in range(count):
             if i > 0:
@@ -389,7 +442,13 @@ class BS205LoadCell(LoadCellService):
 
             force = await self.read_force()
             samples.append(force)
-            logger.debug("Sample %d/%d: %.3fN", i + 1, count, force)
+            logger.debug(
+                "Sample %d/%d: %.3fN", i + 1, count, force
+            )
 
-        logger.info("Completed %d samples, avg: %.3fN", count, sum(samples) / len(samples))
+        logger.info(
+            "Completed %d samples, avg: %.3fN",
+            count,
+            sum(samples) / len(samples),
+        )
         return samples

@@ -5,16 +5,20 @@ Interface for power supply operations and control.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
 
-from domain.value_objects.hardware_configuration import PowerConfig
+from domain.value_objects.hardware_configuration import (
+    PowerConfig,
+)
 
 
 class PowerService(ABC):
     """Abstract interface for power supply operations"""
 
     @abstractmethod
-    async def connect(self, power_config: PowerConfig) -> None:
+    async def connect(
+        self, power_config: PowerConfig
+    ) -> None:
         """
         Connect to power supply hardware
 
@@ -70,7 +74,9 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
-    async def set_current_limit(self, current: float) -> None:
+    async def set_current_limit(
+        self, current: float
+    ) -> None:
         """
         Set current limit
 
@@ -130,4 +136,3 @@ class PowerService(ABC):
         Returns:
             Dictionary containing status information
         """
-        ...

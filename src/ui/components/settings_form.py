@@ -3,12 +3,17 @@ Settings Management Form Component
 Magic MCP Generated - Modern form with validation and accessibility
 """
 
-import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+)
 
 
 class ValidationRule(Enum):
@@ -39,14 +44,20 @@ class FormField:
 
     name: str
     label: str
-    field_type: str  # text, number, select, checkbox, textarea
+    field_type: (
+        str  # text, number, select, checkbox, textarea
+    )
     value: Any = None
     placeholder: str = ""
     help_text: str = ""
     required: bool = False
     disabled: bool = False
-    validation_rules: List[Dict[str, Any]] = field(default_factory=list)
-    options: Optional[List[Dict[str, str]]] = None  # For select fields
+    validation_rules: List[Dict[str, Any]] = field(
+        default_factory=list
+    )
+    options: Optional[List[Dict[str, str]]] = (
+        None  # For select fields
+    )
 
 
 class SettingsCategory(Enum):
@@ -63,14 +74,16 @@ class SettingsCategory(Enum):
 class SettingsSchema:
     """Complete settings schema definition"""
 
-    categories: Dict[str, List[FormField]] = field(default_factory=dict)
+    categories: Dict[str, List[FormField]] = field(
+        default_factory=dict
+    )
 
     def __post_init__(self):
         """Initialize default settings schema"""
         if not self.categories:
             self._initialize_default_schema()
 
-    def _initialize_default_schema(self):
+    def _initialize_default_schema(self) -> None:
         """Initialize default EOL tester settings schema"""
         self.categories = {
             SettingsCategory.HARDWARE.value: [
@@ -83,7 +96,10 @@ class SettingsSchema:
                     help_text="Serial port for BS205 load cell communication",
                     required=True,
                     validation_rules=[
-                        {"rule": "required", "message": "Serial port is required"},
+                        {
+                            "rule": "required",
+                            "message": "Serial port is required",
+                        },
                         {
                             "rule": "pattern",
                             "pattern": r"^(/dev/tty|COM)\w+",
@@ -99,9 +115,18 @@ class SettingsSchema:
                     required=True,
                     options=[
                         {"value": "9600", "label": "9600"},
-                        {"value": "19200", "label": "19200"},
-                        {"value": "38400", "label": "38400"},
-                        {"value": "115200", "label": "115200"},
+                        {
+                            "value": "19200",
+                            "label": "19200",
+                        },
+                        {
+                            "value": "38400",
+                            "label": "38400",
+                        },
+                        {
+                            "value": "115200",
+                            "label": "115200",
+                        },
                     ],
                 ),
                 FormField(
@@ -113,7 +138,10 @@ class SettingsSchema:
                     help_text="IP address for ODA power supply",
                     required=True,
                     validation_rules=[
-                        {"rule": "required", "message": "IP address is required"},
+                        {
+                            "rule": "required",
+                            "message": "IP address is required",
+                        },
                         {
                             "rule": "pattern",
                             "pattern": r"^(\d{1,3}\.){3}\d{1,3}$",
@@ -138,7 +166,10 @@ class SettingsSchema:
                     help_text="Maximum test execution time",
                     required=True,
                     validation_rules=[
-                        {"rule": "required", "message": "Timeout is required"},
+                        {
+                            "rule": "required",
+                            "message": "Timeout is required",
+                        },
                         {
                             "rule": "range",
                             "min": 10,
@@ -232,9 +263,15 @@ class SettingsSchema:
                     field_type="select",
                     value="light",
                     options=[
-                        {"value": "light", "label": "Light"},
+                        {
+                            "value": "light",
+                            "label": "Light",
+                        },
                         {"value": "dark", "label": "Dark"},
-                        {"value": "high_contrast", "label": "High Contrast"},
+                        {
+                            "value": "high_contrast",
+                            "label": "High Contrast",
+                        },
                     ],
                 ),
                 FormField(
@@ -273,7 +310,9 @@ class SettingsFormComponent:
     - Undo/redo support
     """
 
-    def __init__(self, schema: Optional[SettingsSchema] = None):
+    def __init__(
+        self, schema: Optional[SettingsSchema] = None
+    ):
         self.schema = schema or SettingsSchema()
         self._form_data: Dict[str, Any] = {}
         self._validation_errors: List[ValidationError] = []
@@ -285,27 +324,40 @@ class SettingsFormComponent:
         # Load initial values from schema
         self._load_initial_values()
 
-    def _load_initial_values(self):
+    def _load_initial_values(self) -> None:
         """Load initial values from schema"""
-        for category_fields in self.schema.categories.values():
-            for field in category_fields:
-                self._form_data[field.name] = field.value
+        for (
+            category_fields
+        ) in self.schema.categories.values():
+            for form_field in category_fields:
+                self._form_data[form_field.name] = (
+                    form_field.value
+                )
 
     def get_field_value(self, field_name: str) -> Any:
         """Get current field value"""
         return self._form_data.get(field_name)
 
-    def set_field_value(self, field_name: str, value: Any, validate: bool = True) -> bool:
+    def set_field_value(
+        self,
+        field_name: str,
+        value: Any,
+        validate: bool = True,
+    ) -> bool:
         """Set field value with optional validation"""
         old_value = self._form_data.get(field_name)
         self._form_data[field_name] = value
         self._dirty_fields.add(field_name)
 
         if validate:
-            field_errors = self._validate_field(field_name, value)
+            field_errors = self._validate_field(
+                field_name, value
+            )
             # Remove old errors for this field
             self._validation_errors = [
-                err for err in self._validation_errors if err.field_name != field_name
+                err
+                for err in self._validation_errors
+                if err.field_name != field_name
             ]
             # Add new errors
             self._validation_errors.extend(field_errors)
@@ -313,23 +365,36 @@ class SettingsFormComponent:
         # Notify listeners
         self._notify_change(field_name, old_value, value)
 
-        return len([err for err in self._validation_errors if err.field_name == field_name]) == 0
+        return (
+            len(
+                [
+                    err
+                    for err in self._validation_errors
+                    if err.field_name == field_name
+                ]
+            )
+            == 0
+        )
 
-    def _validate_field(self, field_name: str, value: Any) -> List[ValidationError]:
+    def _validate_field(
+        self, field_name: str, value: Any
+    ) -> List[ValidationError]:
         """Validate individual field"""
-        errors = []
-        field = self._find_field(field_name)
+        errors: List[ValidationError] = []
+        form_field = self._find_field(field_name)
 
-        if not field:
+        if not form_field:
             return errors
 
         # Required validation
-        if field.required and (value is None or value == ""):
+        if form_field.required and (
+            value is None or value == ""
+        ):
             errors.append(
                 ValidationError(
                     field_name=field_name,
                     rule=ValidationRule.REQUIRED,
-                    message=f"{field.label} is required",
+                    message=f"{form_field.label} is required",
                     value=value,
                 )
             )
@@ -340,17 +405,22 @@ class SettingsFormComponent:
             return errors
 
         # Apply validation rules
-        for rule_config in field.validation_rules:
+        for rule_config in form_field.validation_rules:
             rule_type = rule_config.get("rule")
 
             if rule_type == "pattern":
                 pattern = rule_config.get("pattern")
-                if pattern and not re.match(pattern, str(value)):
+                if pattern and not re.match(
+                    pattern, str(value)
+                ):
                     errors.append(
                         ValidationError(
                             field_name=field_name,
                             rule=ValidationRule.PATTERN,
-                            message=rule_config.get("message", f"Invalid format for {field.label}"),
+                            message=rule_config.get(
+                                "message",
+                                f"Invalid format for {form_field.label}",
+                            ),
                             value=value,
                         )
                     )
@@ -360,24 +430,32 @@ class SettingsFormComponent:
                 max_val = rule_config.get("max")
                 try:
                     num_value = float(value)
-                    if min_val is not None and num_value < min_val:
+                    if (
+                        min_val is not None
+                        and num_value < min_val
+                    ):
                         errors.append(
                             ValidationError(
                                 field_name=field_name,
                                 rule=ValidationRule.RANGE,
                                 message=rule_config.get(
-                                    "message", f"{field.label} must be at least {min_val}"
+                                    "message",
+                                    f"{form_field.label} must be at least {min_val}",
                                 ),
                                 value=value,
                             )
                         )
-                    elif max_val is not None and num_value > max_val:
+                    elif (
+                        max_val is not None
+                        and num_value > max_val
+                    ):
                         errors.append(
                             ValidationError(
                                 field_name=field_name,
                                 rule=ValidationRule.RANGE,
                                 message=rule_config.get(
-                                    "message", f"{field.label} must be at most {max_val}"
+                                    "message",
+                                    f"{form_field.label} must be at most {max_val}",
                                 ),
                                 value=value,
                             )
@@ -387,19 +465,23 @@ class SettingsFormComponent:
                         ValidationError(
                             field_name=field_name,
                             rule=ValidationRule.NUMBER,
-                            message=f"{field.label} must be a valid number",
+                            message=f"{form_field.label} must be a valid number",
                             value=value,
                         )
                     )
 
         return errors
 
-    def _find_field(self, field_name: str) -> Optional[FormField]:
+    def _find_field(
+        self, field_name: str
+    ) -> Optional[FormField]:
         """Find field by name across all categories"""
-        for category_fields in self.schema.categories.values():
-            for field in category_fields:
-                if field.name == field_name:
-                    return field
+        for (
+            category_fields
+        ) in self.schema.categories.values():
+            for form_field in category_fields:
+                if form_field.name == field_name:
+                    return form_field
         return None
 
     def validate_all(self) -> bool:
@@ -407,15 +489,23 @@ class SettingsFormComponent:
         self._validation_errors.clear()
 
         for field_name, value in self._form_data.items():
-            field_errors = self._validate_field(field_name, value)
+            field_errors = self._validate_field(
+                field_name, value
+            )
             self._validation_errors.extend(field_errors)
 
         return len(self._validation_errors) == 0
 
-    def get_validation_errors(self, field_name: Optional[str] = None) -> List[ValidationError]:
+    def get_validation_errors(
+        self, field_name: Optional[str] = None
+    ) -> List[ValidationError]:
         """Get validation errors for specific field or all"""
         if field_name:
-            return [err for err in self._validation_errors if err.field_name == field_name]
+            return [
+                err
+                for err in self._validation_errors
+                if err.field_name == field_name
+            ]
         return self._validation_errors.copy()
 
     def save_to_history(self) -> None:
@@ -423,7 +513,9 @@ class SettingsFormComponent:
         current_state = self._form_data.copy()
 
         # Remove states after current index (for redo)
-        self._history = self._history[: self._history_index + 1]
+        self._history = self._history[
+            : self._history_index + 1
+        ]
 
         # Add new state
         self._history.append(current_state)
@@ -438,8 +530,12 @@ class SettingsFormComponent:
         """Undo last change"""
         if self._history_index > 0:
             self._history_index -= 1
-            self._form_data = self._history[self._history_index].copy()
-            self._notify_change("undo", None, self._form_data)
+            self._form_data = self._history[
+                self._history_index
+            ].copy()
+            self._notify_change(
+                "undo", None, self._form_data
+            )
             return True
         return False
 
@@ -447,8 +543,12 @@ class SettingsFormComponent:
         """Redo last undone change"""
         if self._history_index < len(self._history) - 1:
             self._history_index += 1
-            self._form_data = self._history[self._history_index].copy()
-            self._notify_change("redo", None, self._form_data)
+            self._form_data = self._history[
+                self._history_index
+            ].copy()
+            self._notify_change(
+                "redo", None, self._form_data
+            )
             return True
         return False
 
@@ -460,7 +560,9 @@ class SettingsFormComponent:
             "version": "1.0",
         }
 
-    def import_settings(self, settings_data: Dict[str, Any]) -> bool:
+    def import_settings(
+        self, settings_data: Dict[str, Any]
+    ) -> bool:
         """Import settings from dictionary"""
         try:
             if "settings" not in settings_data:
@@ -468,9 +570,14 @@ class SettingsFormComponent:
 
             # Validate imported data
             imported_settings = settings_data["settings"]
-            for field_name, value in imported_settings.items():
+            for (
+                field_name,
+                value,
+            ) in imported_settings.items():
                 if self._find_field(field_name):
-                    self.set_field_value(field_name, value, validate=True)
+                    self.set_field_value(
+                        field_name, value, validate=True
+                    )
 
             return self.validate_all()
 
@@ -502,17 +609,26 @@ class SettingsFormComponent:
 
 """
 
-        for category, fields in self.schema.categories.items():
+        for (
+            category,
+            fields,
+        ) in self.schema.categories.items():
             form_output += (
-                f"┌─ {category.upper().replace('_', ' ')} ─" + "─" * (70 - len(category)) + "┐\n"
+                f"┌─ {category.upper().replace('_', ' ')} ─"
+                + "─" * (70 - len(category))
+                + "┐\n"
             )
 
-            for field in fields:
-                value = self._form_data.get(field.name, "")
-                errors = self.get_validation_errors(field.name)
+            for form_field in fields:
+                value = self._form_data.get(
+                    form_field.name, ""
+                )
+                errors = self.get_validation_errors(
+                    form_field.name
+                )
 
                 # Field label and value
-                form_output += f"│ {field.label:.<30} : {str(value):<35} │\n"
+                form_output += f"│ {form_field.label:.<30} : {str(value):<35} │\n"
 
                 # Show validation errors
                 if errors:
@@ -520,8 +636,8 @@ class SettingsFormComponent:
                         form_output += f"│   ❌ {error.message:<65} │\n"
 
                 # Show help text
-                if field.help_text:
-                    form_output += f"│   💡 {field.help_text:<65} │\n"
+                if form_field.help_text:
+                    form_output += f"│   💡 {form_field.help_text:<65} │\n"
 
                 form_output += "│" + " " * 74 + "│\n"
 
@@ -537,11 +653,18 @@ class SettingsFormComponent:
 
         return form_output
 
-    def add_change_listener(self, callback: Callable) -> None:
+    def add_change_listener(
+        self, callback: Callable
+    ) -> None:
         """Add change event listener"""
         self._change_listeners.append(callback)
 
-    def _notify_change(self, field_name: str, old_value: Any, new_value: Any) -> None:
+    def _notify_change(
+        self,
+        field_name: str,
+        old_value: Any,
+        new_value: Any,
+    ) -> None:
         """Notify all change listeners"""
         for listener in self._change_listeners:
             try:
@@ -555,21 +678,34 @@ class FormAccessibilityHelper:
     """WCAG 2.1 AA compliance helper for forms"""
 
     @staticmethod
-    def get_field_aria_attributes(field: FormField, has_errors: bool) -> Dict[str, str]:
+    def get_field_aria_attributes(
+        form_field: FormField, has_errors: bool
+    ) -> Dict[str, str]:
         """Generate ARIA attributes for field"""
-        attrs = {"aria-label": field.label, "aria-required": "true" if field.required else "false"}
+        attrs = {
+            "aria-label": form_field.label,
+            "aria-required": (
+                "true" if form_field.required else "false"
+            ),
+        }
 
-        if field.help_text:
-            attrs["aria-describedby"] = f"{field.name}_help"
+        if form_field.help_text:
+            attrs["aria-describedby"] = (
+                f"{form_field.name}_help"
+            )
 
         if has_errors:
             attrs["aria-invalid"] = "true"
-            attrs["aria-describedby"] += f" {field.name}_error"
+            attrs[
+                "aria-describedby"
+            ] += f" {form_field.name}_error"
 
         return attrs
 
     @staticmethod
-    def generate_error_announcement(errors: List[ValidationError]) -> str:
+    def generate_error_announcement(
+        errors: List[ValidationError],
+    ) -> str:
         """Generate screen reader announcement for errors"""
         if not errors:
             return ""

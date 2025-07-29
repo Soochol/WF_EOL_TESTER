@@ -41,12 +41,16 @@ class TestResultsDashboard:
     - Performance optimization
     """
 
-    def __init__(self, config: Optional[DashboardConfig] = None):
+    def __init__(
+        self, config: Optional[DashboardConfig] = None
+    ):
         self.config = config or DashboardConfig()
         self._test_results: List[TestResult] = []
         self._listeners: List[callable] = []
 
-    def add_test_result(self, test_result: TestResult) -> None:
+    def add_test_result(
+        self, test_result: TestResult
+    ) -> None:
         """Add new test result with real-time update"""
         self._test_results.append(test_result)
         self._notify_listeners("test_added", test_result)
@@ -67,10 +71,14 @@ class TestResultsDashboard:
         status_counts = {}
         for status in TestStatus:
             status_counts[status.value] = sum(
-                1 for result in self._test_results if result.status == status
+                1
+                for result in self._test_results
+                if result.status == status
             )
 
-        success_rate = (status_counts.get("COMPLETED", 0) / total_tests) * 100
+        success_rate = (
+            status_counts.get("COMPLETED", 0) / total_tests
+        ) * 100
 
         return {
             "total_tests": total_tests,
@@ -81,10 +89,14 @@ class TestResultsDashboard:
             "last_updated": datetime.now().isoformat(),
         }
 
-    def get_recent_tests(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_tests(
+        self, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Get recent test results for display"""
         recent = sorted(
-            self._test_results, key=lambda x: x.end_time or datetime.now(), reverse=True
+            self._test_results,
+            key=lambda x: x.end_time or datetime.now(),
+            reverse=True,
         )[:limit]
 
         return [
@@ -93,24 +105,38 @@ class TestResultsDashboard:
                 "dut_id": result.dut_id.value,
                 "status": result.status.value,
                 "start_time": result.start_time.isoformat(),
-                "end_time": result.end_time.isoformat() if result.end_time else None,
-                "duration": self._calculate_duration(result),
-                "measurements_count": len(result.measurements),
+                "end_time": (
+                    result.end_time.isoformat()
+                    if result.end_time
+                    else None
+                ),
+                "duration": self._calculate_duration(
+                    result
+                ),
+                "measurements_count": len(
+                    result.measurements
+                ),
             }
             for result in recent
         ]
 
-    def _calculate_duration(self, result: TestResult) -> Optional[float]:
+    def _calculate_duration(
+        self, result: TestResult
+    ) -> Optional[float]:
         """Calculate test duration in seconds"""
         if result.end_time is None:
             return None
-        return (result.end_time - result.start_time).total_seconds()
+        return (
+            result.end_time - result.start_time
+        ).total_seconds()
 
     def register_listener(self, callback: callable) -> None:
         """Register event listener for real-time updates"""
         self._listeners.append(callback)
 
-    def _notify_listeners(self, event_type: str, data: Any) -> None:
+    def _notify_listeners(
+        self, event_type: str, data: Any
+    ) -> None:
         """Notify all registered listeners"""
         for listener in self._listeners:
             try:
@@ -142,18 +168,20 @@ class TestResultsDashboard:
 """
 
         if not recent:
-            dashboard += (
-                "║ No test results available                                                   ║\n"
-            )
+            dashboard += "║ No test results available                                                   ║\n"
         else:
             for test in recent:
-                status_icon = self._get_status_icon(test["status"])
-                duration = f"{test['duration']:.1f}s" if test["duration"] else "N/A"
+                status_icon = self._get_status_icon(
+                    test["status"]
+                )
+                duration = (
+                    f"{test['duration']:.1f}s"
+                    if test["duration"]
+                    else "N/A"
+                )
                 dashboard += f"║ {status_icon} {test['dut_id'][:20]:>20} │ {test['status']:>12} │ {duration:>8} ║\n"
 
-        dashboard += (
-            "╚══════════════════════════════════════════════════════════════════════════════╝"
-        )
+        dashboard += "╚══════════════════════════════════════════════════════════════════════════════╝"
         return dashboard
 
     def _get_status_icon(self, status: str) -> str:
@@ -187,7 +215,12 @@ class MaterialDesignTokens:
             "dark": "#1b5e20",
             "contrast": "#ffffff",
         },
-        "error": {"main": "#d32f2f", "light": "#f44336", "dark": "#c62828", "contrast": "#ffffff"},
+        "error": {
+            "main": "#d32f2f",
+            "light": "#f44336",
+            "dark": "#c62828",
+            "contrast": "#ffffff",
+        },
         "warning": {
             "main": "#ed6c02",
             "light": "#ff9800",
@@ -197,13 +230,35 @@ class MaterialDesignTokens:
     }
 
     TYPOGRAPHY = {
-        "h1": {"size": "2.5rem", "weight": 300, "line_height": 1.2},
-        "h2": {"size": "2rem", "weight": 400, "line_height": 1.3},
-        "body1": {"size": "1rem", "weight": 400, "line_height": 1.5},
-        "caption": {"size": "0.75rem", "weight": 400, "line_height": 1.4},
+        "h1": {
+            "size": "2.5rem",
+            "weight": 300,
+            "line_height": 1.2,
+        },
+        "h2": {
+            "size": "2rem",
+            "weight": 400,
+            "line_height": 1.3,
+        },
+        "body1": {
+            "size": "1rem",
+            "weight": 400,
+            "line_height": 1.5,
+        },
+        "caption": {
+            "size": "0.75rem",
+            "weight": 400,
+            "line_height": 1.4,
+        },
     }
 
-    SPACING = {"xs": "0.25rem", "sm": "0.5rem", "md": "1rem", "lg": "1.5rem", "xl": "2rem"}
+    SPACING = {
+        "xs": "0.25rem",
+        "sm": "0.5rem",
+        "md": "1rem",
+        "lg": "1.5rem",
+        "xl": "2rem",
+    }
 
 
 # Accessibility Features
@@ -211,18 +266,24 @@ class AccessibilityHelper:
     """WCAG 2.1 AA compliance helper"""
 
     @staticmethod
-    def get_aria_label(status: TestStatus, dut_id: str) -> str:
+    def get_aria_label(
+        status: TestStatus, dut_id: str
+    ) -> str:
         """Generate accessible aria-label"""
         return f"Test result for device {dut_id}: {status.value}"
 
     @staticmethod
-    def get_color_contrast_ratio(fg_color: str, bg_color: str) -> float:
+    def get_color_contrast_ratio(
+        fg_color: str, bg_color: str
+    ) -> float:
         """Calculate color contrast ratio (simplified)"""
         # Simplified implementation - real implementation would use actual color values
         return 4.5  # Assuming WCAG AA compliance
 
     @staticmethod
-    def generate_screen_reader_summary(stats: Dict[str, Any]) -> str:
+    def generate_screen_reader_summary(
+        stats: Dict[str, Any],
+    ) -> str:
         """Generate screen reader friendly summary"""
         return (
             f"Dashboard summary: {stats['total_tests']} total tests, "

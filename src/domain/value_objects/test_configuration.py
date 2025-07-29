@@ -4,8 +4,8 @@ Test Configuration Value Object
 Immutable configuration object containing all test parameters and settings.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field, replace
+from typing import Any, Dict, List
 
 from domain.exceptions.validation_exceptions import (
     ValidationException,
@@ -64,15 +64,33 @@ class TestConfiguration:
         ]
     )
     stroke_positions: List[float] = field(
-        default_factory=lambda: [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0]
+        default_factory=lambda: [
+            10.0,
+            60.0,
+            100.0,
+            140.0,
+            180.0,
+            220.0,
+            240.0,
+        ]
     )
 
     # Timing settings (in seconds)
-    stabilization_delay: float = 0.1  # Time to stabilize after hardware power on
-    temperature_stabilization: float = 0.1  # Time to stabilize after temperature change
-    standby_stabilization: float = 1.0  # Time to stabilize after lma stanby heating
-    power_stabilization: float = 0.5  # Time to stabilize after power on
-    loadcell_zero_delay: float = 0.1  # Time to zero loadcell after power on
+    stabilization_delay: float = (
+        0.1  # Time to stabilize after hardware power on
+    )
+    temperature_stabilization: float = (
+        0.1  # Time to stabilize after temperature change
+    )
+    standby_stabilization: float = (
+        1.0  # Time to stabilize after lma stanby heating
+    )
+    power_stabilization: float = (
+        0.5  # Time to stabilize after power on
+    )
+    loadcell_zero_delay: float = (
+        0.1  # Time to zero loadcell after power on
+    )
 
     # Measurement settings
     measurement_tolerance: float = 0.001
@@ -84,7 +102,9 @@ class TestConfiguration:
     timeout_seconds: float = 60.0
 
     # Pass/Fail criteria configuration
-    pass_criteria: PassCriteria = field(default_factory=PassCriteria)
+    pass_criteria: PassCriteria = field(
+        default_factory=PassCriteria
+    )
 
     # Safety limits
     max_voltage: float = 30.0
@@ -104,44 +124,68 @@ class TestConfiguration:
     def _validate_hardware_settings(self) -> None:
         """Validate hardware configuration parameters"""
         if self.voltage <= 0:
-            raise ValidationException("voltage", self.voltage, "Voltage must be positive")
+            raise ValidationException(
+                "voltage",
+                self.voltage,
+                "Voltage must be positive",
+            )
 
         if self.current <= 0:
-            raise ValidationException("current", self.current, "Current must be positive")
+            raise ValidationException(
+                "current",
+                self.current,
+                "Current must be positive",
+            )
 
         if self.upper_temperature <= 0:
             raise ValidationException(
-                "upper_temperature", self.upper_temperature, "Upper temperature must be positive"
+                "upper_temperature",
+                self.upper_temperature,
+                "Upper temperature must be positive",
             )
 
-        if not (0 <= self.fan_speed <= 10):
+        if not 0 <= self.fan_speed <= 10:
             raise ValidationException(
-                "fan_speed", self.fan_speed, "Fan speed must be between 0 and 100"
+                "fan_speed",
+                self.fan_speed,
+                "Fan speed must be between 0 and 100",
             )
 
         if self.max_stroke <= 0:
-            raise ValidationException("max_stroke", self.max_stroke, "Max stroke must be positive")
+            raise ValidationException(
+                "max_stroke",
+                self.max_stroke,
+                "Max stroke must be positive",
+            )
 
         if self.initial_position < 0:
             raise ValidationException(
-                "initial_position", self.initial_position, "Initial position cannot be negative"
+                "initial_position",
+                self.initial_position,
+                "Initial position cannot be negative",
             )
 
     def _validate_test_parameters(self) -> None:
         """Validate test execution parameters"""
         if not self.temperature_list:
             raise ValidationException(
-                "temperature_list", self.temperature_list, "Temperature list cannot be empty"
+                "temperature_list",
+                self.temperature_list,
+                "Temperature list cannot be empty",
             )
 
         if not self.stroke_positions:
             raise ValidationException(
-                "stroke_positions", self.stroke_positions, "Stroke positions list cannot be empty"
+                "stroke_positions",
+                self.stroke_positions,
+                "Stroke positions list cannot be empty",
             )
 
         if any(temp <= 0 for temp in self.temperature_list):
             raise ValidationException(
-                "temperature_list", self.temperature_list, "All temperatures must be positive"
+                "temperature_list",
+                self.temperature_list,
+                "All temperatures must be positive",
             )
 
         if any(pos < 0 for pos in self.stroke_positions):
@@ -170,19 +214,31 @@ class TestConfiguration:
     def _validate_motion_parameters(self) -> None:
         """Validate motion control parameters"""
         if self.axis < 0:
-            raise ValidationException("axis", self.axis, "Axis number cannot be negative")
+            raise ValidationException(
+                "axis",
+                self.axis,
+                "Axis number cannot be negative",
+            )
 
         if self.velocity <= 0:
-            raise ValidationException("velocity", self.velocity, "Velocity must be positive")
+            raise ValidationException(
+                "velocity",
+                self.velocity,
+                "Velocity must be positive",
+            )
 
         if self.acceleration <= 0:
             raise ValidationException(
-                "acceleration", self.acceleration, "Acceleration must be positive"
+                "acceleration",
+                self.acceleration,
+                "Acceleration must be positive",
             )
 
         if self.deceleration <= 0:
             raise ValidationException(
-                "deceleration", self.deceleration, "Deceleration must be positive"
+                "deceleration",
+                self.deceleration,
+                "Deceleration must be positive",
             )
 
         if self.max_velocity <= self.velocity:
@@ -208,12 +264,16 @@ class TestConfiguration:
 
         if self.position_tolerance <= 0:
             raise ValidationException(
-                "position_tolerance", self.position_tolerance, "Position tolerance must be positive"
+                "position_tolerance",
+                self.position_tolerance,
+                "Position tolerance must be positive",
             )
 
         if self.homing_velocity <= 0:
             raise ValidationException(
-                "homing_velocity", self.homing_velocity, "Homing velocity must be positive"
+                "homing_velocity",
+                self.homing_velocity,
+                "Homing velocity must be positive",
             )
 
         if self.homing_acceleration <= 0:
@@ -233,20 +293,38 @@ class TestConfiguration:
     def _validate_timing_settings(self) -> None:
         """Validate timing configuration parameters"""
         timing_fields = [
-            ("stabilization_delay", self.stabilization_delay),
-            ("temperature_stabilization", self.temperature_stabilization),
-            ("power_stabilization", self.power_stabilization),
-            ("loadcell_zero_delay", self.loadcell_zero_delay),
+            (
+                "stabilization_delay",
+                self.stabilization_delay,
+            ),
+            (
+                "temperature_stabilization",
+                self.temperature_stabilization,
+            ),
+            (
+                "power_stabilization",
+                self.power_stabilization,
+            ),
+            (
+                "loadcell_zero_delay",
+                self.loadcell_zero_delay,
+            ),
             ("timeout_seconds", self.timeout_seconds),
         ]
 
         for field_name, value in timing_fields:
             if value <= 0:
-                raise ValidationException(field_name, value, f"{field_name} must be positive")
+                raise ValidationException(
+                    field_name,
+                    value,
+                    f"{field_name} must be positive",
+                )
 
         if self.retry_attempts < 0:
             raise ValidationException(
-                "retry_attempts", self.retry_attempts, "Retry attempts cannot be negative"
+                "retry_attempts",
+                self.retry_attempts,
+                "Retry attempts cannot be negative",
             )
 
         if self.measurement_tolerance <= 0:
@@ -258,7 +336,9 @@ class TestConfiguration:
 
         if self.force_precision < 0:
             raise ValidationException(
-                "force_precision", self.force_precision, "Force precision cannot be negative"
+                "force_precision",
+                self.force_precision,
+                "Force precision cannot be negative",
             )
 
         if self.temperature_precision < 0:
@@ -291,7 +371,10 @@ class TestConfiguration:
 
     def get_total_measurement_points(self) -> int:
         """Get total number of measurement points (temperature × position)"""
-        return self.get_temperature_count() * self.get_position_count()
+        return (
+            self.get_temperature_count()
+            * self.get_position_count()
+        )
 
     def estimate_test_duration_seconds(self) -> float:
         """
@@ -304,19 +387,33 @@ class TestConfiguration:
         cleanup_time = 15.0  # Estimated cleanup time
 
         # Time per temperature change
-        temp_change_time = self.temperature_stabilization * self.get_temperature_count()
-
-        # Time per position change
-        position_change_time = self.stabilization_delay * self.get_total_measurement_points()
-
-        # Measurement time (estimated 1 second per measurement)
-        measurement_time = self.get_total_measurement_points() * 1.0
-
-        return (
-            setup_time + temp_change_time + position_change_time + measurement_time + cleanup_time
+        temp_change_time = (
+            self.temperature_stabilization
+            * self.get_temperature_count()
         )
 
-    def with_overrides(self, **overrides) -> "TestConfiguration":
+        # Time per position change
+        position_change_time = (
+            self.stabilization_delay
+            * self.get_total_measurement_points()
+        )
+
+        # Measurement time (estimated 1 second per measurement)
+        measurement_time = (
+            self.get_total_measurement_points() * 1.0
+        )
+
+        return (
+            setup_time
+            + temp_change_time
+            + position_change_time
+            + measurement_time
+            + cleanup_time
+        )
+
+    def with_overrides(
+        self, **overrides
+    ) -> "TestConfiguration":
         """
         Create new configuration with specific field overrides
 
@@ -329,52 +426,23 @@ class TestConfiguration:
         Raises:
             ValidationException: If overridden values are invalid
         """
-        # Get current values as dict
-        current_values = {
-            "voltage": self.voltage,
-            "current": self.current,
-            "upper_temperature": self.upper_temperature,
-            "fan_speed": self.fan_speed,
-            "max_stroke": self.max_stroke,
-            "initial_position": self.initial_position,
-            "pass_criteria": self.pass_criteria,
-            "temperature_list": self.temperature_list.copy(),
-            "stroke_positions": self.stroke_positions.copy(),
-            "stabilization_delay": self.stabilization_delay,
-            "temperature_stabilization": self.temperature_stabilization,
-            "power_stabilization": self.power_stabilization,
-            "loadcell_zero_delay": self.loadcell_zero_delay,
-            "measurement_tolerance": self.measurement_tolerance,
-            "force_precision": self.force_precision,
-            "temperature_precision": self.temperature_precision,
-            "retry_attempts": self.retry_attempts,
-            "timeout_seconds": self.timeout_seconds,
-            "max_voltage": self.max_voltage,
-            "max_current": self.max_current,
-            "axis": self.axis,
-            "velocity": self.velocity,
-            "acceleration": self.acceleration,
-            "deceleration": self.deceleration,
-            "max_velocity": self.max_velocity,
-            "max_acceleration": self.max_acceleration,
-            "max_deceleration": self.max_deceleration,
-            "position_tolerance": self.position_tolerance,
-            "homing_velocity": self.homing_velocity,
-            "homing_acceleration": self.homing_acceleration,
-            "homing_deceleration": self.homing_deceleration,
-        }
-
-        # Apply overrides
-        current_values.update(overrides)
-
         # Handle pass_criteria override specially
-        if "pass_criteria" in overrides and not isinstance(
-            overrides["pass_criteria"], PassCriteria
+        processed_overrides = overrides.copy()
+        if (
+            "pass_criteria" in processed_overrides
+            and not isinstance(
+                processed_overrides["pass_criteria"],
+                PassCriteria,
+            )
         ):
-            current_values["pass_criteria"] = PassCriteria.from_dict(overrides["pass_criteria"])
+            processed_overrides["pass_criteria"] = (
+                PassCriteria.from_dict(
+                    processed_overrides["pass_criteria"]
+                )
+            )
 
-        # Create new instance
-        return TestConfiguration(**current_values)
+        # Create new instance using dataclasses.replace
+        return replace(self, **processed_overrides)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary representation"""
@@ -413,7 +481,9 @@ class TestConfiguration:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TestConfiguration":
+    def from_dict(
+        cls, data: Dict[str, Any]
+    ) -> "TestConfiguration":
         """
         Create configuration from dictionary
 
@@ -430,16 +500,24 @@ class TestConfiguration:
         data_copy = data.copy()
 
         # Handle pass_criteria field specially
-        if "pass_criteria" in data_copy and isinstance(data_copy["pass_criteria"], dict):
-            data_copy["pass_criteria"] = PassCriteria.from_dict(data_copy["pass_criteria"])
+        if "pass_criteria" in data_copy and isinstance(
+            data_copy["pass_criteria"], dict
+        ):
+            data_copy["pass_criteria"] = (
+                PassCriteria.from_dict(
+                    data_copy["pass_criteria"]
+                )
+            )
 
         return cls(**data_copy)
 
     @classmethod
-    def from_structured_dict(cls, structured_data: Dict[str, Any]) -> "TestConfiguration":
+    def from_structured_dict(
+        cls, structured_data: Dict[str, Any]
+    ) -> "TestConfiguration":
         """
         Create configuration from structured (nested) dictionary format
-        
+
         This method handles the conversion from hierarchical configuration files
         (YAML/JSON with sections like hardware, timing, etc.) to flat TestConfiguration format.
 
@@ -459,12 +537,24 @@ class TestConfiguration:
             hardware = structured_data["hardware"]
             flattened.update(
                 {
-                    "voltage": hardware.get("voltage", 18.0),
-                    "current": hardware.get("current", 20.0),
-                    "upper_temperature": hardware.get("upper_temperature", 80.0),
-                    "fan_speed": hardware.get("fan_speed", 10),
-                    "max_stroke": hardware.get("max_stroke", 240.0),
-                    "initial_position": hardware.get("initial_position", 10.0),
+                    "voltage": hardware.get(
+                        "voltage", 18.0
+                    ),
+                    "current": hardware.get(
+                        "current", 20.0
+                    ),
+                    "upper_temperature": hardware.get(
+                        "upper_temperature", 80.0
+                    ),
+                    "fan_speed": hardware.get(
+                        "fan_speed", 10
+                    ),
+                    "max_stroke": hardware.get(
+                        "max_stroke", 240.0
+                    ),
+                    "initial_position": hardware.get(
+                        "initial_position", 10.0
+                    ),
                 }
             )
 
@@ -474,10 +564,27 @@ class TestConfiguration:
             flattened.update(
                 {
                     "temperature_list": test_params.get(
-                        "temperature_list", [25.0, 30.0, 35.0, 40.0, 45.0, 50.0]
+                        "temperature_list",
+                        [
+                            25.0,
+                            30.0,
+                            35.0,
+                            40.0,
+                            45.0,
+                            50.0,
+                        ],
                     ),
                     "stroke_positions": test_params.get(
-                        "stroke_positions", [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0]
+                        "stroke_positions",
+                        [
+                            10.0,
+                            60.0,
+                            100.0,
+                            140.0,
+                            180.0,
+                            220.0,
+                            240.0,
+                        ],
                     ),
                 }
             )
@@ -487,10 +594,18 @@ class TestConfiguration:
             timing = structured_data["timing"]
             flattened.update(
                 {
-                    "stabilization_delay": timing.get("stabilization_delay", 0.5),
-                    "temperature_stabilization": timing.get("temperature_stabilization", 1.0),
-                    "power_stabilization": timing.get("power_stabilization", 0.5),
-                    "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
+                    "stabilization_delay": timing.get(
+                        "stabilization_delay", 0.5
+                    ),
+                    "temperature_stabilization": timing.get(
+                        "temperature_stabilization", 1.0
+                    ),
+                    "power_stabilization": timing.get(
+                        "power_stabilization", 0.5
+                    ),
+                    "loadcell_zero_delay": timing.get(
+                        "loadcell_zero_delay", 0.1
+                    ),
                 }
             )
 
@@ -499,9 +614,15 @@ class TestConfiguration:
             tolerances = structured_data["tolerances"]
             flattened.update(
                 {
-                    "measurement_tolerance": tolerances.get("measurement_tolerance", 0.001),
-                    "force_precision": tolerances.get("force_precision", 2),
-                    "temperature_precision": tolerances.get("temperature_precision", 1),
+                    "measurement_tolerance": tolerances.get(
+                        "measurement_tolerance", 0.001
+                    ),
+                    "force_precision": tolerances.get(
+                        "force_precision", 2
+                    ),
+                    "temperature_precision": tolerances.get(
+                        "temperature_precision", 1
+                    ),
                 }
             )
 
@@ -510,8 +631,12 @@ class TestConfiguration:
             execution = structured_data["execution"]
             flattened.update(
                 {
-                    "retry_attempts": execution.get("retry_attempts", 3),
-                    "timeout_seconds": execution.get("timeout_seconds", 300.0),
+                    "retry_attempts": execution.get(
+                        "retry_attempts", 3
+                    ),
+                    "timeout_seconds": execution.get(
+                        "timeout_seconds", 300.0
+                    ),
                 }
             )
 
@@ -520,8 +645,12 @@ class TestConfiguration:
             safety = structured_data["safety"]
             flattened.update(
                 {
-                    "max_voltage": safety.get("max_voltage", 30.0),
-                    "max_current": safety.get("max_current", 50.0),
+                    "max_voltage": safety.get(
+                        "max_voltage", 30.0
+                    ),
+                    "max_current": safety.get(
+                        "max_current", 50.0
+                    ),
                 }
             )
 
@@ -530,28 +659,55 @@ class TestConfiguration:
             pass_criteria = structured_data["pass_criteria"]
 
             # Convert spec_points from list format to tuple format
-            spec_points = pass_criteria.get("spec_points", [])
+            spec_points = pass_criteria.get(
+                "spec_points", []
+            )
             if spec_points:
                 # Convert each spec point from list to tuple
                 spec_points_tuples = [
-                    tuple(point) if isinstance(point, list) else point for point in spec_points
+                    (
+                        tuple(point)
+                        if isinstance(point, list)
+                        else point
+                    )
+                    for point in spec_points
                 ]
             else:
                 spec_points_tuples = []
 
             # Create pass_criteria dictionary for PassCriteria.from_dict()
             pass_criteria_dict = {
-                "force_limit_min": pass_criteria.get("force_limit_min", 0.0),
-                "force_limit_max": pass_criteria.get("force_limit_max", 100.0),
-                "temperature_limit_min": pass_criteria.get("temperature_limit_min", -10.0),
-                "temperature_limit_max": pass_criteria.get("temperature_limit_max", 80.0),
+                "force_limit_min": pass_criteria.get(
+                    "force_limit_min", 0.0
+                ),
+                "force_limit_max": pass_criteria.get(
+                    "force_limit_max", 100.0
+                ),
+                "temperature_limit_min": pass_criteria.get(
+                    "temperature_limit_min", -10.0
+                ),
+                "temperature_limit_max": pass_criteria.get(
+                    "temperature_limit_max", 80.0
+                ),
                 "spec_points": spec_points_tuples,
-                "measurement_tolerance": pass_criteria.get("measurement_tolerance", 0.001),
-                "force_precision": pass_criteria.get("force_precision", 2),
-                "temperature_precision": pass_criteria.get("temperature_precision", 1),
-                "position_tolerance": pass_criteria.get("position_tolerance", 0.5),
-                "max_test_duration": pass_criteria.get("max_test_duration", 300.0),
-                "min_stabilization_time": pass_criteria.get("min_stabilization_time", 0.5),
+                "measurement_tolerance": pass_criteria.get(
+                    "measurement_tolerance", 0.001
+                ),
+                "force_precision": pass_criteria.get(
+                    "force_precision", 2
+                ),
+                "temperature_precision": pass_criteria.get(
+                    "temperature_precision", 1
+                ),
+                "position_tolerance": pass_criteria.get(
+                    "position_tolerance", 0.5
+                ),
+                "max_test_duration": pass_criteria.get(
+                    "max_test_duration", 300.0
+                ),
+                "min_stabilization_time": pass_criteria.get(
+                    "min_stabilization_time", 0.5
+                ),
             }
 
             flattened["pass_criteria"] = pass_criteria_dict

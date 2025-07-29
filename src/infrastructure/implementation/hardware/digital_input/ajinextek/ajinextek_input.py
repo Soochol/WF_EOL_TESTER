@@ -13,7 +13,7 @@ from loguru import logger
 from application.interfaces.hardware.digital_input import (
     DigitalInputService,
 )
-from domain.enums.digital_input_enums import (
+from domain.enums.digital_input_enums import (  # type: ignore[import-untyped]
     LogicLevel,
     PinMode,
 )
@@ -91,14 +91,20 @@ class AjinextekInput(DigitalInputService):
         # State tracking
         self._is_connected = False
         self._is_initialized = False
-        self._pin_configurations: Dict[int, PinMode] = {}
-        self._last_input_states: Dict[int, LogicLevel] = {}
-        self._last_output_states: Dict[int, LogicLevel] = {}
+        self._pin_configurations: Dict[int, "PinMode"] = {}
+        self._last_input_states: Dict[int, "LogicLevel"] = (
+            {}
+        )
+        self._last_output_states: Dict[
+            int, "LogicLevel"
+        ] = {}
 
         # AXL library interface (placeholder - would use ctypes in real implementation)
         self._axl_lib = None
 
-    async def initialize(self, config: Dict[str, Any]) -> None:
+    async def initialize(
+        self, config: Dict[str, Any]
+    ) -> None:
         """
         Initialize the digital input service
 
@@ -109,11 +115,15 @@ class AjinextekInput(DigitalInputService):
         if "board_number" in config:
             self._board_number = config["board_number"]
         if "module_position" in config:
-            self._module_position = config["module_position"]
+            self._module_position = config[
+                "module_position"
+            ]
         if "signal_type" in config:
             self._signal_type = config["signal_type"]
         if "debounce_time_ms" in config:
-            self._debounce_time_ms = config["debounce_time_ms"]
+            self._debounce_time_ms = config[
+                "debounce_time_ms"
+            ]
 
         # Connect the hardware
         await self.connect()
@@ -140,7 +150,7 @@ class AjinextekInput(DigitalInputService):
         """
         return MAX_INPUT_CHANNELS
 
-    async def connect(self) -> None:
+    async def connect(self) -> bool:
         """
         DIO 하드웨어 연결
 
@@ -151,27 +161,35 @@ class AjinextekInput(DigitalInputService):
             AjinextekHardwareError: 하드웨어 연결 실패
         """
         try:
-            logger.info(f"Connecting to Ajinextek DIO board {self._board_number}")
+            logger.info(
+                f"Connecting to Ajinextek DIO board {self._board_number}"
+            )
 
             # Load AXL library (placeholder)
             if not await self._load_axl_library():
                 raise AjinextekHardwareError(
                     "Failed to load AXL library",
-                    error_code=int(AjinextekErrorCode.LIBRARY_NOT_LOADED),
+                    error_code=int(
+                        AjinextekErrorCode.LIBRARY_NOT_LOADED
+                    ),
                 )
 
             # Open board connection (placeholder)
             if not await self._open_board():
                 raise AjinextekHardwareError(
                     f"Failed to open DIO board {self._board_number}",
-                    error_code=int(AjinextekErrorCode.BOARD_NOT_DETECTED),
+                    error_code=int(
+                        AjinextekErrorCode.BOARD_NOT_DETECTED
+                    ),
                 )
 
             # Detect and configure modules (placeholder)
             if not await self._detect_modules():
                 raise AjinextekHardwareError(
                     f"Failed to detect modules on board {self._board_number}",
-                    error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
+                    error_code=int(
+                        AjinextekErrorCode.MODULE_NOT_FOUND
+                    ),
                 )
 
             # Initialize default pin configurations
@@ -189,10 +207,12 @@ class AjinextekInput(DigitalInputService):
         except Exception as e:
             raise AjinextekHardwareError(
                 f"Unexpected error connecting to DIO hardware: {e}",
-                error_code=int(AjinextekErrorCode.HARDWARE_INITIALIZATION_FAILED),
+                error_code=int(
+                    AjinextekErrorCode.HARDWARE_INITIALIZATION_FAILED
+                ),
             ) from e
 
-    async def disconnect(self) -> None:
+    async def disconnect(self) -> bool:
         """
         DIO 하드웨어 연결 해제
 
@@ -216,11 +236,15 @@ class AjinextekInput(DigitalInputService):
             self._last_input_states.clear()
             self._last_output_states.clear()
 
-            logger.info(STATUS_MESSAGES["board_disconnected"])
+            logger.info(
+                STATUS_MESSAGES["board_disconnected"]
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Error disconnecting DIO hardware: {e}")
+            logger.error(
+                f"Error disconnecting DIO hardware: {e}"
+            )
             return False
 
     async def is_connected(self) -> bool:
@@ -232,7 +256,9 @@ class AjinextekInput(DigitalInputService):
         """
         return self._is_connected and self._is_initialized
 
-    async def configure_pin(self, pin: int, mode: PinMode) -> None:
+    async def configure_pin(
+        self, pin: int, mode: "PinMode"
+    ) -> bool:
         """
         GPIO 핀 모드 설정
 
@@ -250,26 +276,36 @@ class AjinextekInput(DigitalInputService):
         if not await self.is_connected():
             raise AjinextekHardwareError(
                 "DIO hardware not connected",
-                error_code=int(AjinextekErrorCode.HARDWARE_NOT_CONNECTED),
+                error_code=int(
+                    AjinextekErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
-        validate_channel_number(pin, MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS)
+        validate_channel_number(
+            pin, MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS
+        )
 
         try:
             # Convert PinMode to hardware-specific values
             hw_mode = self._convert_pin_mode(mode)
 
             # Configure pin in hardware (placeholder)
-            success = await self._configure_hardware_pin(pin, hw_mode)
+            success = await self._configure_hardware_pin(
+                pin, hw_mode
+            )
 
             if success:
                 self._pin_configurations[pin] = mode
-                logger.debug(f"Pin {pin} configured as {mode.value}")
+                logger.debug(
+                    f"Pin {pin} configured as {mode.value}"
+                )
                 return True
             else:
                 raise AjinextekOperationError(
                     f"Failed to configure pin {pin} as {mode.value}",
-                    error_code=int(AjinextekErrorCode.CHANNEL_NOT_CONFIGURED),
+                    error_code=int(
+                        AjinextekErrorCode.CHANNEL_NOT_CONFIGURED
+                    ),
                 )
 
         except AjinextekDIOError:
@@ -277,10 +313,14 @@ class AjinextekInput(DigitalInputService):
         except Exception as e:
             raise AjinextekOperationError(
                 f"Unexpected error configuring pin {pin}: {e}",
-                error_code=int(AjinextekErrorCode.OPERATION_NOT_SUPPORTED),
+                error_code=int(
+                    AjinextekErrorCode.OPERATION_NOT_SUPPORTED
+                ),
             ) from e
 
-    async def read_digital_input(self, pin: int) -> LogicLevel:
+    async def read_digital_input(
+        self, pin: int
+    ) -> "LogicLevel":
         """
         디지털 입력 읽기
 
@@ -296,17 +336,25 @@ class AjinextekInput(DigitalInputService):
         if not await self.is_connected():
             raise AjinextekHardwareError(
                 "DIO hardware not connected",
-                error_code=int(AjinextekErrorCode.HARDWARE_NOT_CONNECTED),
+                error_code=int(
+                    AjinextekErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
         validate_channel_number(pin, MAX_INPUT_CHANNELS)
 
         # Check if pin is configured as input
         pin_mode = self._pin_configurations.get(pin)
-        if pin_mode not in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]:
+        if pin_mode not in [
+            PinMode.INPUT,
+            PinMode.INPUT_PULLUP,
+            PinMode.INPUT_PULLDOWN,
+        ]:
             raise AjinextekChannelError(
                 f"Pin {pin} is not configured as input (current: {pin_mode})",
-                error_code=int(AjinextekErrorCode.CHANNEL_NOT_CONFIGURED),
+                error_code=int(
+                    AjinextekErrorCode.CHANNEL_NOT_CONFIGURED
+                ),
             )
 
         try:
@@ -314,21 +362,31 @@ class AjinextekInput(DigitalInputService):
             hw_value = await self._read_hardware_input(pin)
 
             # Convert hardware value to LogicLevel
-            logic_level = LogicLevel.HIGH if hw_value else LogicLevel.LOW
+            logic_level = (
+                LogicLevel.HIGH
+                if hw_value
+                else LogicLevel.LOW
+            )
 
             # Update state cache
             self._last_input_states[pin] = logic_level
 
-            logger.debug(f"Read pin {pin}: {logic_level.name}")
+            logger.debug(
+                f"Read pin {pin}: {logic_level.name}"
+            )
             return logic_level
 
         except Exception as e:
             raise AjinextekOperationError(
                 f"Failed to read input pin {pin}: {e}",
-                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+                error_code=int(
+                    AjinextekErrorCode.OPERATION_TIMEOUT
+                ),
             ) from e
 
-    async def write_digital_output(self, pin: int, level: LogicLevel) -> None:
+    async def write_digital_output(
+        self, pin: int, level: "LogicLevel"
+    ) -> bool:
         """
         디지털 출력 쓰기
 
@@ -342,7 +400,9 @@ class AjinextekInput(DigitalInputService):
         if not await self.is_connected():
             raise AjinextekHardwareError(
                 "DIO hardware not connected",
-                error_code=int(AjinextekErrorCode.HARDWARE_NOT_CONNECTED),
+                error_code=int(
+                    AjinextekErrorCode.HARDWARE_NOT_CONNECTED
+                ),
             )
 
         validate_channel_number(pin, MAX_OUTPUT_CHANNELS)
@@ -352,7 +412,9 @@ class AjinextekInput(DigitalInputService):
         if pin_mode != PinMode.OUTPUT:
             raise AjinextekChannelError(
                 f"Pin {pin} is not configured as output (current: {pin_mode})",
-                error_code=int(AjinextekErrorCode.CHANNEL_NOT_CONFIGURED),
+                error_code=int(
+                    AjinextekErrorCode.CHANNEL_NOT_CONFIGURED
+                ),
             )
 
         try:
@@ -360,16 +422,22 @@ class AjinextekInput(DigitalInputService):
             hw_value = 1 if level == LogicLevel.HIGH else 0
 
             # Write to hardware (placeholder)
-            success = await self._write_hardware_output(pin, hw_value)
+            success = await self._write_hardware_output(
+                pin, hw_value
+            )
 
             if success:
                 self._last_output_states[pin] = level
-                logger.debug(f"Write pin {pin}: {level.name}")
+                logger.debug(
+                    f"Write pin {pin}: {level.name}"
+                )
                 return True
             else:
                 raise AjinextekOperationError(
                     f"Failed to write output pin {pin}",
-                    error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+                    error_code=int(
+                        AjinextekErrorCode.OPERATION_TIMEOUT
+                    ),
                 )
 
         except AjinextekDIOError:
@@ -377,10 +445,14 @@ class AjinextekInput(DigitalInputService):
         except Exception as e:
             raise AjinextekOperationError(
                 f"Failed to write output pin {pin}: {e}",
-                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+                error_code=int(
+                    AjinextekErrorCode.OPERATION_TIMEOUT
+                ),
             ) from e
 
-    async def read_multiple_inputs(self, pins: List[int]) -> Dict[int, LogicLevel]:
+    async def read_multiple_inputs(
+        self, pins: List[int]
+    ) -> Dict[int, "LogicLevel"]:
         """
         다중 디지털 입력 읽기
 
@@ -394,12 +466,18 @@ class AjinextekInput(DigitalInputService):
 
         results = {}
         for pin in pins:
-            results[pin] = await self.read_digital_input(pin)
+            results[pin] = await self.read_digital_input(
+                pin
+            )
 
-        logger.debug(f"Read multiple inputs: {len(pins)} pins")
+        logger.debug(
+            f"Read multiple inputs: {len(pins)} pins"
+        )
         return results
 
-    async def write_multiple_outputs(self, pin_values: Dict[int, LogicLevel]) -> None:
+    async def write_multiple_outputs(
+        self, pin_values: Dict[int, "LogicLevel"]
+    ) -> bool:
         """
         다중 디지털 출력 쓰기
 
@@ -411,22 +489,31 @@ class AjinextekInput(DigitalInputService):
         """
         # Convert LogicLevel values to integers for validation
         pin_int_values = {
-            pin: (1 if level == LogicLevel.HIGH else 0) for pin, level in pin_values.items()
+            pin: (1 if level == LogicLevel.HIGH else 0)
+            for pin, level in pin_values.items()
         }
-        validate_pin_values(pin_int_values, MAX_OUTPUT_CHANNELS)
+        validate_pin_values(
+            pin_int_values, MAX_OUTPUT_CHANNELS
+        )
 
         try:
             success_count = 0
             for pin, level in pin_values.items():
-                if await self.write_digital_output(pin, level):
+                if await self.write_digital_output(
+                    pin, level
+                ):
                     success_count += 1
 
             all_success = success_count == len(pin_values)
-            logger.debug(f"Write multiple outputs: {success_count}/{len(pin_values)} successful")
+            logger.debug(
+                f"Write multiple outputs: {success_count}/{len(pin_values)} successful"
+            )
             return all_success
 
         except Exception as e:
-            logger.error(f"Error writing multiple outputs: {e}")
+            logger.error(
+                f"Error writing multiple outputs: {e}"
+            )
             return False
 
     async def read_all_inputs(self) -> List[bool]:
@@ -441,17 +528,29 @@ class AjinextekInput(DigitalInputService):
             # Check if channel is configured as input, if not configure it as input
             if channel not in self._pin_configurations:
                 try:
-                    await self.configure_pin(channel, PinMode.INPUT)
+                    await self.configure_pin(
+                        channel, PinMode.INPUT
+                    )
                 except Exception:
                     # If configuration fails, append False as default
                     results.append(False)
                     continue
 
             pin_mode = self._pin_configurations.get(channel)
-            if pin_mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]:
+            if pin_mode in [
+                PinMode.INPUT,
+                PinMode.INPUT_PULLUP,
+                PinMode.INPUT_PULLDOWN,
+            ]:
                 try:
-                    logic_level = await self.read_digital_input(channel)
-                    results.append(logic_level == LogicLevel.HIGH)
+                    logic_level = (
+                        await self.read_digital_input(
+                            channel
+                        )
+                    )
+                    results.append(
+                        logic_level == LogicLevel.HIGH
+                    )
                 except Exception:
                     # If read fails, append False as default
                     results.append(False)
@@ -461,7 +560,9 @@ class AjinextekInput(DigitalInputService):
 
         return results
 
-    async def get_pin_configuration(self) -> Dict[int, PinMode]:
+    async def get_pin_configuration(
+        self,
+    ) -> Dict[int, "PinMode"]:
         """
         현재 핀 설정 상태 조회
 
@@ -470,7 +571,7 @@ class AjinextekInput(DigitalInputService):
         """
         return self._pin_configurations.copy()
 
-    async def reset_all_outputs(self) -> None:
+    async def reset_all_outputs(self) -> bool:
         """
         모든 출력을 LOW로 리셋
 
@@ -478,17 +579,25 @@ class AjinextekInput(DigitalInputService):
             리셋 성공 여부
         """
         output_pins = [
-            pin for pin, mode in self._pin_configurations.items() if mode == PinMode.OUTPUT
+            pin
+            for pin, mode in self._pin_configurations.items()
+            if mode == PinMode.OUTPUT
         ]
 
         if not output_pins:
             return True
 
-        reset_values = {pin: LogicLevel.LOW for pin in output_pins}
-        success = await self.write_multiple_outputs(reset_values)
+        reset_values = {
+            pin: LogicLevel.LOW for pin in output_pins
+        }
+        success = await self.write_multiple_outputs(
+            reset_values
+        )
 
         if success:
-            logger.info(STATUS_MESSAGES["all_outputs_reset"])
+            logger.info(
+                STATUS_MESSAGES["all_outputs_reset"]
+            )
 
         return success
 
@@ -510,22 +619,33 @@ class AjinextekInput(DigitalInputService):
             "input_pins": [
                 pin
                 for pin, mode in self._pin_configurations.items()
-                if mode in [PinMode.INPUT, PinMode.INPUT_PULLUP, PinMode.INPUT_PULLDOWN]
+                if mode
+                in [
+                    PinMode.INPUT,
+                    PinMode.INPUT_PULLUP,
+                    PinMode.INPUT_PULLDOWN,
+                ]
             ],
             "output_pins": [
-                pin for pin, mode in self._pin_configurations.items() if mode == PinMode.OUTPUT
+                pin
+                for pin, mode in self._pin_configurations.items()
+                if mode == PinMode.OUTPUT
             ],
             "last_input_states": {
-                pin: level.name for pin, level in self._last_input_states.items()
+                pin: level.name
+                for pin, level in self._last_input_states.items()
             },
             "last_output_states": {
-                pin: level.name for pin, level in self._last_output_states.items()
+                pin: level.name
+                for pin, level in self._last_output_states.items()
             },
         }
 
         if await self.is_connected():
             try:
-                status["hardware_info"] = await self._get_hardware_info()
+                status["hardware_info"] = (
+                    await self._get_hardware_info()
+                )
                 status["last_error"] = None
             except Exception as e:
                 status["hardware_info"] = None
@@ -558,7 +678,9 @@ class AjinextekInput(DigitalInputService):
 
     async def _detect_modules(self) -> bool:
         """Detect and configure DIO modules (placeholder)"""
-        await asyncio.sleep(0.3)  # Simulate module detection
+        await asyncio.sleep(
+            0.3
+        )  # Simulate module detection
         return True
 
     async def _initialize_default_pins(self) -> None:
@@ -569,7 +691,7 @@ class AjinextekInput(DigitalInputService):
         for pin in range(16, 32):
             await self.configure_pin(pin, PinMode.OUTPUT)
 
-    def _convert_pin_mode(self, mode: PinMode) -> int:
+    def _convert_pin_mode(self, mode: "PinMode") -> int:
         """Convert PinMode enum to hardware-specific value"""
         mode_mapping = {
             PinMode.INPUT: PIN_MODE_INPUT,
@@ -579,9 +701,13 @@ class AjinextekInput(DigitalInputService):
         }
         return mode_mapping.get(mode, PIN_MODE_INPUT)
 
-    async def _configure_hardware_pin(self, pin: int, hw_mode: int) -> bool:
+    async def _configure_hardware_pin(
+        self, pin: int, hw_mode: int
+    ) -> bool:
         """Configure pin in hardware (placeholder)"""
-        await asyncio.sleep(0.01)  # Simulate hardware configuration
+        await asyncio.sleep(
+            0.01
+        )  # Simulate hardware configuration
         return True
 
     async def _read_hardware_input(self, pin: int) -> int:
@@ -590,7 +716,9 @@ class AjinextekInput(DigitalInputService):
         # Return dummy value (would read from actual hardware)
         return 0
 
-    async def _write_hardware_output(self, pin: int, value: int) -> bool:
+    async def _write_hardware_output(
+        self, pin: int, value: int
+    ) -> bool:
         """Write output to hardware (placeholder)"""
         await asyncio.sleep(0.005)  # Simulate write time
         return True

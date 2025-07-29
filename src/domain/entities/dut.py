@@ -4,10 +4,13 @@ Device Under Test (DUT) Entity
 Represents a device being tested in the EOL testing system.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+from domain.exceptions.validation_exceptions import (
+    ValidationException,
+)
 from domain.value_objects.identifiers import DUTId
 from domain.value_objects.time_values import Timestamp
-from domain.exceptions.validation_exceptions import ValidationException
 
 
 class DUT:
@@ -40,44 +43,81 @@ class DUT:
         Raises:
             ValidationException: If required fields are invalid
         """
-        self._validate_required_fields(dut_id, model_number, serial_number, manufacturer)
+        self._validate_required_fields(
+            dut_id,
+            model_number,
+            serial_number,
+            manufacturer,
+        )
 
         self._dut_id = dut_id
         self._model_number = model_number.strip()
         self._serial_number = serial_number.strip()
         self._manufacturer = manufacturer.strip()
-        self._firmware_version = firmware_version.strip() if firmware_version else None
-        self._hardware_revision = hardware_revision.strip() if hardware_revision else None
+        self._firmware_version = (
+            firmware_version.strip()
+            if firmware_version
+            else None
+        )
+        self._hardware_revision = (
+            hardware_revision.strip()
+            if hardware_revision
+            else None
+        )
         self._manufacturing_date = manufacturing_date
         self._specifications = specifications or {}
         self._created_at = Timestamp.now()
 
     def _validate_required_fields(
-        self, dut_id: DUTId, model_number: str, serial_number: str, manufacturer: str
+        self,
+        dut_id: DUTId,
+        model_number: str,
+        serial_number: str,
+        manufacturer: str,
     ) -> None:
         """Validate required fields"""
         if not isinstance(dut_id, DUTId):
-            raise ValidationException("dut_id", dut_id, "DUT ID must be DUTId instance")
+            raise ValidationException(
+                "dut_id",
+                dut_id,
+                "DUT ID must be DUTId instance",
+            )
 
         if not model_number or not model_number.strip():
-            raise ValidationException("model_number", model_number, "Model number is required")
+            raise ValidationException(
+                "model_number",
+                model_number,
+                "Model number is required",
+            )
 
         if not serial_number or not serial_number.strip():
-            raise ValidationException("serial_number", serial_number, "Serial number is required")
+            raise ValidationException(
+                "serial_number",
+                serial_number,
+                "Serial number is required",
+            )
 
         if not manufacturer or not manufacturer.strip():
-            raise ValidationException("manufacturer", manufacturer, "Manufacturer is required")
+            raise ValidationException(
+                "manufacturer",
+                manufacturer,
+                "Manufacturer is required",
+            )
 
         # Model number validation
         if len(model_number.strip()) > 100:
             raise ValidationException(
-                "model_number", model_number, "Model number too long (max 100 characters)"
+                "model_number",
+                model_number,
+                "Model number too long (max 100 characters)",
             )
 
         # Serial number validation
         if len(serial_number.strip()) > 50:
             raise ValidationException(
-                "serial_number", serial_number, "Serial number too long (max 50 characters)"
+                "serial_number",
+                serial_number,
+                "Serial number too long (max 50 characters)",
             )
 
     @property
@@ -125,15 +165,21 @@ class DUT:
         """Get creation timestamp"""
         return self._created_at
 
-    def get_specification(self, key: str, default: Any = None) -> Any:
+    def get_specification(
+        self, key: str, default: Any = None
+    ) -> Any:
         """Get specific specification value"""
         return self._specifications.get(key, default)
 
-    def update_specifications(self, specifications: Dict[str, Any]) -> None:
+    def update_specifications(
+        self, specifications: Dict[str, Any]
+    ) -> None:
         """Update device specifications"""
         if not isinstance(specifications, dict):
             raise ValidationException(
-                "specifications", specifications, "Specifications must be a dictionary"
+                "specifications",
+                specifications,
+                "Specifications must be a dictionary",
             )
 
         self._specifications.update(specifications)
@@ -152,7 +198,9 @@ class DUT:
             "firmware_version": self._firmware_version,
             "hardware_revision": self._hardware_revision,
             "manufacturing_date": (
-                self._manufacturing_date.to_iso() if self._manufacturing_date else None
+                self._manufacturing_date.to_iso()
+                if self._manufacturing_date
+                else None
             ),
             "specifications": self._specifications,
             "created_at": self._created_at.to_iso(),
@@ -163,7 +211,9 @@ class DUT:
         """Create DUT from dictionary representation"""
         manufacturing_date = None
         if data.get("manufacturing_date"):
-            manufacturing_date = Timestamp.from_iso(data["manufacturing_date"])
+            manufacturing_date = Timestamp.from_iso(
+                data["manufacturing_date"]
+            )
 
         return cls(
             dut_id=DUTId(data["dut_id"]),

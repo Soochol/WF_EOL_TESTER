@@ -4,17 +4,23 @@ Help Command
 Provides help and documentation for all available commands.
 """
 
-from typing import List, Dict
+from typing import Dict, List
+
 from ui.cli.commands.base import Command, CommandResult
 
 
 class HelpCommand(Command):
     """Command for displaying help information"""
 
-    def __init__(self):
-        super().__init__(name="help", description="Show help information for commands")
+    def __init__(self) -> None:
+        super().__init__(
+            name="help",
+            description="Show help information for commands",
+        )
 
-    async def execute(self, args: List[str]) -> CommandResult:
+    async def execute(
+        self, args: List[str]
+    ) -> CommandResult:
         """
         Execute help command
 

@@ -8,6 +8,7 @@ Replaces the complex dependency injection system.
 from typing import Any, Dict
 
 # Conditional logging import
+logger: Any
 try:
     from loguru import logger
 except ImportError:
@@ -68,7 +69,9 @@ class ServiceFactory:
     """하드웨어 서비스 팩토리"""
 
     @staticmethod
-    def create_loadcell_service(config: Dict[str, Any]) -> LoadCellService:
+    def create_loadcell_service(
+        config: Dict[str, Any],
+    ) -> LoadCellService:
         """
         LoadCell 서비스 생성
 
@@ -81,18 +84,28 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "bs205")).lower()
+        hw_type = config.get(
+            "model", config.get("type", "bs205")
+        ).lower()
 
         if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
-            logger.info("Creating Mock LoadCell service (base: 10.0N)")
+            logger.info(
+                "Creating Mock LoadCell service (base: 10.0N)"
+            )
             return MockLoadCell(
-                mock_values=[], base_force=10.0, noise_level=0.1, connection_delay=0.1
+                mock_values=[],
+                base_force=10.0,
+                noise_level=0.1,
+                connection_delay=0.1,
             )
 
         if hw_type == "bs205":
             # BS205 실제 하드웨어
-            logger.info("Creating BS205 LoadCell service on %s", config.get("port", "COM3"))
+            logger.info(
+                "Creating BS205 LoadCell service on %s",
+                config.get("port", "COM3"),
+            )
             return BS205LoadCell(
                 port=config.get("port", "COM3"),
                 baudrate=config.get("baudrate", 9600),
@@ -100,10 +113,14 @@ class ServiceFactory:
                 indicator_id=config.get("indicator_id", 1),
             )
 
-        raise ValueError(f"Unsupported loadcell type: {hw_type}")
+        raise ValueError(
+            f"Unsupported loadcell type: {hw_type}"
+        )
 
     @staticmethod
-    def create_power_service(config: Dict[str, Any]) -> PowerService:
+    def create_power_service(
+        config: Dict[str, Any],
+    ) -> PowerService:
         """
         Power 서비스 생성
 
@@ -116,11 +133,15 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "oda")).lower()
+        hw_type = config.get(
+            "model", config.get("type", "oda")
+        ).lower()
 
         if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
-            logger.info("Creating Mock Power service (30.0V/5.0A)")
+            logger.info(
+                "Creating Mock Power service (30.0V/5.0A)"
+            )
             return MockPower(
                 max_voltage=30.0,
                 max_current=5.0,
@@ -143,10 +164,14 @@ class ServiceFactory:
                 channel=config.get("channel", 1),
             )
 
-        raise ValueError(f"Unsupported power supply type: {hw_type}")
+        raise ValueError(
+            f"Unsupported power supply type: {hw_type}"
+        )
 
     @staticmethod
-    def create_mcu_service(config: Dict[str, Any]) -> MCUService:
+    def create_mcu_service(
+        config: Dict[str, Any],
+    ) -> MCUService:
         """
         MCU 서비스 생성
 
@@ -159,16 +184,27 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "lma")).lower()
+        hw_type = config.get(
+            "model", config.get("type", "lma")
+        ).lower()
 
         if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
-            logger.info("Creating Mock MCU service (initial: 25.0°C)")
-            return MockMCU(initial_temperature=25.0, temperature_drift_rate=0.1, response_delay=0.1)
+            logger.info(
+                "Creating Mock MCU service (initial: 25.0°C)"
+            )
+            return MockMCU(
+                initial_temperature=25.0,
+                temperature_drift_rate=0.1,
+                response_delay=0.1,
+            )
 
         if hw_type == "lma":
             # LMA 실제 하드웨어
-            logger.info("Creating LMA MCU service on %s", config.get("port", "COM4"))
+            logger.info(
+                "Creating LMA MCU service on %s",
+                config.get("port", "COM4"),
+            )
             return LMAMCU(
                 port=config.get("port", "COM4"),
                 baudrate=config.get("baudrate", 115200),
@@ -178,7 +214,9 @@ class ServiceFactory:
         raise ValueError(f"Unsupported MCU type: {hw_type}")
 
     @staticmethod
-    def create_digital_input_service(config: Dict[str, Any]) -> DigitalInputService:
+    def create_digital_input_service(
+        config: Dict[str, Any],
+    ) -> DigitalInputService:
         """
         Digital Input 서비스 생성
 
@@ -191,33 +229,51 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "ajinextek")).lower()
+        hw_type = config.get(
+            "model", config.get("type", "ajinextek")
+        ).lower()
 
         if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
-            logger.info("Creating Mock Digital Input service (32 pins)")
+            logger.info(
+                "Creating Mock Digital Input service (32 pins)"
+            )
             return MockInput(
-                total_pins=32, simulate_noise=False, noise_probability=0.01, response_delay_ms=5.0
+                total_pins=32,
+                simulate_noise=False,
+                noise_probability=0.01,
+                response_delay_ms=5.0,
             )
 
         if hw_type == "ajinextek":
             # Ajinextek DIO 실제 하드웨어
             logger.info(
-                "Creating Ajinextek Digital Input service on board %s", config.get("board_no", 0)
+                "Creating Ajinextek Digital Input service on board %s",
+                config.get("board_no", 0),
             )
             return AjinextekInput(
                 board_number=config.get("board_no", 0),
-                module_position=config.get("module_position", 0),
+                module_position=config.get(
+                    "module_position", 0
+                ),
                 signal_type=config.get("signal_type", 2),
-                debounce_time_ms=int(config.get("debounce_time", 0.01) * 1000),
+                debounce_time_ms=int(
+                    config.get("debounce_time", 0.01) * 1000
+                ),
                 retry_count=config.get("retry_count", 3),
-                auto_initialize=config.get("auto_initialize", True),
+                auto_initialize=config.get(
+                    "auto_initialize", True
+                ),
             )
 
-        raise ValueError(f"Unsupported digital input hardware type: {hw_type}")
+        raise ValueError(
+            f"Unsupported digital input hardware type: {hw_type}"
+        )
 
     @staticmethod
-    def create_robot_service(config: Dict[str, Any]) -> RobotService:
+    def create_robot_service(
+        config: Dict[str, Any],
+    ) -> RobotService:
         """
         Robot 서비스 생성
 
@@ -230,18 +286,28 @@ class ServiceFactory:
         Raises:
             ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "ajinextek")).lower()
+        hw_type = config.get(
+            "model", config.get("type", "ajinextek")
+        ).lower()
 
         if hw_type == "mock":
             # Mock 서비스 (하드코딩된 설정 사용)
-            logger.info("Creating Mock Robot service (6 axes)")
+            logger.info(
+                "Creating Mock Robot service (6 axes)"
+            )
             return MockRobot(
-                axis_count=6, max_position=1000.0, default_velocity=100.0, response_delay=0.1
+                axis_count=6,
+                max_position=1000.0,
+                default_velocity=100.0,
+                response_delay=0.1,
             )
 
         if hw_type == "ajinextek":
             # AJINEXTEK 실제 하드웨어
-            logger.info("Creating AJINEXTEK Robot service (IRQ: %s)", config.get("irq_no", 7))
+            logger.info(
+                "Creating AJINEXTEK Robot service (IRQ: %s)",
+                config.get("irq_no", 7),
+            )
             return AjinextekRobot(
                 # Hardware model
                 model=config.get("model", "AJINEXTEK"),
@@ -249,4 +315,6 @@ class ServiceFactory:
                 irq_no=config.get("irq_no", 7),
             )
 
-        raise ValueError(f"Unsupported robot hardware type: {hw_type}")
+        raise ValueError(
+            f"Unsupported robot hardware type: {hw_type}"
+        )

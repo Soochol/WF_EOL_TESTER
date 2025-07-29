@@ -100,25 +100,44 @@ async def main() -> None:
         test_result_repository = JsonResultRepository()
 
         # Load hardware configuration from YAML file
-        logger.info("Loading hardware configuration from hardware.yaml...")
-        hardware_config = await yaml_configuration.load_hardware_config()
+        logger.info(
+            "Loading hardware configuration from hardware.yaml..."
+        )
+        hardware_config = (
+            await yaml_configuration.load_hardware_config()
+        )
         hardware_config_dict = hardware_config.to_dict()
 
         # Create hardware services with loaded configuration
-        robot_service = ServiceFactory.create_robot_service(hardware_config_dict["robot"])
-        mcu_service = ServiceFactory.create_mcu_service(hardware_config_dict["mcu"])
-        loadcell_service = ServiceFactory.create_loadcell_service(hardware_config_dict["loadcell"])
-        power_service = ServiceFactory.create_power_service(hardware_config_dict["power"])
-        digital_input_service = ServiceFactory.create_digital_input_service(
-            hardware_config_dict["digital_input"]
+        robot_service = ServiceFactory.create_robot_service(
+            hardware_config_dict["robot"]
+        )
+        mcu_service = ServiceFactory.create_mcu_service(
+            hardware_config_dict["mcu"]
+        )
+        loadcell_service = (
+            ServiceFactory.create_loadcell_service(
+                hardware_config_dict["loadcell"]
+            )
+        )
+        power_service = ServiceFactory.create_power_service(
+            hardware_config_dict["power"]
+        )
+        digital_input_service = (
+            ServiceFactory.create_digital_input_service(
+                hardware_config_dict["digital_input"]
+            )
         )
 
         # Create services
         configuration_service = ConfigurationService(
-            configuration=yaml_configuration, profile_preference=profile_preference
+            configuration=yaml_configuration,
+            profile_preference=profile_preference,
         )
 
-        test_result_service = RepositoryService(test_repository=test_result_repository)
+        test_result_service = RepositoryService(
+            test_repository=test_result_repository
+        )
 
         # Create individual business services
         exception_handler = ExceptionHandler()

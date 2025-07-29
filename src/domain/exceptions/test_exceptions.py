@@ -4,14 +4,22 @@ Test Execution Domain Exceptions
 Contains exceptions related to test execution business rules and constraints.
 """
 
-from typing import Dict, Any, Optional, List
-from domain.exceptions.domain_exceptions import DomainException
+from typing import Any, Dict, List, Optional
+
+from domain.exceptions.domain_exceptions import (
+    DomainException,
+)
 
 
 class TestExecutionException(DomainException):
     """Base exception for test execution business rule violations"""
 
-    def __init__(self, message: str, test_id: str = None, details: Dict[str, Any] = None):
+    def __init__(
+        self,
+        message: str,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize test execution exception
 
@@ -32,8 +40,8 @@ class InvalidTestStateException(TestExecutionException):
         current_state: str,
         required_state: str,
         operation: str,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize invalid test state exception
@@ -56,7 +64,9 @@ class InvalidTestStateException(TestExecutionException):
             }
         )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.current_state = current_state
         self.required_state = required_state
         self.operation = operation
@@ -69,9 +79,9 @@ class TestSequenceException(TestExecutionException):
         self,
         step_name: str,
         sequence_violation: str,
-        expected_previous_step: str = None,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        expected_previous_step: Optional[str] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize test sequence exception
@@ -97,13 +107,17 @@ class TestSequenceException(TestExecutionException):
             }
         )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.step_name = step_name
         self.sequence_violation = sequence_violation
         self.expected_previous_step = expected_previous_step
 
 
-class MeasurementValidationException(TestExecutionException):
+class MeasurementValidationException(
+    TestExecutionException
+):
     """Exception raised when measurement validation violates business rules"""
 
     def __init__(
@@ -111,9 +125,9 @@ class MeasurementValidationException(TestExecutionException):
         measurement_type: str,
         measured_value: float,
         validation_failure: str,
-        expected_range: Dict[str, float] = None,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        expected_range: Optional[Dict[str, float]] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize measurement validation exception
@@ -142,7 +156,9 @@ class MeasurementValidationException(TestExecutionException):
             }
         )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.measurement_type = measurement_type
         self.measured_value = measured_value
         self.validation_failure = validation_failure
@@ -156,8 +172,8 @@ class TestTimeoutException(TestExecutionException):
         self,
         step_name: str,
         timeout_seconds: float,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize test timeout exception
@@ -171,9 +187,16 @@ class TestTimeoutException(TestExecutionException):
         message = f"Test step '{step_name}' timed out after {timeout_seconds} seconds"
 
         exception_details = details or {}
-        exception_details.update({"step_name": step_name, "timeout_seconds": timeout_seconds})
+        exception_details.update(
+            {
+                "step_name": step_name,
+                "timeout_seconds": timeout_seconds,
+            }
+        )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.step_name = step_name
         self.timeout_seconds = timeout_seconds
 
@@ -185,10 +208,10 @@ class TestResourceException(TestExecutionException):
         self,
         resource_type: str,
         resource_issue: str,
-        required_resources: List[str] = None,
-        available_resources: List[str] = None,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        required_resources: Optional[List[str]] = None,
+        available_resources: Optional[List[str]] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize test resource exception
@@ -204,9 +227,13 @@ class TestResourceException(TestExecutionException):
         message = f"Test resource issue with {resource_type}: {resource_issue}"
 
         if required_resources and available_resources:
-            missing = set(required_resources) - set(available_resources)
+            missing = set(required_resources) - set(
+                available_resources
+            )
             if missing:
-                message += f". Missing resources: {list(missing)}"
+                message += (
+                    f". Missing resources: {list(missing)}"
+                )
 
         exception_details = details or {}
         exception_details.update(
@@ -218,7 +245,9 @@ class TestResourceException(TestExecutionException):
             }
         )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.resource_type = resource_type
         self.resource_issue = resource_issue
         self.required_resources = required_resources
@@ -233,8 +262,8 @@ class TestDataException(TestExecutionException):
         data_type: str,
         data_issue: str,
         invalid_data: Any = None,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize test data exception
@@ -247,18 +276,22 @@ class TestDataException(TestExecutionException):
             details: Additional data context
         """
         if invalid_data is not None:
-            message = (
-                f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
-            )
+            message = f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
         else:
             message = f"Test data issue with {data_type}: {data_issue}"
 
         exception_details = details or {}
         exception_details.update(
-            {"data_type": data_type, "data_issue": data_issue, "invalid_data": invalid_data}
+            {
+                "data_type": data_type,
+                "data_issue": data_issue,
+                "invalid_data": invalid_data,
+            }
         )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.data_type = data_type
         self.data_issue = data_issue
         self.invalid_data = invalid_data
@@ -272,9 +305,9 @@ class TestCriteriaException(TestExecutionException):
         criteria_type: str,
         criteria_violation: str,
         actual_value: Any = None,
-        expected_criteria: Dict[str, Any] = None,
-        test_id: str = None,
-        details: Dict[str, Any] = None,
+        expected_criteria: Optional[Dict[str, Any]] = None,
+        test_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize test criteria exception
@@ -302,7 +335,9 @@ class TestCriteriaException(TestExecutionException):
             }
         )
 
-        super().__init__(message, test_id, exception_details)
+        super().__init__(
+            message, test_id, exception_details
+        )
         self.criteria_type = criteria_type
         self.criteria_violation = criteria_violation
         self.actual_value = actual_value

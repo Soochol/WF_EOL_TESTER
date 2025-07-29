@@ -5,11 +5,14 @@ Business service for evaluating test measurements against pass criteria.
 Uses Exception First principles for error handling.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from domain.exceptions import TestEvaluationError, create_test_evaluation_error
+from domain.exceptions import (
+    create_test_evaluation_error,
+    TestEvaluationError,
+)
 from domain.value_objects.pass_criteria import PassCriteria
 
 
@@ -21,12 +24,13 @@ class TestResultEvaluator:
     test measurements pass or fail based on configured criteria.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the test result evaluator"""
-        ...
 
     async def evaluate_measurements(
-        self, measurements: Dict[str, Any], criteria: PassCriteria
+        self,
+        measurements: Dict[str, Any],
+        criteria: PassCriteria,
     ) -> None:
         """
         Evaluate measurement results against pass criteria
@@ -40,22 +44,33 @@ class TestResultEvaluator:
             ValueError: If measurements or criteria are invalid
         """
         if not measurements:
-            logger.warning("No measurements provided for evaluation")
-            raise create_test_evaluation_error([{"error": "No measurements to evaluate"}], 0)
+            logger.warning(
+                "No measurements provided for evaluation"
+            )
+            raise create_test_evaluation_error(
+                [{"error": "No measurements to evaluate"}],
+                0,
+            )
 
         if not criteria:
-            logger.error("No pass criteria provided for evaluation")
+            logger.error(
+                "No pass criteria provided for evaluation"
+            )
             raise ValueError("Pass criteria cannot be None")
 
         failed_points = []
         total_points = 0
 
-        logger.info(f"Starting evaluation of {len(measurements)} measurement entries")
+        logger.info(
+            f"Starting evaluation of {len(measurements)} measurement entries"
+        )
 
         for key, measurement in measurements.items():
             # Skip non-measurement entries
             if not isinstance(measurement, dict):
-                logger.debug(f"Skipping non-dict entry: {key}")
+                logger.debug(
+                    f"Skipping non-dict entry: {key}"
+                )
                 continue
 
             # Extract measurement data
@@ -65,12 +80,23 @@ class TestResultEvaluator:
 
             # Extract numeric values from value objects
             temperature = (
-                temperature_obj.value if hasattr(temperature_obj, "value") else temperature_obj
+                temperature_obj.value
+                if temperature_obj is not None
+                and hasattr(temperature_obj, "value")
+                else temperature_obj
             )
-            force = force_obj.value if hasattr(force_obj, "value") else force_obj
+            force = (
+                force_obj.value
+                if force_obj is not None
+                and hasattr(force_obj, "value")
+                else force_obj
+            )
 
             # Validate measurement completeness
-            if any(val is None for val in [temperature, stroke, force]):
+            if any(
+                val is None
+                for val in [temperature, stroke, force]
+            ):
                 warning_msg = f"Incomplete measurement data in {key}: temp={temperature}, stroke={stroke}, force={force}"
                 logger.warning(warning_msg)
                 failed_points.append(
@@ -85,12 +111,48 @@ class TestResultEvaluator:
                 )
                 continue
 
+            # Type guard: ensure values are floats
+            if not all(
+                isinstance(val, (int, float))
+                for val in [temperature, stroke, force]
+            ):
+                warning_msg = f"Invalid measurement data types in {key}: temp={type(temperature)}, stroke={type(stroke)}, force={type(force)}"
+                logger.warning(warning_msg)
+                failed_points.append(
+                    {
+                        "key": key,
+                        "error": "invalid_data_types",
+                        "message": warning_msg,
+                        "temperature": temperature,
+                        "stroke": stroke,
+                        "force": force,
+                    }
+                )
+                continue
+
+            # MyPy type guards: assert values are numeric after validation
+            assert isinstance(
+                temperature, (int, float)
+            ), "Temperature must be numeric"
+            assert isinstance(
+                stroke, (int, float)
+            ), "Stroke must be numeric"
+            assert isinstance(
+                force, (int, float)
+            ), "Force must be numeric"
+
             total_points += 1
 
             try:
                 # Evaluate this measurement point
-                evaluation_result = await self._evaluate_single_point(
-                    key, temperature, stroke, force, criteria
+                evaluation_result = (
+                    await self._evaluate_single_point(
+                        key,
+                        temperature,
+                        stroke,
+                        force,
+                        criteria,
+                    )
                 )
 
                 if not evaluation_result["passed"]:
@@ -125,16 +187,25 @@ class TestResultEvaluator:
                     )
 
             if len(failed_points) > 3:
-                logger.warning(f"  ... and {len(failed_points) - 3} more failures")
+                logger.warning(
+                    f"  ... and {len(failed_points) - 3} more failures"
+                )
 
-            raise create_test_evaluation_error(failed_points, total_points)
-        
+            raise create_test_evaluation_error(
+                failed_points, total_points
+            )
+
         logger.info(
             f"✅ Evaluation PASSED: All {total_points} measurements within specification limits"
         )
 
     async def _evaluate_single_point(
-        self, key: str, temperature: float, stroke: float, force: float, criteria: PassCriteria
+        self,
+        key: str,
+        temperature: float,
+        stroke: float,
+        force: float,
+        criteria: PassCriteria,
     ) -> Dict[str, Any]:
         """
         Evaluate a single measurement point against criteria
@@ -151,10 +222,16 @@ class TestResultEvaluator:
         """
         try:
             # Get interpolated force limits for this temperature-stroke point
-            lower_limit, upper_limit = criteria.get_force_limits_at_point(temperature, stroke)
+            lower_limit, upper_limit = (
+                criteria.get_force_limits_at_point(
+                    temperature, stroke
+                )
+            )
 
             # Check if measured force is within interpolated limits
-            force_within_limits = lower_limit <= force <= upper_limit
+            force_within_limits = (
+                lower_limit <= force <= upper_limit
+            )
 
             if force_within_limits:
                 logger.debug(
@@ -169,35 +246,43 @@ class TestResultEvaluator:
                     "lower_limit": lower_limit,
                     "upper_limit": upper_limit,
                 }
-            else:
-                failure_msg = f"Force {force}N outside limits [{lower_limit:.2f}, {upper_limit:.2f}]N at {temperature}°C, {stroke}mm"
-                logger.warning(f"❌ {key}: {failure_msg}")
 
-                return {
-                    "key": key,
-                    "passed": False,
-                    "error": "force_out_of_range",
-                    "message": failure_msg,
-                    "temperature": temperature,
-                    "stroke": stroke,
-                    "force": force,
-                    "lower_limit": lower_limit,
-                    "upper_limit": upper_limit,
-                    "deviation": {
-                        "from_lower": force - lower_limit,
-                        "from_upper": force - upper_limit,
-                        "percentage_lower": (
-                            ((force - lower_limit) / lower_limit * 100)
-                            if lower_limit != 0
-                            else float("inf")
-                        ),
-                        "percentage_upper": (
-                            ((force - upper_limit) / upper_limit * 100)
-                            if upper_limit != 0
-                            else float("inf")
-                        ),
-                    },
-                }
+            failure_msg = f"Force {force}N outside limits [{lower_limit:.2f}, {upper_limit:.2f}]N at {temperature}°C, {stroke}mm"
+            logger.warning(f"❌ {key}: {failure_msg}")
+
+            return {
+                "key": key,
+                "passed": False,
+                "error": "force_out_of_range",
+                "message": failure_msg,
+                "temperature": temperature,
+                "stroke": stroke,
+                "force": force,
+                "lower_limit": lower_limit,
+                "upper_limit": upper_limit,
+                "deviation": {
+                    "from_lower": force - lower_limit,
+                    "from_upper": force - upper_limit,
+                    "percentage_lower": (
+                        (
+                            (force - lower_limit)
+                            / lower_limit
+                            * 100
+                        )
+                        if lower_limit != 0
+                        else float("inf")
+                    ),
+                    "percentage_upper": (
+                        (
+                            (force - upper_limit)
+                            / upper_limit
+                            * 100
+                        )
+                        if upper_limit != 0
+                        else float("inf")
+                    ),
+                },
+            }
 
         except Exception as e:
             error_msg = f"Failed to get force limits for {temperature}°C, {stroke}mm: {e}"
@@ -215,7 +300,11 @@ class TestResultEvaluator:
             }
 
     async def get_evaluation_summary(
-        self, measurements: Dict[str, Any], test_evaluation_error: TestEvaluationError = None
+        self,
+        measurements: Dict[str, Any],
+        test_evaluation_error: Optional[
+            TestEvaluationError
+        ] = None,
     ) -> Dict[str, Any]:
         """
         Generate a comprehensive evaluation summary
@@ -227,20 +316,30 @@ class TestResultEvaluator:
         Returns:
             Dictionary containing evaluation summary statistics
         """
-        total_measurements = len([m for m in measurements.values() if isinstance(m, dict)])
+        total_measurements = len(
+            [
+                m
+                for m in measurements.values()
+                if isinstance(m, dict)
+            ]
+        )
 
         if test_evaluation_error:
-            failed_points = test_evaluation_error.failed_points
+            failed_points = (
+                test_evaluation_error.failed_points
+            )
             failed_count = len(failed_points)
             passed_count = total_measurements - failed_count
 
             # Categorize failures by type
-            failure_categories = {}
+            failure_categories: Dict[str, Any] = {}
             for failure in failed_points:
                 error_type = failure.get("error", "unknown")
                 if error_type not in failure_categories:
                     failure_categories[error_type] = []
-                failure_categories[error_type].append(failure)
+                failure_categories[error_type].append(
+                    failure
+                )
         else:
             failed_points = []
             failed_count = 0
@@ -248,7 +347,11 @@ class TestResultEvaluator:
             failure_categories = {}
 
         # Calculate statistics
-        pass_rate = (passed_count / total_measurements * 100) if total_measurements > 0 else 0
+        pass_rate = (
+            (passed_count / total_measurements * 100)
+            if total_measurements > 0
+            else 0
+        )
 
         summary = {
             "overall_passed": failed_count == 0,
@@ -257,7 +360,8 @@ class TestResultEvaluator:
             "failed_count": failed_count,
             "pass_rate_percentage": round(pass_rate, 2),
             "failure_categories": {
-                category: len(failures) for category, failures in failure_categories.items()
+                category: len(failures)
+                for category, failures in failure_categories.items()
             },
             "detailed_failures": failed_points,
         }

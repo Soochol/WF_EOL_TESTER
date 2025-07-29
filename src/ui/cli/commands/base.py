@@ -6,8 +6,8 @@ Abstract base classes for the command pattern implementation.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class CommandStatus(Enum):
@@ -28,22 +28,38 @@ class CommandResult:
     data: Optional[Dict[str, Any]] = None
 
     @classmethod
-    def success(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
+    def success(
+        cls,
+        message: str,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> "CommandResult":
         """Create success result"""
         return cls(CommandStatus.SUCCESS, message, data)
 
     @classmethod
-    def error(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
+    def error(
+        cls,
+        message: str,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> "CommandResult":
         """Create error result"""
         return cls(CommandStatus.ERROR, message, data)
 
     @classmethod
-    def warning(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
+    def warning(
+        cls,
+        message: str,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> "CommandResult":
         """Create warning result"""
         return cls(CommandStatus.WARNING, message, data)
 
     @classmethod
-    def info(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "CommandResult":
+    def info(
+        cls,
+        message: str,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> "CommandResult":
         """Create info result"""
         return cls(CommandStatus.INFO, message, data)
 
@@ -68,7 +84,9 @@ class Command(ABC):
         self.description = description
 
     @abstractmethod
-    async def execute(self, args: List[str]) -> CommandResult:
+    async def execute(
+        self, args: List[str]
+    ) -> CommandResult:
         """
         Execute the command with given arguments
 
@@ -103,12 +121,17 @@ class Command(ABC):
         if subcommands:
             help_text += "\nSubcommands:\n"
             for subcmd, desc in subcommands.items():
-                help_text += f"  /{self.name} {subcmd} - {desc}\n"
+                help_text += (
+                    f"  /{self.name} {subcmd} - {desc}\n"
+                )
 
         return help_text
 
     def validate_args(
-        self, args: List[str], min_args: int = 0, max_args: Optional[int] = None
+        self,
+        args: List[str],
+        min_args: int = 0,
+        max_args: Optional[int] = None,
     ) -> bool:
         """
         Validate command arguments

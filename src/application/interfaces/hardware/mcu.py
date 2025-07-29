@@ -5,9 +5,14 @@ Interface for MCU (Microcontroller Unit) operations and control.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
-from domain.value_objects.hardware_configuration import MCUConfig
-from infrastructure.implementation.hardware.mcu.lma.types import TestMode
+from typing import Any, Dict
+
+from domain.value_objects.hardware_configuration import (
+    MCUConfig,
+)
+from infrastructure.implementation.hardware.mcu.lma.types import (
+    TestMode,
+)
 
 
 class MCUService(ABC):
@@ -24,7 +29,6 @@ class MCUService(ABC):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        ...
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -67,7 +71,9 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_temperature(self, target_temp: float) -> None:
+    async def set_temperature(
+        self, target_temp: float
+    ) -> None:
         """
         Set target temperature for the MCU
 
@@ -80,7 +86,9 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_upper_temperature(self, upper_temp: float) -> None:
+    async def set_upper_temperature(
+        self, upper_temp: float
+    ) -> None:
         """
         Set upper temperature limit for the MCU
 
@@ -126,7 +134,9 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_fan_speed(self, speed_percent: float) -> None:
+    async def set_fan_speed(
+        self, speed_percent: float
+    ) -> None:
         """
         Set fan speed percentage
 
@@ -150,14 +160,17 @@ class MCUService(ABC):
 
     @abstractmethod
     async def start_standby_heating(
-        self, operating_temp: float, standby_temp: float, hold_time_ms: int = 10000
+        self,
+        operating_temp: float,
+        standby_temp: float,
+        hold_time_ms: int = 10000,
     ) -> None:
         """
         Start standby heating mode
 
         Args:
             operating_temp: Operating temperature in Celsius
-            standby_temp: Standby temperature in Celsius  
+            standby_temp: Standby temperature in Celsius
             hold_time_ms: Hold time in milliseconds
 
         Raises:
@@ -173,5 +186,3 @@ class MCUService(ABC):
         Raises:
             HardwareOperationError: If cooling start fails
         """
-        ...
-

@@ -5,9 +5,14 @@ Abstract interface for configuration management in the application layer.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
-from domain.value_objects.test_configuration import TestConfiguration
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from typing import Any, Dict, List, Optional
+
+from domain.value_objects.hardware_configuration import (
+    HardwareConfiguration,
+)
+from domain.value_objects.test_configuration import (
+    TestConfiguration,
+)
 
 
 class Configuration(ABC):
@@ -20,7 +25,9 @@ class Configuration(ABC):
     """
 
     @abstractmethod
-    async def load_profile(self, profile_name: str) -> TestConfiguration:
+    async def load_profile(
+        self, profile_name: str
+    ) -> TestConfiguration:
         """
         Load a configuration profile by name
 
@@ -38,7 +45,9 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def load_hardware_config(self) -> HardwareConfiguration:
+    async def load_hardware_config(
+        self,
+    ) -> HardwareConfiguration:
         """
         Load hardware configuration from fixed hardware.yaml file
 
@@ -52,7 +61,9 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def validate_configuration(self, config: TestConfiguration) -> None:
+    async def validate_configuration(
+        self, config: TestConfiguration
+    ) -> None:
         """
         Validate a configuration object against business rules
 
@@ -67,7 +78,9 @@ class Configuration(ABC):
 
     @abstractmethod
     async def merge_configurations(
-        self, base: TestConfiguration, override: Dict[str, Any]
+        self,
+        base: TestConfiguration,
+        override: Dict[str, Any],
     ) -> TestConfiguration:
         """
         Merge base configuration with runtime overrides
@@ -96,7 +109,9 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def get_profile_info(self, profile_name: str) -> Dict[str, Any]:
+    async def get_profile_info(
+        self, profile_name: str
+    ) -> Dict[str, Any]:
         """
         Get metadata information about a configuration profile
 
@@ -112,7 +127,9 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
+    async def save_profile(
+        self, profile_name: str, config: TestConfiguration
+    ) -> None:
         """
         Save a configuration as a named profile
 
@@ -127,7 +144,9 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def delete_profile(self, profile_name: str) -> None:
+    async def delete_profile(
+        self, profile_name: str
+    ) -> None:
         """
         Delete a configuration profile
 
@@ -142,7 +161,10 @@ class Configuration(ABC):
 
     @abstractmethod
     async def create_profile_from_template(
-        self, template_name: str, new_profile_name: str, customizations: Dict[str, Any] = None
+        self,
+        template_name: str,
+        new_profile_name: str,
+        customizations: Optional[Dict[str, Any]] = None,
     ) -> TestConfiguration:
         """
         Create a new profile based on an existing template
@@ -161,10 +183,10 @@ class Configuration(ABC):
         """
         ...
 
-
-
     @abstractmethod
-    async def get_default_configuration(self) -> TestConfiguration:
+    async def get_default_configuration(
+        self,
+    ) -> TestConfiguration:
         """
         Get the default configuration
 
@@ -175,7 +197,9 @@ class Configuration(ABC):
 
     @abstractmethod
     async def validate_profile_compatibility(
-        self, profile_name: str, system_version: str = None
+        self,
+        profile_name: str,
+        system_version: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Validate if a profile is compatible with current system
@@ -190,4 +214,3 @@ class Configuration(ABC):
         Raises:
             MissingConfigurationException: If profile does not exist
         """
-        ...

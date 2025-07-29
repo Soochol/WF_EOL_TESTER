@@ -4,11 +4,17 @@ Base Domain Exceptions
 Contains the base exception classes for domain-related errors.
 """
 
+from typing import Any, Dict, Optional
+
 
 class DomainException(Exception):
     """Base exception for all domain-related errors"""
 
-    def __init__(self, message: str, details: dict = None):
+    def __init__(
+        self,
+        message: str,
+        details: Optional[Dict[Any, Any]] = None,
+    ) -> None:
         """
         Initialize domain exception
 
@@ -22,6 +28,8 @@ class DomainException(Exception):
 
     def __str__(self) -> str:
         if self.details:
-            details_str = ", ".join(f"{k}={v}" for k, v in self.details.items())
+            details_str = ", ".join(
+                f"{k}={v}" for k, v in self.details.items()
+            )
             return f"{self.message} ({details_str})"
         return self.message

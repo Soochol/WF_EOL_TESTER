@@ -5,7 +5,8 @@ Parser for handling slash command input and routing to appropriate command handl
 """
 
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.base import Command, CommandResult
@@ -21,12 +22,16 @@ class SlashCommandParser:
     - /hardware status
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize parser with empty command registry"""
         self._commands: Dict[str, Command] = {}
         self._aliases: Dict[str, str] = {}
 
-    def register_command(self, command: Command, aliases: Optional[List[str]] = None) -> None:
+    def register_command(
+        self,
+        command: Command,
+        aliases: Optional[List[str]] = None,
+    ) -> None:
         """
         Register a command with the parser
 
@@ -42,7 +47,9 @@ class SlashCommandParser:
 
         logger.debug(f"Registered command: /{command.name}")
 
-    def parse_input(self, user_input: str) -> Tuple[Optional[str], List[str]]:
+    def parse_input(
+        self, user_input: str
+    ) -> Tuple[Optional[str], List[str]]:
         """
         Parse user input into command name and arguments
 
@@ -73,7 +80,9 @@ class SlashCommandParser:
 
         return command_name, args
 
-    async def execute_command(self, user_input: str) -> CommandResult:
+    async def execute_command(
+        self, user_input: str
+    ) -> CommandResult:
         """
         Parse and execute a command from user input
 
@@ -86,20 +95,30 @@ class SlashCommandParser:
         command_name, args = self.parse_input(user_input)
 
         if not command_name:
-            return CommandResult.error("Invalid command format. Commands must start with '/'")
+            return CommandResult.error(
+                "Invalid command format. Commands must start with '/'"
+            )
 
         if command_name not in self._commands:
-            return CommandResult.error(f"Unknown command: /{command_name}")
+            return CommandResult.error(
+                f"Unknown command: /{command_name}"
+            )
 
         try:
             command = self._commands[command_name]
             result = await command.execute(args)
-            logger.debug(f"Command /{command_name} executed with status: {result.status}")
+            logger.debug(
+                f"Command /{command_name} executed with status: {result.status}"
+            )
             return result
 
         except Exception as e:
-            logger.error(f"Error executing command /{command_name}: {e}")
-            return CommandResult.error(f"Command execution failed: {str(e)}")
+            logger.error(
+                f"Error executing command /{command_name}: {e}"
+            )
+            return CommandResult.error(
+                f"Command execution failed: {str(e)}"
+            )
 
     def get_all_commands(self) -> Dict[str, Command]:
         """
@@ -110,7 +129,9 @@ class SlashCommandParser:
         """
         return self._commands.copy()
 
-    def get_command_suggestions(self, partial_input: str) -> List[str]:
+    def get_command_suggestions(
+        self, partial_input: str
+    ) -> List[str]:
         """
         Get command suggestions for autocomplete
 
@@ -128,7 +149,10 @@ class SlashCommandParser:
 
         if not partial:
             # Return all available commands
-            return [f"/{cmd}" for cmd in sorted(self._commands.keys())]
+            return [
+                f"/{cmd}"
+                for cmd in sorted(self._commands.keys())
+            ]
 
         suggestions = []
 
@@ -149,7 +173,9 @@ class SlashCommandParser:
 
                 for subcmd in subcommands.keys():
                     if subcmd.startswith(partial_subcmd):
-                        suggestions.append(f"/{base_cmd} {subcmd}")
+                        suggestions.append(
+                            f"/{base_cmd} {subcmd}"
+                        )
         elif len(parts) == 1:
             # Partial command name - also check subcommands
             base_cmd = parts[0]
@@ -158,7 +184,9 @@ class SlashCommandParser:
                 subcommands = command.get_subcommands()
 
                 for subcmd in subcommands.keys():
-                    suggestions.append(f"/{base_cmd} {subcmd}")
+                    suggestions.append(
+                        f"/{base_cmd} {subcmd}"
+                    )
 
         # Check aliases
         for alias, real_cmd in self._aliases.items():
@@ -167,7 +195,9 @@ class SlashCommandParser:
 
         return sorted(list(set(suggestions)))
 
-    def get_help_text(self, command_name: Optional[str] = None) -> str:
+    def get_help_text(
+        self, command_name: Optional[str] = None
+    ) -> str:
         """
         Get help text for a specific command or all commands
 
@@ -179,7 +209,9 @@ class SlashCommandParser:
         """
         if command_name:
             if command_name in self._commands:
-                return self._commands[command_name].get_help()
+                return self._commands[
+                    command_name
+                ].get_help()
             else:
                 return f"Unknown command: /{command_name}"
 
@@ -188,7 +220,10 @@ class SlashCommandParser:
 
         for cmd_name in sorted(self._commands.keys()):
             command = self._commands[cmd_name]
-            help_text += f"/{cmd_name} - {command.description}\n"
+            help_text += (
+                f"/{cmd_name} - {command.description}\n"
+            )
 
         help_text += "\nType '/{command_name}' for command-specific help"
+        return help_text
         return help_text
