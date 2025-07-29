@@ -9,11 +9,11 @@ from domain.exceptions.domain_exceptions import DomainException
 
 class BusinessRuleViolationException(DomainException):
     """Exception raised when a business rule is violated"""
-    
+
     def __init__(self, rule_name: str, message: str, context: dict = None):
         """
         Initialize business rule violation exception
-        
+
         Args:
             rule_name: Name or identifier of the violated rule
             message: Description of the rule violation
@@ -25,11 +25,11 @@ class BusinessRuleViolationException(DomainException):
 
 class UnsafeOperationException(BusinessRuleViolationException):
     """Exception raised when an operation would be unsafe"""
-    
+
     def __init__(self, operation: str, reason: str, context: dict = None):
         """
         Initialize unsafe operation exception
-        
+
         Args:
             operation: The operation that would be unsafe
             reason: Why the operation is unsafe
@@ -43,11 +43,11 @@ class UnsafeOperationException(BusinessRuleViolationException):
 
 class InvalidTestStateException(BusinessRuleViolationException):
     """Exception raised when test is in invalid state for operation"""
-    
+
     def __init__(self, current_state: str, required_state: str, operation: str, context: dict = None):
         """
         Initialize invalid test state exception
-        
+
         Args:
             current_state: Current test state
             required_state: Required state for operation
@@ -69,11 +69,11 @@ class InvalidTestStateException(BusinessRuleViolationException):
 
 class HardwareNotReadyException(BusinessRuleViolationException):
     """Exception raised when hardware is not ready for operation"""
-    
+
     def __init__(self, hardware_type: str, current_status: str, operation: str, context: dict = None):
         """
         Initialize hardware not ready exception
-        
+
         Args:
             hardware_type: Type of hardware (e.g., 'loadcell', 'power_supply')
             current_status: Current hardware status

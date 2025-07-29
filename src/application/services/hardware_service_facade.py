@@ -166,7 +166,7 @@ class HardwareServiceFacade:
 
             # Convert to TestMeasurements value object
             measurements = TestMeasurements.from_legacy_dict(measurements_dict)
-            
+
             logger.info(f"Force test sequence completed with {measurements.get_total_measurement_count()} measurements")
             logger.info(
                 f"Test matrix completed: {measurements.get_temperature_count()} temperatures × {len(config.stroke_positions)} positions"

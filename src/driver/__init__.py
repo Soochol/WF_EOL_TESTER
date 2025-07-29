@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 try:
-    from driver.tcp import TCPCommunication  
+    from driver.tcp import TCPCommunication
     __all__.append('TCPCommunication')
 except ImportError:
     pass

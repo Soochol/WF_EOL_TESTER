@@ -28,11 +28,11 @@ except ImportError:
 
 class SerialConnection:
     """Simple serial connection for async communication"""
-    
+
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """
         Initialize serial connection
-        
+
         Args:
             reader: Async stream reader
             writer: Async stream writer
@@ -40,20 +40,20 @@ class SerialConnection:
         self._reader = reader
         self._writer = writer
         self._is_connected = True
-    
+
     @staticmethod
     async def connect(port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = CONNECT_TIMEOUT) -> 'SerialConnection':
         """
         Connect to serial port
-        
+
         Args:
             port: Serial port (e.g., 'COM3', '/dev/ttyUSB0')
             baudrate: Baud rate
             timeout: Connection timeout
-            
+
         Returns:
             SerialConnection instance
-            
+
         Raises:
             SerialError: Connection failed
         """
@@ -64,7 +64,7 @@ class SerialConnection:
                 baudrate=baudrate,
                 details="Install with: pip install pyserial-asyncio"
             )
-        
+
         try:
             reader, writer = await asyncio.wait_for(
                 serial_asyncio.open_serial_connection(
@@ -73,10 +73,10 @@ class SerialConnection:
                 ),
                 timeout=timeout
             )
-            
+
             logger.info(f"Serial connected to {port} at {baudrate} baud")
             return SerialConnection(reader, writer)
-            
+
         except asyncio.TimeoutError:
             raise SerialConnectionError(
                 f"Connection timeout to {port}",
@@ -90,60 +90,60 @@ class SerialConnection:
                 baudrate=baudrate,
                 details=str(e)
             )
-    
+
     async def disconnect(self) -> None:
         """Disconnect from serial port"""
         if self._writer and not self._writer.is_closing():
             self._writer.close()
             await self._writer.wait_closed()
-        
+
         self._is_connected = False
         logger.info("Serial connection closed")
-    
+
     def is_connected(self) -> bool:
         """Check if connection is active"""
         return self._is_connected and not self._writer.is_closing()
-    
+
     async def write(self, data: bytes) -> None:
         """
         Write data to serial port
-        
+
         Args:
             data: Data to write
-            
+
         Raises:
             SerialError: Write failed
         """
         if not self.is_connected():
             raise SerialConnectionError("Not connected")
-        
+
         try:
             self._writer.write(data)
             await self._writer.drain()
-            
+
         except Exception as e:
             raise SerialCommunicationError(
                 "Write failed",
                 details=str(e)
             )
-    
+
     async def read_until(self, separator: bytes, timeout: Optional[float] = None) -> bytes:
         """
         Read data until separator is found
-        
+
         Args:
             separator: Byte sequence to read until
             timeout: Read timeout
-            
+
         Returns:
             Data including separator
-            
+
         Raises:
             SerialError: Read failed or timeout
         """
         if not self.is_connected():
             raise SerialConnectionError("Not connected")
-        
+
         try:
             if timeout:
                 data = await asyncio.wait_for(
@@ -152,9 +152,9 @@ class SerialConnection:
                 )
             else:
                 data = await self._reader.readuntil(separator)
-            
+
             return data
-            
+
         except asyncio.TimeoutError:
             raise SerialTimeoutError("Read timeout")
         except Exception as e:
@@ -162,24 +162,24 @@ class SerialConnection:
                 "Read failed",
                 details=str(e)
             )
-    
+
     async def read(self, size: int = -1, timeout: Optional[float] = None) -> bytes:
         """
         Read specified number of bytes
-        
+
         Args:
             size: Number of bytes to read (-1 for all available)
             timeout: Read timeout
-            
+
         Returns:
             Data read
-            
+
         Raises:
             SerialError: Read failed or timeout
         """
         if not self.is_connected():
             raise SerialConnectionError("Not connected")
-        
+
         try:
             if timeout:
                 data = await asyncio.wait_for(
@@ -188,9 +188,9 @@ class SerialConnection:
                 )
             else:
                 data = await self._reader.read(size)
-            
+
             return data
-            
+
         except asyncio.TimeoutError:
             raise SerialTimeoutError("Read timeout")
         except Exception as e:
@@ -198,19 +198,19 @@ class SerialConnection:
                 "Read failed",
                 details=str(e)
             )
-    
+
     async def send_command(self, command: str, terminator: str = COMMAND_TERMINATOR, timeout: float = DEFAULT_TIMEOUT) -> str:
         """
         Send command and read response (convenience method)
-        
+
         Args:
             command: Command to send
             terminator: Command/response terminator
             timeout: Response timeout
-            
+
         Returns:
             Response string (without terminator)
-            
+
         Raises:
             SerialError: Communication failed
         """
@@ -218,17 +218,17 @@ class SerialConnection:
             # Send command
             command_bytes = f"{command}{terminator}".encode(ENCODING)
             await self.write(command_bytes)
-            
+
             # Read response
             terminator_bytes = terminator.encode(ENCODING)
             response_bytes = await self.read_until(terminator_bytes, timeout)
-            
+
             # Decode and strip terminator
             response = response_bytes.decode(ENCODING).rstrip(terminator)
-            
+
             logger.debug(f"Command: {command} -> Response: {response}")
             return response
-            
+
         except UnicodeDecodeError as e:
             raise SerialCommunicationError(
                 "Response decode failed",
@@ -243,17 +243,17 @@ class SerialConnection:
 
 class SerialManager:
     """Simple serial manager for creating connections"""
-    
+
     @staticmethod
     async def create_connection(port: str, baudrate: int = DEFAULT_BAUDRATE, timeout: float = CONNECT_TIMEOUT) -> SerialConnection:
         """
         Create serial connection (convenience method)
-        
+
         Args:
             port: Serial port
-            baudrate: Baud rate  
+            baudrate: Baud rate
             timeout: Connection timeout
-            
+
         Returns:
             SerialConnection instance
         """

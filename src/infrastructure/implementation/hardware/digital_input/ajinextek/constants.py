@@ -10,7 +10,7 @@ DEFAULT_MODULE_POSITION = 0
 MAX_BOARDS = 32
 MAX_MODULES_PER_BOARD = 4
 
-# Channel Configuration  
+# Channel Configuration
 MAX_INPUT_CHANNELS = 32
 MAX_OUTPUT_CHANNELS = 32
 TOTAL_CHANNELS = MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS
@@ -19,7 +19,7 @@ TOTAL_CHANNELS = MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS
 INPUT_CHANNEL_START = 0
 INPUT_CHANNEL_END = MAX_INPUT_CHANNELS - 1
 
-# Output Channel Range  
+# Output Channel Range
 OUTPUT_CHANNEL_START = 0
 OUTPUT_CHANNEL_END = MAX_OUTPUT_CHANNELS - 1
 
@@ -64,7 +64,7 @@ AXL_64BIT_LIBRARY_NAME = "AXL64.dll"
 
 # Module Types (Ajinextek specific)
 MODULE_TYPE_DI = "DI"    # Digital Input
-MODULE_TYPE_DO = "DO"    # Digital Output  
+MODULE_TYPE_DO = "DO"    # Digital Output
 MODULE_TYPE_DIO = "DIO"  # Digital Input/Output
 MODULE_TYPE_RELAY = "RELAY"  # Relay Output
 
@@ -139,13 +139,13 @@ STATUS_MESSAGES = {
     "hardware_ready": "DIO hardware ready for operation"
 }
 
-# Command Descriptions  
+# Command Descriptions
 COMMAND_DESCRIPTIONS = {
     "connect": "Connect to DIO board and initialize",
     "disconnect": "Disconnect from DIO board",
     "configure_pin": "Configure pin mode (input/output)",
     "read_input": "Read digital input state",
-    "write_output": "Write digital output state", 
+    "write_output": "Write digital output state",
     "read_multiple": "Read multiple input states",
     "write_multiple": "Write multiple output states",
     "reset_outputs": "Reset all outputs to LOW state",

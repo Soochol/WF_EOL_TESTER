@@ -10,20 +10,20 @@ from ui.cli.commands.base import Command, CommandResult
 
 class HelpCommand(Command):
     """Command for displaying help information"""
-    
+
     def __init__(self):
         super().__init__(
             name="help",
             description="Show help information for commands"
         )
-    
+
     async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute help command
-        
+
         Args:
             args: Optional command name to get specific help for
-            
+
         Returns:
             CommandResult with help information
         """
@@ -35,13 +35,13 @@ class HelpCommand(Command):
         else:
             # Show general help
             help_text = self._get_general_help()
-        
+
         return CommandResult.success(help_text)
-    
+
     def get_subcommands(self) -> Dict[str, str]:
         """Get available subcommands"""
         return {}
-    
+
     def _get_general_help(self) -> str:
         """Get general help text"""
         return """EOL Tester - Interactive Mode

@@ -43,7 +43,7 @@ __all__ = [
     # Core classes
     'SerialConnection',
     'SerialManager',
-    
+
     # Constants
     'DEFAULT_BAUDRATE',
     'DEFAULT_TIMEOUT',
@@ -60,7 +60,7 @@ __all__ = [
     'BS205_BAUDRATE',
     'BS205_TIMEOUT',
     'BS205_TERMINATOR',
-    
+
     # Exceptions
     'SerialError',
     'SerialConnectionError',

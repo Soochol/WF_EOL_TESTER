@@ -13,7 +13,7 @@ class MeasurementUnit(Enum):
     NEWTON = "N"
     KILOGRAM_FORCE = "kgf"
     POUND_FORCE = "lbf"
-    
+
     # Electrical units
     VOLT = "V"
     MILLIVOLT = "mV"
@@ -23,34 +23,34 @@ class MeasurementUnit(Enum):
     OHM = "Ω"
     KILOOHM = "kΩ"
     MEGAOHM = "MΩ"
-    
+
     # Time units
     SECOND = "s"
     MILLISECOND = "ms"
     MICROSECOND = "μs"
-    
+
     # Temperature units
     CELSIUS = "°C"
     FAHRENHEIT = "°F"
     KELVIN = "K"
-    
+
     # Position units
     MILLIMETER = "mm"
     MICROMETER = "μm"
     METER = "m"
-    
+
     # Velocity units
     MM_PER_SEC = "mm/s"
     M_PER_SEC = "m/s"
-    
+
     def __str__(self) -> str:
         return self.value
-    
+
     @property
     def is_force_unit(self) -> bool:
         """Check if unit is for force measurement"""
         return self in (MeasurementUnit.NEWTON, MeasurementUnit.KILOGRAM_FORCE, MeasurementUnit.POUND_FORCE)
-    
+
     @property
     def is_electrical_unit(self) -> bool:
         """Check if unit is for electrical measurement"""
@@ -59,7 +59,7 @@ class MeasurementUnit(Enum):
             MeasurementUnit.AMPERE, MeasurementUnit.MILLIAMPERE, MeasurementUnit.MICROAMPERE,
             MeasurementUnit.OHM, MeasurementUnit.KILOOHM, MeasurementUnit.MEGAOHM
         )
-    
+
     @property
     def is_time_unit(self) -> bool:
         """Check if unit is for time measurement"""

@@ -15,20 +15,20 @@ class HardwareStatus(Enum):
     CONNECTED = "connected"
     ERROR = "error"
     UNKNOWN = "unknown"
-    
+
     def __str__(self) -> str:
         return self.value
-    
+
     @property
     def is_connected(self) -> bool:
         """Check if hardware is in connected state"""
         return self == HardwareStatus.CONNECTED
-    
+
     @property
     def is_operational(self) -> bool:
         """Check if hardware can perform operations"""
         return self in (HardwareStatus.CONNECTED,)
-    
+
     @property
     def requires_attention(self) -> bool:
         """Check if hardware status requires attention"""

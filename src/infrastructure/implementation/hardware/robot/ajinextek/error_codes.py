@@ -56,7 +56,7 @@ AXT_RT_DIO_INVALID_VALUE = 3105  # 유효하지않는 값 설정
 ERROR_MESSAGES = {
     # General
     AXT_RT_SUCCESS: "Function executed successfully",
-    
+
     # Library Errors
     AXT_RT_OPEN_ERROR: "Library is not open",
     AXT_RT_OPEN_ALREADY: "Library is already open and in use",
@@ -64,7 +64,7 @@ ERROR_MESSAGES = {
     AXT_RT_NOT_OPEN: "Library initialization failed",
     AXT_RT_NOT_SUPPORT_VERSION: "Unsupported hardware",
     AXT_RT_BAD_PARAMETER: "Invalid parameter provided by user",
-    
+
     # Hardware Validation
     AXT_RT_INVALID_HARDWARE: "Invalid board",
     AXT_RT_INVALID_BOARD_NO: "Invalid board number",
@@ -73,14 +73,14 @@ ERROR_MESSAGES = {
     AXT_RT_INVALID_VARIABLE: "Invalid variable",
     AXT_RT_INVALID_MODULE_NO: "Invalid module number",
     AXT_RT_INVALID_NO: "Invalid number",
-    
+
     # DIO Errors
     AXT_RT_DIO_OPEN_ERROR: "DIO module open failed",
     AXT_RT_DIO_NOT_MODULE: "DIO module not found",
     AXT_RT_DIO_INVALID_MODULE_NO: "Invalid DIO module number",
     AXT_RT_DIO_INVALID_OFFSET_NO: "Invalid DIO offset number",
     AXT_RT_DIO_INVALID_VALUE: "Invalid value setting",
-    
+
     # Motion Errors
     AXT_RT_MOTION_OPEN_ERROR: "Motion library open failed",
     AXT_RT_MOTION_NOT_MODULE: "No motion module installed in system",
@@ -97,10 +97,10 @@ ERROR_MESSAGES = {
 def get_error_message(error_code: int) -> str:
     """
     Get error message for given error code
-    
+
     Args:
         error_code: AXL library error code
-        
+
     Returns:
         str: Error description in English
     """
@@ -110,10 +110,10 @@ def get_error_message(error_code: int) -> str:
 def is_success(error_code: int) -> bool:
     """
     Check if error code indicates success
-    
+
     Args:
         error_code: AXL library error code
-        
+
     Returns:
         bool: True if success, False otherwise
     """
@@ -123,10 +123,10 @@ def is_success(error_code: int) -> bool:
 def is_library_error(error_code: int) -> bool:
     """
     Check if error code is library related
-    
+
     Args:
         error_code: AXL library error code
-        
+
     Returns:
         bool: True if library error, False otherwise
     """
@@ -136,10 +136,10 @@ def is_library_error(error_code: int) -> bool:
 def is_motion_error(error_code: int) -> bool:
     """
     Check if error code is motion related
-    
+
     Args:
         error_code: AXL library error code
-        
+
     Returns:
         bool: True if motion error, False otherwise
     """
@@ -149,10 +149,10 @@ def is_motion_error(error_code: int) -> bool:
 def is_dio_error(error_code: int) -> bool:
     """
     Check if error code is DIO related
-    
+
     Args:
         error_code: AXL library error code
-        
+
     Returns:
         bool: True if DIO error, False otherwise
     """

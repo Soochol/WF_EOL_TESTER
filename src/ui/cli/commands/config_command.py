@@ -16,7 +16,7 @@ from domain.value_objects.hardware_configuration import HardwareConfiguration
 
 class ConfigCommand(Command):
     """Command for configuration management"""
-    
+
     def __init__(self):
         super().__init__(
             name="config",
@@ -24,22 +24,22 @@ class ConfigCommand(Command):
         )
         self._config_file = "config/application/app_config.json"
         self._current_config: Optional[Dict[str, Any]] = None
-    
+
     async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute config command
-        
+
         Args:
             args: Command arguments (subcommand and parameters)
-            
+
         Returns:
             CommandResult with configuration operation results
         """
         if not args:
             return await self._show_config()
-        
+
         subcommand = args[0].lower()
-        
+
         if subcommand == "view":
             return await self._show_config()
         elif subcommand == "hardware":
@@ -56,7 +56,7 @@ class ConfigCommand(Command):
             return CommandResult.info(self.get_help())
         else:
             return CommandResult.error(f"Unknown config subcommand: {subcommand}")
-    
+
     def get_subcommands(self) -> Dict[str, str]:
         """Get available subcommands"""
         return {
@@ -68,35 +68,35 @@ class ConfigCommand(Command):
             "reset": "Reset to default configuration",
             "help": "Show config command help"
         }
-    
+
     async def _show_config(self) -> CommandResult:
         """Show current configuration"""
         try:
             config = await self._get_current_config()
-            
+
             config_text = "Current Configuration:\\n"
             config_text += "=" * 50 + "\\n"
             config_text += json.dumps(config, indent=2, ensure_ascii=False)
-            
+
             return CommandResult.success(config_text)
-            
+
         except Exception as e:
             logger.error(f"Failed to show config: {e}")
             return CommandResult.error(f"Failed to load configuration: {str(e)}")
-    
+
     async def _show_hardware_config(self) -> CommandResult:
         """Show detailed hardware configuration"""
         try:
             config = await self._get_current_config()
             hardware_config = config.get('hardware', {})
-            
+
             if not hardware_config:
                 return CommandResult.warning("No hardware configuration found")
-            
+
             # Create HardwareConfiguration object for validation and display
             try:
                 hw_config = HardwareConfiguration.from_dict(hardware_config)
-                
+
                 config_text = "Hardware Configuration:\\n"
                 config_text += "=" * 50 + "\\n"
                 config_text += f"├── Robot: {hw_config.robot.model}\\n"
@@ -116,9 +116,9 @@ class ConfigCommand(Command):
                 config_text += f"└── Digital Input: {hw_config.digital_input.model}\\n"
                 config_text += f"    ├── Board: {hw_config.digital_input.board_no}\\n"
                 config_text += f"    └── Inputs: {hw_config.digital_input.input_count}\\n"
-                
+
                 return CommandResult.success(config_text)
-                
+
             except Exception as validation_error:
                 logger.warning(f"Hardware config validation failed: {validation_error}")
                 # Fallback to raw display
@@ -126,11 +126,11 @@ class ConfigCommand(Command):
                 config_text += "=" * 50 + "\\n"
                 config_text += json.dumps(hardware_config, indent=2, ensure_ascii=False)
                 return CommandResult.warning(config_text)
-            
+
         except Exception as e:
             logger.error(f"Failed to show hardware config: {e}")
             return CommandResult.error(f"Failed to load hardware configuration: {str(e)}")
-    
+
     async def _edit_config(self) -> CommandResult:
         """Edit configuration interactively"""
         try:
@@ -139,73 +139,73 @@ class ConfigCommand(Command):
             print("="*60)
             print("This feature will allow interactive configuration editing.")
             print("Currently showing current config for reference.")
-            
+
             config = await self._get_current_config()
             print("\\nCurrent configuration:")
             print(json.dumps(config, indent=2, ensure_ascii=False))
-            
+
             return CommandResult.info("Interactive config editor will be implemented soon")
-            
+
         except Exception as e:
             logger.error(f"Config edit failed: {e}")
             return CommandResult.error(f"Failed to edit configuration: {str(e)}")
-    
+
     async def _save_config(self, args: List[str]) -> CommandResult:
         """Save configuration with a name"""
         if not args:
             return CommandResult.error("Config name is required. Usage: /config save <name>")
-        
+
         config_name = args[0]
-        
+
         # TODO: Implement named config saving
         return CommandResult.info(f"Saving config as '{config_name}' will be implemented soon")
-    
+
     async def _load_config(self, args: List[str]) -> CommandResult:
         """Load saved configuration"""
         if not args:
             return CommandResult.error("Config name is required. Usage: /config load <name>")
-        
+
         config_name = args[0]
-        
+
         # TODO: Implement named config loading
         return CommandResult.info(f"Loading config '{config_name}' will be implemented soon")
-    
+
     async def _reset_config(self) -> CommandResult:
         """Reset to default configuration"""
         try:
             print("\\nResetting to default configuration...")
-            
+
             # Get default config from ServiceFactory
             default_config = ServiceFactory.get_default_config()
-            
+
             # Save to file
             config_path = Path(self._config_file)
-            
+
             # Ensure directory exists
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(default_config, f, indent=2, ensure_ascii=False)
-            
+
             self._current_config = None  # Clear cache
-            
+
             return CommandResult.success(f"Configuration reset to defaults and saved to {self._config_file}")
-            
+
         except Exception as e:
             logger.error(f"Config reset failed: {e}")
             return CommandResult.error(f"Failed to reset configuration: {str(e)}")
-    
+
     async def _get_current_config(self) -> Dict[str, Any]:
         """Get current configuration (with caching)"""
         if self._current_config is not None:
             return self._current_config
-        
+
         config_path = Path(self._config_file)
-        
+
         if not config_path.exists():
             logger.info(f"Config file {self._config_file} not found, using default config")
             self._current_config = ServiceFactory.get_default_config()
-            
+
             # Create directory and save default config
             try:
                 config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -214,7 +214,7 @@ class ConfigCommand(Command):
                 logger.info(f"Default configuration saved to {self._config_file}")
             except Exception as e:
                 logger.warning(f"Failed to save default config: {e}")
-                
+
         else:
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
@@ -226,5 +226,5 @@ class ConfigCommand(Command):
             except Exception as e:
                 logger.error(f"Error loading config file: {e}")
                 raise Exception(f"Error loading config file: {e}")
-        
+
         return self._current_config

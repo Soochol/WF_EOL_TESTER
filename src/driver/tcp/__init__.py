@@ -12,7 +12,7 @@ from driver.tcp.constants import DEFAULT_PORT, DEFAULT_TIMEOUT
 __all__ = [
     'TCPCommunication',
     'TCPError',
-    'TCPConnectionError', 
+    'TCPConnectionError',
     'TCPCommunicationError',
     'TCPTimeoutError',
     'DEFAULT_PORT',

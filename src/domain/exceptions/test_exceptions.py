@@ -10,11 +10,11 @@ from domain.exceptions.domain_exceptions import DomainException
 
 class TestExecutionException(DomainException):
     """Base exception for test execution business rule violations"""
-    
+
     def __init__(self, message: str, test_id: str = None, details: Dict[str, Any] = None):
         """
         Initialize test execution exception
-        
+
         Args:
             message: Human-readable error message
             test_id: ID of the test involved in the exception
@@ -26,7 +26,7 @@ class TestExecutionException(DomainException):
 
 class InvalidTestStateException(TestExecutionException):
     """Exception raised when test is in invalid state for operation according to business rules"""
-    
+
     def __init__(
         self,
         current_state: str,
@@ -37,7 +37,7 @@ class InvalidTestStateException(TestExecutionException):
     ):
         """
         Initialize invalid test state exception
-        
+
         Args:
             current_state: Current test state
             required_state: Required state for operation
@@ -46,14 +46,14 @@ class InvalidTestStateException(TestExecutionException):
             details: Additional state context
         """
         message = f"Cannot perform '{operation}' in state '{current_state}'. Required state: '{required_state}'"
-        
+
         exception_details = details or {}
         exception_details.update({
             'current_state': current_state,
             'required_state': required_state,
             'operation': operation
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.current_state = current_state
         self.required_state = required_state
@@ -62,7 +62,7 @@ class InvalidTestStateException(TestExecutionException):
 
 class TestSequenceException(TestExecutionException):
     """Exception raised when test sequence violates business rules"""
-    
+
     def __init__(
         self,
         step_name: str,
@@ -73,7 +73,7 @@ class TestSequenceException(TestExecutionException):
     ):
         """
         Initialize test sequence exception
-        
+
         Args:
             step_name: Name of the step that violated sequence
             sequence_violation: Description of sequence violation
@@ -85,14 +85,14 @@ class TestSequenceException(TestExecutionException):
             message = f"Test sequence violation at step '{step_name}': {sequence_violation}. Expected previous step: '{expected_previous_step}'"
         else:
             message = f"Test sequence violation at step '{step_name}': {sequence_violation}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'step_name': step_name,
             'sequence_violation': sequence_violation,
             'expected_previous_step': expected_previous_step
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.step_name = step_name
         self.sequence_violation = sequence_violation
@@ -101,7 +101,7 @@ class TestSequenceException(TestExecutionException):
 
 class MeasurementValidationException(TestExecutionException):
     """Exception raised when measurement validation violates business rules"""
-    
+
     def __init__(
         self,
         measurement_type: str,
@@ -113,7 +113,7 @@ class MeasurementValidationException(TestExecutionException):
     ):
         """
         Initialize measurement validation exception
-        
+
         Args:
             measurement_type: Type of measurement (e.g., 'force', 'temperature', 'voltage')
             measured_value: The measured value that failed validation
@@ -127,7 +127,7 @@ class MeasurementValidationException(TestExecutionException):
             message = f"Measurement validation failed for {measurement_type}: {measured_value} not in range {range_str}. {validation_failure}"
         else:
             message = f"Measurement validation failed for {measurement_type}: {measured_value}. {validation_failure}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'measurement_type': measurement_type,
@@ -135,7 +135,7 @@ class MeasurementValidationException(TestExecutionException):
             'validation_failure': validation_failure,
             'expected_range': expected_range
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.measurement_type = measurement_type
         self.measured_value = measured_value
@@ -145,7 +145,7 @@ class MeasurementValidationException(TestExecutionException):
 
 class TestTimeoutException(TestExecutionException):
     """Exception raised when test execution times out violating business rules"""
-    
+
     def __init__(
         self,
         step_name: str,
@@ -155,7 +155,7 @@ class TestTimeoutException(TestExecutionException):
     ):
         """
         Initialize test timeout exception
-        
+
         Args:
             step_name: Name of the step that timed out
             timeout_seconds: Timeout duration in seconds
@@ -163,13 +163,13 @@ class TestTimeoutException(TestExecutionException):
             details: Additional timeout context
         """
         message = f"Test step '{step_name}' timed out after {timeout_seconds} seconds"
-        
+
         exception_details = details or {}
         exception_details.update({
             'step_name': step_name,
             'timeout_seconds': timeout_seconds
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.step_name = step_name
         self.timeout_seconds = timeout_seconds
@@ -177,7 +177,7 @@ class TestTimeoutException(TestExecutionException):
 
 class TestResourceException(TestExecutionException):
     """Exception raised when test resources violate business rules"""
-    
+
     def __init__(
         self,
         resource_type: str,
@@ -189,7 +189,7 @@ class TestResourceException(TestExecutionException):
     ):
         """
         Initialize test resource exception
-        
+
         Args:
             resource_type: Type of resource with issue (e.g., 'hardware', 'configuration', 'file')
             resource_issue: Description of resource issue
@@ -199,12 +199,12 @@ class TestResourceException(TestExecutionException):
             details: Additional resource context
         """
         message = f"Test resource issue with {resource_type}: {resource_issue}"
-        
+
         if required_resources and available_resources:
             missing = set(required_resources) - set(available_resources)
             if missing:
                 message += f". Missing resources: {list(missing)}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'resource_type': resource_type,
@@ -212,7 +212,7 @@ class TestResourceException(TestExecutionException):
             'required_resources': required_resources,
             'available_resources': available_resources
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.resource_type = resource_type
         self.resource_issue = resource_issue
@@ -222,7 +222,7 @@ class TestResourceException(TestExecutionException):
 
 class TestDataException(TestExecutionException):
     """Exception raised when test data violates business rules"""
-    
+
     def __init__(
         self,
         data_type: str,
@@ -233,7 +233,7 @@ class TestDataException(TestExecutionException):
     ):
         """
         Initialize test data exception
-        
+
         Args:
             data_type: Type of data with issue (e.g., 'measurement', 'configuration', 'result')
             data_issue: Description of data issue
@@ -245,14 +245,14 @@ class TestDataException(TestExecutionException):
             message = f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
         else:
             message = f"Test data issue with {data_type}: {data_issue}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'data_type': data_type,
             'data_issue': data_issue,
             'invalid_data': invalid_data
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.data_type = data_type
         self.data_issue = data_issue
@@ -261,7 +261,7 @@ class TestDataException(TestExecutionException):
 
 class TestCriteriaException(TestExecutionException):
     """Exception raised when test criteria violate business rules"""
-    
+
     def __init__(
         self,
         criteria_type: str,
@@ -273,7 +273,7 @@ class TestCriteriaException(TestExecutionException):
     ):
         """
         Initialize test criteria exception
-        
+
         Args:
             criteria_type: Type of criteria violated (e.g., 'pass_fail', 'quality', 'performance')
             criteria_violation: Description of criteria violation
@@ -286,7 +286,7 @@ class TestCriteriaException(TestExecutionException):
             message = f"Test criteria violation for {criteria_type}: {criteria_violation}. Actual: {actual_value}, Expected: {expected_criteria}"
         else:
             message = f"Test criteria violation for {criteria_type}: {criteria_violation}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'criteria_type': criteria_type,
@@ -294,7 +294,7 @@ class TestCriteriaException(TestExecutionException):
             'actual_value': actual_value,
             'expected_criteria': expected_criteria
         })
-        
+
         super().__init__(message, test_id, exception_details)
         self.criteria_type = criteria_type
         self.criteria_violation = criteria_violation

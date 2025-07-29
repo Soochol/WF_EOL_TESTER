@@ -160,7 +160,7 @@ class AXLWrapper:
         """Get the number of boards"""
         if not self.is_windows or self.dll is None:
             return 1  # Mock 1 board on non-Windows
-        
+
         count = c_long()
         result = self.dll.AxlGetBoardCount(ctypes.byref(count))
         if result != AXT_RT_SUCCESS:
@@ -171,7 +171,7 @@ class AXLWrapper:
         """Get library version"""
         if not self.is_windows or self.dll is None:
             return "Mock Version 1.0.0"  # Mock version on non-Windows
-        
+
         version = ctypes.create_string_buffer(32)
         result = self.dll.AxlGetLibVersion(version)
         if result != AXT_RT_SUCCESS:
@@ -183,7 +183,7 @@ class AXLWrapper:
         """Get total number of axes"""
         if not self.is_windows or self.dll is None:
             return 6  # Mock 6 axes on non-Windows
-        
+
         count = c_long()
         result = self.dll.AxmInfoGetAxisCount(ctypes.byref(count))
         if result != AXT_RT_SUCCESS:
@@ -219,7 +219,7 @@ class AXLWrapper:
         """Check if servo is on"""
         if not self.is_windows or self.dll is None:
             return True  # Mock servo on non-Windows
-        
+
         status = c_long()
         result = self.dll.AxmSignalIsServoOn(axis_no, ctypes.byref(status))
         if result != AXT_RT_SUCCESS:
@@ -236,7 +236,7 @@ class AXLWrapper:
         """Get command position"""
         if not self.is_windows or self.dll is None:
             return 0.0  # Mock position on non-Windows
-        
+
         position = c_double()
         result = self.dll.AxmStatusGetCmdPos(axis_no, ctypes.byref(position))
         if result != AXT_RT_SUCCESS:
@@ -253,7 +253,7 @@ class AXLWrapper:
         """Get actual position"""
         if not self.is_windows or self.dll is None:
             return 0.0  # Mock position on non-Windows
-        
+
         position = c_double()
         result = self.dll.AxmStatusGetActPos(axis_no, ctypes.byref(position))
         if result != AXT_RT_SUCCESS:
@@ -278,7 +278,7 @@ class AXLWrapper:
         """Check if axis is in motion"""
         if not self.is_windows or self.dll is None:
             return False  # Mock not moving on non-Windows
-        
+
         status = c_long()
         result = self.dll.AxmStatusReadInMotion(axis_no, ctypes.byref(status))
         if result != AXT_RT_SUCCESS:

@@ -8,6 +8,6 @@ from application.use_cases.eol_force_test import EOLForceTestUseCase, EOLForceTe
 
 __all__ = [
     'EOLForceTestUseCase',
-    'EOLForceTestCommand', 
+    'EOLForceTestCommand',
     'EOLTestResult'
 ]

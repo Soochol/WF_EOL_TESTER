@@ -9,7 +9,7 @@ from typing import Optional
 
 class RobotError(Exception):
     """Base robot domain error"""
-    
+
     def __init__(self, message: str, robot_type: str = "unknown", hardware_id: Optional[str] = None, details: Optional[str] = None):
         super().__init__(message)
         self.message = message
@@ -30,28 +30,28 @@ class RobotError(Exception):
 
 class RobotConnectionError(RobotError):
     """Robot connection errors"""
-    
+
     def __init__(self, message: str, robot_type: str = "unknown", **kwargs):
         super().__init__(message, robot_type, **kwargs)
 
 
 class RobotMotionError(RobotError):
     """Robot motion operation errors"""
-    
+
     def __init__(self, message: str, robot_type: str = "unknown", **kwargs):
         super().__init__(message, robot_type, **kwargs)
 
 
 class RobotConfigurationError(RobotError):
     """Robot configuration errors"""
-    
+
     def __init__(self, message: str, robot_type: str = "unknown", **kwargs):
         super().__init__(message, robot_type, **kwargs)
 
 
 class RobotSafetyError(RobotError):
     """Robot safety-related errors"""
-    
+
     def __init__(self, message: str, robot_type: str = "unknown", **kwargs):
         super().__init__(message, robot_type, **kwargs)
 
@@ -62,12 +62,12 @@ class RobotSafetyError(RobotError):
 
 class AXLError(RobotError):
     """Base AJINEXTEK AXL error"""
-    
+
     def __init__(self, message: str, error_code: int = 0, function_name: str = ""):
         super().__init__(message, "AJINEXTEK AXL")
         self.error_code = error_code
         self.function_name = function_name
-        
+
     def __str__(self) -> str:
         base_msg = self.message
         if self.function_name:
@@ -98,7 +98,7 @@ class AXLConfigurationError(AXLError):
 
 class ABBError(RobotError):
     """ABB robot errors"""
-    
+
     def __init__(self, message: str, robot_id: str = "", program_name: str = ""):
         super().__init__(message, "ABB")
         self.robot_id = robot_id
@@ -107,7 +107,7 @@ class ABBError(RobotError):
 
 class KUKAError(RobotError):
     """KUKA robot errors"""
-    
+
     def __init__(self, message: str, robot_id: str = "", program_name: str = ""):
         super().__init__(message, "KUKA")
         self.robot_id = robot_id
@@ -116,7 +116,7 @@ class KUKAError(RobotError):
 
 class UniversalRobotsError(RobotError):
     """Universal Robots (UR) errors"""
-    
+
     def __init__(self, message: str, robot_model: str = "", script_name: str = ""):
         super().__init__(message, "Universal Robots")
         self.robot_model = robot_model
@@ -125,7 +125,7 @@ class UniversalRobotsError(RobotError):
 
 class FANUCError(RobotError):
     """FANUC robot errors"""
-    
+
     def __init__(self, message: str, controller_id: str = "", program_name: str = ""):
         super().__init__(message, "FANUC")
         self.controller_id = controller_id

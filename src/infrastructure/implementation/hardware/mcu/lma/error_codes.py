@@ -15,20 +15,20 @@ class LMAErrorCode(IntEnum):
     COMM_CHECKSUM_ERROR = 1003
     COMM_BUFFER_OVERFLOW = 1004
     COMM_SERIAL_ERROR = 1005
-    
+
     # Protocol Errors
     PROTOCOL_INVALID_COMMAND = 2001
     PROTOCOL_INVALID_DATA = 2002
     PROTOCOL_FRAME_TOO_LONG = 2003
     PROTOCOL_UNEXPECTED_RESPONSE = 2004
-    
+
     # Hardware Errors
     HARDWARE_NOT_CONNECTED = 3001
     HARDWARE_INITIALIZATION_FAILED = 3002
     HARDWARE_TEMPERATURE_FAULT = 3003
     HARDWARE_FAN_FAULT = 3004
     HARDWARE_POWER_FAULT = 3005
-    
+
     # Operation Errors
     OPERATION_INVALID_PARAMETER = 4001
     OPERATION_INVALID_MODE = 4002
@@ -36,7 +36,7 @@ class LMAErrorCode(IntEnum):
     OPERATION_FAN_SPEED_OUT_OF_RANGE = 4004
     OPERATION_TIMEOUT = 4005
     OPERATION_FAILED = 4006
-    
+
     # Safety Errors
     SAFETY_OVER_TEMPERATURE = 5001
     SAFETY_UNDER_TEMPERATURE = 5002
@@ -46,13 +46,13 @@ class LMAErrorCode(IntEnum):
 
 class LMAError(Exception):
     """Base LMA MCU error"""
-    
+
     def __init__(self, message: str, error_code: int = 0, details: str = None):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
         self.details = details
-        
+
     def __str__(self) -> str:
         base_msg = self.message
         if self.error_code:
@@ -80,12 +80,12 @@ class LMAOperationError(LMAError):
 def validate_temperature(temperature: float, min_temp: float = -40.0, max_temp: float = 150.0) -> None:
     """
     Validate temperature range
-    
+
     Args:
         temperature: Temperature to validate
         min_temp: Minimum allowed temperature
         max_temp: Maximum allowed temperature
-        
+
     Raises:
         LMAOperationError: If temperature is out of range
     """
@@ -99,12 +99,12 @@ def validate_temperature(temperature: float, min_temp: float = -40.0, max_temp: 
 def validate_fan_speed(fan_speed: int, min_speed: int = 1, max_speed: int = 10) -> None:
     """
     Validate fan speed range
-    
+
     Args:
         fan_speed: Fan speed to validate
         min_speed: Minimum allowed fan speed
         max_speed: Maximum allowed fan speed
-        
+
     Raises:
         LMAOperationError: If fan speed is out of range
     """

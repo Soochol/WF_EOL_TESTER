@@ -10,11 +10,11 @@ from domain.exceptions.domain_exceptions import DomainException
 
 class ConfigurationException(DomainException):
     """Base exception for configuration-related business rule violations"""
-    
+
     def __init__(self, message: str, config_source: str = None, details: Dict[str, Any] = None):
         """
         Initialize configuration exception
-        
+
         Args:
             message: Human-readable error message
             config_source: Source of configuration (e.g., 'default.yaml', 'runtime_override')
@@ -26,7 +26,7 @@ class ConfigurationException(DomainException):
 
 class InvalidConfigurationException(ConfigurationException):
     """Exception raised when configuration values violate business rules"""
-    
+
     def __init__(
         self,
         parameter_name: str,
@@ -37,7 +37,7 @@ class InvalidConfigurationException(ConfigurationException):
     ):
         """
         Initialize invalid configuration exception
-        
+
         Args:
             parameter_name: Name of the configuration parameter
             invalid_value: The invalid value that violated rules
@@ -46,14 +46,14 @@ class InvalidConfigurationException(ConfigurationException):
             details: Additional validation context
         """
         message = f"Invalid configuration parameter '{parameter_name}': {invalid_value}. Rule: {validation_rule}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'parameter_name': parameter_name,
             'invalid_value': invalid_value,
             'validation_rule': validation_rule
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.parameter_name = parameter_name
         self.invalid_value = invalid_value
@@ -62,7 +62,7 @@ class InvalidConfigurationException(ConfigurationException):
 
 class MissingConfigurationException(ConfigurationException):
     """Exception raised when required configuration is missing violating business rules"""
-    
+
     def __init__(
         self,
         missing_parameters: List[str],
@@ -71,7 +71,7 @@ class MissingConfigurationException(ConfigurationException):
     ):
         """
         Initialize missing configuration exception
-        
+
         Args:
             missing_parameters: List of missing required parameters
             config_source: Source where parameters were expected
@@ -82,19 +82,19 @@ class MissingConfigurationException(ConfigurationException):
         else:
             params_str = "', '".join(missing_parameters)
             message = f"Missing required configuration parameters: '{params_str}'"
-        
+
         exception_details = details or {}
         exception_details.update({
             'missing_parameters': missing_parameters
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.missing_parameters = missing_parameters
 
 
 class ConfigurationConflictException(ConfigurationException):
     """Exception raised when configuration values conflict violating business rules"""
-    
+
     def __init__(
         self,
         conflicting_parameters: Dict[str, Any],
@@ -104,7 +104,7 @@ class ConfigurationConflictException(ConfigurationException):
     ):
         """
         Initialize configuration conflict exception
-        
+
         Args:
             conflicting_parameters: Dictionary of conflicting parameter names and values
             conflict_description: Description of why these parameters conflict
@@ -113,13 +113,13 @@ class ConfigurationConflictException(ConfigurationException):
         """
         params_str = ", ".join(f"{k}={v}" for k, v in conflicting_parameters.items())
         message = f"Configuration conflict: {conflict_description}. Conflicting parameters: {params_str}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'conflicting_parameters': conflicting_parameters,
             'conflict_description': conflict_description
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.conflicting_parameters = conflicting_parameters
         self.conflict_description = conflict_description
@@ -127,7 +127,7 @@ class ConfigurationConflictException(ConfigurationException):
 
 class ConfigurationVersionException(ConfigurationException):
     """Exception raised when configuration version violates business rules"""
-    
+
     def __init__(
         self,
         current_version: str,
@@ -138,7 +138,7 @@ class ConfigurationVersionException(ConfigurationException):
     ):
         """
         Initialize configuration version exception
-        
+
         Args:
             current_version: Current configuration version
             required_version: Required configuration version
@@ -147,14 +147,14 @@ class ConfigurationVersionException(ConfigurationException):
             details: Additional version context
         """
         message = f"Configuration version incompatibility: {compatibility_issue}. Current: {current_version}, Required: {required_version}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'current_version': current_version,
             'required_version': required_version,
             'compatibility_issue': compatibility_issue
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.current_version = current_version
         self.required_version = required_version
@@ -163,7 +163,7 @@ class ConfigurationVersionException(ConfigurationException):
 
 class ConfigurationRangeException(ConfigurationException):
     """Exception raised when configuration values are outside allowed ranges violating business rules"""
-    
+
     def __init__(
         self,
         parameter_name: str,
@@ -175,7 +175,7 @@ class ConfigurationRangeException(ConfigurationException):
     ):
         """
         Initialize configuration range exception
-        
+
         Args:
             parameter_name: Name of the parameter outside range
             actual_value: Actual value that is outside range
@@ -187,7 +187,7 @@ class ConfigurationRangeException(ConfigurationException):
         min_val = allowed_range.get('min', '-∞')
         max_val = allowed_range.get('max', '+∞')
         message = f"Configuration parameter '{parameter_name}' value {actual_value} is outside allowed {range_type} range [{min_val}, {max_val}]"
-        
+
         exception_details = details or {}
         exception_details.update({
             'parameter_name': parameter_name,
@@ -195,7 +195,7 @@ class ConfigurationRangeException(ConfigurationException):
             'allowed_range': allowed_range,
             'range_type': range_type
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.parameter_name = parameter_name
         self.actual_value = actual_value
@@ -205,7 +205,7 @@ class ConfigurationRangeException(ConfigurationException):
 
 class ConfigurationFormatException(ConfigurationException):
     """Exception raised when configuration format violates business rules"""
-    
+
     def __init__(
         self,
         parameter_name: str,
@@ -217,7 +217,7 @@ class ConfigurationFormatException(ConfigurationException):
     ):
         """
         Initialize configuration format exception
-        
+
         Args:
             parameter_name: Name of the parameter with format issue
             invalid_format: The invalid format that was provided
@@ -227,10 +227,10 @@ class ConfigurationFormatException(ConfigurationException):
             details: Additional format context
         """
         message = f"Configuration parameter '{parameter_name}' has invalid format: '{invalid_format}'. Expected: {expected_format}"
-        
+
         if format_example:
             message += f". Example: {format_example}"
-        
+
         exception_details = details or {}
         exception_details.update({
             'parameter_name': parameter_name,
@@ -238,7 +238,7 @@ class ConfigurationFormatException(ConfigurationException):
             'expected_format': expected_format,
             'format_example': format_example
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.parameter_name = parameter_name
         self.invalid_format = invalid_format
@@ -248,7 +248,7 @@ class ConfigurationFormatException(ConfigurationException):
 
 class ConfigurationSecurityException(ConfigurationException):
     """Exception raised when configuration violates security business rules"""
-    
+
     def __init__(
         self,
         security_violation: str,
@@ -259,7 +259,7 @@ class ConfigurationSecurityException(ConfigurationException):
     ):
         """
         Initialize configuration security exception
-        
+
         Args:
             security_violation: Description of security violation
             affected_parameters: List of parameters that violate security
@@ -268,18 +268,18 @@ class ConfigurationSecurityException(ConfigurationException):
             details: Additional security context
         """
         message = f"Configuration security violation ({risk_level} risk): {security_violation}"
-        
+
         if affected_parameters:
             params_str = "', '".join(affected_parameters)
             message += f". Affected parameters: '{params_str}'"
-        
+
         exception_details = details or {}
         exception_details.update({
             'security_violation': security_violation,
             'affected_parameters': affected_parameters,
             'risk_level': risk_level
         })
-        
+
         super().__init__(message, config_source, exception_details)
         self.security_violation = security_violation
         self.affected_parameters = affected_parameters

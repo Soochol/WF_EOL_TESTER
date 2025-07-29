@@ -11,6 +11,6 @@ from domain.value_objects.time_values import TestDuration, Timestamp
 
 __all__ = [
     'TestId', 'DUTId', 'OperatorId', 'MeasurementId',
-    'ForceValue', 'VoltageValue', 'CurrentValue', 'ResistanceValue', 
+    'ForceValue', 'VoltageValue', 'CurrentValue', 'ResistanceValue',
     'TestDuration', 'Timestamp'
 ]

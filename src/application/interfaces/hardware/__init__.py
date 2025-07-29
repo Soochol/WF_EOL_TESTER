@@ -12,7 +12,7 @@ from .robot import RobotService
 
 __all__ = [
     'DigitalInputService',
-    'LoadCellService', 
+    'LoadCellService',
     'MCUService',
     'PowerService',
     'RobotService'

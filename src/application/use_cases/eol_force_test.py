@@ -14,7 +14,7 @@ Key Features:
 """
 
 import asyncio
-from typing import Any, Optional
+from typing import Optional
 
 from loguru import logger
 
@@ -38,8 +38,6 @@ from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.identifiers import MeasurementId, TestId
-
-# Import the TestMeasurements value object
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.time_values import TestDuration

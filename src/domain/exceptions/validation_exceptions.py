@@ -9,11 +9,11 @@ from domain.exceptions.domain_exceptions import DomainException
 
 class ValidationException(DomainException):
     """Exception raised when domain object validation fails"""
-    
+
     def __init__(self, field_name: str, value, message: str, details: dict = None):
         """
         Initialize validation exception
-        
+
         Args:
             field_name: Name of the field that failed validation
             value: The invalid value
@@ -27,11 +27,11 @@ class ValidationException(DomainException):
 
 class InvalidRangeException(ValidationException):
     """Exception raised when a value is outside acceptable range"""
-    
+
     def __init__(self, field_name: str, value, min_value, max_value, details: dict = None):
         """
         Initialize range validation exception
-        
+
         Args:
             field_name: Name of the field with invalid range
             value: The value that's out of range
@@ -53,11 +53,11 @@ class InvalidRangeException(ValidationException):
 
 class InvalidFormatException(ValidationException):
     """Exception raised when a value has invalid format"""
-    
+
     def __init__(self, field_name: str, value, expected_format: str, details: dict = None):
         """
         Initialize format validation exception
-        
+
         Args:
             field_name: Name of the field with invalid format
             value: The value with invalid format
