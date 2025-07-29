@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any
 from loguru import logger
 
 from application.interfaces.hardware.loadcell import LoadCellService
+from domain.value_objects.hardware_configuration import LoadCellConfig
 
 from driver.serial.serial import SerialManager, SerialError
 from infrastructure.implementation.hardware.loadcell.bs205.constants import (
@@ -53,15 +54,24 @@ class BS205LoadCell(LoadCellService):
         self._connection = None
         self._is_connected = False
     
-    async def connect(self) -> bool:
+    async def connect(self, loadcell_config: LoadCellConfig) -> None:
         """
         하드웨어 연결
         
-        Returns:
-            연결 성공 여부
+        Args:
+            loadcell_config: LoadCell connection configuration
+        
+        Raises:
+            HardwareConnectionError: If connection fails
         """
+        # Update connection parameters from config
+        self._port = loadcell_config.port
+        self._baudrate = loadcell_config.baudrate
+        self._timeout = loadcell_config.timeout
+        self._indicator_id = loadcell_config.indicator_id
+        
         try:
-            logger.info(f"Connecting to BS205 LoadCell on {self._port}")
+            logger.info(f"Connecting to BS205 LoadCell on {self._port} at {self._baudrate} baud (ID: {self._indicator_id})")
             
             self._connection = await SerialManager.create_connection(
                 port=self._port,

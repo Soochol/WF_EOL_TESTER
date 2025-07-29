@@ -11,6 +11,7 @@ from loguru import logger
 
 from application.interfaces.hardware.power import PowerService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
+from domain.value_objects.hardware_configuration import PowerConfig
 from driver.tcp.communication import TCPCommunication
 from driver.tcp.exceptions import TCPError
 
@@ -43,15 +44,25 @@ class OdaPower(PowerService):
         self._is_connected = False
         self._output_enabled = False
     
-    async def connect(self) -> None:
+    async def connect(self, power_config: PowerConfig) -> None:
         """
         Connect to power supply hardware
+        
+        Args:
+            power_config: Power supply connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails
         """
+        # Update connection parameters from config
+        self._host = power_config.host
+        self._port = power_config.port
+        self._timeout = power_config.timeout
+        self._channel = power_config.channel
+        self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
+        
         try:
-            logger.info(f"Connecting to ODA Power Supply at {self._host}:{self._port}")
+            logger.info(f"Connecting to ODA Power Supply at {self._host}:{self._port} (Channel: {self._channel})")
             
             await self._tcp_comm.connect()
             

@@ -17,6 +17,7 @@ from domain.exceptions.robot_exceptions import (
     RobotConnectionError, RobotMotionError, RobotConfigurationError,
     AXLConnectionError, AXLMotionError
 )
+from domain.value_objects.hardware_configuration import RobotConfig
 
 from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
 from infrastructure.implementation.hardware.robot.ajinextek.constants import *
@@ -99,18 +100,22 @@ class AjinextekRobot(RobotService):
         
         logger.info(f"AjinextekRobotAdapter initialized with IRQ {irq_no}")
     
-    async def connect(self) -> bool:
+    async def connect(self, robot_config: RobotConfig) -> None:
         """
         하드웨어 연결
         
-        Returns:
-            연결 성공 여부
+        Args:
+            robot_config: Robot connection configuration
             
         Raises:
-            RobotConnectionError: If connection fails
+            HardwareConnectionError: If connection fails
         """
+        # Update connection parameters from config
+        self._irq_no = robot_config.irq_no
+        self._axis_count = robot_config.axis_count
+        
         try:
-            logger.info(f"Connecting to AJINEXTEK robot controller (IRQ: {self._irq_no})")
+            logger.info(f"Connecting to AJINEXTEK robot controller (IRQ: {self._irq_no}, Axes: {self._axis_count})")
             
             # Open AXL library
             result = self._axl.open(self._irq_no)

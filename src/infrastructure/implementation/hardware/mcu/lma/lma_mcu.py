@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any
 from loguru import logger
 
 from application.interfaces.hardware.mcu import MCUService, TestMode, MCUStatus
+from domain.value_objects.hardware_configuration import MCUConfig
 from driver.serial.serial import SerialManager, SerialError, SerialConnection
 
 from infrastructure.implementation.hardware.mcu.lma.constants import (
@@ -59,15 +60,23 @@ class LMAMCU(MCUService):
         self._current_fan_speed = 50.0  # percentage
         self._mcu_status = MCUStatus.IDLE
     
-    async def connect(self) -> bool:
+    async def connect(self, mcu_config: MCUConfig) -> None:
         """
         하드웨어 연결
         
-        Returns:
-            연결 성공 여부
+        Args:
+            mcu_config: MCU connection configuration
+        
+        Raises:
+            HardwareConnectionError: If connection fails
         """
+        # Update connection parameters from config
+        self._port = mcu_config.port
+        self._baudrate = mcu_config.baudrate
+        self._timeout = mcu_config.timeout
+        
         try:
-            logger.info(f"Connecting to LMA MCU at {self._port}")
+            logger.info(f"Connecting to LMA MCU at {self._port} (baudrate: {self._baudrate})")
             
             self._connection = await SerialManager.create_connection(
                 port=self._port,
@@ -80,7 +89,6 @@ class LMAMCU(MCUService):
             
             self._is_connected = True
             logger.info("LMA MCU connected successfully")
-            return True
             
         except Exception as e:
             logger.error(f"Failed to connect to LMA MCU: {e}")

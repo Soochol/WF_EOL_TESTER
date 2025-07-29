@@ -11,6 +11,7 @@ from loguru import logger
 
 from application.interfaces.hardware.robot import RobotService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
+from domain.value_objects.hardware_configuration import RobotConfig
 from typing import Optional
 from enum import Enum
 
@@ -55,14 +56,17 @@ class MockRobot(RobotService):
         
         logger.info(f"MockRobotAdapter initialized with {axis_count} axes")
     
-    async def connect(self) -> None:
+    async def connect(self, robot_config: RobotConfig) -> None:
         """
         하드웨어 연결 (시뮬레이션)
+        
+        Args:
+            robot_config: Robot connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails
         """
-        logger.info("Connecting to Mock Robot...")
+        logger.info(f"Connecting to Mock Robot (IRQ: {robot_config.irq_no}, Axes: {robot_config.axis_count})...")
         
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._response_delay * 2)

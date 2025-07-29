@@ -336,16 +336,13 @@ class ResultsCommand(Command):
                 return CommandResult.error("Invalid days. Must be a number.")
         
         try:
-            # Use repository's cleanup method if available
-            if hasattr(self._repository_service.test_repository, 'cleanup_old_tests'):
-                deleted_count = await self._repository_service.test_repository.cleanup_old_tests(days)
-                
-                if deleted_count > 0:
-                    return CommandResult.success(f"Cleaned up {deleted_count} test results older than {days} days")
-                else:
-                    return CommandResult.info(f"No test results older than {days} days found")
+            # Use repository's cleanup method
+            deleted_count = await self._repository_service.test_repository.cleanup_old_tests(days)
+            
+            if deleted_count > 0:
+                return CommandResult.success(f"Cleaned up {deleted_count} test results older than {days} days")
             else:
-                return CommandResult.info("Cleanup functionality not available for current repository")
+                return CommandResult.info(f"No test results older than {days} days found")
             
         except Exception as e:
             logger.error(f"Failed to clean results: {e}")

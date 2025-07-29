@@ -7,6 +7,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: loguru>=0.6.0
 Requires-Dist: asyncio-mqtt>=0.11.0
 Requires-Dist: pyserial>=3.5
+Requires-Dist: pyserial-asyncio>=0.6
 Requires-Dist: superclaude>=3.0.0.1
 Requires-Dist: numpy>=1.21.0
 Requires-Dist: scipy>=1.7.0

@@ -7,15 +7,19 @@ Interface for load cell operations and force measurement.
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 from domain.value_objects.measurements import ForceValue
+from domain.value_objects.hardware_configuration import LoadCellConfig
 
 
 class LoadCellService(ABC):
     """Abstract interface for load cell operations"""
     
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(self, loadcell_config: LoadCellConfig) -> None:
         """
         Connect to load cell hardware
+        
+        Args:
+            loadcell_config: Load cell connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails

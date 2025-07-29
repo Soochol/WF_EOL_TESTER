@@ -12,6 +12,7 @@ from loguru import logger
 
 from application.interfaces.hardware.mcu import MCUService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
+from domain.value_objects.hardware_configuration import MCUConfig
 from typing import Optional
 from enum import Enum
 
@@ -61,15 +62,18 @@ class MockMCU(MCUService):
         self._heating_enabled = False
         self._cooling_enabled = False
     
-    async def connect(self) -> None:
+    async def connect(self, mcu_config: MCUConfig) -> None:
         """
         하드웨어 연결 (시뮬레이션)
+        
+        Args:
+            mcu_config: MCU connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails
         """
         try:
-            logger.info("Connecting to Mock MCU")
+            logger.info(f"Connecting to Mock MCU on {mcu_config.port} at {mcu_config.baudrate} baud")
             
             # Simulate connection delay
             await asyncio.sleep(self._response_delay)

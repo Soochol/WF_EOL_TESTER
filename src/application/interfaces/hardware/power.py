@@ -7,14 +7,19 @@ Interface for power supply operations and control.
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
+from domain.value_objects.hardware_configuration import PowerConfig
+
 
 class PowerService(ABC):
     """Abstract interface for power supply operations"""
     
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(self, power_config: PowerConfig) -> None:
         """
         Connect to power supply hardware
+        
+        Args:
+            power_config: Power supply connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails

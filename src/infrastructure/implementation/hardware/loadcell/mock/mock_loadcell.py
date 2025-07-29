@@ -13,6 +13,7 @@ from application.interfaces.hardware.loadcell import LoadCellService
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 from domain.exceptions import HardwareOperationError
 from domain.value_objects.measurements import ForceValue
+from domain.value_objects.hardware_configuration import LoadCellConfig
 from domain.enums.measurement_units import MeasurementUnit
 
 
@@ -47,14 +48,17 @@ class MockLoadCell(LoadCellService):
         
         logger.info(f"MockLoadCellAdapter initialized with base force: {base_force}N")
     
-    async def connect(self) -> None:
+    async def connect(self, loadcell_config: LoadCellConfig) -> None:
         """
         하드웨어 연결 (시뮬레이션)
+        
+        Args:
+            loadcell_config: LoadCell connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails
         """
-        logger.info("Connecting to mock LoadCell...")
+        logger.info(f"Connecting to mock LoadCell on {loadcell_config.port} at {loadcell_config.baudrate} baud...")
         
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._connection_delay)

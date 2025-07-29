@@ -36,7 +36,11 @@ from domain.exceptions import (
 from domain.exceptions.test_exceptions import TestExecutionException
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
+from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.identifiers import MeasurementId, TestId
+
+# Import the TestMeasurements value object
+from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.time_values import TestDuration
 
@@ -79,6 +83,7 @@ class EOLForceTestUseCase:
         self._test_result_evaluator = test_result_evaluator
         self._profile_name: Optional[str] = None
         self._test_config: Optional[TestConfiguration] = None
+        self._hardware_config: Optional[HardwareConfiguration] = None
 
     async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
@@ -103,27 +108,8 @@ class EOLForceTestUseCase:
         """
         logger.info(f"Starting EOL test for DUT {command.dut_info.dut_id}")
 
-        # Load profile name
-        self._profile_name = await self._configuration.get_active_profile_name()
-
-        # Load configuration
-        self._test_config = await self._configuration.load_configuration(self._profile_name)
-
-        # Validate configuration
-        try:
-            await self._configuration_validator.validate_test_configuration(self._test_config)
-            logger.info("Configuration validation passed")
-        except MultiConfigurationValidationError as e:
-            logger.error(f"Configuration validation failed: {e.message}")
-            raise TestExecutionException(f"Configuration validation failed: {e.get_context('total_errors')} errors found")
-
-        # Mark profile as used (non-critical operation - don't fail test on error)
-        try:
-            await self._configuration.mark_profile_as_used(self._profile_name)
-            logger.debug(f"Profile '{self._profile_name}' marked as used successfully")
-        except Exception as pref_error:
-            # Profile usage tracking failure should not interrupt test execution
-            logger.warning(f"Failed to mark profile '{self._profile_name}' as used: {pref_error}")
+        # Load and validate all configurations
+        await self._load_and_validate_configurations()
 
         # Create test entity
         dut = DUT.from_command_info(command.dut_info)
@@ -133,24 +119,24 @@ class EOLForceTestUseCase:
         # Save test
         await self._repository.test_repository.save(test)
 
-        measurements = {}
+        measurements: Optional[TestMeasurements] = None
         start_time = asyncio.get_event_loop().time()
 
         try:
             test.start_test()
 
             # Setup phase
-            await self._hardware.connect_all_hardware()
-            await self._hardware.initialize_hardware(self._test_config)
+            await self._hardware.connect_all_hardware(self._hardware_config)
+            await self._hardware.initialize_hardware(self._test_config, self._hardware_config)
 
             # setup test sequence
-            await self._hardware.setup_test(self._test_config)
+            await self._hardware.setup_test(self._test_config, self._hardware_config)
 
             # Main Test phase - Use hardware facade
-            measurements = await self._hardware.perform_force_test_sequence(self._test_config)
+            measurements = await self._hardware.perform_force_test_sequence(self._test_config, self._hardware_config)
 
             # Test Teardown test sequence
-            await self._hardware.teardown_test(self._test_config)
+            await self._hardware.teardown_test(self._test_config, self._hardware_config)
 
             # Evaluate results using test result evaluator
             try:
@@ -176,7 +162,9 @@ class EOLForceTestUseCase:
                 test_status=test.status,
                 execution_duration=TestDuration.from_seconds(duration),
                 is_passed=passed,
-                measurement_ids=[MeasurementId.generate() for _ in measurements],
+                measurement_ids=[
+                    MeasurementId.generate() for _ in range(measurements.get_total_measurement_count() if measurements else 0)
+                ],
                 test_summary=measurements,
                 error_message=None,
             )
@@ -187,7 +175,7 @@ class EOLForceTestUseCase:
                 "operation": "execute_eol_test",
                 "test_id": str(test.test_id),
                 "dut_id": command.dut_info.dut_id,
-                "measurements_count": len(measurements),
+                "measurements_count": (measurements.get_total_measurement_count() if measurements else 0),
             }
             handled_exception = await self._exception_handler.handle_exception(e, context)
 
@@ -201,7 +189,9 @@ class EOLForceTestUseCase:
                 test_status=TestStatus.FAILED,
                 execution_duration=TestDuration.from_seconds(duration),
                 is_passed=False,
-                measurement_ids=[MeasurementId.generate() for _ in measurements],
+                measurement_ids=[
+                    MeasurementId.generate() for _ in range(measurements.get_total_measurement_count() if measurements else 0)
+                ],
                 test_summary=measurements,
                 error_message=str(handled_exception),
             )
@@ -211,5 +201,47 @@ class EOLForceTestUseCase:
             try:
                 await self._hardware.shutdown_hardware()
             except Exception as cleanup_error:
-                context = {"operation": "hardware_shutdown_cleanup", "test_id": str(test.test_id) if "test" in locals() else None}
+                context = {
+                    "operation": "hardware_shutdown_cleanup",
+                    "test_id": str(test.test_id) if "test" in locals() else None,
+                }
                 await self._exception_handler.handle_exception(cleanup_error, context)
+
+    async def _load_and_validate_configurations(self) -> None:
+        """
+        Load and validate all configurations for test execution
+
+        This method handles the complete configuration loading workflow:
+        1. Load active profile name
+        2. Load test configuration
+        3. Load hardware configuration
+        4. Validate configurations
+        5. Mark profile as used
+
+        Raises:
+            TestExecutionException: If configuration loading or validation fails
+        """
+        # Load profile name
+        self._profile_name = await self._configuration.get_active_profile_name()
+
+        # Load configuration
+        self._test_config = await self._configuration.load_configuration(self._profile_name)
+
+        # Load Hardware Configuration
+        self._hardware_config = await self._configuration.load_hardware_config(self._profile_name)
+
+        # Validate configuration
+        try:
+            await self._configuration_validator.validate_test_configuration(self._test_config)
+            logger.info("Configuration validation passed")
+        except MultiConfigurationValidationError as e:
+            logger.error(f"Configuration validation failed: {e.message}")
+            raise TestExecutionException(f"Configuration validation failed: {e.get_context('total_errors')} errors found")
+
+        # Mark profile as used (non-critical operation - don't fail test on error)
+        try:
+            await self._configuration.mark_profile_as_used(self._profile_name)
+            logger.debug(f"Profile '{self._profile_name}' marked as used successfully")
+        except Exception as pref_error:
+            # Profile usage tracking failure should not interrupt test execution
+            logger.warning(f"Failed to mark profile '{self._profile_name}' as used: {pref_error}")

@@ -16,6 +16,7 @@ from application.interfaces.hardware.robot import RobotService
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.test_configuration import TestConfiguration
+from domain.value_objects.measurements import TestMeasurements, PositionMeasurements, MeasurementReading
 
 
 class HardwareServiceFacade:
@@ -34,7 +35,7 @@ class HardwareServiceFacade:
         self._loadcell = loadcell_service
         self._power = power_service
 
-    async def connect_all_hardware(self) -> None:
+    async def connect_all_hardware(self, hardware_config: HardwareConfiguration) -> None:
         """Connect all required hardware"""
         logger.info("Connecting hardware...")
 
@@ -43,19 +44,19 @@ class HardwareServiceFacade:
 
         # Check and connect each hardware service
         if not await self._robot.is_connected():
-            connection_tasks.append(self._robot.connect())
+            connection_tasks.append(self._robot.connect(hardware_config.robot))
             hardware_names.append("Robot")
 
         if not await self._mcu.is_connected():
-            connection_tasks.append(self._mcu.connect())
+            connection_tasks.append(self._mcu.connect(hardware_config.mcu))
             hardware_names.append("MCU")
 
         if not await self._power.is_connected():
-            connection_tasks.append(self._power.connect())
+            connection_tasks.append(self._power.connect(hardware_config.power))
             hardware_names.append("Power")
 
         if not await self._loadcell.is_connected():
-            connection_tasks.append(self._loadcell.connect())
+            connection_tasks.append(self._loadcell.connect(hardware_config.loadcell))
             hardware_names.append("LoadCell")
 
         # Execute all connections concurrently
@@ -107,14 +108,14 @@ class HardwareServiceFacade:
 
     async def perform_force_test_sequence(
         self, config: TestConfiguration, hardware_config: HardwareConfiguration
-    ) -> Dict[str, float]:
+    ) -> TestMeasurements:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         logger.info("Starting force test sequence...")
         logger.info(
             f"Test matrix: {len(config.temperature_list)} temperatures × {len(config.stroke_positions)} positions = {len(config.temperature_list) * len(config.stroke_positions)} total measurements"
         )
 
-        measurements = {}
+        measurements_dict = {}
 
         try:
             # Outer loop: Iterate through temperature list
@@ -152,9 +153,10 @@ class HardwareServiceFacade:
                     # # Get power measurements
                     # power_data = await self._power.measure_output()
 
-                    # Store measurement data
-                    measurement = {"force": force, "temperature": temperature, "position": position}
-                    measurements[f"temp_{temperature}_pos_{position}"] = measurement
+                    # Store measurement data using TestMeasurements structure
+                    if temperature not in measurements_dict:
+                        measurements_dict[temperature] = {}
+                    measurements_dict[temperature][position] = {"force": force}
 
                     # # Allow stabilization between positions (if not last position)
                     # if pos_idx < len(config.stroke_positions) - 1:
@@ -162,9 +164,12 @@ class HardwareServiceFacade:
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
 
-            logger.info(f"Force test sequence completed with {len(measurements)} measurements")
+            # Convert to TestMeasurements value object
+            measurements = TestMeasurements.from_legacy_dict(measurements_dict)
+            
+            logger.info(f"Force test sequence completed with {measurements.get_total_measurement_count()} measurements")
             logger.info(
-                f"Test matrix completed: {len(config.temperature_list)} temperatures × {len(config.stroke_positions)} positions"
+                f"Test matrix completed: {measurements.get_temperature_count()} temperatures × {len(config.stroke_positions)} positions"
             )
             return measurements
 

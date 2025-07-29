@@ -2,9 +2,13 @@
 Measurement Value Objects
 
 Immutable value objects representing various measurements in the EOL testing system.
+Includes individual measurement values and complete test measurement collections.
 """
 
-from typing import Union
+from dataclasses import dataclass
+from typing import Union, Dict, List, Optional, Tuple, Iterator
+from datetime import datetime
+
 from domain.enums.measurement_units import MeasurementUnit
 from domain.exceptions.validation_exceptions import ValidationException, InvalidRangeException
 
@@ -13,36 +17,15 @@ class BaseMeasurement:
     """Base class for measurement value objects"""
     
     def __init__(self, value: Union[int, float], unit: MeasurementUnit):
-        """
-        Initialize measurement
-        
-        Args:
-            value: Numeric measurement value
-            unit: Unit of measurement
-            
-        Raises:
-            ValidationException: If value or unit is invalid
-        """
+        """Initialize measurement with basic validation"""
         if not isinstance(value, (int, float)):
             raise ValidationException("measurement_value", value, "Measurement value must be numeric")
         
         if not isinstance(unit, MeasurementUnit):
             raise ValidationException("measurement_unit", unit, "Unit must be MeasurementUnit enum")
         
-        self._validate_value_range(value)
-        self._validate_unit_compatibility(unit)
-        
         self._value = float(value)
         self._unit = unit
-    
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        """Validate value is within acceptable range - override in subclasses"""
-        if not (-1e10 <= value <= 1e10):  # Basic sanity check
-            raise InvalidRangeException("measurement_value", value, -1e10, 1e10)
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        """Validate unit is compatible with measurement type - override in subclasses"""
-        pass
     
     @property
     def value(self) -> float:
@@ -65,270 +48,247 @@ class BaseMeasurement:
             return False
         return (abs(self._value - other._value) < 1e-9 and 
                 self._unit == other._unit)
-    
-    def __hash__(self) -> int:
-        return hash((self.__class__.__name__, round(self._value, 9), self._unit))
-    
-    def __lt__(self, other) -> bool:
-        if not isinstance(other, self.__class__):
-            raise TypeError(f"Cannot compare {self.__class__.__name__} with {type(other).__name__}")
-        if self._unit != other._unit:
-            raise ValueError(f"Cannot compare measurements with different units: {self._unit} vs {other._unit}")
-        return self._value < other._value
-    
-    def __le__(self, other) -> bool:
-        return self < other or self == other
-    
-    def __gt__(self, other) -> bool:
-        return not self <= other
-    
-    def __ge__(self, other) -> bool:
-        return not self < other
 
 
 class ForceValue(BaseMeasurement):
     """Force measurement value object"""
     
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Force values in EOL testing typically range from -10000N to +10000N
-        if not (-10000 <= value <= 10000):
-            raise InvalidRangeException("force_value", value, -10000, 10000, {
-                "measurement_type": "force",
-                "common_range": "±10000N for EOL testing"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if not unit.is_force_unit:
-            raise ValidationException("force_unit", unit, f"Unit {unit} is not a force unit")
-    
     @classmethod
     def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.NEWTON) -> 'ForceValue':
         """Create ForceValue from raw controller data"""
         return cls(raw_value, unit)
-    
-    @classmethod
-    def zero(cls, unit: MeasurementUnit = MeasurementUnit.NEWTON) -> 'ForceValue':
-        """Create zero force value"""
-        return cls(0.0, unit)
-    
-    def is_within_tolerance(self, target: 'ForceValue', tolerance_percent: float) -> bool:
-        """Check if force is within tolerance of target"""
-        if self._unit != target._unit:
-            raise ValueError("Cannot compare forces with different units")
-        
-        tolerance_abs = abs(target._value * tolerance_percent / 100.0)
-        return abs(self._value - target._value) <= tolerance_abs
 
 
 class VoltageValue(BaseMeasurement):
     """Voltage measurement value object"""
-    
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Voltage values in EOL testing typically range from -1000V to +1000V
-        if not (-1000 <= value <= 1000):
-            raise InvalidRangeException("voltage_value", value, -1000, 1000, {
-                "measurement_type": "voltage",
-                "common_range": "±1000V for EOL testing"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if unit not in (MeasurementUnit.VOLT, MeasurementUnit.MILLIVOLT):
-            raise ValidationException("voltage_unit", unit, f"Unit {unit} is not a voltage unit")
-    
-    @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.VOLT) -> 'VoltageValue':
-        """Create VoltageValue from raw controller data"""
-        return cls(raw_value, unit)
-    
-    def to_volts(self) -> float:
-        """Convert to volts regardless of current unit"""
-        if self._unit == MeasurementUnit.VOLT:
-            return self._value
-        elif self._unit == MeasurementUnit.MILLIVOLT:
-            return self._value / 1000.0
-        else:
-            raise ValueError(f"Cannot convert {self._unit} to volts")
+    pass
 
 
 class CurrentValue(BaseMeasurement):
     """Current measurement value object"""
-    
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Current values in EOL testing typically range from -100A to +100A
-        if not (-100 <= value <= 100):
-            raise InvalidRangeException("current_value", value, -100, 100, {
-                "measurement_type": "current",
-                "common_range": "±100A for EOL testing"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if unit not in (MeasurementUnit.AMPERE, MeasurementUnit.MILLIAMPERE, MeasurementUnit.MICROAMPERE):
-            raise ValidationException("current_unit", unit, f"Unit {unit} is not a current unit")
-    
-    @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.AMPERE) -> 'CurrentValue':
-        """Create CurrentValue from raw controller data"""
-        return cls(raw_value, unit)
-    
-    def to_amperes(self) -> float:
-        """Convert to amperes regardless of current unit"""
-        if self._unit == MeasurementUnit.AMPERE:
-            return self._value
-        elif self._unit == MeasurementUnit.MILLIAMPERE:
-            return self._value / 1000.0
-        elif self._unit == MeasurementUnit.MICROAMPERE:
-            return self._value / 1000000.0
-        else:
-            raise ValueError(f"Cannot convert {self._unit} to amperes")
-
-
-class TemperatureValue(BaseMeasurement):
-    """Temperature measurement value object"""
-    
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Temperature values for MCU control typically range from -40°C to +200°C
-        if not (-40 <= value <= 200):
-            raise InvalidRangeException("temperature_value", value, -40, 200, {
-                "measurement_type": "temperature",
-                "common_range": "-40°C to +200°C for MCU operations"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if unit not in (MeasurementUnit.CELSIUS, MeasurementUnit.FAHRENHEIT, MeasurementUnit.KELVIN):
-            raise ValidationException("temperature_unit", unit, f"Unit {unit} is not a temperature unit")
-    
-    @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.CELSIUS) -> 'TemperatureValue':
-        """Create TemperatureValue from raw controller data"""
-        return cls(raw_value, unit)
-    
-    def to_celsius(self) -> float:
-        """Convert to Celsius regardless of current unit"""
-        if self._unit == MeasurementUnit.CELSIUS:
-            return self._value
-        elif self._unit == MeasurementUnit.FAHRENHEIT:
-            return (self._value - 32) * 5.0 / 9.0
-        elif self._unit == MeasurementUnit.KELVIN:
-            return self._value - 273.15
-        else:
-            raise ValueError(f"Cannot convert {self._unit} to celsius")
-    
-    def to_fahrenheit(self) -> float:
-        """Convert to Fahrenheit regardless of current unit"""
-        celsius = self.to_celsius()
-        return celsius * 9.0 / 5.0 + 32
-    
-    def to_kelvin(self) -> float:
-        """Convert to Kelvin regardless of current unit"""
-        celsius = self.to_celsius()
-        return celsius + 273.15
-
-
-class PositionValue(BaseMeasurement):
-    """Position measurement value object for robot control"""
-    
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Position values for robot control typically range from -10000mm to +10000mm
-        if not (-10000 <= value <= 10000):
-            raise InvalidRangeException("position_value", value, -10000, 10000, {
-                "measurement_type": "position",
-                "common_range": "±10000mm for robot control"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if unit not in (MeasurementUnit.MILLIMETER, MeasurementUnit.MICROMETER, MeasurementUnit.METER):
-            raise ValidationException("position_unit", unit, f"Unit {unit} is not a position unit")
-    
-    @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.MILLIMETER) -> 'PositionValue':
-        """Create PositionValue from raw controller data"""
-        return cls(raw_value, unit)
-    
-    def to_millimeters(self) -> float:
-        """Convert to millimeters regardless of current unit"""
-        if self._unit == MeasurementUnit.MILLIMETER:
-            return self._value
-        elif self._unit == MeasurementUnit.MICROMETER:
-            return self._value / 1000.0
-        elif self._unit == MeasurementUnit.METER:
-            return self._value * 1000.0
-        else:
-            raise ValueError(f"Cannot convert {self._unit} to millimeters")
-    
-    def to_meters(self) -> float:
-        """Convert to meters regardless of current unit"""
-        mm = self.to_millimeters()
-        return mm / 1000.0
-
-
-class VelocityValue(BaseMeasurement):
-    """Velocity measurement value object for robot control"""
-    
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Velocity values for robot control typically range from 0 to 10000mm/s
-        if not (0 <= value <= 10000):
-            raise InvalidRangeException("velocity_value", value, 0, 10000, {
-                "measurement_type": "velocity",
-                "common_range": "0 to 10000mm/s for robot control"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if unit not in (MeasurementUnit.MM_PER_SEC, MeasurementUnit.M_PER_SEC):
-            raise ValidationException("velocity_unit", unit, f"Unit {unit} is not a velocity unit")
-    
-    @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.MM_PER_SEC) -> 'VelocityValue':
-        """Create VelocityValue from raw controller data"""
-        return cls(raw_value, unit)
-    
-    def to_mm_per_sec(self) -> float:
-        """Convert to mm/s regardless of current unit"""
-        if self._unit == MeasurementUnit.MM_PER_SEC:
-            return self._value
-        elif self._unit == MeasurementUnit.M_PER_SEC:
-            return self._value * 1000.0
-        else:
-            raise ValueError(f"Cannot convert {self._unit} to mm/s")
-    
-    def to_m_per_sec(self) -> float:
-        """Convert to m/s regardless of current unit"""
-        mm_per_sec = self.to_mm_per_sec()
-        return mm_per_sec / 1000.0
+    pass
 
 
 class ResistanceValue(BaseMeasurement):
     """Resistance measurement value object"""
+    pass
+
+
+# === Test Measurement Collections ===
+
+@dataclass(frozen=True)
+class MeasurementReading:
+    """
+    Individual measurement reading combining force value with timestamp
     
-    def _validate_value_range(self, value: Union[int, float]) -> None:
-        # Resistance values must be positive and within reasonable range
-        if value < 0:
-            raise InvalidRangeException("resistance_value", value, 0, float('inf'), {
-                "measurement_type": "resistance",
-                "note": "Resistance cannot be negative"
-            })
-        
-        if not (0 <= value <= 1e12):  # Up to 1TΩ
-            raise InvalidRangeException("resistance_value", value, 0, 1e12, {
-                "measurement_type": "resistance",
-                "common_range": "0 to 1TΩ for EOL testing"
-            })
-    
-    def _validate_unit_compatibility(self, unit: MeasurementUnit) -> None:
-        if unit not in (MeasurementUnit.OHM, MeasurementUnit.KILOOHM, MeasurementUnit.MEGAOHM):
-            raise ValidationException("resistance_unit", unit, f"Unit {unit} is not a resistance unit")
+    Represents a single measurement reading in a test sequence.
+    Uses ForceValue for proper validation and unit handling.
+    """
+    force_value: ForceValue
+    timestamp: Optional[datetime] = None
     
     @classmethod
-    def from_raw_data(cls, raw_value: float, unit: MeasurementUnit = MeasurementUnit.OHM) -> 'ResistanceValue':
-        """Create ResistanceValue from raw controller data"""
-        return cls(raw_value, unit)
+    def from_raw_force(cls, force: float, timestamp: Optional[datetime] = None) -> "MeasurementReading":
+        """Create measurement reading from raw force value"""
+        force_value = ForceValue.from_raw_data(force)
+        return cls(force_value=force_value, timestamp=timestamp)
     
-    def to_ohms(self) -> float:
-        """Convert to ohms regardless of current unit"""
-        if self._unit == MeasurementUnit.OHM:
-            return self._value
-        elif self._unit == MeasurementUnit.KILOOHM:
-            return self._value * 1000.0
-        elif self._unit == MeasurementUnit.MEGAOHM:
-            return self._value * 1000000.0
-        else:
-            raise ValueError(f"Cannot convert {self._unit} to ohms")
+    @property
+    def force(self) -> float:
+        """Get force value in Newtons"""
+        return self.force_value.value
+    
+    def __str__(self) -> str:
+        return f"MeasurementReading(force={self.force:.2f}N)"
+    
+    def __repr__(self) -> str:
+        return f"MeasurementReading(force_value={self.force_value}, timestamp={self.timestamp})"
+
+
+@dataclass(frozen=True)
+class PositionMeasurements:
+    """
+    Measurements at different positions for a given temperature
+    
+    Contains measurement readings for multiple positions at a specific temperature.
+    Provides convenient access methods and position-based operations.
+    """
+    _readings: Dict[float, MeasurementReading]
+    
+    def __post_init__(self):
+        """Validate position measurements on creation"""
+        if not self._readings:
+            raise ValueError("Position measurements cannot be empty")
+    
+    def get_reading(self, position: float) -> Optional[MeasurementReading]:
+        """Get measurement reading at specific position"""
+        return self._readings.get(position)
+    
+    def get_force(self, position: float) -> Optional[float]:
+        """Get force value at specific position"""
+        reading = self.get_reading(position)
+        return reading.force if reading else None
+    
+    def get_force_value(self, position: float) -> Optional[ForceValue]:
+        """Get ForceValue object at specific position"""
+        reading = self.get_reading(position)
+        return reading.force_value if reading else None
+    
+    def get_positions(self) -> List[float]:
+        """Get all measured positions sorted in ascending order"""
+        return sorted(self._readings.keys())
+    
+    def get_position_count(self) -> int:
+        """Get number of positions measured"""
+        return len(self._readings)
+    
+    
+    def has_position(self, position: float) -> bool:
+        """Check if position was measured"""
+        return position in self._readings
+    
+    def to_dict(self) -> Dict[float, Dict[str, float]]:
+        """Convert to dictionary format for serialization"""
+        return {
+            position: {"force": reading.force}
+            for position, reading in self._readings.items()
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[float, Dict[str, float]]) -> "PositionMeasurements":
+        """Create from dictionary format"""
+        readings = {}
+        for position, force_data in data.items():
+            readings[position] = MeasurementReading.from_raw_force(force_data["force"])
+        return cls(_readings=readings)
+    
+    def __str__(self) -> str:
+        return f"PositionMeasurements({len(self._readings)} positions)"
+    
+    def __repr__(self) -> str:
+        return f"PositionMeasurements(_readings={dict(self._readings)})"
+
+
+@dataclass(frozen=True)
+class TestMeasurements:
+    """
+    Complete test measurements across all temperatures and positions
+    
+    Contains the complete measurement matrix for an EOL test.
+    Provides high-level operations for accessing and analyzing measurement data.
+    """
+    _measurements: Dict[float, PositionMeasurements]
+    
+    def __post_init__(self):
+        """Validate test measurements on creation"""
+        if not self._measurements:
+            raise ValueError("Test measurements cannot be empty")
+    
+    def get_temperature_measurements(self, temperature: float) -> Optional[PositionMeasurements]:
+        """Get all measurements for a specific temperature"""
+        return self._measurements.get(temperature)
+    
+    def get_force(self, temperature: float, position: float) -> Optional[float]:
+        """Get force value at specific temperature and position"""
+        temp_measurements = self.get_temperature_measurements(temperature)
+        return temp_measurements.get_force(position) if temp_measurements else None
+    
+    def get_force_value(self, temperature: float, position: float) -> Optional[ForceValue]:
+        """Get ForceValue object at specific temperature and position"""
+        temp_measurements = self.get_temperature_measurements(temperature)
+        return temp_measurements.get_force_value(position) if temp_measurements else None
+    
+    def get_reading(self, temperature: float, position: float) -> Optional[MeasurementReading]:
+        """Get measurement reading at specific temperature and position"""
+        temp_measurements = self.get_temperature_measurements(temperature)
+        return temp_measurements.get_reading(position) if temp_measurements else None
+    
+    def get_temperatures(self) -> List[float]:
+        """Get all measured temperatures sorted in ascending order"""
+        return sorted(self._measurements.keys())
+    
+    def get_temperature_count(self) -> int:
+        """Get number of temperatures measured"""
+        return len(self._measurements)
+    
+    def get_positions_for_temperature(self, temperature: float) -> List[float]:
+        """Get all positions measured at specific temperature"""
+        temp_measurements = self.get_temperature_measurements(temperature)
+        return temp_measurements.get_positions() if temp_measurements else []
+    
+    def get_total_measurement_count(self) -> int:
+        """Get total number of individual measurements across all temperatures and positions"""
+        return sum(pos_measurements.get_position_count() for pos_measurements in self._measurements.values())
+    
+    def get_measurement_matrix(self) -> Dict[Tuple[float, float], float]:
+        """
+        Get flattened temperature-position-force mapping
+        
+        Returns:
+            Dictionary with (temperature, position) tuple keys and force values
+        """
+        result = {}
+        for temp, pos_measurements in self._measurements.items():
+            for pos in pos_measurements.get_positions():
+                force = pos_measurements.get_force(pos)
+                if force is not None:
+                    result[(temp, pos)] = force
+        return result
+    
+    
+    def to_legacy_dict(self) -> Dict[float, Dict[float, Dict[str, float]]]:
+        """
+        Convert to legacy nested dict format for backward compatibility
+        
+        Returns:
+            Dictionary in format: {temperature: {position: {"force": value}}}
+        """
+        result = {}
+        for temp, pos_measurements in self._measurements.items():
+            result[temp] = pos_measurements.to_dict()
+        return result
+    
+    @classmethod
+    def from_legacy_dict(cls, data: Dict[float, Dict[float, Dict[str, float]]]) -> "TestMeasurements":
+        """
+        Create TestMeasurements from legacy nested dict format
+        
+        Args:
+            data: Dictionary in format: {temperature: {position: {"force": value}}}
+            
+        Returns:
+            TestMeasurements instance
+        """
+        measurements = {}
+        for temp, positions_data in data.items():
+            measurements[temp] = PositionMeasurements.from_dict(positions_data)
+        return cls(_measurements=measurements)
+    
+    def to_dict(self) -> Dict[str, any]:
+        """Convert to dictionary format for serialization"""
+        return {
+            "measurements": self.to_legacy_dict(),
+            "temperature_count": self.get_temperature_count(),
+            "total_measurement_count": self.get_total_measurement_count()
+        }
+    
+    def __str__(self) -> str:
+        temp_count = self.get_temperature_count()
+        total_count = self.get_total_measurement_count()
+        return f"TestMeasurements({temp_count} temperatures, {total_count} total measurements)"
+    
+    def __repr__(self) -> str:
+        return f"TestMeasurements(_measurements={dict(self._measurements)})"
+    
+    def __iter__(self) -> Iterator[Tuple[float, PositionMeasurements]]:
+        """Allow iteration over temperature-measurements pairs"""
+        for temp in self.get_temperatures():
+            yield temp, self._measurements[temp]
+    
+    def __len__(self) -> int:
+        """Return number of temperatures measured"""
+        return len(self._measurements)
+    
+    def __contains__(self, temperature: float) -> bool:
+        """Check if temperature was measured"""
+        return temperature in self._measurements

@@ -11,6 +11,7 @@ from loguru import logger
 
 from application.interfaces.hardware.power import PowerService
 from domain.exceptions import HardwareConnectionError, HardwareOperationError
+from domain.value_objects.hardware_configuration import PowerConfig
 
 
 class MockPower(PowerService):
@@ -56,14 +57,17 @@ class MockPower(PowerService):
         
         logger.info(f"MockPowerAdapter initialized with {max_voltage}V/{self._max_current}A limits")
     
-    async def connect(self) -> None:
+    async def connect(self, power_config: PowerConfig) -> None:
         """
         Connect to power supply hardware (시뮬레이션)
+        
+        Args:
+            power_config: Power supply connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails
         """
-        logger.info("Connecting to mock Power Supply...")
+        logger.info(f"Connecting to mock Power Supply at {power_config.host}:{power_config.port}...")
         
         try:
             # 연결 지연 시뮬레이션
@@ -76,7 +80,7 @@ class MockPower(PowerService):
             
             self._is_connected = True
             self._output_enabled = False  # 안전을 위해 비활성화
-            logger.info("Mock Power Supply connected successfully")
+            logger.info(f"Mock Power Supply connected successfully (Channel: {power_config.channel})")
             
         except Exception as e:
             logger.error(f"Failed to connect to mock Power Supply: {e}")

@@ -7,15 +7,19 @@ Interface for MCU (Microcontroller Unit) operations and control.
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from domain.enums.mcu_enums import TestMode, MCUStatus
+from domain.value_objects.hardware_configuration import MCUConfig
 
 
 class MCUService(ABC):
     """Abstract interface for MCU operations"""
     
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(self, mcu_config: MCUConfig) -> None:
         """
         Connect to MCU hardware
+        
+        Args:
+            mcu_config: MCU connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails

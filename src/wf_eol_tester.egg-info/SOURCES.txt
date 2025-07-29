@@ -28,8 +28,11 @@ src/domain/entities/dut.py
 src/domain/entities/eol_test.py
 src/domain/entities/test_result.py
 src/domain/enums/__init__.py
+src/domain/enums/digital_input_enums.py
 src/domain/enums/hardware_status.py
+src/domain/enums/mcu_enums.py
 src/domain/enums/measurement_units.py
+src/domain/enums/robot_enums.py
 src/domain/enums/test_status.py
 src/domain/exceptions/__init__.py
 src/domain/exceptions/business_rule_exceptions.py

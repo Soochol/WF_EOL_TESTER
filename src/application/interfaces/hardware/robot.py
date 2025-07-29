@@ -7,15 +7,19 @@ Interface for robot control and motion operations.
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from domain.enums.robot_enums import MotionStatus
+from domain.value_objects.hardware_configuration import RobotConfig
 
 
 class RobotService(ABC):
     """Abstract interface for robot control operations"""
     
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(self, robot_config: RobotConfig) -> None:
         """
         Connect to robot hardware
+        
+        Args:
+            robot_config: Robot connection configuration
         
         Raises:
             HardwareConnectionError: If connection fails

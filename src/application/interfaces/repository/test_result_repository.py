@@ -5,7 +5,7 @@ Interface for test result data persistence.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from domain.entities.eol_test import EOLTest
 
 
@@ -75,5 +75,28 @@ class TestResultRepository(ABC):
         Raises:
             RepositoryAccessError: If deletion fails
             ConfigurationNotFoundError: If test with given ID does not exist
+        """
+        pass
+    
+    @abstractmethod
+    async def get_all_tests(self) -> List[Dict[str, Any]]:
+        """
+        모든 테스트 조회 (관리용)
+        
+        Returns:
+            모든 테스트 딕셔너리 리스트
+        """
+        pass
+    
+    @abstractmethod
+    async def cleanup_old_tests(self, days: int = 30) -> int:
+        """
+        오래된 테스트 정리
+        
+        Args:
+            days: 보관 기간 (일)
+            
+        Returns:
+            정리된 테스트 수
         """
         pass
