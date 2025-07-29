@@ -65,19 +65,19 @@ class ForceValue(BaseMeasurement):
 class VoltageValue(BaseMeasurement):
     """Voltage measurement value object"""
 
-    pass
+    ...
 
 
 class CurrentValue(BaseMeasurement):
     """Current measurement value object"""
 
-    pass
+    ...
 
 
 class ResistanceValue(BaseMeasurement):
     """Resistance measurement value object"""
 
-    pass
+    ...
 
 
 # === Test Measurement Collections ===

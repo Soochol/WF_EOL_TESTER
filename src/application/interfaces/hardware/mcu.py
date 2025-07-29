@@ -5,9 +5,9 @@ Interface for MCU (Microcontroller Unit) operations and control.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
-from domain.enums.mcu_enums import TestMode, MCUStatus
+from typing import Dict, Any
 from domain.value_objects.hardware_configuration import MCUConfig
+from infrastructure.implementation.hardware.mcu.lma.types import TestMode
 
 
 class MCUService(ABC):
@@ -24,7 +24,7 @@ class MCUService(ABC):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -34,7 +34,7 @@ class MCUService(ABC):
         Raises:
             HardwareOperationError: If disconnection fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def is_connected(self) -> bool:
@@ -44,33 +44,17 @@ class MCUService(ABC):
         Returns:
             True if connected, False otherwise
         """
-        pass
+        ...
 
     @abstractmethod
-    async def boot_complete(self) -> None:
+    async def wait_boot_complete(self) -> None:
         """
-        Signal MCU that boot process is complete
+        Wait for MCU boot process to complete
 
         Raises:
-            HardwareOperationError: If signal sending fails
+            HardwareOperationError: If boot waiting fails
         """
-        pass
-
-    @abstractmethod
-    async def send_command(
-        self, command: str, data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Send command to MCU
-
-        Args:
-            command: Command string to send
-            data: Optional data payload
-
-        Returns:
-            Response from MCU as dictionary
-        """
-        pass
+        ...
 
     @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
@@ -80,33 +64,33 @@ class MCUService(ABC):
         Returns:
             Dictionary containing MCU status
         """
-        pass
+        ...
 
     @abstractmethod
-    async def reset(self) -> None:
+    async def set_temperature(self, target_temp: float) -> None:
         """
-        Reset the MCU
-
-        Raises:
-            HardwareOperationError: If reset fails
-        """
-        pass
-
-    @abstractmethod
-    async def set_temperature_control(
-        self, enabled: bool, target_temp: Optional[float] = None
-    ) -> None:
-        """
-        Enable/disable temperature control
+        Set target temperature for the MCU
 
         Args:
-            enabled: Whether to enable temperature control
-            target_temp: Target temperature in Celsius (if enabling)
+            target_temp: Target temperature in Celsius
 
         Raises:
-            HardwareOperationError: If temperature control setting fails
+            HardwareOperationError: If temperature setting fails
         """
-        pass
+        ...
+
+    @abstractmethod
+    async def set_upper_temperature(self, upper_temp: float) -> None:
+        """
+        Set upper temperature limit for the MCU
+
+        Args:
+            upper_temp: Upper temperature limit in Celsius
+
+        Raises:
+            HardwareOperationError: If upper temperature setting fails
+        """
+        ...
 
     @abstractmethod
     async def get_temperature(self) -> float:
@@ -116,4 +100,78 @@ class MCUService(ABC):
         Returns:
             Current temperature in Celsius
         """
-        pass
+        ...
+
+    @abstractmethod
+    async def set_test_mode(self, mode: TestMode) -> None:
+        """
+        Set test mode for the MCU
+
+        Args:
+            mode: Test mode to set
+
+        Raises:
+            HardwareOperationError: If test mode setting fails
+        """
+        ...
+
+    @abstractmethod
+    async def get_test_mode(self) -> TestMode:
+        """
+        Get current test mode
+
+        Returns:
+            Current test mode
+        """
+        ...
+
+    @abstractmethod
+    async def set_fan_speed(self, speed_percent: float) -> None:
+        """
+        Set fan speed percentage
+
+        Args:
+            speed_percent: Fan speed (0-100%)
+
+        Raises:
+            HardwareOperationError: If fan speed setting fails
+        """
+        ...
+
+    @abstractmethod
+    async def get_fan_speed(self) -> float:
+        """
+        Get current fan speed
+
+        Returns:
+            Current fan speed percentage (0-100%)
+        """
+        ...
+
+    @abstractmethod
+    async def start_standby_heating(
+        self, operating_temp: float, standby_temp: float, hold_time_ms: int = 10000
+    ) -> None:
+        """
+        Start standby heating mode
+
+        Args:
+            operating_temp: Operating temperature in Celsius
+            standby_temp: Standby temperature in Celsius  
+            hold_time_ms: Hold time in milliseconds
+
+        Raises:
+            HardwareOperationError: If heating start fails
+        """
+        ...
+
+    @abstractmethod
+    async def start_standby_cooling(self) -> None:
+        """
+        Start standby cooling mode
+
+        Raises:
+            HardwareOperationError: If cooling start fails
+        """
+        ...
+

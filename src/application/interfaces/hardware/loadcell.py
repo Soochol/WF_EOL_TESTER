@@ -24,7 +24,7 @@ class LoadCellService(ABC):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -34,7 +34,7 @@ class LoadCellService(ABC):
         Raises:
             HardwareOperationError: If disconnection fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def is_connected(self) -> bool:
@@ -44,7 +44,7 @@ class LoadCellService(ABC):
         Returns:
             True if connected, False otherwise
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def zero_calibration(self) -> None:
@@ -54,7 +54,7 @@ class LoadCellService(ABC):
         Raises:
             HardwareOperationError: If calibration fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def read_force(self) -> ForceValue:
@@ -64,7 +64,7 @@ class LoadCellService(ABC):
         Returns:
             ForceValue object containing the measured force
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def read_raw_value(self) -> float:
@@ -74,7 +74,7 @@ class LoadCellService(ABC):
         Returns:
             Raw measurement value
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
@@ -84,7 +84,7 @@ class LoadCellService(ABC):
         Returns:
             Dictionary containing status information
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def set_measurement_rate(self, rate_hz: int) -> None:
@@ -97,7 +97,7 @@ class LoadCellService(ABC):
         Raises:
             HardwareOperationError: If rate setting fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_measurement_rate(self) -> int:
@@ -107,4 +107,4 @@ class LoadCellService(ABC):
         Returns:
             Current sampling rate in Hz
         """
-        pass
+        raise NotImplementedError

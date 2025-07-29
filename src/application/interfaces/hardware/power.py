@@ -24,7 +24,7 @@ class PowerService(ABC):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -34,7 +34,7 @@ class PowerService(ABC):
         Raises:
             HardwareOperationError: If disconnection fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def is_connected(self) -> bool:
@@ -44,7 +44,7 @@ class PowerService(ABC):
         Returns:
             True if connected, False otherwise
         """
-        pass
+        ...
 
     @abstractmethod
     async def set_voltage(self, voltage: float) -> None:
@@ -57,7 +57,7 @@ class PowerService(ABC):
         Raises:
             HardwareOperationError: If voltage setting fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def get_voltage(self) -> float:
@@ -67,7 +67,7 @@ class PowerService(ABC):
         Returns:
             Current voltage in volts
         """
-        pass
+        ...
 
     @abstractmethod
     async def set_current_limit(self, current: float) -> None:
@@ -80,7 +80,7 @@ class PowerService(ABC):
         Raises:
             HardwareOperationError: If current limit setting fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def get_current(self) -> float:
@@ -90,7 +90,7 @@ class PowerService(ABC):
         Returns:
             Current in amperes
         """
-        pass
+        ...
 
     @abstractmethod
     async def enable_output(self) -> None:
@@ -100,7 +100,7 @@ class PowerService(ABC):
         Raises:
             HardwareOperationError: If output enabling fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def disable_output(self) -> None:
@@ -110,7 +110,7 @@ class PowerService(ABC):
         Raises:
             HardwareOperationError: If output disabling fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def is_output_enabled(self) -> bool:
@@ -120,7 +120,7 @@ class PowerService(ABC):
         Returns:
             True if output is enabled, False otherwise
         """
-        pass
+        ...
 
     @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
@@ -130,4 +130,4 @@ class PowerService(ABC):
         Returns:
             Dictionary containing status information
         """
-        pass
+        ...

@@ -23,7 +23,7 @@ class TestResultRepository(ABC):
         Returns:
             저장된 테스트 결과
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def update(self, test: EOLTest) -> EOLTest:
@@ -36,7 +36,7 @@ class TestResultRepository(ABC):
         Returns:
             수정된 테스트 결과
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def find_by_id(self, test_id: str) -> Optional[EOLTest]:
@@ -49,7 +49,7 @@ class TestResultRepository(ABC):
         Returns:
             조회된 테스트 결과 (없으면 None)
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def find_by_dut_id(self, dut_id: str) -> List[EOLTest]:
@@ -62,7 +62,7 @@ class TestResultRepository(ABC):
         Returns:
             테스트 결과 목록
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def delete(self, test_id: str) -> None:
@@ -76,7 +76,7 @@ class TestResultRepository(ABC):
             RepositoryAccessError: If deletion fails
             ConfigurationNotFoundError: If test with given ID does not exist
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_all_tests(self) -> List[Dict[str, Any]]:
@@ -86,7 +86,7 @@ class TestResultRepository(ABC):
         Returns:
             모든 테스트 딕셔너리 리스트
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def cleanup_old_tests(self, days: int = 30) -> int:
@@ -99,4 +99,4 @@ class TestResultRepository(ABC):
         Returns:
             정리된 테스트 수
         """
-        pass
+        raise NotImplementedError

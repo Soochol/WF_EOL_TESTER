@@ -5,7 +5,7 @@ This module defines error codes and error handling utilities for Ajinextek DIO c
 """
 
 from enum import IntEnum
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 
 class AjinextekErrorCode(IntEnum):

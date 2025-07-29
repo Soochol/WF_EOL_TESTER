@@ -8,11 +8,16 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from application.interfaces.configuration.profile_preference import ProfilePreference
-from domain.exceptions import RepositoryError as RepositoryException
+from application.interfaces.configuration.profile_preference import (
+    ProfilePreference,
+)
+from domain.exceptions import (
+    RepositoryError as RepositoryException,
+)
 
 
 class JsonProfilePreference(ProfilePreference):
@@ -24,7 +29,7 @@ class JsonProfilePreference(ProfilePreference):
     data validation, and error recovery.
     """
 
-    def __init__(self, preference_file: str = "config/data/last_used_profile.json"):
+    def __init__(self, preference_file: str = "configuration/last_used_profile.json"):
         """
         Initialize JSON profile preference repository
 
@@ -54,10 +59,7 @@ class JsonProfilePreference(ProfilePreference):
             RepositoryException: If saving fails
         """
         if not profile_name or not isinstance(profile_name, str):
-            raise RepositoryException(
-                f"Invalid profile name for saving: '{profile_name}'",
-                operation="save_last_used_profile",
-            )
+            raise RepositoryException(f"Invalid profile name for saving: '{profile_name}'")
 
         try:
             # Load existing preferences
@@ -76,8 +78,7 @@ class JsonProfilePreference(ProfilePreference):
 
         except Exception as e:
             raise RepositoryException(
-                f"Failed to save last used profile '{profile_name}': {str(e)}",
-                operation="save_last_used_profile",
+                f"Failed to save last used profile '{profile_name}': {str(e)}"
             ) from e
 
     async def load_last_used_profile(self) -> Optional[str]:
@@ -94,9 +95,9 @@ class JsonProfilePreference(ProfilePreference):
             if profile_name:
                 logger.debug(f"Loaded last used profile: '{profile_name}'")
                 return profile_name
-            else:
-                logger.debug("No last used profile found")
-                return None
+
+            logger.debug("No last used profile found")
+            return None
 
         except Exception as e:
             logger.warning(f"Failed to load last used profile: {e}")
@@ -131,9 +132,7 @@ class JsonProfilePreference(ProfilePreference):
                 logger.debug("Preferences file did not exist, nothing to clear")
 
         except Exception as e:
-            raise RepositoryException(
-                f"Failed to clear profile preferences: {str(e)}", operation="clear_preferences"
-            ) from e
+            raise RepositoryException(f"Failed to clear profile preferences: {str(e)}") from e
 
     async def get_preference_metadata(self) -> Dict[str, Any]:
         """
@@ -182,10 +181,7 @@ class JsonProfilePreference(ProfilePreference):
             RepositoryException: If update fails
         """
         if not profile_name or not isinstance(profile_name, str):
-            raise RepositoryException(
-                f"Invalid profile name for history update: '{profile_name}'",
-                operation="update_usage_history",
-            )
+            raise RepositoryException(f"Invalid profile name for history update: '{profile_name}'")
 
         try:
             preferences = await self._load_preferences()
@@ -209,8 +205,7 @@ class JsonProfilePreference(ProfilePreference):
 
         except Exception as e:
             raise RepositoryException(
-                f"Failed to update usage history for '{profile_name}': {str(e)}",
-                operation="update_usage_history",
+                f"Failed to update usage history for '{profile_name}': {str(e)}"
             ) from e
 
     async def is_available(self) -> bool:

@@ -59,14 +59,14 @@ class ConfigurationService:
             logger.debug(f"Configuration loaded successfully from '{profile_name}.yaml'")
             return test_config
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             available_profiles = await self.list_available_profiles()
-            raise ConfigurationNotFoundError(profile_name, available_profiles)
+            raise ConfigurationNotFoundError(profile_name, available_profiles) from e
         except Exception as e:
             logger.error(f"Failed to load configurations from profile '{profile_name}': {e}")
             raise RepositoryAccessError(
                 operation="load_configuration", reason=str(e), file_path=f"{profile_name}.yaml"
-            )
+            ) from e
 
     async def list_available_profiles(self) -> List[str]:
         """
@@ -170,7 +170,7 @@ class ConfigurationService:
             )
         except Exception as e:
             logger.error(f"Failed to clear profile preferences: {e}")
-            raise RepositoryAccessError(operation="clear_profile_preferences", reason=str(e))
+            raise RepositoryAccessError(operation="clear_profile_preferences", reason=str(e)) from e
 
     def _is_valid_profile_name(self, profile_name: str) -> bool:
         """

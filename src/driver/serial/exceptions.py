@@ -38,30 +38,40 @@ class SerialError(Exception):
 
 
 class SerialConnectionError(SerialError):
-    """Serial connection establishment errors"""
-
-    pass
+    """Serial connection establishment errors.
+    
+    Raised when unable to establish a connection to the serial port,
+    including port access issues, hardware not found, or permission errors.
+    """
 
 
 class SerialCommunicationError(SerialError):
-    """Serial communication errors (send/receive failures)"""
-
-    pass
+    """Serial communication errors (send/receive failures).
+    
+    Raised when data transmission or reception fails during serial communication,
+    including checksum errors, protocol violations, or unexpected responses.
+    """
 
 
 class SerialTimeoutError(SerialError):
-    """Serial operation timeout errors"""
-
-    pass
+    """Serial operation timeout errors.
+    
+    Raised when serial operations exceed their configured timeout limits,
+    including read timeouts, write timeouts, or handshake timeouts.
+    """
 
 
 class SerialConfigurationError(SerialError):
-    """Serial configuration errors"""
-
-    pass
+    """Serial configuration errors.
+    
+    Raised when serial port configuration is invalid or cannot be applied,
+    including unsupported baud rates, parity settings, or data bits.
+    """
 
 
 class SerialBufferError(SerialError):
-    """Serial buffer operation errors"""
-
-    pass
+    """Serial buffer operation errors.
+    
+    Raised when buffer operations fail, including buffer overflow,
+    buffer underrun, or memory allocation issues for serial buffers.
+    """

@@ -162,6 +162,11 @@ class TestDuration:
         return cls(minutes * 60.0)
 
     @classmethod
+    def from_seconds(cls, seconds: Union[int, float]) -> "TestDuration":
+        """Create duration from seconds"""
+        return cls(seconds)
+
+    @classmethod
     def between_timestamps(cls, start: Timestamp, end: Timestamp) -> "TestDuration":
         """Create duration between two timestamps"""
         if end < start:

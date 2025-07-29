@@ -83,14 +83,14 @@ class SerialConnection:
             logger.info(f"Serial connected to {port} at {baudrate} baud")
             return SerialConnection(reader, writer)
 
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
             raise SerialConnectionError(
                 f"Connection timeout to {port}", port=port, baudrate=baudrate
-            )
+            ) from e
         except Exception as e:
             raise SerialConnectionError(
                 f"Failed to connect to {port}", port=port, baudrate=baudrate, details=str(e)
-            )
+            ) from e
 
     async def disconnect(self) -> None:
         """Disconnect from serial port"""
@@ -123,7 +123,7 @@ class SerialConnection:
             await self._writer.drain()
 
         except Exception as e:
-            raise SerialCommunicationError("Write failed", details=str(e))
+            raise SerialCommunicationError("Write failed", details=str(e)) from e
 
     async def read_until(self, separator: bytes, timeout: Optional[float] = None) -> bytes:
         """
@@ -150,10 +150,10 @@ class SerialConnection:
 
             return data
 
-        except asyncio.TimeoutError:
-            raise SerialTimeoutError("Read timeout")
+        except asyncio.TimeoutError as e:
+            raise SerialTimeoutError("Read timeout") from e
         except Exception as e:
-            raise SerialCommunicationError("Read failed", details=str(e))
+            raise SerialCommunicationError("Read failed", details=str(e)) from e
 
     async def read(self, size: int = -1, timeout: Optional[float] = None) -> bytes:
         """
@@ -180,10 +180,10 @@ class SerialConnection:
 
             return data
 
-        except asyncio.TimeoutError:
-            raise SerialTimeoutError("Read timeout")
+        except asyncio.TimeoutError as e:
+            raise SerialTimeoutError("Read timeout") from e
         except Exception as e:
-            raise SerialCommunicationError("Read failed", details=str(e))
+            raise SerialCommunicationError("Read failed", details=str(e)) from e
 
     async def send_command(
         self, command: str, terminator: str = COMMAND_TERMINATOR, timeout: float = DEFAULT_TIMEOUT
@@ -218,9 +218,9 @@ class SerialConnection:
             return response
 
         except UnicodeDecodeError as e:
-            raise SerialCommunicationError("Response decode failed", details=str(e))
+            raise SerialCommunicationError("Response decode failed", details=str(e)) from e
         except Exception as e:
-            raise SerialCommunicationError("Command failed", details=str(e))
+            raise SerialCommunicationError("Command failed", details=str(e)) from e
 
 
 class SerialManager:

@@ -6,8 +6,8 @@ Interface for robot control and motion operations.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
-from domain.enums.robot_enums import MotionStatus
 from domain.value_objects.hardware_configuration import RobotConfig
+from domain.enums.robot_enums import MotionStatus
 
 
 class RobotService(ABC):
@@ -24,7 +24,7 @@ class RobotService(ABC):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -34,7 +34,7 @@ class RobotService(ABC):
         Raises:
             HardwareOperationError: If disconnection fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def is_connected(self) -> bool:
@@ -44,7 +44,7 @@ class RobotService(ABC):
         Returns:
             True if connected, False otherwise
         """
-        pass
+        ...
 
     @abstractmethod
     async def initialize_axes(self) -> None:
@@ -54,7 +54,7 @@ class RobotService(ABC):
         Raises:
             HardwareOperationError: If initialization fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def move_to_position(
@@ -71,7 +71,7 @@ class RobotService(ABC):
         Raises:
             HardwareOperationError: If movement fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def move_relative(
@@ -88,7 +88,31 @@ class RobotService(ABC):
         Raises:
             HardwareOperationError: If movement fails
         """
-        pass
+        ...
+
+    @abstractmethod
+    async def move_absolute(
+        self,
+        axis: int,
+        position: float,
+        velocity: Optional[float] = None,
+        acceleration: Optional[float] = None,
+        deceleration: Optional[float] = None,
+    ) -> None:
+        """
+        Move axis to absolute position with motion parameters
+
+        Args:
+            axis: Axis number to move
+            position: Target position in mm
+            velocity: Optional velocity override in mm/s
+            acceleration: Optional acceleration override in mm/s²
+            deceleration: Optional deceleration override in mm/s²
+
+        Raises:
+            HardwareOperationError: If movement fails
+        """
+        ...
 
     @abstractmethod
     async def get_position(self, axis: int) -> float:
@@ -101,7 +125,7 @@ class RobotService(ABC):
         Returns:
             Current position in mm
         """
-        pass
+        ...
 
     @abstractmethod
     async def get_all_positions(self) -> List[float]:
@@ -111,20 +135,21 @@ class RobotService(ABC):
         Returns:
             List of positions for all axes in mm
         """
-        pass
+        ...
 
     @abstractmethod
-    async def stop_motion(self, axis: Optional[int] = None) -> None:
+    async def stop_motion(self, axis: int, deceleration: float) -> None:
         """
-        Stop motion on specified axis or all axes
+        Stop motion on specified axis
 
         Args:
-            axis: Axis to stop (None for all axes)
+            axis: Axis number to stop
+            deceleration: Deceleration rate for stopping (mm/s²)
 
         Raises:
             HardwareOperationError: If stop operation fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def emergency_stop(self) -> None:
@@ -134,7 +159,7 @@ class RobotService(ABC):
         Raises:
             HardwareOperationError: If emergency stop fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def is_moving(self, axis: Optional[int] = None) -> bool:
@@ -147,7 +172,7 @@ class RobotService(ABC):
         Returns:
             True if moving, False otherwise
         """
-        pass
+        ...
 
     @abstractmethod
     async def set_velocity(self, axis: int, velocity: float) -> None:
@@ -161,7 +186,7 @@ class RobotService(ABC):
         Raises:
             HardwareOperationError: If velocity setting fails
         """
-        pass
+        ...
 
     @abstractmethod
     async def get_velocity(self, axis: int) -> float:
@@ -174,7 +199,7 @@ class RobotService(ABC):
         Returns:
             Current velocity in mm/s
         """
-        pass
+        ...
 
     @abstractmethod
     async def wait_for_completion(
@@ -191,7 +216,17 @@ class RobotService(ABC):
             HardwareOperationError: If wait operation fails
             TimeoutError: If motion doesn't complete within timeout
         """
-        pass
+        ...
+
+    @abstractmethod
+    async def get_motion_status(self) -> MotionStatus:
+        """
+        Get current motion status
+
+        Returns:
+            Current motion status
+        """
+        ...
 
     @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
@@ -201,4 +236,4 @@ class RobotService(ABC):
         Returns:
             Dictionary containing robot status
         """
-        pass
+        ...

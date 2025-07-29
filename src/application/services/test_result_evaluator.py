@@ -23,7 +23,7 @@ class TestResultEvaluator:
 
     def __init__(self):
         """Initialize the test result evaluator"""
-        pass
+        ...
 
     async def evaluate_measurements(
         self, measurements: Dict[str, Any], criteria: PassCriteria
@@ -128,10 +128,10 @@ class TestResultEvaluator:
                 logger.warning(f"  ... and {len(failed_points) - 3} more failures")
 
             raise create_test_evaluation_error(failed_points, total_points)
-        else:
-            logger.info(
-                f"✅ Evaluation PASSED: All {total_points} measurements within specification limits"
-            )
+        
+        logger.info(
+            f"✅ Evaluation PASSED: All {total_points} measurements within specification limits"
+        )
 
     async def _evaluate_single_point(
         self, key: str, temperature: float, stroke: float, force: float, criteria: PassCriteria

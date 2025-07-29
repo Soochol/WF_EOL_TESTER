@@ -5,10 +5,14 @@ Immutable value object containing test pass/fail criteria and validation logic.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 from scipy.interpolate import griddata
-from domain.exceptions.validation_exceptions import ValidationException
+
+from domain.exceptions.validation_exceptions import (
+    ValidationException,
+)
 
 
 @dataclass(frozen=True)

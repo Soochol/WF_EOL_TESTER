@@ -4,7 +4,8 @@ Configuration Domain Exceptions
 Contains exceptions related to configuration business rules and constraints.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from domain.exceptions.domain_exceptions import DomainException
 
 
@@ -112,9 +113,7 @@ class ConfigurationConflictException(ConfigurationException):
             details: Additional conflict context
         """
         params_str = ", ".join(f"{k}={v}" for k, v in conflicting_parameters.items())
-        message = (
-            f"Configuration conflict: {conflict_description}. Conflicting parameters: {params_str}"
-        )
+        message = f"Configuration conflict: {conflict_description}. Conflicting parameters: {params_str}"
 
         exception_details = details or {}
         exception_details.update(
@@ -234,7 +233,9 @@ class ConfigurationFormatException(ConfigurationException):
             config_source: Source of the configuration
             details: Additional format context
         """
-        message = f"Configuration parameter '{parameter_name}' has invalid format: '{invalid_format}'. Expected: {expected_format}"
+        message = (
+            f"Configuration parameter '{parameter_name}' has invalid format: '{invalid_format}'. Expected: {expected_format}"
+        )
 
         if format_example:
             message += f". Example: {format_example}"

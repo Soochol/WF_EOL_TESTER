@@ -74,6 +74,7 @@ class MockLoadCell(LoadCellService):
         else:
             logger.warning("Mock LoadCell connection failed")
             raise HardwareConnectionException(
+                "Mock LoadCell connection failed",
                 hardware_type="loadcell",
                 connection_status="connection_failed",
                 operation="connect",
@@ -145,6 +146,7 @@ class MockLoadCell(LoadCellService):
         """
         if not self._is_connected:
             raise HardwareConnectionException(
+                "LoadCell not connected for zero calibration",
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="zero_calibration",
@@ -168,7 +170,7 @@ class MockLoadCell(LoadCellService):
 
         except Exception as e:
             logger.error(f"Mock LoadCell zero calibration failed: {e}")
-            raise HardwareOperationError("mock_loadcell", "zero_calibration", str(e))
+            raise HardwareOperationError("mock_loadcell", "zero_calibration", str(e)) from e
 
     async def read_raw_value(self) -> float:
         """
@@ -179,6 +181,7 @@ class MockLoadCell(LoadCellService):
         """
         if not self._is_connected:
             raise HardwareConnectionException(
+                "LoadCell not connected for reading raw value",
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="read_raw_value",
@@ -207,6 +210,7 @@ class MockLoadCell(LoadCellService):
         """
         if not self._is_connected:
             raise HardwareConnectionException(
+                "LoadCell not connected for setting measurement rate",
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="set_measurement_rate",
@@ -232,6 +236,7 @@ class MockLoadCell(LoadCellService):
         """
         if not self._is_connected:
             raise HardwareConnectionException(
+                "LoadCell not connected for getting measurement rate",
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="get_measurement_rate",

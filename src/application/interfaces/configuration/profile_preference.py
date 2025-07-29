@@ -28,7 +28,7 @@ class ProfilePreference(ABC):
         Raises:
             RepositoryException: If saving fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def load_last_used_profile(self) -> Optional[str]:
@@ -38,7 +38,7 @@ class ProfilePreference(ABC):
         Returns:
             Last used profile name, or None if not found/error
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_usage_history(self) -> List[str]:
@@ -48,7 +48,7 @@ class ProfilePreference(ABC):
         Returns:
             List of recently used profile names (most recent last)
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def clear_preferences(self) -> None:
@@ -58,7 +58,7 @@ class ProfilePreference(ABC):
         Raises:
             RepositoryException: If clearing fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_preference_metadata(self) -> Dict[str, Any]:
@@ -68,7 +68,7 @@ class ProfilePreference(ABC):
         Returns:
             Dictionary with metadata information (file existence, size, etc.)
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def update_usage_history(self, profile_name: str) -> None:
@@ -81,7 +81,7 @@ class ProfilePreference(ABC):
         Raises:
             RepositoryException: If update fails
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def is_available(self) -> bool:
@@ -91,4 +91,4 @@ class ProfilePreference(ABC):
         Returns:
             True if storage is available, False otherwise
         """
-        pass
+        raise NotImplementedError

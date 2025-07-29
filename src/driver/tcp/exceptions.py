@@ -37,18 +37,24 @@ class TCPError(Exception):
 
 
 class TCPConnectionError(TCPError):
-    """TCP connection establishment errors"""
-
-    pass
+    """TCP connection establishment errors.
+    
+    Raised when unable to establish a TCP connection to the target host,
+    including connection refused, host unreachable, or network errors.
+    """
 
 
 class TCPCommunicationError(TCPError):
-    """TCP communication errors (send/receive failures)"""
-
-    pass
+    """TCP communication errors (send/receive failures).
+    
+    Raised when data transmission or reception fails over TCP connection,
+    including socket errors, broken pipes, or protocol-level failures.
+    """
 
 
 class TCPTimeoutError(TCPError):
-    """TCP operation timeout errors"""
-
-    pass
+    """TCP operation timeout errors.
+    
+    Raised when TCP operations exceed their configured timeout limits,
+    including connection timeouts, read/write timeouts, or keep-alive timeouts.
+    """

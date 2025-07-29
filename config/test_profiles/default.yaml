@@ -11,24 +11,10 @@ metadata:
 # Hardware device configurations
 hardware_config:
   robot:
-    # Motion parameters
-    axis: 0
-    velocity: 100.0        # Default velocity (mm/s)
-    acceleration: 100.0    # Default acceleration (mm/s²)
-    deceleration: 100.0    # Default deceleration (mm/s²)
+    # Hardware model
+    model: "AJINEXTEK"
     
-    # Safety limits
-    max_velocity: 500.0
-    max_acceleration: 1000.0
-    max_deceleration: 1000.0
-    
-    # Positioning settings
-    position_tolerance: 0.1
-    homing_velocity: 10.0
-    homing_acceleration: 100.0
-    homing_deceleration: 100.0
-    
-    # Connection parameters (AJINEXTEK)
+    # Connection parameters (AJINEXTEK specific)
     irq_no: 7
     axis_count: 2
   

@@ -44,9 +44,7 @@ class UnsafeOperationException(BusinessRuleViolationException):
 class InvalidTestStateException(BusinessRuleViolationException):
     """Exception raised when test is in invalid state for operation"""
 
-    def __init__(
-        self, current_state: str, required_state: str, operation: str, context: dict = None
-    ):
+    def __init__(self, current_state: str, required_state: str, operation: str, context: dict = None):
         """
         Initialize invalid test state exception
 
@@ -74,9 +72,7 @@ class InvalidTestStateException(BusinessRuleViolationException):
 class HardwareNotReadyException(BusinessRuleViolationException):
     """Exception raised when hardware is not ready for operation"""
 
-    def __init__(
-        self, hardware_type: str, current_status: str, operation: str, context: dict = None
-    ):
+    def __init__(self, hardware_type: str, current_status: str, operation: str, context: dict = None):
         """
         Initialize hardware not ready exception
 

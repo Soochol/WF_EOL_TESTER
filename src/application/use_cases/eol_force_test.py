@@ -13,17 +13,29 @@ Key Features:
 - Test result evaluation with detailed failure analysis
 """
 
-import asyncio
 from typing import Optional
 
+import asyncio
 from loguru import logger
 
-from application.services.configuration_service import ConfigurationService
-from application.services.configuration_validator import ConfigurationValidator
-from application.services.exception_handler import ExceptionHandler
-from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.repository_service import RepositoryService
-from application.services.test_result_evaluator import TestResultEvaluator
+from application.services.configuration_service import (
+    ConfigurationService,
+)
+from application.services.configuration_validator import (
+    ConfigurationValidator,
+)
+from application.services.exception_handler import (
+    ExceptionHandler,
+)
+from application.services.hardware_service_facade import (
+    HardwareServiceFacade,
+)
+from application.services.repository_service import (
+    RepositoryService,
+)
+from application.services.test_result_evaluator import (
+    TestResultEvaluator,
+)
 from domain.entities.dut import DUT
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
@@ -33,13 +45,28 @@ from domain.exceptions import (
     RepositoryAccessError,
     TestEvaluationError,
 )
-from domain.exceptions.test_exceptions import TestExecutionException
-from domain.value_objects.dut_command_info import DUTCommandInfo
-from domain.value_objects.eol_test_result import EOLTestResult
-from domain.value_objects.hardware_configuration import HardwareConfiguration
-from domain.value_objects.identifiers import MeasurementId, TestId
-from domain.value_objects.measurements import TestMeasurements
-from domain.value_objects.test_configuration import TestConfiguration
+from domain.exceptions.test_exceptions import (
+    TestExecutionException,
+)
+from domain.value_objects.dut_command_info import (
+    DUTCommandInfo,
+)
+from domain.value_objects.eol_test_result import (
+    EOLTestResult,
+)
+from domain.value_objects.hardware_configuration import (
+    HardwareConfiguration,
+)
+from domain.value_objects.identifiers import (
+    MeasurementId,
+    TestId,
+)
+from domain.value_objects.measurements import (
+    TestMeasurements,
+)
+from domain.value_objects.test_configuration import (
+    TestConfiguration,
+)
 from domain.value_objects.time_values import TestDuration
 
 
@@ -238,7 +265,7 @@ class EOLForceTestUseCase:
         self._test_config = await self._configuration.load_configuration(self._profile_name)
 
         # Load Hardware Configuration
-        self._hardware_config = await self._configuration.load_hardware_config(self._profile_name)
+        self._hardware_config = await self._configuration.load_hardware_config()
 
         # Validate configuration
         try:
@@ -248,7 +275,7 @@ class EOLForceTestUseCase:
             logger.error(f"Configuration validation failed: {e.message}")
             raise TestExecutionException(
                 f"Configuration validation failed: {e.get_context('total_errors')} errors found"
-            )
+            ) from e
 
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:

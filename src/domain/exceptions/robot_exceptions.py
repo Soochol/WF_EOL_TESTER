@@ -87,19 +87,19 @@ class AXLError(RobotError):
 class AXLConnectionError(AXLError):
     """AXL library connection/initialization errors"""
 
-    pass
+    ...
 
 
 class AXLMotionError(AXLError):
     """AXL motion operation errors"""
 
-    pass
+    ...
 
 
 class AXLConfigurationError(AXLError):
     """AXL configuration errors"""
 
-    pass
+    ...
 
 
 # ============================================================================

@@ -5,23 +5,28 @@ Concrete implementation of Configuration interface using JSON files.
 """
 
 import json
-import os
-import shutil
-from pathlib import Path
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
+
 from loguru import logger
 
-from application.interfaces.configuration.configuration import Configuration
-from domain.value_objects.test_configuration import TestConfiguration
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from application.interfaces.configuration.configuration import (
+    Configuration,
+)
 from domain.exceptions.configuration_exceptions import (
+    ConfigurationConflictException,
     ConfigurationException,
+    ConfigurationFormatException,
+    ConfigurationSecurityException,
     InvalidConfigurationException,
     MissingConfigurationException,
-    ConfigurationConflictException,
-    ConfigurationSecurityException,
-    ConfigurationFormatException,
+)
+from domain.value_objects.hardware_configuration import (
+    HardwareConfiguration,
+)
+from domain.value_objects.test_configuration import (
+    TestConfiguration,
 )
 
 
@@ -46,10 +51,6 @@ class JsonConfiguration(Configuration):
 
         # Ensure configuration directory exists
         self._config_path.mkdir(parents=True, exist_ok=True)
-
-        # Create backup directory
-        self._backup_path = self._config_path / "backups"
-        self._backup_path.mkdir(exist_ok=True)
 
         logger.info(f"JSON Configuration Service initialized with path: {self._config_path}")
 
@@ -94,11 +95,8 @@ class JsonConfiguration(Configuration):
                     config_source=str(profile_file),
                 )
 
-            # Flatten nested JSON structure for TestConfiguration
-            flattened_data = self._flatten_json_data(json_data)
-
-            # Create configuration object using from_dict to handle nested objects
-            config = TestConfiguration.from_dict(flattened_data)
+            # Create configuration object from structured JSON data
+            config = TestConfiguration.from_structured_dict(json_data)
 
             # Cache the configuration
             self._cache[profile_name] = config
@@ -112,62 +110,58 @@ class JsonConfiguration(Configuration):
                 invalid_format=str(e),
                 expected_format="Valid JSON syntax",
                 config_source=str(profile_file),
-            )
+            ) from e
         except TypeError as e:
             raise InvalidConfigurationException(
                 parameter_name="configuration_structure",
                 invalid_value=str(e),
                 validation_rule="TestConfiguration parameter requirements",
                 config_source=str(profile_file),
-            )
+            ) from e
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to load configuration profile '{profile_name}': {str(e)}",
                 config_source=str(profile_file),
-            )
+            ) from e
 
-    async def load_hardware_config(self, profile_name: str) -> HardwareConfiguration:
+    async def load_hardware_config(self) -> HardwareConfiguration:
         """
-        Load hardware configuration from JSON file
-
-        Args:
-            profile_name: Name of the configuration profile to load
+        Load hardware configuration from fixed hardware.json file.
+        If file does not exist, creates it with default hardware configuration.
 
         Returns:
             HardwareConfiguration object containing the loaded hardware settings
 
         Raises:
-            MissingConfigurationException: If profile file does not exist
             ConfigurationFormatException: If JSON file is malformed
             InvalidConfigurationException: If hardware configuration values are invalid
+            ConfigurationException: If file operations fail
         """
-        profile_file = self._config_path / f"{profile_name}.json"
+        hardware_file = Path("configuration") / "hardware.json"
 
-        if not profile_file.exists():
-            raise MissingConfigurationException(
-                missing_parameters=[profile_name],
-                config_source=str(profile_file),
-                details={"available_profiles": await self.list_available_profiles()},
+        # If file doesn't exist, create it with default hardware configuration
+        if not hardware_file.exists():
+            logger.info(
+                "Hardware file 'configuration/hardware.json' not found, creating with default hardware configuration"
             )
+            await self._create_default_hardware_profile()
 
         try:
-            with open(profile_file, "r", encoding="utf-8") as f:
+            with open(hardware_file, "r", encoding="utf-8") as f:
                 json_data = json.load(f)
 
             if json_data is None:
                 raise ConfigurationFormatException(
-                    parameter_name="profile_content",
+                    parameter_name="hardware_content",
                     invalid_format="empty_file",
                     expected_format="JSON configuration data",
-                    config_source=str(profile_file),
+                    config_source=str(hardware_file),
                 )
 
             # Extract hardware_config section
             if "hardware_config" not in json_data:
                 # Return default hardware configuration if section not found
-                logger.warning(
-                    f"No hardware_config section found in {profile_name}, using defaults"
-                )
+                logger.warning("No hardware_config section found in hardware.json, using defaults")
                 return HardwareConfiguration()
 
             hardware_data = json_data["hardware_config"]
@@ -175,7 +169,7 @@ class JsonConfiguration(Configuration):
             # Create hardware configuration object
             hardware_config = HardwareConfiguration.from_dict(hardware_data)
 
-            logger.info(f"Successfully loaded hardware configuration from profile '{profile_name}'")
+            logger.info("Successfully loaded hardware configuration from hardware.json")
             return hardware_config
 
         except json.JSONDecodeError as e:
@@ -183,145 +177,13 @@ class JsonConfiguration(Configuration):
                 parameter_name="json_syntax",
                 invalid_format=str(e),
                 expected_format="Valid JSON syntax",
-                config_source=str(profile_file),
-            )
+                config_source=str(hardware_file),
+            ) from e
         except Exception as e:
             raise ConfigurationException(
-                f"Failed to load hardware configuration from profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file),
-            )
-
-    def _flatten_json_data(self, json_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Flatten nested JSON structure to match TestConfiguration parameters
-
-        Args:
-            json_data: Nested JSON data dictionary
-
-        Returns:
-            Flattened dictionary suitable for TestConfiguration
-        """
-        flattened = {}
-
-        # Hardware section
-        if "hardware" in json_data:
-            hardware = json_data["hardware"]
-            flattened.update(
-                {
-                    "voltage": hardware.get("voltage", 18.0),
-                    "current": hardware.get("current", 20.0),
-                    "upper_temperature": hardware.get("upper_temperature", 80.0),
-                    "fan_speed": hardware.get("fan_speed", 10),
-                    "max_stroke": hardware.get("max_stroke", 240.0),
-                    "initial_position": hardware.get("initial_position", 10.0),
-                }
-            )
-
-        # Test parameters section
-        if "test_parameters" in json_data:
-            test_params = json_data["test_parameters"]
-            flattened.update(
-                {
-                    "temperature_list": test_params.get(
-                        "temperature_list", [25.0, 30.0, 35.0, 40.0, 45.0, 50.0]
-                    ),
-                    "stroke_positions": test_params.get(
-                        "stroke_positions", [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0]
-                    ),
-                    "standby_position": test_params.get("standby_position", 10.0),
-                }
-            )
-
-        # Timing section
-        if "timing" in json_data:
-            timing = json_data["timing"]
-            flattened.update(
-                {
-                    "stabilization_delay": timing.get("stabilization_delay", 0.5),
-                    "temperature_stabilization": timing.get("temperature_stabilization", 1.0),
-                    "power_stabilization": timing.get("power_stabilization", 0.5),
-                    "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
-                }
-            )
-
-        # Tolerances section
-        if "tolerances" in json_data:
-            tolerances = json_data["tolerances"]
-            flattened.update(
-                {
-                    "measurement_tolerance": tolerances.get("measurement_tolerance", 0.001),
-                    "force_precision": tolerances.get("force_precision", 2),
-                    "temperature_precision": tolerances.get("temperature_precision", 1),
-                }
-            )
-
-        # Execution section
-        if "execution" in json_data:
-            execution = json_data["execution"]
-            flattened.update(
-                {
-                    "retry_attempts": execution.get("retry_attempts", 3),
-                    "timeout_seconds": execution.get("timeout_seconds", 300.0),
-                }
-            )
-
-        # Safety section
-        if "safety" in json_data:
-            safety = json_data["safety"]
-            flattened.update(
-                {
-                    "max_voltage": safety.get("max_voltage", 30.0),
-                    "max_current": safety.get("max_current", 50.0),
-                }
-            )
-
-        # Pass criteria section
-        if "pass_criteria" in json_data:
-            pass_criteria = json_data["pass_criteria"]
-
-            # Convert spec_points from list format to tuple format
-            spec_points = pass_criteria.get("spec_points", [])
-            if spec_points:
-                # Convert each spec point from list to tuple
-                spec_points_tuples = [
-                    tuple(point) if isinstance(point, list) else point for point in spec_points
-                ]
-            else:
-                spec_points_tuples = []
-
-            # Create pass_criteria dictionary for PassCriteria.from_dict()
-            pass_criteria_dict = {
-                "force_limit_min": pass_criteria.get("force_limit_min", 0.0),
-                "force_limit_max": pass_criteria.get("force_limit_max", 100.0),
-                "temperature_limit_min": pass_criteria.get("temperature_limit_min", -10.0),
-                "temperature_limit_max": pass_criteria.get("temperature_limit_max", 80.0),
-                "spec_points": spec_points_tuples,
-                "measurement_tolerance": pass_criteria.get("measurement_tolerance", 0.001),
-                "force_precision": pass_criteria.get("force_precision", 2),
-                "temperature_precision": pass_criteria.get("temperature_precision", 1),
-                "position_tolerance": pass_criteria.get("position_tolerance", 0.5),
-                "max_test_duration": pass_criteria.get("max_test_duration", 300.0),
-                "min_stabilization_time": pass_criteria.get("min_stabilization_time", 0.5),
-            }
-
-            flattened["pass_criteria"] = pass_criteria_dict
-
-        # Handle direct top-level parameters (backward compatibility)
-        for key, value in json_data.items():
-            if key not in [
-                "hardware",
-                "test_parameters",
-                "timing",
-                "tolerances",
-                "execution",
-                "safety",
-                "pass_criteria",
-                "hardware_config",
-                "metadata",
-            ]:
-                flattened[key] = value
-
-        return flattened
+                f"Failed to load hardware configuration from hardware.json: {str(e)}",
+                config_source=str(hardware_file),
+            ) from e
 
     async def validate_configuration(self, config: TestConfiguration) -> None:
         """
@@ -359,7 +221,7 @@ class JsonConfiguration(Configuration):
                 invalid_value="TestConfiguration object",
                 validation_rule=str(e),
                 config_source="validate_configuration",
-            )
+            ) from e
 
     async def merge_configurations(
         self, base: TestConfiguration, override: Dict[str, Any]
@@ -398,7 +260,7 @@ class JsonConfiguration(Configuration):
                 raise
             raise ConfigurationException(
                 f"Failed to merge configurations: {str(e)}", config_source="merge_operation"
-            )
+            ) from e
 
     def _validate_override_safety(self, base: TestConfiguration, override: Dict[str, Any]) -> None:
         """
@@ -497,7 +359,7 @@ class JsonConfiguration(Configuration):
             raise ConfigurationException(
                 f"Failed to get profile info for '{profile_name}': {str(e)}",
                 config_source=str(profile_file),
-            )
+            ) from e
 
     async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
         """
@@ -540,7 +402,7 @@ class JsonConfiguration(Configuration):
             raise ConfigurationException(
                 f"Failed to save profile '{profile_name}': {str(e)}",
                 config_source=str(profile_file),
-            )
+            ) from e
 
     def _config_to_json_structure(self, config: TestConfiguration) -> Dict[str, Any]:
         """
@@ -564,7 +426,6 @@ class JsonConfiguration(Configuration):
             "test_parameters": {
                 "temperature_list": config.temperature_list,
                 "stroke_positions": config.stroke_positions,
-                "standby_position": config.standby_position,
             },
             "timing": {
                 "stabilization_delay": config.stabilization_delay,
@@ -612,9 +473,6 @@ class JsonConfiguration(Configuration):
             )
 
         try:
-            # Create backup before deletion
-            await self.backup_profile(profile_name, f"before_delete_{profile_name}")
-
             # Delete file
             profile_file.unlink()
 
@@ -628,7 +486,7 @@ class JsonConfiguration(Configuration):
             raise ConfigurationException(
                 f"Failed to delete profile '{profile_name}': {str(e)}",
                 config_source=str(profile_file),
-            )
+            ) from e
 
     async def create_profile_from_template(
         self, template_name: str, new_profile_name: str, customizations: Dict[str, Any] = None
@@ -658,116 +516,6 @@ class JsonConfiguration(Configuration):
 
         logger.info(f"Created profile '{new_profile_name}' from template '{template_name}'")
         return new_config
-
-    async def backup_profile(self, profile_name: str, backup_name: str = None) -> str:
-        """
-        Create a backup of a configuration profile
-
-        Args:
-            profile_name: Name of the profile to backup
-            backup_name: Optional name for backup (auto-generated if not provided)
-
-        Returns:
-            Name of the created backup
-        """
-        profile_file = self._config_path / f"{profile_name}.json"
-
-        if not profile_file.exists():
-            raise MissingConfigurationException(
-                missing_parameters=[profile_name], config_source=str(profile_file)
-            )
-
-        # Generate backup name if not provided
-        if backup_name is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_name = f"backup_{profile_name}_{timestamp}"
-
-        backup_file = self._backup_path / f"{backup_name}.json"
-
-        try:
-            shutil.copy2(profile_file, backup_file)
-            logger.info(f"Created backup '{backup_name}' for profile '{profile_name}'")
-            return backup_name
-
-        except Exception as e:
-            raise ConfigurationException(
-                f"Failed to create backup for profile '{profile_name}': {str(e)}",
-                config_source=str(profile_file),
-            )
-
-    async def restore_profile(self, backup_name: str, target_profile_name: str) -> None:
-        """
-        Restore a configuration profile from backup
-
-        Args:
-            backup_name: Name of the backup to restore from
-            target_profile_name: Name of the profile to restore to
-        """
-        backup_file = self._backup_path / f"{backup_name}.json"
-
-        if not backup_file.exists():
-            raise MissingConfigurationException(
-                missing_parameters=[backup_name], config_source=str(backup_file)
-            )
-
-        target_file = self._config_path / f"{target_profile_name}.json"
-
-        try:
-            shutil.copy2(backup_file, target_file)
-
-            # Clear cache for target profile
-            if target_profile_name in self._cache:
-                del self._cache[target_profile_name]
-
-            logger.info(f"Restored profile '{target_profile_name}' from backup '{backup_name}'")
-
-        except Exception as e:
-            raise ConfigurationException(
-                f"Failed to restore profile '{target_profile_name}' from backup '{backup_name}': {str(e)}",
-                config_source=str(backup_file),
-            )
-
-    async def compare_profiles(self, profile1_name: str, profile2_name: str) -> Dict[str, Any]:
-        """
-        Compare two configuration profiles and return differences
-
-        Args:
-            profile1_name: Name of first profile
-            profile2_name: Name of second profile
-
-        Returns:
-            Dictionary containing differences between profiles
-        """
-        config1 = await self.load_profile(profile1_name)
-        config2 = await self.load_profile(profile2_name)
-
-        config1_dict = config1.to_dict()
-        config2_dict = config2.to_dict()
-
-        differences = {}
-        all_keys = set(config1_dict.keys()) | set(config2_dict.keys())
-
-        for key in all_keys:
-            val1 = config1_dict.get(key)
-            val2 = config2_dict.get(key)
-
-            if val1 != val2:
-                differences[key] = {
-                    "profile1": val1,
-                    "profile2": val2,
-                    "type": (
-                        "modified"
-                        if key in config1_dict and key in config2_dict
-                        else "only_in_profile1" if key in config1_dict else "only_in_profile2"
-                    ),
-                }
-
-        return {
-            "profile1_name": profile1_name,
-            "profile2_name": profile2_name,
-            "differences": differences,
-            "identical": len(differences) == 0,
-        }
 
     async def get_default_configuration(self) -> TestConfiguration:
         """
@@ -816,3 +564,90 @@ class JsonConfiguration(Configuration):
         # For now, just basic validation
 
         return compatibility
+
+    async def _create_default_hardware_profile(self) -> None:
+        """
+        Create default hardware.json file with default hardware configuration
+
+        Raises:
+            ConfigurationException: If file creation fails
+        """
+        hardware_file = Path("configuration") / "hardware.json"
+
+        # Ensure configuration directory exists
+        hardware_file.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # Create default hardware configuration
+            default_hardware_config = HardwareConfiguration()
+
+            # Convert to JSON structure
+            json_data = self._hardware_config_to_json_structure(default_hardware_config)
+
+            # Add metadata
+            json_data["metadata"] = {
+                "description": "Auto-generated hardware configuration",
+                "version": "1.0",
+                "created_by": "JsonConfiguration (auto-generated)",
+                "created_time": datetime.now().isoformat(),
+            }
+
+            # Write to file
+            with open(hardware_file, "w", encoding="utf-8") as f:
+                json.dump(json_data, f, indent=2, ensure_ascii=False)
+
+            logger.info("Successfully created default hardware.json")
+
+        except Exception as e:
+            raise ConfigurationException(
+                f"Failed to create default hardware.json: {str(e)}",
+                config_source=str(hardware_file),
+            ) from e
+
+    def _hardware_config_to_json_structure(
+        self, hardware_config: HardwareConfiguration
+    ) -> Dict[str, Any]:
+        """
+        Convert HardwareConfiguration to structured JSON format
+
+        Args:
+            hardware_config: HardwareConfiguration to convert
+
+        Returns:
+            Dictionary in structured JSON format for hardware_config section
+        """
+        return {
+            "hardware_config": {
+                "robot": {
+                    "model": hardware_config.robot.model,
+                    "irq_no": hardware_config.robot.irq_no,
+                    "axis_count": hardware_config.robot.axis_count,
+                },
+                "loadcell": {
+                    "model": hardware_config.loadcell.model,
+                    "port": hardware_config.loadcell.port,
+                    "baudrate": hardware_config.loadcell.baudrate,
+                    "timeout": hardware_config.loadcell.timeout,
+                    "indicator_id": hardware_config.loadcell.indicator_id,
+                },
+                "mcu": {
+                    "model": hardware_config.mcu.model,
+                    "port": hardware_config.mcu.port,
+                    "baudrate": hardware_config.mcu.baudrate,
+                    "timeout": hardware_config.mcu.timeout,
+                },
+                "power": {
+                    "model": hardware_config.power.model,
+                    "host": hardware_config.power.host,
+                    "port": hardware_config.power.port,
+                    "timeout": hardware_config.power.timeout,
+                    "channel": hardware_config.power.channel,
+                },
+                "digital_input": {
+                    "model": hardware_config.digital_input.model,
+                    "board_no": hardware_config.digital_input.board_no,
+                    "input_count": hardware_config.digital_input.input_count,
+                    "debounce_time": hardware_config.digital_input.debounce_time,
+                },
+            }
+        }

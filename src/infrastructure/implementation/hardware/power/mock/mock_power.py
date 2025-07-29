@@ -4,14 +4,22 @@ Mock Power Service
 Mock implementation for testing and development without real hardware.
 """
 
-import asyncio
 import random
-from typing import Dict, Any
+from typing import Any, Dict
+
+import asyncio
 from loguru import logger
 
-from application.interfaces.hardware.power import PowerService
-from domain.exceptions import HardwareConnectionError, HardwareOperationError
-from domain.value_objects.hardware_configuration import PowerConfig
+from application.interfaces.hardware.power import (
+    PowerService,
+)
+from domain.exceptions import (
+    HardwareConnectionError,
+    HardwareOperationError,
+)
+from domain.value_objects.hardware_configuration import (
+    PowerConfig,
+)
 
 
 class MockPower(PowerService):
@@ -88,7 +96,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to connect to mock Power Supply: {e}")
-            raise HardwareConnectionError("mock_power", str(e))
+            raise HardwareConnectionError("mock_power", str(e)) from e
 
     async def disconnect(self) -> None:
         """
@@ -111,7 +119,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Error disconnecting mock Power Supply: {e}")
-            raise HardwareOperationError("mock_power", "disconnect", str(e))
+            raise HardwareOperationError("mock_power", "disconnect", str(e)) from e
 
     async def is_connected(self) -> bool:
         """
@@ -153,7 +161,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to set mock Power Supply voltage: {e}")
-            raise HardwareOperationError("mock_power", "set_voltage", str(e))
+            raise HardwareOperationError("mock_power", "set_voltage", str(e)) from e
 
     async def get_voltage(self) -> float:
         """
@@ -184,7 +192,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to get mock Power Supply voltage: {e}")
-            raise HardwareOperationError("mock_power", "get_voltage", str(e))
+            raise HardwareOperationError("mock_power", "get_voltage", str(e)) from e
 
     async def set_current_limit(self, current: float) -> None:
         """
@@ -217,7 +225,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to set mock Power Supply current limit: {e}")
-            raise HardwareOperationError("mock_power", "set_current_limit", str(e))
+            raise HardwareOperationError("mock_power", "set_current_limit", str(e)) from e
 
     async def get_current(self) -> float:
         """
@@ -248,7 +256,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to get mock Power Supply current: {e}")
-            raise HardwareOperationError("mock_power", "get_current", str(e))
+            raise HardwareOperationError("mock_power", "get_current", str(e)) from e
 
     async def enable_output(self) -> None:
         """
@@ -269,7 +277,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to enable mock Power Supply output: {e}")
-            raise HardwareOperationError("mock_power", "enable_output", str(e))
+            raise HardwareOperationError("mock_power", "enable_output", str(e)) from e
 
     async def disable_output(self) -> None:
         """
@@ -290,7 +298,7 @@ class MockPower(PowerService):
 
         except Exception as e:
             logger.error(f"Failed to disable mock Power Supply output: {e}")
-            raise HardwareOperationError("mock_power", "disable_output", str(e))
+            raise HardwareOperationError("mock_power", "disable_output", str(e)) from e
 
     async def is_output_enabled(self) -> bool:
         """

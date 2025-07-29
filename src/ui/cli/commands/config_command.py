@@ -10,7 +10,6 @@ from pathlib import Path
 from loguru import logger
 
 from ui.cli.commands.base import Command, CommandResult
-from infrastructure.factory import ServiceFactory
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 
 
@@ -97,9 +96,8 @@ class ConfigCommand(Command):
                 config_text = "Hardware Configuration:\\n"
                 config_text += "=" * 50 + "\\n"
                 config_text += f"├── Robot: {hw_config.robot.model}\\n"
-                config_text += f"│   ├── Axis: {hw_config.robot.axis}\\n"
-                config_text += f"│   ├── Velocity: {hw_config.robot.velocity} mm/s\\n"
-                config_text += f"│   └── IRQ: {hw_config.robot.irq_no}\\n"
+                config_text += f"│   ├── IRQ No: {hw_config.robot.irq_no}\\n"
+                config_text += f"│   └── Axis Count: {hw_config.robot.axis_count}\\n"
                 config_text += f"├── LoadCell: {hw_config.loadcell.model}\\n"
                 config_text += f"│   ├── Port: {hw_config.loadcell.port}\\n"
                 config_text += f"│   └── Baudrate: {hw_config.loadcell.baudrate}\\n"
@@ -173,7 +171,7 @@ class ConfigCommand(Command):
             print("\\nResetting to default configuration...")
 
             # Get default config from ServiceFactory
-            default_config = ServiceFactory.get_default_config()
+            default_config = HardwareConfiguration().to_dict()
 
             # Save to file
             config_path = Path(self._config_file)
@@ -203,7 +201,7 @@ class ConfigCommand(Command):
 
         if not config_path.exists():
             logger.info(f"Config file {self._config_file} not found, using default config")
-            self._current_config = ServiceFactory.get_default_config()
+            self._current_config = HardwareConfiguration().to_dict()
 
             # Create directory and save default config
             try:
@@ -221,9 +219,9 @@ class ConfigCommand(Command):
                 logger.debug(f"Configuration loaded from {self._config_file}")
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON in config file: {e}")
-                raise Exception(f"Invalid JSON in config file: {e}")
+                raise Exception(f"Invalid JSON in config file: {e}") from e
             except Exception as e:
                 logger.error(f"Error loading config file: {e}")
-                raise Exception(f"Error loading config file: {e}")
+                raise Exception(f"Error loading config file: {e}") from e
 
         return self._current_config

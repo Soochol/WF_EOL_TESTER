@@ -7,7 +7,9 @@ Immutable configuration object containing all hardware device connection paramet
 from dataclasses import dataclass, field
 from typing import Any, Dict, Set
 
-from domain.exceptions.validation_exceptions import ValidationException
+from domain.exceptions.validation_exceptions import (
+    ValidationException,
+)
 
 # Supported hardware models
 SUPPORTED_ROBOT_MODELS: Set[str] = {"AJINEXTEK", "MOCK"}
@@ -355,7 +357,7 @@ class HardwareConfiguration:
         return cls(**data_copy)
 
     def __str__(self) -> str:
-        return f"HardwareConfiguration(robot={self.robot.model}:{self.robot.axis}, loadcell={self.loadcell.model}:{self.loadcell.port}, mcu={self.mcu.model}:{self.mcu.port}, power={self.power.model}, input={self.digital_input.model})"
+        return f"HardwareConfig({self.robot.model}/{self.loadcell.model}/{self.mcu.model}/{self.power.model}/{self.digital_input.model})"
 
     def __repr__(self) -> str:
         return (

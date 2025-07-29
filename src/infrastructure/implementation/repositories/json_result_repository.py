@@ -6,20 +6,26 @@ Simple file-based test result data persistence using JSON format.
 
 import json
 from datetime import datetime
-from typing import Optional, List, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from application.interfaces.repository.test_result_repository import TestResultRepository
+from application.interfaces.repository.test_result_repository import (
+    TestResultRepository,
+)
 from domain.entities.eol_test import EOLTest
+from domain.exceptions import (
+    ConfigurationNotFoundError,
+    RepositoryAccessError,
+)
 from domain.value_objects.identifiers import TestId
-from domain.exceptions import RepositoryAccessError, ConfigurationNotFoundError
 
 
 class JsonResultRepository(TestResultRepository):
     """JSON 파일 기반 테스트 결과 저장소"""
 
-    def __init__(self, data_dir: str = "data/tests", auto_save: bool = True):
+    def __init__(self, data_dir: str = "ResultsLog", auto_save: bool = True):
         """
         초기화
 
@@ -34,7 +40,7 @@ class JsonResultRepository(TestResultRepository):
         # 디렉토리 생성
         self._data_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"JsonResultRepository initialized at {self._data_dir}")
+        logger.info("JsonResultRepository initialized at %s", self._data_dir)
 
     async def save(self, test: EOLTest) -> EOLTest:
         """
@@ -55,7 +61,7 @@ class JsonResultRepository(TestResultRepository):
         if self._auto_save:
             await self._save_to_file(test_id, test_dict)
 
-        logger.debug(f"Test {test_id} saved to repository")
+        logger.debug("Test %s saved to repository", test_id)
         return test
 
     async def update(self, test: EOLTest) -> EOLTest:
@@ -116,7 +122,7 @@ class JsonResultRepository(TestResultRepository):
         # 생성 시간으로 정렬 (최신순)
         tests.sort(key=lambda t: t.created_at, reverse=True)
 
-        logger.debug(f"Found {len(tests)} tests for DUT {dut_id}")
+        logger.debug("Found %d tests for DUT %s", len(tests), dut_id)
         return tests
 
     async def delete(self, test_id: str) -> None:
@@ -134,9 +140,7 @@ class JsonResultRepository(TestResultRepository):
             # 테스트 존재 확인
             file_path = self._get_test_file_path(test_id)
             if not file_path.exists() and test_id not in self._tests_cache:
-                raise ConfigurationNotFoundError(
-                    f"Test {test_id} not found", config_source=str(file_path)
-                )
+                raise ConfigurationNotFoundError(f"Test {test_id} not found")
 
             # 캐시에서 제거
             if test_id in self._tests_cache:
@@ -146,16 +150,17 @@ class JsonResultRepository(TestResultRepository):
             if file_path.exists():
                 file_path.unlink()
 
-            logger.debug(f"Test {test_id} deleted from repository")
+            logger.debug("Test %s deleted from repository", test_id)
 
         except ConfigurationNotFoundError:
             raise
         except Exception as e:
-            logger.error(f"Failed to delete test {test_id}: {e}")
+            logger.error("Failed to delete test %s: %s", test_id, e)
             raise RepositoryAccessError(
+                "delete",
                 f"Failed to delete test {test_id}: {str(e)}",
-                config_source=str(self._get_test_file_path(test_id)),
-            )
+                file_path=str(self._get_test_file_path(test_id)),
+            ) from e
 
     async def _test_to_dict(self, test: EOLTest) -> Dict[str, Any]:
         """테스트 엔티티를 딕셔너리로 변환"""
@@ -163,8 +168,8 @@ class JsonResultRepository(TestResultRepository):
             # EOLTest의 내장 to_dict 메서드를 사용하여 완전한 직렬화
             return test.to_dict()
         except Exception as e:
-            logger.error(f"Failed to convert EOLTest to dict: {e}")
-            logger.debug(f"Test: {test}")
+            logger.error("Failed to convert EOLTest to dict: %s", e)
+            logger.debug("Test: %s", test)
             raise
 
     async def _dict_to_test(self, test_dict: Dict[str, Any]) -> EOLTest:
@@ -173,8 +178,8 @@ class JsonResultRepository(TestResultRepository):
             # EOLTest의 from_dict 클래스 메서드를 사용하여 완전한 엔티티 복원
             return EOLTest.from_dict(test_dict)
         except Exception as e:
-            logger.error(f"Failed to convert dict to EOLTest: {e}")
-            logger.debug(f"Test dict: {test_dict}")
+            logger.error("Failed to convert dict to EOLTest: %s", e)
+            logger.debug("Test dict: %s", test_dict)
             raise
 
     async def _save_to_file(self, test_id: str, test_dict: Dict[str, Any]) -> None:
@@ -189,10 +194,10 @@ class JsonResultRepository(TestResultRepository):
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(test_dict, f, indent=2, ensure_ascii=False)
 
-            logger.debug(f"Test {test_id} saved to file {file_path}")
+            logger.debug("Test %s saved to file %s", test_id, file_path)
 
         except Exception as e:
-            logger.error(f"Failed to save test {test_id} to file: {e}")
+            logger.error("Failed to save test %s to file: %s", test_id, e)
             raise
 
     async def _load_from_file(self, test_id: str) -> Optional[Dict[str, Any]]:
@@ -206,11 +211,11 @@ class JsonResultRepository(TestResultRepository):
             with open(file_path, "r", encoding="utf-8") as f:
                 test_dict = json.load(f)
 
-            logger.debug(f"Test {test_id} loaded from file {file_path}")
+            logger.debug("Test %s loaded from file %s", test_id, file_path)
             return test_dict
 
         except Exception as e:
-            logger.error(f"Failed to load test {test_id} from file: {e}")
+            logger.error("Failed to load test %s from file: %s", test_id, e)
             return None
 
     async def _load_all_tests(self) -> None:
@@ -265,9 +270,9 @@ class JsonResultRepository(TestResultRepository):
                             await self.delete(test_id)
                             deleted_count += 1
                         except Exception as e:
-                            logger.warning(f"Failed to delete old test {test_id}: {e}")
+                            logger.warning("Failed to delete old test %s: %s", test_id, e)
                 except Exception as e:
-                    logger.warning(f"Failed to parse date for test {test_id}: {e}")
+                    logger.warning("Failed to parse date for test %s: %s", test_id, e)
 
-        logger.info(f"Cleaned up {deleted_count} old tests (older than {days} days)")
+        logger.info("Cleaned up %d old tests (older than %d days)", deleted_count, days)
         return deleted_count

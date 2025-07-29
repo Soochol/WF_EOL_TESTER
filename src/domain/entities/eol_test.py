@@ -4,17 +4,18 @@ EOL Test Entity
 Represents an End-of-Line test execution with its configuration and state.
 """
 
-from typing import Dict, Any, List, Optional
-from domain.value_objects.identifiers import TestId, DUTId, OperatorId, MeasurementId
-from domain.value_objects.time_values import Timestamp, TestDuration
+from typing import Any, Dict, Optional, Set
+
+from domain.entities.dut import DUT
+from domain.entities.test_result import TestResult
 from domain.enums.test_status import TestStatus
-from domain.exceptions.validation_exceptions import ValidationException
 from domain.exceptions.business_rule_exceptions import (
     BusinessRuleViolationException,
     InvalidTestStateException,
 )
-from domain.entities.dut import DUT
-from domain.entities.test_result import TestResult
+from domain.exceptions.validation_exceptions import ValidationException
+from domain.value_objects.identifiers import DUTId, MeasurementId, OperatorId, TestId
+from domain.value_objects.time_values import TestDuration, Timestamp
 
 
 class EOLTest:
@@ -58,17 +59,13 @@ class EOLTest:
         self._end_time: Optional[Timestamp] = None
         self._current_step = 0
         self._total_steps = 0
-        self._progress_percentage = 0.0
 
         # Test results and measurements
-        self._measurement_ids: List[MeasurementId] = []
+        self._measurement_ids: Set[MeasurementId] = set()
         self._test_result: Optional[TestResult] = None
         self._error_message: Optional[str] = None
         self._operator_notes: Optional[str] = None
 
-        # Hardware state tracking
-        self._required_hardware: List[str] = []
-        self._connected_hardware: Dict[str, bool] = {}
 
     def _validate_required_fields(self, test_id: TestId, dut: DUT, operator_id: OperatorId) -> None:
         """Validate required fields"""
@@ -101,12 +98,12 @@ class EOLTest:
     @property
     def test_configuration(self) -> Dict[str, Any]:
         """Get test configuration"""
-        return self._test_configuration.copy()
+        return self._test_configuration
 
     @property
     def pass_criteria(self) -> Dict[str, Any]:
         """Get pass criteria"""
-        return self._pass_criteria.copy()
+        return self._pass_criteria
 
     @property
     def created_at(self) -> Timestamp:
@@ -141,12 +138,15 @@ class EOLTest:
     @property
     def progress_percentage(self) -> float:
         """Get progress percentage (0-100)"""
-        return self._progress_percentage
+        if self._total_steps == 0:
+            return 0.0
+        return (self._current_step / self._total_steps) * 100.0
 
     @property
-    def measurement_ids(self) -> List[MeasurementId]:
+    @property
+    def measurement_ids(self) -> Set[MeasurementId]:
         """Get measurement IDs"""
-        return self._measurement_ids.copy()
+        return self._measurement_ids
 
     @property
     def test_result(self) -> Optional[TestResult]:
@@ -163,15 +163,6 @@ class EOLTest:
         """Get operator notes"""
         return self._operator_notes
 
-    @property
-    def required_hardware(self) -> List[str]:
-        """Get required hardware types"""
-        return self._required_hardware.copy()
-
-    @property
-    def connected_hardware(self) -> Dict[str, bool]:
-        """Get connected hardware status"""
-        return self._connected_hardware.copy()
 
     def get_duration(self) -> Optional[TestDuration]:
         """Get test execution duration"""
@@ -181,37 +172,6 @@ class EOLTest:
         end_time = self._end_time or Timestamp.now()
         return TestDuration.between_timestamps(self._start_time, end_time)
 
-    def get_configuration_parameter(self, key: str, default: Any = None) -> Any:
-        """Get specific configuration parameter"""
-        return self._test_configuration.get(key, default)
-
-    def get_pass_criterion(self, key: str, default: Any = None) -> Any:
-        """Get specific pass criterion"""
-        return self._pass_criteria.get(key, default)
-
-    def is_active(self) -> bool:
-        """Check if test is currently active"""
-        return self._status.is_active
-
-    def is_finished(self) -> bool:
-        """Check if test execution is finished"""
-        return self._status.is_finished
-
-    def is_passed(self) -> bool:
-        """Check if test passed"""
-        return self._status == TestStatus.COMPLETED
-
-    def is_failed(self) -> bool:
-        """Check if test failed"""
-        return self._status == TestStatus.FAILED
-
-    def can_start(self) -> bool:
-        """Check if test can be started"""
-        return self._status == TestStatus.NOT_STARTED
-
-    def can_cancel(self) -> bool:
-        """Check if test can be cancelled"""
-        return self._status.is_active
 
     def start_test(self, total_steps: int = 1) -> None:
         """
@@ -223,7 +183,7 @@ class EOLTest:
         Raises:
             InvalidTestStateException: If test cannot be started
         """
-        if not self.can_start():
+        if self._status != TestStatus.NOT_STARTED:
             raise InvalidTestStateException(
                 self._status.value,
                 TestStatus.NOT_STARTED.value,
@@ -238,7 +198,6 @@ class EOLTest:
         self._start_time = Timestamp.now()
         self._total_steps = total_steps
         self._current_step = 0
-        self._progress_percentage = 0.0
         self._error_message = None
 
     def begin_execution(self) -> None:
@@ -253,12 +212,9 @@ class EOLTest:
 
         self._status = TestStatus.RUNNING
 
-    def advance_step(self, step_description: Optional[str] = None) -> None:
+    def advance_step(self) -> None:
         """
         Advance to next test step
-
-        Args:
-            step_description: Description of current step
 
         Raises:
             InvalidTestStateException: If test is not running
@@ -273,17 +229,10 @@ class EOLTest:
 
         if self._current_step < self._total_steps:
             self._current_step += 1
-            self._progress_percentage = (self._current_step / self._total_steps) * 100.0
 
     def add_measurement_id(self, measurement_id: MeasurementId) -> None:
         """Add measurement ID to test"""
-        if not isinstance(measurement_id, MeasurementId):
-            raise ValidationException(
-                "measurement_id", measurement_id, "Measurement ID must be MeasurementId instance"
-            )
-
-        if measurement_id not in self._measurement_ids:
-            self._measurement_ids.append(measurement_id)
+        self._measurement_ids.add(measurement_id)
 
     def complete_test(self, test_result: TestResult) -> None:
         """
@@ -303,15 +252,10 @@ class EOLTest:
                 {"test_id": str(self._test_id)},
             )
 
-        if not isinstance(test_result, TestResult):
-            raise ValidationException(
-                "test_result", test_result, "Test result must be TestResult instance"
-            )
 
         self._status = TestStatus.COMPLETED
         self._end_time = Timestamp.now()
         self._test_result = test_result
-        self._progress_percentage = 100.0
         self._current_step = self._total_steps
         self._error_message = None
 
@@ -352,7 +296,7 @@ class EOLTest:
         Raises:
             InvalidTestStateException: If test cannot be cancelled
         """
-        if not self.can_cancel():
+        if not self._status.is_active:
             raise InvalidTestStateException(
                 self._status.value,
                 "PREPARING or RUNNING",
@@ -365,38 +309,12 @@ class EOLTest:
         if reason:
             self._error_message = f"Cancelled: {reason.strip()}"
 
-    def set_operator_notes(self, notes: str) -> None:
-        """Set operator notes"""
-        self._operator_notes = notes.strip() if notes else None
-
-    def set_required_hardware(self, hardware_types: List[str]) -> None:
-        """Set required hardware types for this test"""
-        if not isinstance(hardware_types, list):
-            raise ValidationException(
-                "hardware_types", hardware_types, "Hardware types must be a list"
-            )
-
-        self._required_hardware = [hw.lower().strip() for hw in hardware_types]
-        # Initialize connection status
-        self._connected_hardware = {hw: False for hw in self._required_hardware}
-
-    def set_hardware_connection_status(self, hardware_type: str, connected: bool) -> None:
-        """Set connection status for specific hardware"""
-        hardware_type = hardware_type.lower().strip()
-        if hardware_type in self._connected_hardware:
-            self._connected_hardware[hardware_type] = connected
-
-    def are_all_hardware_connected(self) -> bool:
-        """Check if all required hardware is connected"""
-        return all(self._connected_hardware.values()) if self._connected_hardware else True
-
-    def get_missing_hardware(self) -> List[str]:
-        """Get list of hardware that is not connected"""
-        return [hw for hw, connected in self._connected_hardware.items() if not connected]
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert EOL test to dictionary representation"""
-        return {
+        duration = self.get_duration()
+        
+        result = {
             "test_id": str(self._test_id),
             "dut": self._dut.to_dict(),
             "operator_id": str(self._operator_id),
@@ -404,22 +322,24 @@ class EOLTest:
             "pass_criteria": self._pass_criteria,
             "created_at": self._created_at.to_iso(),
             "status": self._status.value,
-            "start_time": self._start_time.to_iso() if self._start_time else None,
-            "end_time": self._end_time.to_iso() if self._end_time else None,
             "current_step": self._current_step,
             "total_steps": self._total_steps,
-            "progress_percentage": self._progress_percentage,
-            "duration_seconds": self.get_duration().seconds if self.get_duration() else None,
             "measurement_ids": [str(mid) for mid in self._measurement_ids],
-            "test_result": self._test_result.to_dict() if self._test_result else None,
             "error_message": self._error_message,
             "operator_notes": self._operator_notes,
-            "required_hardware": self._required_hardware,
-            "connected_hardware": self._connected_hardware,
-            "is_active": self.is_active(),
-            "is_finished": self.is_finished(),
-            "is_passed": self.is_passed(),
         }
+        
+        # Add optional timestamp fields
+        if self._start_time:
+            result["start_time"] = self._start_time.to_iso()
+        if self._end_time:
+            result["end_time"] = self._end_time.to_iso()
+        if duration:
+            result["duration_seconds"] = duration.seconds
+        if self._test_result:
+            result["test_result"] = self._test_result.to_dict()
+            
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "EOLTest":
@@ -444,24 +364,21 @@ class EOLTest:
 
         test._current_step = data.get("current_step", 0)
         test._total_steps = data.get("total_steps", 0)
-        test._progress_percentage = data.get("progress_percentage", 0.0)
 
-        test._measurement_ids = [MeasurementId(mid) for mid in data.get("measurement_ids", [])]
+        test._measurement_ids = {MeasurementId(mid) for mid in data.get("measurement_ids", [])}
 
         if data.get("test_result"):
             test._test_result = TestResult.from_dict(data["test_result"])
 
         test._error_message = data.get("error_message")
         test._operator_notes = data.get("operator_notes")
-        test._required_hardware = data.get("required_hardware", [])
-        test._connected_hardware = data.get("connected_hardware", {})
 
         return test
 
     def __str__(self) -> str:
         status_info = f"({self._status.value})"
-        if self._progress_percentage > 0:
-            status_info = f"({self._status.value} - {self._progress_percentage:.1f}%)"
+        if self.progress_percentage > 0:
+            status_info = f"({self._status.value} - {self.progress_percentage:.1f}%)"
 
         return f"EOL Test {self._test_id} for {self._dut} {status_info}"
 

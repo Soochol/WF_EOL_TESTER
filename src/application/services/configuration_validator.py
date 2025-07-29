@@ -29,7 +29,7 @@ class ConfigurationValidator:
 
     def __init__(self):
         """Initialize the configuration validator"""
-        pass
+        ...
 
     async def validate_test_configuration(self, config: TestConfiguration) -> None:
         """
@@ -88,8 +88,8 @@ class ConfigurationValidator:
             total_errors = sum(len(errors) for errors in errors_by_type.values())
             logger.warning(f"❌ Configuration validation failed with {total_errors} errors")
             raise create_multi_validation_error(errors_by_type)
-        else:
-            logger.info("✅ All configuration validations passed")
+        
+        logger.info("✅ All configuration validations passed")
 
     async def validate_configuration_compatibility(self, test_config: TestConfiguration) -> None:
         """
@@ -127,8 +127,8 @@ class ConfigurationValidator:
                     f"Configuration compatibility validation failed with {len(errors)} errors"
                 )
                 raise create_validation_error(errors, "compatibility")
-            else:
-                logger.debug("Configuration compatibility validation passed")
+            
+            logger.debug("Configuration compatibility validation passed")
 
         except ConfigurationValidationError:
             raise
@@ -165,8 +165,6 @@ class ConfigurationValidator:
                         else [0, 0]
                     ),
                     "safety_limits": {
-                        "max_temperature": test_config.max_temperature,
-                        "max_force": test_config.max_force,
                         "max_voltage": test_config.max_voltage,
                         "max_current": test_config.max_current,
                     },

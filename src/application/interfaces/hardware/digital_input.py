@@ -20,7 +20,7 @@ class DigitalInputService(ABC):
         Args:
             config: Configuration dictionary containing initialization parameters
         """
-        pass
+        ...
 
     @abstractmethod
     async def read_input(self, channel: int) -> bool:
@@ -33,7 +33,7 @@ class DigitalInputService(ABC):
         Returns:
             True if input is HIGH, False if LOW
         """
-        pass
+        ...
 
     @abstractmethod
     async def read_all_inputs(self) -> List[bool]:
@@ -43,7 +43,7 @@ class DigitalInputService(ABC):
         Returns:
             List of boolean values representing all input states
         """
-        pass
+        ...
 
     @abstractmethod
     async def get_input_count(self) -> int:
@@ -53,12 +53,12 @@ class DigitalInputService(ABC):
         Returns:
             Number of digital input channels
         """
-        pass
+        ...
 
     @abstractmethod
     async def disconnect(self) -> None:
         """Disconnect from the digital input device"""
-        pass
+        ...
 
     @abstractmethod
     async def is_connected(self) -> bool:
@@ -68,4 +68,4 @@ class DigitalInputService(ABC):
         Returns:
             True if connected, False otherwise
         """
-        pass
+        ...

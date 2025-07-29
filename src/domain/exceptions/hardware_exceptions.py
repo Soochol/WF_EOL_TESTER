@@ -29,34 +29,36 @@ class HardwareNotReadyException(HardwareException):
 
     def __init__(
         self,
-        hardware_type: str,
-        current_status: str,
-        required_status: str,
-        operation: str,
+        message: str,
+        hardware_type: str = None,
+        current_status: str = None,
+        required_status: str = None,
+        operation: str = None,
         details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware not ready exception
 
         Args:
+            message: Exception message
             hardware_type: Type of hardware (e.g., 'robot', 'mcu', 'loadcell', 'power')
             current_status: Current hardware status
             required_status: Required status for the operation
             operation: The operation that was attempted
             details: Additional hardware context
         """
-        message = f"Hardware '{hardware_type}' not ready for '{operation}'. Current: {current_status}, Required: {required_status}"
-
         exception_details = details or {}
-        exception_details.update(
-            {
-                "current_status": current_status,
-                "required_status": required_status,
-                "operation": operation,
-            }
-        )
+        
+        if hardware_type:
+            exception_details["hardware_type"] = hardware_type
+        if current_status:
+            exception_details["current_status"] = current_status
+        if required_status:
+            exception_details["required_status"] = required_status
+        if operation:
+            exception_details["operation"] = operation
 
-        super().__init__(message, hardware_type, exception_details)
+        super().__init__(message, hardware_type or "unknown", exception_details)
         self.current_status = current_status
         self.required_status = required_status
         self.operation = operation
@@ -67,26 +69,32 @@ class HardwareConnectionException(HardwareException):
 
     def __init__(
         self,
-        hardware_type: str,
-        connection_status: str,
-        operation: str,
+        message: str,
+        hardware_type: str = None,
+        connection_status: str = None,
+        operation: str = None,
         details: Dict[str, Any] = None,
     ):
         """
         Initialize hardware connection exception
 
         Args:
-            hardware_type: Type of hardware
-            connection_status: Current connection status
-            operation: Operation that requires connection
+            message: Exception message
+            hardware_type: Type of hardware (optional)
+            connection_status: Current connection status (optional)
+            operation: Operation that requires connection (optional)
             details: Additional connection context
         """
-        message = f"Hardware '{hardware_type}' connection issue for '{operation}'. Status: {connection_status}"
-
         exception_details = details or {}
-        exception_details.update({"connection_status": connection_status, "operation": operation})
+        
+        if hardware_type:
+            exception_details["hardware_type"] = hardware_type
+        if connection_status:
+            exception_details["connection_status"] = connection_status
+        if operation:
+            exception_details["operation"] = operation
 
-        super().__init__(message, hardware_type, exception_details)
+        super().__init__(message, hardware_type or "unknown", exception_details)
         self.connection_status = connection_status
         self.operation = operation
 

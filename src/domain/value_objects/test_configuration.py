@@ -5,8 +5,11 @@ Immutable configuration object containing all test parameters and settings.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
-from domain.exceptions.validation_exceptions import ValidationException
+from typing import Any, Dict, List, Optional
+
+from domain.exceptions.validation_exceptions import (
+    ValidationException,
+)
 from domain.value_objects.pass_criteria import PassCriteria
 
 
@@ -22,7 +25,11 @@ class TestConfiguration:
     # Hardware power settings
     voltage: float = 18.0
     current: float = 20.0
+
+    # MCU settings
     upper_temperature: float = 80.0
+    activation_temperature: float = 60.0
+    standby_temperature: float = 40.0
     fan_speed: int = 10
 
     # Motion control settings
@@ -32,7 +39,6 @@ class TestConfiguration:
     deceleration: float = 100.0
 
     # Positioning settings
-    standby_position: float = 10.0
     max_stroke: float = 240.0
     initial_position: float = 10.0
     position_tolerance: float = 0.1
@@ -62,10 +68,11 @@ class TestConfiguration:
     )
 
     # Timing settings (in seconds)
-    stabilization_delay: float = 0.1
-    temperature_stabilization: float = 0.1
-    power_stabilization: float = 0.5
-    loadcell_zero_delay: float = 0.1
+    stabilization_delay: float = 0.1  # Time to stabilize after hardware power on
+    temperature_stabilization: float = 0.1  # Time to stabilize after temperature change
+    standby_stabilization: float = 1.0  # Time to stabilize after lma stanby heating
+    power_stabilization: float = 0.5  # Time to stabilize after power on
+    loadcell_zero_delay: float = 0.1  # Time to zero loadcell after power on
 
     # Measurement settings
     measurement_tolerance: float = 0.001
@@ -142,11 +149,6 @@ class TestConfiguration:
                 "stroke_positions",
                 self.stroke_positions,
                 "All stroke positions must be non-negative",
-            )
-
-        if self.standby_position < 0:
-            raise ValidationException(
-                "standby_position", self.standby_position, "Standby position cannot be negative"
             )
 
     def _validate_safety_limits(self) -> None:
@@ -338,7 +340,6 @@ class TestConfiguration:
             "pass_criteria": self.pass_criteria,
             "temperature_list": self.temperature_list.copy(),
             "stroke_positions": self.stroke_positions.copy(),
-            "standby_position": self.standby_position,
             "stabilization_delay": self.stabilization_delay,
             "temperature_stabilization": self.temperature_stabilization,
             "power_stabilization": self.power_stabilization,
@@ -387,7 +388,6 @@ class TestConfiguration:
             "pass_criteria": self.pass_criteria.to_dict(),
             "temperature_list": self.temperature_list.copy(),
             "stroke_positions": self.stroke_positions.copy(),
-            "standby_position": self.standby_position,
             "stabilization_delay": self.stabilization_delay,
             "temperature_stabilization": self.temperature_stabilization,
             "power_stabilization": self.power_stabilization,
@@ -434,6 +434,145 @@ class TestConfiguration:
             data_copy["pass_criteria"] = PassCriteria.from_dict(data_copy["pass_criteria"])
 
         return cls(**data_copy)
+
+    @classmethod
+    def from_structured_dict(cls, structured_data: Dict[str, Any]) -> "TestConfiguration":
+        """
+        Create configuration from structured (nested) dictionary format
+        
+        This method handles the conversion from hierarchical configuration files
+        (YAML/JSON with sections like hardware, timing, etc.) to flat TestConfiguration format.
+
+        Args:
+            structured_data: Nested dictionary with configuration sections
+
+        Returns:
+            TestConfiguration instance
+
+        Raises:
+            ValidationException: If dictionary contains invalid values
+        """
+        flattened = {}
+
+        # Hardware section
+        if "hardware" in structured_data:
+            hardware = structured_data["hardware"]
+            flattened.update(
+                {
+                    "voltage": hardware.get("voltage", 18.0),
+                    "current": hardware.get("current", 20.0),
+                    "upper_temperature": hardware.get("upper_temperature", 80.0),
+                    "fan_speed": hardware.get("fan_speed", 10),
+                    "max_stroke": hardware.get("max_stroke", 240.0),
+                    "initial_position": hardware.get("initial_position", 10.0),
+                }
+            )
+
+        # Test parameters section
+        if "test_parameters" in structured_data:
+            test_params = structured_data["test_parameters"]
+            flattened.update(
+                {
+                    "temperature_list": test_params.get(
+                        "temperature_list", [25.0, 30.0, 35.0, 40.0, 45.0, 50.0]
+                    ),
+                    "stroke_positions": test_params.get(
+                        "stroke_positions", [10.0, 60.0, 100.0, 140.0, 180.0, 220.0, 240.0]
+                    ),
+                }
+            )
+
+        # Timing section
+        if "timing" in structured_data:
+            timing = structured_data["timing"]
+            flattened.update(
+                {
+                    "stabilization_delay": timing.get("stabilization_delay", 0.5),
+                    "temperature_stabilization": timing.get("temperature_stabilization", 1.0),
+                    "power_stabilization": timing.get("power_stabilization", 0.5),
+                    "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
+                }
+            )
+
+        # Tolerances section
+        if "tolerances" in structured_data:
+            tolerances = structured_data["tolerances"]
+            flattened.update(
+                {
+                    "measurement_tolerance": tolerances.get("measurement_tolerance", 0.001),
+                    "force_precision": tolerances.get("force_precision", 2),
+                    "temperature_precision": tolerances.get("temperature_precision", 1),
+                }
+            )
+
+        # Execution section
+        if "execution" in structured_data:
+            execution = structured_data["execution"]
+            flattened.update(
+                {
+                    "retry_attempts": execution.get("retry_attempts", 3),
+                    "timeout_seconds": execution.get("timeout_seconds", 300.0),
+                }
+            )
+
+        # Safety section
+        if "safety" in structured_data:
+            safety = structured_data["safety"]
+            flattened.update(
+                {
+                    "max_voltage": safety.get("max_voltage", 30.0),
+                    "max_current": safety.get("max_current", 50.0),
+                }
+            )
+
+        # Pass criteria section
+        if "pass_criteria" in structured_data:
+            pass_criteria = structured_data["pass_criteria"]
+
+            # Convert spec_points from list format to tuple format
+            spec_points = pass_criteria.get("spec_points", [])
+            if spec_points:
+                # Convert each spec point from list to tuple
+                spec_points_tuples = [
+                    tuple(point) if isinstance(point, list) else point for point in spec_points
+                ]
+            else:
+                spec_points_tuples = []
+
+            # Create pass_criteria dictionary for PassCriteria.from_dict()
+            pass_criteria_dict = {
+                "force_limit_min": pass_criteria.get("force_limit_min", 0.0),
+                "force_limit_max": pass_criteria.get("force_limit_max", 100.0),
+                "temperature_limit_min": pass_criteria.get("temperature_limit_min", -10.0),
+                "temperature_limit_max": pass_criteria.get("temperature_limit_max", 80.0),
+                "spec_points": spec_points_tuples,
+                "measurement_tolerance": pass_criteria.get("measurement_tolerance", 0.001),
+                "force_precision": pass_criteria.get("force_precision", 2),
+                "temperature_precision": pass_criteria.get("temperature_precision", 1),
+                "position_tolerance": pass_criteria.get("position_tolerance", 0.5),
+                "max_test_duration": pass_criteria.get("max_test_duration", 300.0),
+                "min_stabilization_time": pass_criteria.get("min_stabilization_time", 0.5),
+            }
+
+            flattened["pass_criteria"] = pass_criteria_dict
+
+        # Handle direct top-level parameters (backward compatibility)
+        for key, value in structured_data.items():
+            if key not in [
+                "hardware",
+                "test_parameters",
+                "timing",
+                "tolerances",
+                "execution",
+                "safety",
+                "pass_criteria",
+                "hardware_config",
+                "metadata",
+            ]:
+                flattened[key] = value
+
+        # Use regular from_dict to create the instance
+        return cls.from_dict(flattened)
 
     def __str__(self) -> str:
         duration = self.estimate_test_duration_seconds()

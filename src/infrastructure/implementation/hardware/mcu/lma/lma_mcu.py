@@ -5,59 +5,71 @@ Integrated service for LMA MCU hardware control.
 Handles temperature control, test modes, and fan management.
 """
 
-import asyncio
 import struct
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import asyncio
 from loguru import logger
 
-from application.interfaces.hardware.mcu import MCUService, TestMode, MCUStatus
-from domain.value_objects.hardware_configuration import MCUConfig
-from driver.serial.serial import SerialManager, SerialError, SerialConnection
-
+from application.interfaces.hardware.mcu import MCUService
+from domain.value_objects.hardware_configuration import (
+    MCUConfig,
+)
+from driver.serial.serial import (
+    SerialConnection,
+    SerialError,
+    SerialManager,
+)
 from infrastructure.implementation.hardware.mcu.lma.constants import (
-    STX,
-    ETX,
-    FRAME_STX_SIZE,
-    FRAME_CMD_SIZE,
-    FRAME_LEN_SIZE,
-    FRAME_ETX_SIZE,
+    BOOT_COMPLETE_TIMEOUT,
     CMD_ENTER_TEST_MODE,
-    CMD_SET_UPPER_TEMP,
-    CMD_SET_FAN_SPEED,
     CMD_LMA_INIT,
-    CMD_SET_OPERATING_TEMP,
-    CMD_SET_COOLING_TEMP,
     CMD_REQUEST_TEMP,
+    CMD_SET_COOLING_TEMP,
+    CMD_SET_FAN_SPEED,
+    CMD_SET_OPERATING_TEMP,
+    CMD_SET_UPPER_TEMP,
+    DEFAULT_BAUDRATE,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TIMEOUT,
+    ETX,
+    FAN_SPEED_MAX,
+    FAN_SPEED_MIN,
+    FRAME_CMD_SIZE,
+    FRAME_ETX_SIZE,
+    FRAME_LEN_SIZE,
+    FRAME_STX_SIZE,
+    MAX_TEMPERATURE,
+    MIN_TEMPERATURE,
     STATUS_BOOT_COMPLETE,
-    STATUS_TEST_MODE_COMPLETE,
-    STATUS_TEMP_RESPONSE,
-    STATUS_OPERATING_TEMP_OK,
-    STATUS_UPPER_TEMP_OK,
+    STATUS_COOLING_TEMP_OK,
     STATUS_FAN_SPEED_OK,
     STATUS_LMA_INIT_OK,
-    STATUS_COOLING_TEMP_OK,
     STATUS_MESSAGES,
+    STATUS_OPERATING_TEMP_OK,
+    STATUS_OPERATING_TEMP_REACHED,
+    STATUS_STANDBY_TEMP_REACHED,
+    STATUS_TEMP_RESPONSE,
+    STATUS_TEST_MODE_COMPLETE,
+    STATUS_UPPER_TEMP_OK,
+    STX,
+    TEMP_SCALE_FACTOR,
     TEST_MODE_1,
     TEST_MODE_2,
     TEST_MODE_3,
-    FAN_SPEED_MIN,
-    FAN_SPEED_MAX,
-    TEMP_SCALE_FACTOR,
-    DEFAULT_BAUDRATE,
-    DEFAULT_TIMEOUT,
-    BOOT_COMPLETE_TIMEOUT,
-    MIN_TEMPERATURE,
-    MAX_TEMPERATURE,
-    DEFAULT_TEMPERATURE,
 )
 from infrastructure.implementation.hardware.mcu.lma.error_codes import (
-    LMAError,
     LMACommunicationError,
+    LMAError,
+    LMAErrorCode,
     LMAHardwareError,
     LMAOperationError,
-    LMAErrorCode,
-    validate_temperature,
     validate_fan_speed,
+    validate_temperature,
+)
+from infrastructure.implementation.hardware.mcu.lma.types import (
+    MCUStatus,
+    TestMode,
 )
 
 
@@ -198,7 +210,7 @@ class LMAMCU(MCUService):
 
         except LMAError as e:
             logger.error(f"Failed to get LMA temperature: {e}")
-            raise RuntimeError(f"Temperature measurement failed: {e}")
+            raise RuntimeError(f"Temperature measurement failed: {e}") from e
 
     async def set_test_mode(self, mode: TestMode) -> bool:
         """
@@ -248,7 +260,7 @@ class LMAMCU(MCUService):
 
         return self._current_test_mode
 
-    async def wait_for_boot_complete(self) -> None:
+    async def wait_boot_complete(self) -> None:
         """
         MCU 부팅 완료 신호 대기
 
@@ -265,7 +277,7 @@ class LMAMCU(MCUService):
             await self._wait_for_boot_complete()
         except Exception as e:
             logger.error(f"MCU boot complete wait failed: {e}")
-            raise RuntimeError(f"MCU boot complete timeout: {e}")
+            raise RuntimeError(f"MCU boot complete timeout: {e}") from e
 
     async def set_fan_speed(self, speed_percent: float) -> bool:
         """
@@ -340,9 +352,16 @@ class LMAMCU(MCUService):
             logger.error(f"Failed to set LMA upper temperature: {e}")
             return False
 
-    async def start_standby_heating(self) -> bool:
+    async def start_standby_heating(
+        self, operating_temp: float, standby_temp: float, hold_time_ms: int = 10000
+    ) -> bool:
         """
         대기 가열 시작
+
+        Args:
+            operating_temp: 동작온도 (°C)
+            standby_temp: 대기온도 (°C)
+            hold_time_ms: 유지시간 (밀리초)
 
         Returns:
             시작 성공 여부
@@ -350,12 +369,26 @@ class LMAMCU(MCUService):
         if not await self.is_connected():
             raise ConnectionError("LMA MCU is not connected")
 
+        # 온도 범위 검증
+        validate_temperature(operating_temp, MIN_TEMPERATURE, MAX_TEMPERATURE)
+        validate_temperature(standby_temp, MIN_TEMPERATURE, MAX_TEMPERATURE)
+
         try:
-            # Initialize LMA for heating and wait for confirmation
-            await self._send_and_wait_for(CMD_LMA_INIT, b"", STATUS_LMA_INIT_OK)
+            # 온도 스케일링 (프로토콜에 맞게 정수로 변환)
+            op_temp_int = int(operating_temp * TEMP_SCALE_FACTOR)
+            standby_temp_int = int(standby_temp * TEMP_SCALE_FACTOR)
+
+            # 12바이트 데이터 패킹: 동작온도(4B) + 대기온도(4B) + 유지시간(4B)
+            data = struct.pack("<III", op_temp_int, standby_temp_int, hold_time_ms)
+
+            # LMA 초기화 명령 전송 및 응답 대기
+            await self._send_and_wait_for(CMD_LMA_INIT, data, STATUS_OPERATING_TEMP_REACHED)
             self._mcu_status = MCUStatus.HEATING
 
-            logger.info("LMA standby heating started")
+            logger.info(
+                f"LMA standby heating started - op:{operating_temp}°C, "
+                f"standby:{standby_temp}°C, hold:{hold_time_ms}ms"
+            )
             return True
 
         except LMAError as e:
@@ -373,44 +406,19 @@ class LMAMCU(MCUService):
             raise ConnectionError("LMA MCU is not connected")
 
         try:
-            # Set cooling temperature (lower than current) and wait for confirmation
-            cooling_temp = max(MIN_TEMPERATURE, self._current_temperature - 10.0)
+            # Send cooling command with 0x00 data
             await self._send_and_wait_for(
-                CMD_SET_COOLING_TEMP, self._encode_temperature(cooling_temp), STATUS_COOLING_TEMP_OK
+                CMD_SET_COOLING_TEMP,
+                b"\x00",
+                STATUS_STANDBY_TEMP_REACHED,
             )
             self._mcu_status = MCUStatus.COOLING
 
-            logger.info(f"LMA standby cooling started to {cooling_temp}°C")
+            logger.info("LMA standby cooling started")
             return True
 
         except LMAError as e:
             logger.error(f"Failed to start LMA standby cooling: {e}")
-            return False
-
-    async def stop_temperature_control(self) -> bool:
-        """
-        온도 제어 중지
-
-        Returns:
-            중지 성공 여부
-        """
-        if not await self.is_connected():
-            raise ConnectionError("LMA MCU is not connected")
-
-        try:
-            # Set temperature to current temperature (stop heating/cooling) and wait for confirmation
-            await self._send_and_wait_for(
-                CMD_SET_OPERATING_TEMP,
-                self._encode_temperature(self._current_temperature),
-                STATUS_OPERATING_TEMP_OK,
-            )
-            self._mcu_status = MCUStatus.IDLE
-
-            logger.info("LMA temperature control stopped")
-            return True
-
-        except LMAError as e:
-            logger.error(f"Failed to stop LMA temperature control: {e}")
             return False
 
     async def get_status(self) -> Dict[str, Any]:
@@ -464,7 +472,7 @@ class LMAMCU(MCUService):
             )
 
         except Exception as e:
-            raise LMAHardwareError(f"Boot wait failed: {e}")
+            raise LMAHardwareError(f"Boot wait failed: {e}") from e
 
     async def _send_command(self, command: int, data: bytes = b"") -> None:
         """Send command to LMA MCU (전송만)"""
@@ -481,7 +489,7 @@ class LMAMCU(MCUService):
             logger.debug(f"LMA command 0x{command:02X} sent")
 
         except Exception as e:
-            raise LMACommunicationError(f"Command send failed: {e}")
+            raise LMACommunicationError(f"Command send failed: {e}") from e
 
     async def _wait_for_response(
         self, target_status: int, max_attempts: int = 10
@@ -580,7 +588,7 @@ class LMAMCU(MCUService):
             }
 
         except Exception as e:
-            raise LMACommunicationError(f"Response receive failed: {e}")
+            raise LMACommunicationError(f"Response receive failed: {e}") from e
 
     def _encode_temperature(self, temperature: float) -> bytes:
         """Encode temperature for LMA protocol"""

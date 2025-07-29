@@ -16,3 +16,4 @@ class MotionStatus(Enum):
     COMPLETED = "completed"
     HOMING = "homing"
     STOPPED = "stopped"
+    EMERGENCY_STOP = "emergency_stop"

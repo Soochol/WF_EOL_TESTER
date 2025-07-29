@@ -4,26 +4,23 @@ Mock Robot Service
 Mock implementation for testing and development without real hardware.
 """
 
-import asyncio
 import random
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
+import asyncio
 from loguru import logger
 
-from application.interfaces.hardware.robot import RobotService
-from domain.exceptions import HardwareConnectionError, HardwareOperationError
-from domain.value_objects.hardware_configuration import RobotConfig
-
-
-class MotionStatus(Enum):
-    """모션 상태"""
-
-    IDLE = "idle"
-    MOVING = "moving"
-    HOMING = "homing"
-    ERROR = "error"
-    EMERGENCY_STOP = "emergency_stop"
+from application.interfaces.hardware.robot import (
+    RobotService,
+)
+from domain.enums.robot_enums import MotionStatus
+from domain.exceptions import (
+    HardwareConnectionError,
+    HardwareOperationError,
+)
+from domain.value_objects.hardware_configuration import (
+    RobotConfig,
+)
 
 
 class MockRobot(RobotService):
@@ -35,6 +32,13 @@ class MockRobot(RobotService):
         max_position: float = 1000.0,
         default_velocity: float = 100.0,
         response_delay: float = 0.1,
+        # Motion parameters with defaults from TestConfiguration
+        default_acceleration: float = 100.0,
+        default_deceleration: float = 100.0,
+        position_tolerance: float = 0.1,
+        homing_velocity: float = 10.0,
+        homing_acceleration: float = 100.0,
+        homing_deceleration: float = 100.0,
     ):
         """
         초기화
@@ -44,10 +48,22 @@ class MockRobot(RobotService):
             max_position: 최대 위치 (mm)
             default_velocity: 기본 속도 (mm/s)
             response_delay: 응답 지연 시간 (초)
+            default_acceleration: 기본 가속도 (mm/s²)
+            default_deceleration: 기본 감속도 (mm/s²)
+            position_tolerance: 위치 허용 오차 (mm)
+            homing_velocity: 홈 복귀 속도 (mm/s)
+            homing_acceleration: 홈 복귀 가속도 (mm/s²)
+            homing_deceleration: 홈 복귀 감속도 (mm/s²)
         """
         self._axis_count = axis_count
         self._max_position = max_position
         self._default_velocity = default_velocity
+        self._default_acceleration = default_acceleration
+        self._default_deceleration = default_deceleration
+        self._position_tolerance = position_tolerance
+        self._homing_velocity = homing_velocity
+        self._homing_acceleration = homing_acceleration
+        self._homing_deceleration = homing_deceleration
         self._response_delay = response_delay
 
         self._is_connected = False
@@ -138,7 +154,7 @@ class MockRobot(RobotService):
         except Exception as e:
             logger.error(f"Mock axis initialization failed: {e}")
             self._motion_status = MotionStatus.ERROR
-            raise HardwareOperationError("mock_robot", "initialize_axes", str(e))
+            raise HardwareOperationError("mock_robot", "initialize_axes", str(e)) from e
 
     async def move_to_position(
         self, axis: int, position: float, velocity: Optional[float] = None
@@ -200,7 +216,7 @@ class MockRobot(RobotService):
         except Exception as e:
             logger.error(f"Mock axis {axis} move failed: {e}")
             self._motion_status = MotionStatus.ERROR
-            raise HardwareOperationError("mock_robot", "move_to_position", str(e))
+            raise HardwareOperationError("mock_robot", "move_to_position", str(e)) from e
 
     async def move_relative_single(
         self, axis: int, distance: float, velocity: Optional[float] = None
@@ -397,12 +413,13 @@ class MockRobot(RobotService):
 
         return self._motion_status
 
-    async def stop_motion(self, axis: Optional[int] = None) -> None:
+    async def stop_motion(self, axis: int, deceleration: float) -> None:
         """
-        모션 정지 (시뮬레이션)
+        지정된 축의 모션 정지 (시뮬레이션)
 
         Args:
-            axis: 정지할 축 (None이면 모든 축)
+            axis: 정지할 축 번호 (0부터 시작)
+            deceleration: 감속도 (mm/s²) - 시뮬레이션에서는 로깅용
 
         Raises:
             HardwareOperationError: If stop operation fails
@@ -410,23 +427,22 @@ class MockRobot(RobotService):
         if not self._is_connected:
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
-        if axis is not None and (axis < 0 or axis >= self._axis_count):
+        if axis < 0 or axis >= self._axis_count:
             raise HardwareOperationError("mock_robot", "stop_motion", f"Invalid axis {axis}")
 
         try:
-            if axis is not None:
-                logger.info(f"Stopping mock robot motion on axis {axis}")
-            else:
-                logger.info("Stopping mock robot motion on all axes")
+            logger.info(
+                f"Stopping mock robot motion on axis {axis} with deceleration {deceleration} mm/s²"
+            )
 
             await asyncio.sleep(self._response_delay)
 
             self._motion_status = MotionStatus.IDLE
-            logger.info("Mock robot motion stopped")
+            logger.info(f"Mock robot axis {axis} motion stopped")
 
         except Exception as e:
-            logger.error(f"Failed to stop mock robot: {e}")
-            raise HardwareOperationError("mock_robot", "stop_motion", str(e))
+            logger.error(f"Failed to stop mock robot axis {axis}: {e}")
+            raise HardwareOperationError("mock_robot", "stop_motion", str(e)) from e
 
     async def emergency_stop(self) -> None:
         """
@@ -446,7 +462,7 @@ class MockRobot(RobotService):
 
         except Exception as e:
             logger.error(f"Mock emergency stop failed: {e}")
-            raise HardwareOperationError("mock_robot", "emergency_stop", str(e))
+            raise HardwareOperationError("mock_robot", "emergency_stop", str(e)) from e
 
     async def is_moving(self, axis: Optional[int] = None) -> bool:
         """
@@ -549,28 +565,6 @@ class MockRobot(RobotService):
                 "mock_robot", "wait_for_completion", "Motion ended with error"
             )
 
-    async def set_velocity_limit(self, max_velocity: float) -> bool:
-        """
-        최대 속도 제한 설정 (시뮬레이션)
-
-        Args:
-            max_velocity: 최대 속도 (mm/s)
-
-        Returns:
-            설정 성공 여부
-        """
-        if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
-
-        if max_velocity <= 0:
-            raise HardwareOperationError(
-                "mock_robot", "parameter_validation", "Max velocity must be positive"
-            )
-
-        self._max_velocity = max_velocity
-        logger.info(f"Mock robot velocity limit set to {max_velocity} mm/s")
-        return True
-
     async def get_axis_count(self) -> int:
         """
         축 개수 조회
@@ -636,3 +630,63 @@ class MockRobot(RobotService):
             self._motion_status = MotionStatus.ERROR
 
         logger.debug(f"Mock robot error simulated: {error_type}")
+
+    async def move_absolute(
+        self,
+        axis: int,
+        position: float,
+        velocity: Optional[float] = None,
+        acceleration: Optional[float] = None,
+        deceleration: Optional[float] = None,
+    ) -> None:
+        """
+        Move axis to absolute position with motion parameters
+
+        Args:
+            axis: Axis number to move
+            position: Target position in mm
+            velocity: Optional velocity override in mm/s
+            acceleration: Optional acceleration override in mm/s²
+            deceleration: Optional deceleration override in mm/s²
+
+        Raises:
+            HardwareOperationError: If movement fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError("mock_robot", "move_absolute", f"Invalid axis {axis}")
+
+        if abs(position) > self._max_position:
+            raise HardwareOperationError(
+                "mock_robot",
+                "move_absolute",
+                f"Position {position} exceeds limit ±{self._max_position}mm",
+            )
+
+        # Use default values if not provided
+        vel = velocity or self._default_velocity
+        acc = acceleration or self._default_acceleration
+        dec = deceleration or self._default_deceleration
+
+        try:
+            logger.info(
+                f"Moving mock robot axis {axis} to position {position}mm "
+                f"(vel: {vel}mm/s, acc: {acc}mm/s², dec: {dec}mm/s²)"
+            )
+
+            await asyncio.sleep(self._response_delay)
+
+            self._motion_status = MotionStatus.MOVING
+            self._current_positions[axis] = position
+            
+            # Simulate motion completion
+            await asyncio.sleep(0.1)
+            self._motion_status = MotionStatus.COMPLETED
+
+            logger.info(f"Mock robot axis {axis} moved to position {position}mm")
+
+        except Exception as e:
+            logger.error(f"Failed to move mock robot axis {axis} to position {position}mm: {e}")
+            raise HardwareOperationError("mock_robot", "move_absolute", str(e)) from e

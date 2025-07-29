@@ -43,7 +43,7 @@ class EOLTesterError(Exception):
 class ValidationError(EOLTesterError):
     """Base exception for all validation errors"""
 
-    pass
+    ...
 
 
 class ConfigurationValidationError(ValidationError):
@@ -186,7 +186,7 @@ class TestEvaluationError(EOLTesterError):
 class HardwareError(EOLTesterError):
     """Base exception for all hardware-related errors"""
 
-    pass
+    ...
 
 
 class HardwareConnectionError(HardwareError):
@@ -223,7 +223,7 @@ class HardwareOperationError(HardwareError):
 class RepositoryError(EOLTesterError):
     """Base exception for all repository-related errors"""
 
-    pass
+    ...
 
 
 class ConfigurationNotFoundError(RepositoryError):
@@ -265,7 +265,7 @@ class RepositoryAccessError(RepositoryError):
 class TestExecutionError(EOLTesterError):
     """Base exception for test execution errors"""
 
-    pass
+    ...
 
 
 class TestSequenceError(TestExecutionError):

@@ -4,19 +4,33 @@ EOL Tester Main Entry Point
 Simplified main application with direct service creation.
 """
 
-import asyncio
 import sys
 from pathlib import Path
 
+import asyncio
 from loguru import logger
 
-from src.application.services.configuration_service import ConfigurationService
-from src.application.services.configuration_validator import ConfigurationValidator
-from src.application.services.exception_handler import ExceptionHandler
-from src.application.services.hardware_service_facade import HardwareServiceFacade
-from src.application.services.repository_service import RepositoryService
-from src.application.services.test_result_evaluator import TestResultEvaluator
-from src.application.use_cases.eol_force_test import EOLForceTestUseCase
+from src.application.services.configuration_service import (
+    ConfigurationService,
+)
+from src.application.services.configuration_validator import (
+    ConfigurationValidator,
+)
+from src.application.services.exception_handler import (
+    ExceptionHandler,
+)
+from src.application.services.hardware_service_facade import (
+    HardwareServiceFacade,
+)
+from src.application.services.repository_service import (
+    RepositoryService,
+)
+from src.application.services.test_result_evaluator import (
+    TestResultEvaluator,
+)
+from src.application.use_cases.eol_force_test import (
+    EOLForceTestUseCase,
+)
 from src.infrastructure.factory import ServiceFactory
 from src.infrastructure.implementation.configuration.json_profile_preference import (
     JsonProfilePreference,
@@ -51,7 +65,10 @@ def setup_logging(debug: bool = False) -> None:
     logger.add(
         sys.stderr,
         level=log_level,
-        format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> - <level>{message}</level>",
+        format=(
+            "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
+            "<cyan>{name}</cyan> - <level>{message}</level>"
+        ),
     )
 
     # 파일 로깅
@@ -74,22 +91,32 @@ async def main() -> None:
     setup_logging(debug=False)
 
     try:
-        # 서비스 생성 (기본 설정 사용)
+        # 서비스 생성 (하드웨어 설정 파일에서 로드)
         logger.info("Creating EOL Tester services...")
 
-        # Create hardware services with default configuration
-        robot_service = ServiceFactory.create_robot_service({"type": "mock"})
-        mcu_service = ServiceFactory.create_mcu_service({"type": "mock"})
-        loadcell_service = ServiceFactory.create_loadcell_service({"type": "mock"})
-        power_service = ServiceFactory.create_power_service({"type": "mock"})
-
-        # Create repositories
+        # Create repositories first
         yaml_configuration = YamlConfiguration()
         profile_preference = JsonProfilePreference()
         test_result_repository = JsonResultRepository()
 
+        # Load hardware configuration from YAML file
+        logger.info("Loading hardware configuration from hardware.yaml...")
+        hardware_config = await yaml_configuration.load_hardware_config()
+        hardware_config_dict = hardware_config.to_dict()
+
+        # Create hardware services with loaded configuration
+        robot_service = ServiceFactory.create_robot_service(hardware_config_dict["robot"])
+        mcu_service = ServiceFactory.create_mcu_service(hardware_config_dict["mcu"])
+        loadcell_service = ServiceFactory.create_loadcell_service(hardware_config_dict["loadcell"])
+        power_service = ServiceFactory.create_power_service(hardware_config_dict["power"])
+        digital_input_service = ServiceFactory.create_digital_input_service(
+            hardware_config_dict["digital_input"]
+        )
+
         # Create services
-        configuration_service = ConfigurationService(configuration=yaml_configuration, profile_preference=profile_preference)
+        configuration_service = ConfigurationService(
+            configuration=yaml_configuration, profile_preference=profile_preference
+        )
 
         test_result_service = RepositoryService(test_repository=test_result_repository)
 
@@ -104,6 +131,7 @@ async def main() -> None:
             mcu_service=mcu_service,
             loadcell_service=loadcell_service,
             power_service=power_service,
+            digital_input_service=digital_input_service,
         )
 
         # Use Case 생성
