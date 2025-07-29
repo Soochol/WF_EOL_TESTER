@@ -19,7 +19,6 @@ from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
 )
-from domain.value_objects.identifiers import TestId
 
 
 class JsonResultRepository(TestResultRepository):
@@ -103,10 +102,14 @@ class JsonResultRepository(TestResultRepository):
             return await self._dict_to_test(test_dict)
 
         # 파일에서 로드
-        test_dict = await self._load_from_file(test_id)
-        if test_dict:
-            self._tests_cache[test_id] = test_dict
-            return await self._dict_to_test(test_dict)
+        loaded_test_dict: Optional[Dict[str, Any]] = (
+            await self._load_from_file(test_id)
+        )
+        if loaded_test_dict is not None:
+            self._tests_cache[test_id] = loaded_test_dict
+            return await self._dict_to_test(
+                loaded_test_dict
+            )
 
         return None
 
@@ -269,7 +272,7 @@ class JsonResultRepository(TestResultRepository):
             with open(
                 file_path, "r", encoding="utf-8"
             ) as f:
-                test_dict = json.load(f)
+                test_dict: Dict[str, Any] = json.load(f)
 
             logger.debug(
                 "Test %s loaded from file %s",
@@ -298,7 +301,7 @@ class JsonResultRepository(TestResultRepository):
                 test_dict = await self._load_from_file(
                     test_id
                 )
-                if test_dict:
+                if test_dict is not None:
                     self._tests_cache[test_id] = test_dict
 
     def _get_test_file_path(self, test_id: str) -> Path:

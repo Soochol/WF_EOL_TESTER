@@ -1,54 +1,191 @@
 {
-    "editor.formatOnSave": true,
+    // === Editor Core Settings ===
     "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "editor.detectIndentation": false,
-    "editor.rulers": [
-        100
-    ],
+    "editor.rulers": [100],
     "editor.wordWrap": "off",
+    "editor.trimAutoWhitespace": true,
+
+    // === Advanced Editor Features ===
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "editor.semanticHighlighting.enabled": true,
+    "editor.linkedEditing": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.showUnused": true,
+    "editor.suggest.insertMode": "replace",
+    "editor.suggest.preview": true,
+    "editor.inlineSuggest.enabled": true,
+    "editor.minimap.enabled": true,
+    "editor.minimap.showSlider": "always",
+    "editor.foldingHighlight": true,
+    "editor.foldingImportsByDefault": false,
+    "editor.quickSuggestions": {
+        "other": "on",
+        "comments": "on",
+        "strings": "on"
+    },
+
+    // === File Management ===
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
+    "files.autoSave": "onFocusChange",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/htmlcov": true,
+        "**/.coverage": true
+    },
+
+    // === Python Environment ===
     "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.terminal.activateEnvironment": false,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeCheckingMode": "basic",
+
+    // === Python Language-Specific Settings ===
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
+        "editor.formatOnPaste": true,
         "editor.codeActionsOnSave": {
             "source.organizeImports": "explicit",
-            "source.fixAll": "explicit"
-        }
+            "source.fixAll": "explicit",
+            "source.convertImportFormat": "explicit",
+            "source.unusedImports": "explicit"
+        },
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.rulers": [100],
+        "editor.wordWrap": "off"
     },
+
+    // === Black Formatter Configuration ===
     "black-formatter.args": [
         "--config",
-        "pyproject.toml"
+        "pyproject.toml",
+        "--preview"
     ],
+    "black-formatter.importStrategy": "fromEnvironment",
+
+    // === isort Configuration ===
     "isort.args": [
         "--settings-path",
-        "pyproject.toml"
+        "pyproject.toml",
+        "--check-only",
+        "--diff"
     ],
+    "isort.importStrategy": "fromEnvironment",
+
+    // === Flake8 Configuration ===
     "flake8.args": [
         "--config",
-        "setup.cfg"
+        "setup.cfg",
+        "--statistics"
     ],
+    "flake8.importStrategy": "fromEnvironment",
+
+    // === Pylint Configuration ===
     "pylint.args": [
         "--rcfile",
-        ".pylintrc"
+        ".pylintrc",
+        "--score=yes"
     ],
+    "pylint.importStrategy": "fromEnvironment",
+
+    // === MyPy Configuration (Enhanced) ===
+    "mypy-type-checker.args": [
+        "--config-file",
+        "pyproject.toml",
+        "--show-error-codes",
+        "--show-column-numbers",
+        "--show-error-context"
+    ],
+    "mypy-type-checker.importStrategy": "fromEnvironment",
+
+    // === Linting Configuration ===
     "python.linting.enabled": true,
     "python.linting.lintOnSave": true,
     "python.linting.flake8Enabled": true,
     "python.linting.pylintEnabled": true,
-    "python.linting.mypyEnabled": false,
+    "python.linting.mypyEnabled": true,
+    "python.linting.banditEnabled": false,
+    "python.linting.prospectorEnabled": false,
+    "python.linting.pycodestyleEnabled": false,
+    "python.linting.pydocstyleEnabled": false,
+    "python.linting.pylamaEnabled": false,
+
+    // === Testing Configuration ===
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests",
+        "-v",
+        "--tb=short"
+    ],
+
+    // === Docstring and Comments ===
+    "python.analysis.completeFunctionParens": true,
+    "autoDocstring.docstringFormat": "google",
+    "autoDocstring.generateDocstringOnEnter": true,
+    "autoDocstring.includeExtendedSummary": true,
+    "autoDocstring.includeName": true,
+
+    // === Spell Checking ===
     "cSpell.words": [
         "loadcell",
         "AJINEXTEK",
         "baudrate",
         "pyproject",
         "mypy",
-        "pylintrc"
+        "pylintrc",
+        "eol",
+        "dut",
+        "mcu",
+        "ajinextek",
+        "bs205",
+        "lma",
+        "oda",
+        "loguru",
+        "asyncio",
+        "yaml",
+        "numpy",
+        "scipy",
+        "pytest",
+        "flake8",
+        "isort"
     ],
+
+    // === IntelliSense and Auto-completion ===
+    "python.languageServer": "Pylance",
+    "python.analysis.indexing": true,
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "sklearn",
+            "depth": 2
+        }
+    ],
+
+    // === Project-Specific ===
     "python-envs.pythonProjects": [],
-    "python.terminal.activateEnvironment": false
+
+    // === Git Integration ===
+    "git.enableSmartCommit": true,
+    "git.autofetch": true,
+    "git.confirmSync": false,
+
+    // === Workspace Settings ===
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.enablePreviewFromQuickOpen": false,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false
 }

@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
+from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.identifiers import DUTId
 from domain.value_objects.time_values import Timestamp
 
@@ -54,16 +55,8 @@ class DUT:
         self._model_number = model_number.strip()
         self._serial_number = serial_number.strip()
         self._manufacturer = manufacturer.strip()
-        self._firmware_version = (
-            firmware_version.strip()
-            if firmware_version
-            else None
-        )
-        self._hardware_revision = (
-            hardware_revision.strip()
-            if hardware_revision
-            else None
-        )
+        self._firmware_version = firmware_version.strip() if firmware_version else None
+        self._hardware_revision = hardware_revision.strip() if hardware_revision else None
         self._manufacturing_date = manufacturing_date
         self._specifications = specifications or {}
         self._created_at = Timestamp.now()
@@ -165,15 +158,11 @@ class DUT:
         """Get creation timestamp"""
         return self._created_at
 
-    def get_specification(
-        self, key: str, default: Any = None
-    ) -> Any:
+    def get_specification(self, key: str, default: Any = None) -> Any:
         """Get specific specification value"""
         return self._specifications.get(key, default)
 
-    def update_specifications(
-        self, specifications: Dict[str, Any]
-    ) -> None:
+    def update_specifications(self, specifications: Dict[str, Any]) -> None:
         """Update device specifications"""
         if not isinstance(specifications, dict):
             raise ValidationException(
@@ -198,9 +187,7 @@ class DUT:
             "firmware_version": self._firmware_version,
             "hardware_revision": self._hardware_revision,
             "manufacturing_date": (
-                self._manufacturing_date.to_iso()
-                if self._manufacturing_date
-                else None
+                self._manufacturing_date.to_iso() if self._manufacturing_date else None
             ),
             "specifications": self._specifications,
             "created_at": self._created_at.to_iso(),
@@ -211,9 +198,7 @@ class DUT:
         """Create DUT from dictionary representation"""
         manufacturing_date = None
         if data.get("manufacturing_date"):
-            manufacturing_date = Timestamp.from_iso(
-                data["manufacturing_date"]
-            )
+            manufacturing_date = Timestamp.from_iso(data["manufacturing_date"])
 
         return cls(
             dut_id=DUTId(data["dut_id"]),
@@ -227,7 +212,7 @@ class DUT:
         )
 
     @classmethod
-    def from_command_info(cls, command_info) -> "DUT":
+    def from_command_info(cls, command_info: DUTCommandInfo) -> "DUT":
         """Create DUT from DUTCommandInfo
 
         Args:
@@ -249,7 +234,7 @@ class DUT:
     def __repr__(self) -> str:
         return f"DUT(id={self._dut_id}, model={self._model_number}, sn={self._serial_number})"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, DUT):
             return False
         return self._dut_id == other._dut_id

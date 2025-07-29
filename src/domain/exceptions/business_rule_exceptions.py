@@ -17,26 +17,20 @@ class BusinessRuleViolationException(DomainException):
         self.rule_name = rule_name
 
 
-class UnsafeOperationException(
-    BusinessRuleViolationException
-):
+class UnsafeOperationException(BusinessRuleViolationException):
     def __init__(
         self,
         operation: str,
         reason: str,
         context: Optional[Dict[Any, Any]] = None,
     ) -> None:
-        message = (
-            f"Unsafe operation '{operation}': {reason}"
-        )
+        message = f"Unsafe operation '{operation}': {reason}"
         super().__init__("SAFETY_RULE", message, context)
         self.operation = operation
         self.reason = reason
 
 
-class InvalidTestStateException(
-    BusinessRuleViolationException
-):
+class InvalidTestStateException(BusinessRuleViolationException):
     def __init__(
         self,
         current_state: str,
@@ -59,9 +53,7 @@ class InvalidTestStateException(
         self.operation = operation
 
 
-class HardwareNotReadyException(
-    BusinessRuleViolationException
-):
+class HardwareNotReadyException(BusinessRuleViolationException):
     def __init__(
         self,
         hardware_type: str,
@@ -78,9 +70,7 @@ class HardwareNotReadyException(
                 "operation": operation,
             }
         )
-        super().__init__(
-            "HARDWARE_READY_RULE", message, ctx
-        )
+        super().__init__("HARDWARE_READY_RULE", message, ctx)
         self.hardware_type = hardware_type
         self.current_status = current_status
         self.operation = operation

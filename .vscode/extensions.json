@@ -1,0 +1,72 @@
+{
+    "recommendations": [
+        // === Python Development ===
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.flake8",
+        "ms-python.pylint",
+        "ms-python.mypy-type-checker",
+        
+        // === Code Quality & Formatting ===
+        "charliermarsh.ruff",
+        "ms-python.autopep8",
+        "njpwerner.autodocstring",
+        "ms-python.docstring-generator",
+        
+        // === Testing ===
+        "ms-python.pytest",
+        "hbenl.vscode-test-explorer",
+        "littlefoxteam.vscode-python-test-adapter",
+        
+        // === Version Control ===
+        "mhutchie.git-graph",
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        
+        // === Documentation ===
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        "bierner.markdown-mermaid",
+        
+        // === Code Navigation & Intelligence ===
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "christian-kohler.path-intellisense",
+        "visualstudioexptteam.vscodeintellicode",
+        
+        // === Productivity ===
+        "streetsidesoftware.code-spell-checker",
+        "aaron-bond.better-comments",
+        "formulahendry.code-runner",
+        "ms-vscode.vscode-json",
+        
+        // === UI & Themes ===
+        "pkief.material-icon-theme",
+        "github.github-vscode-theme",
+        "ms-vscode.theme-tomorrowkit",
+        
+        // === Configuration & DevOps ===
+        "redhat.vscode-yaml",
+        "ms-vscode.makefile-tools",
+        "timonwong.shellcheck",
+        "foxundermoon.shell-format",
+        
+        // === Architecture & Clean Code ===
+        "ms-vscode.vscode-mind-map",
+        "hediet.vscode-drawio",
+        "polaski.variable-translation"
+    ],
+    "unwantedRecommendations": [
+        // Avoid conflicting formatters
+        "ms-python.autopep8",
+        
+        // Avoid deprecated extensions
+        "ms-python.python-preview",
+        
+        // Avoid conflicting linters
+        "ms-python.pep8",
+        "ms-python.pycodestyle"
+    ]
+}

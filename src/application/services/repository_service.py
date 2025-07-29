@@ -26,9 +26,7 @@ class RepositoryService:
 
     def __init__(
         self,
-        test_repository: Optional[
-            TestResultRepository
-        ] = None,
+        test_repository: Optional[TestResultRepository] = None,
     ):
         self._test_repository = test_repository
 
@@ -50,9 +48,7 @@ class RepositoryService:
             RepositoryAccessError: If saving fails
         """
         if not self._test_repository:
-            logger.warning(
-                "No test repository configured, skipping test result save"
-            )
+            logger.warning("No test repository configured, skipping test result save")
             return
 
         try:
@@ -60,9 +56,7 @@ class RepositoryService:
             logger.debug("Test result saved successfully")
         except Exception as e:
             logger.error(f"Failed to save test result: {e}")
-            raise RepositoryAccessError(
-                operation="save_test_result", reason=str(e)
-            ) from e
+            raise RepositoryAccessError(operation="save_test_result", reason=str(e)) from e
 
     def get_all_repositories(self) -> dict:
         """Get all repositories as a dictionary (for debugging/testing)"""

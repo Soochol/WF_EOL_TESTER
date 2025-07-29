@@ -35,9 +35,7 @@ class ConfigurationService:
     def __init__(
         self,
         configuration: Configuration,
-        profile_preference: Optional[
-            ProfilePreference
-        ] = None,
+        profile_preference: Optional[ProfilePreference] = None,
     ):
         self._configuration = configuration
         self._profile_preference = profile_preference
@@ -54,9 +52,7 @@ class ConfigurationService:
         """Get the profile preference"""
         return self._profile_preference
 
-    async def load_configuration(
-        self, profile_name: str
-    ) -> TestConfiguration:
+    async def load_configuration(self, profile_name: str) -> TestConfiguration:
         """
         Load test configuration from repository
 
@@ -70,33 +66,19 @@ class ConfigurationService:
             ConfigurationNotFoundError: If profile doesn't exist
             RepositoryAccessError: If loading fails
         """
-        logger.debug(
-            f"Loading configuration from profile: '{profile_name}'"
-        )
+        logger.debug(f"Loading configuration from profile: '{profile_name}'")
 
         try:
-            test_config = (
-                await self._configuration.load_profile(
-                    profile_name
-                )
-            )
+            test_config = await self._configuration.load_profile(profile_name)
 
-            logger.debug(
-                f"Configuration loaded successfully from '{profile_name}.yaml'"
-            )
+            logger.debug(f"Configuration loaded successfully from '{profile_name}.yaml'")
             return test_config
 
         except FileNotFoundError as e:
-            available_profiles = (
-                await self.list_available_profiles()
-            )
-            raise ConfigurationNotFoundError(
-                profile_name, available_profiles
-            ) from e
+            available_profiles = await self.list_available_profiles()
+            raise ConfigurationNotFoundError(profile_name, available_profiles) from e
         except Exception as e:
-            logger.error(
-                f"Failed to load configurations from profile '{profile_name}': {e}"
-            )
+            logger.error(f"Failed to load configurations from profile '{profile_name}': {e}")
             raise RepositoryAccessError(
                 operation="load_configuration",
                 reason=str(e),
@@ -110,9 +92,7 @@ class ConfigurationService:
         Returns:
             List of available profile names
         """
-        return (
-            await self._configuration.list_available_profiles()
-        )
+        return await self._configuration.list_available_profiles()
 
     async def get_active_profile_name(self) -> str:
         """
@@ -134,65 +114,42 @@ class ConfigurationService:
                 if self._profile_preference
                 else None
             )
-            if last_used and self._is_valid_profile_name(
-                last_used
-            ):
-                logger.debug(
-                    f"Using last used profile: '{last_used}'"
-                )
+            if last_used and self._is_valid_profile_name(last_used):
+                logger.debug(f"Using last used profile: '{last_used}'")
                 return last_used
 
             # 2nd priority: Default fallback
-            logger.debug(
-                f"Using fallback profile: '{fallback_profile}'"
-            )
+            logger.debug(f"Using fallback profile: '{fallback_profile}'")
             return fallback_profile
 
         except Exception as e:
-            logger.warning(
-                f"Error determining active profile, using fallback: {e}"
-            )
+            logger.warning(f"Error determining active profile, using fallback: {e}")
             return fallback_profile
 
-    async def mark_profile_as_used(
-        self, profile_name: str
-    ) -> None:
+    async def mark_profile_as_used(self, profile_name: str) -> None:
         """
         Mark a profile as used, updating last used and history
 
         Args:
             profile_name: Name of the profile that was used
         """
-        if (
-            not profile_name
-            or not self._is_valid_profile_name(profile_name)
-        ):
-            logger.warning(
-                f"Invalid profile name for usage tracking: '{profile_name}'"
-            )
+        if not profile_name or not self._is_valid_profile_name(profile_name):
+            logger.warning(f"Invalid profile name for usage tracking: '{profile_name}'")
             return
 
         try:
             # Update last used profile
             if self._profile_preference:
-                await self._profile_preference.save_last_used_profile(
-                    profile_name
-                )
+                await self._profile_preference.save_last_used_profile(profile_name)
 
                 # Update usage history
-                await self._profile_preference.update_usage_history(
-                    profile_name
-                )
+                await self._profile_preference.update_usage_history(profile_name)
 
-            logger.debug(
-                f"Marked profile as used: '{profile_name}'"
-            )
+            logger.debug(f"Marked profile as used: '{profile_name}'")
 
         except Exception as e:
             # Don't let preference saving break the main workflow
-            logger.warning(
-                f"Failed to mark profile '{profile_name}' as used: {e}"
-            )
+            logger.warning(f"Failed to mark profile '{profile_name}' as used: {e}")
 
     async def get_profile_usage_info(
         self,
@@ -204,9 +161,7 @@ class ConfigurationService:
             Dictionary with current profile, usage history, and available profiles
         """
         try:
-            current_profile = (
-                await self.get_active_profile_name()
-            )
+            current_profile = await self.get_active_profile_name()
             last_used = (
                 await self._profile_preference.load_last_used_profile()
                 if self._profile_preference
@@ -217,9 +172,7 @@ class ConfigurationService:
                 if self._profile_preference
                 else []
             )
-            available_profiles = (
-                await self._configuration.list_available_profiles()
-            )
+            available_profiles = await self._configuration.list_available_profiles()
 
             return {
                 "current_profile": current_profile,
@@ -227,9 +180,7 @@ class ConfigurationService:
                 "usage_history": history,
                 "available_profiles": available_profiles,
                 "history_count": len(history),
-                "unique_profiles_used": (
-                    len(set(history)) if history else 0
-                ),
+                "unique_profiles_used": len(set(history)) if history else 0,
                 "repository_available": (
                     await self._profile_preference.is_available()
                     if self._profile_preference
@@ -238,9 +189,7 @@ class ConfigurationService:
             }
 
         except Exception as e:
-            logger.warning(
-                f"Failed to get profile usage info: {e}"
-            )
+            logger.warning(f"Failed to get profile usage info: {e}")
             return {
                 "current_profile": "default",
                 "error": str(e),
@@ -260,17 +209,13 @@ class ConfigurationService:
                 "All profile preferences cleared - will use environment variable or default"
             )
         except Exception as e:
-            logger.error(
-                f"Failed to clear profile preferences: {e}"
-            )
+            logger.error(f"Failed to clear profile preferences: {e}")
             raise RepositoryAccessError(
                 operation="clear_profile_preferences",
                 reason=str(e),
             ) from e
 
-    def _is_valid_profile_name(
-        self, profile_name: str
-    ) -> bool:
+    def _is_valid_profile_name(self, profile_name: str) -> bool:
         """
         Validate profile name using basic business rules
 
@@ -280,16 +225,11 @@ class ConfigurationService:
         Returns:
             True if profile name appears valid
         """
-        if not profile_name or not isinstance(
-            profile_name, str
-        ):
+        if not profile_name or not isinstance(profile_name, str):
             return False
 
         # Basic validation - profile names should be reasonable
-        if (
-            len(profile_name) > 100
-            or len(profile_name.strip()) == 0
-        ):
+        if len(profile_name) > 100 or len(profile_name.strip()) == 0:
             return False
 
         # No path traversal or dangerous characters
@@ -304,15 +244,10 @@ class ConfigurationService:
             "?",
             '"',
         ]
-        if any(
-            char in profile_name for char in dangerous_chars
-        ):
+        if any(char in profile_name for char in dangerous_chars):
             return False
 
-        if (
-            len(profile_name) > 100
-            or len(profile_name.strip()) == 0
-        ):
+        if len(profile_name) > 100 or len(profile_name.strip()) == 0:
             return False
 
         # No path traversal or dangerous characters
@@ -327,9 +262,7 @@ class ConfigurationService:
             "?",
             '"',
         ]
-        if any(
-            char in profile_name for char in dangerous_chars
-        ):
+        if any(char in profile_name for char in dangerous_chars):
             return False
 
         return True
