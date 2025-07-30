@@ -30,7 +30,9 @@ from src.infrastructure.factory import ServiceFactory
 from src.infrastructure.implementation.configuration.json_profile_preference import (
     JsonProfilePreference,
 )
-from src.infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
+from src.infrastructure.implementation.configuration.yaml_configuration import (
+    YamlConfiguration,
+)
 from src.infrastructure.implementation.repositories.json_result_repository import (
     JsonResultRepository,
 )
@@ -105,8 +107,7 @@ async def main() -> None:
         # Create and run enhanced command line interface with Rich UI
         try:
             command_line_interface = EnhancedEOLTesterCLI(
-                eol_force_test_use_case,
-                hardware_services
+                eol_force_test_use_case, hardware_services, configuration_service
             )
             logger.info("Starting Enhanced EOL Tester application with Rich UI")
             await command_line_interface.run_interactive()

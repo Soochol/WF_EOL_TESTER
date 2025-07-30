@@ -150,11 +150,18 @@ class MockLoadCell(LoadCellService):
                 self._value_index + 1
             ) % len(self._mock_values)
         else:
-            # 랜덤 값 생성 (기본값 + 노이즈)
+            # 현실적인 힘 시뮬레이션: 위치 기반 + 온도 영향
+            # 기본 힘: 위치에 따른 선형/비선형 변화
+            position_factor = random.uniform(0.8, 1.2)  # 위치별 변동
+            temperature_factor = 1.0 + (random.uniform(35, 65) - 50) * 0.002  # 온도 영향 (±2%)
+            
+            base_force_adjusted = self._base_force * position_factor * temperature_factor
+            
+            # 현실적인 노이즈 (측정 불확실성)
             noise = random.uniform(
                 -self._noise_level, self._noise_level
             )
-            force = self._base_force + noise
+            force = base_force_adjusted + noise
 
         # 영점 오프셋 적용
         force -= self._zero_offset
@@ -196,10 +203,11 @@ class MockLoadCell(LoadCellService):
                     self._value_index
                 ]
             else:
+                # Zero offset should be small - representing sensor bias, not full base force
                 noise = random.uniform(
                     -self._noise_level, self._noise_level
                 )
-                self._zero_offset = self._base_force + noise
+                self._zero_offset = noise  # Small bias offset only
 
             logger.info(
                 f"Mock LoadCell zeroed (offset: {self._zero_offset:.3f}N)"

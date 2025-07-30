@@ -1,27 +1,26 @@
 hardware_config:
   robot:
-    model: AJINEXTEK
+    model: MOCK
     irq_no: 7
-    axis_count: 6
   loadcell:
-    model: BS205
+    model: MOCK
     port: COM3
     baudrate: 9600
     timeout: 1.0
     indicator_id: 1
   mcu:
-    model: LMA
+    model: MOCK
     port: COM4
     baudrate: 115200
     timeout: 2.0
   power:
-    model: ODA
+    model: MOCK
     host: 192.168.1.100
     port: 8080
     timeout: 5.0
     channel: 1
   digital_input:
-    model: AJINEXTEK
+    model: MOCK
     board_no: 0
     input_count: 8
     debounce_time: 0.01

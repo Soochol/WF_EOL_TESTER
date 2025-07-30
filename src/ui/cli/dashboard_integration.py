@@ -15,42 +15,22 @@ Key Features:
 """
 
 import asyncio
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
+from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-
-# Conditional import for loguru to handle missing dependency gracefully
-try:
-    from loguru import logger
-except ImportError:
-    import logging
-    
-    # Create a simple logger wrapper for fallback
-    class SimpleLogger:
-        def __init__(self) -> None:
-            self._logger = logging.getLogger(__name__)
-            
-        def info(self, msg: str) -> None:
-            print(f"INFO: {msg}")
-            
-        def error(self, msg: str) -> None:
-            print(f"ERROR: {msg}")
-            
-        def warning(self, msg: str) -> None:
-            print(f"WARNING: {msg}")
-            
-        def debug(self, msg: str) -> None:
-            print(f"DEBUG: {msg}")
-    
-    logger = SimpleLogger()  # type: ignore
+from rich.table import Table
 
 from application.services.hardware_service_facade import HardwareServiceFacade
-from .hardware_monitoring_dashboard import HardwareMonitoringDashboard, create_dashboard_manager
+
+from .hardware_monitoring_dashboard import (
+    HardwareMonitoringDashboard,
+    create_dashboard_manager,
+)
 from .rich_formatter import RichFormatter
 
 
@@ -130,12 +110,12 @@ Please select an option (1-5, b):"""
                 self._formatter.print_message(
                     f"System error in dashboard menu: {str(e)}", message_type="error"
                 )
-                logger.error(f"Dashboard menu system error: {e}")
+                logger.error("Dashboard menu system error: %s", e)
             except Exception as e:
                 self._formatter.print_message(
                     f"Unexpected dashboard menu error: {str(e)}", message_type="error"
                 )
-                logger.error(f"Dashboard menu unexpected error: {e}")
+                logger.error("Dashboard menu unexpected error: %s", e)
 
     async def _start_monitoring_dashboard(self) -> None:
         """Start the real-time monitoring dashboard"""
@@ -204,28 +184,28 @@ display real-time metrics for Robot, MCU, LoadCell, and Power systems.""",
                 message_type="error",
                 title="Import Error",
             )
-            logger.error(f"Dashboard import error: {e}")
+            logger.error("Dashboard import error: %s", e)
         except AttributeError as e:
             self._formatter.print_message(
                 f"Dashboard method not available: {str(e)}",
                 message_type="error",
                 title="Method Error",
             )
-            logger.error(f"Dashboard method error: {e}")
+            logger.error("Dashboard method error: %s", e)
         except OSError as e:
             self._formatter.print_message(
                 f"System resource error: {str(e)}",
                 message_type="error",
                 title="System Error",
             )
-            logger.error(f"Dashboard system error: {e}")
+            logger.error("Dashboard system error: %s", e)
         except Exception as e:
             self._formatter.print_message(
                 f"Unexpected dashboard error: {str(e)}",
                 message_type="error",
                 title="Dashboard Error",
             )
-            logger.error(f"Dashboard unexpected error: {e}")
+            logger.error("Dashboard unexpected error: %s", e)
 
         # Post-monitoring actions
         await self._post_monitoring_actions()
@@ -236,7 +216,6 @@ display real-time metrics for Robot, MCU, LoadCell, and Power systems.""",
             return
 
         # Check if we have data to export
-        current_metrics = self._dashboard.get_current_metrics()
         history_count = len(self._dashboard.get_metrics_history())
 
         if history_count > 0:
@@ -306,28 +285,28 @@ Export options:
                 message_type="error",
                 title="Permission Error",
             )
-            logger.error(f"Session export permission error: {e}")
+            logger.error("Session export permission error: %s", e)
         except FileNotFoundError as e:
             self._formatter.print_message(
                 f"Export directory not found: {str(e)}",
                 message_type="error",
                 title="Directory Error",
             )
-            logger.error(f"Session export directory error: {e}")
+            logger.error("Session export directory error: %s", e)
         except OSError as e:
             self._formatter.print_message(
                 f"System error during export: {str(e)}",
                 message_type="error",
                 title="System Error",
             )
-            logger.error(f"Session export system error: {e}")
+            logger.error("Session export system error: %s", e)
         except Exception as e:
             self._formatter.print_message(
                 f"Unexpected export error: {str(e)}",
                 message_type="error",
                 title="Export Failed",
             )
-            logger.error(f"Session export unexpected error: {e}")
+            logger.error("Session export unexpected error: %s", e)
 
     async def _show_session_summary(self) -> None:
         """Show summary of current monitoring session"""
@@ -347,7 +326,9 @@ Export options:
         # Connection statistics
         robot_uptime: float = sum(1 for m in history if m.robot_connected) / len(history) * 100
         mcu_uptime: float = sum(1 for m in history if m.mcu_connected) / len(history) * 100
-        loadcell_uptime: float = sum(1 for m in history if m.loadcell_connected) / len(history) * 100
+        loadcell_uptime: float = (
+            sum(1 for m in history if m.loadcell_connected) / len(history) * 100
+        )
         power_uptime: float = sum(1 for m in history if m.power_connected) / len(history) * 100
 
         # Create summary table
@@ -436,9 +417,7 @@ Select option (1-3, b):"""
     async def _configure_refresh_rate(self) -> None:
         """Configure dashboard refresh rate"""
         self._console.print(
-            "[bold cyan]Current refresh rate:[/bold cyan] {:.1f} seconds".format(
-                self._default_refresh_rate
-            )
+            f"[bold cyan]Current refresh rate:[/bold cyan] {self._default_refresh_rate:.1f} seconds"
         )
         self._console.print("[dim]Enter new refresh rate (1.0 - 10.0 seconds):[/dim]")
 
@@ -567,7 +546,7 @@ Select option (1-3, b):"""
                 message_type="error",
                 title="Export Failed",
             )
-            logger.error(f"Historical data export error: {e}")
+            logger.error("Historical data export error: %s", e)
 
     async def _show_dashboard_help(self) -> None:
         """Show dashboard help and information"""

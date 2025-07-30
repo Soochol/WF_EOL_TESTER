@@ -165,10 +165,7 @@ class MockInput(DigitalInputService):
             logger.info("Mock DIO hardware connected successfully")
 
         except Exception as e:
-            logger.error(
-                "Failed to connect to Mock DIO hardware: %s",
-                e,
-            )
+            logger.error(f"Failed to connect to Mock DIO hardware: {e}")
             raise HardwareConnectionError("mock_dio", str(e)) from e
 
     async def disconnect(self) -> None:
@@ -195,10 +192,7 @@ class MockInput(DigitalInputService):
             logger.info("Mock DIO hardware disconnected")
 
         except Exception as e:
-            logger.error(
-                "Error disconnecting Mock DIO hardware: %s",
-                e,
-            )
+            logger.error(f"Error disconnecting Mock DIO hardware: {e}")
             raise HardwareOperationError("mock_dio", "disconnect", str(e)) from e
 
     async def is_connected(self) -> bool:
@@ -255,14 +249,10 @@ class MockInput(DigitalInputService):
                     self._output_states[pin] = LogicLevel.LOW
 
             self._operation_count += 1
-            logger.debug(
-                "Mock: Pin %s configured as %s",
-                pin,
-                mode.value,
-            )
+            logger.debug(f"Mock: Pin {pin} configured as {mode.value}")
 
         except Exception as e:
-            logger.error("Failed to configure pin %s: %s", pin, e)
+            logger.error(f"Failed to configure pin {pin}: {e}")
             raise HardwareOperationError("mock_dio", "configure_pin", str(e)) from e
 
     async def read_digital_input(self, pin: int) -> LogicLevel:
@@ -299,16 +289,12 @@ class MockInput(DigitalInputService):
         # Apply noise simulation if enabled
         if self._simulate_noise and random.random() < self._noise_probability:
             current_level = LogicLevel.HIGH if current_level == LogicLevel.LOW else LogicLevel.LOW
-            logger.debug("Mock: Noise applied to pin %s", pin)
+            logger.debug(f"Mock: Noise applied to pin {pin}")
 
         self._operation_count += 1
         self._read_count += 1
 
-        logger.debug(
-            "Mock: Read pin %s = %s",
-            pin,
-            current_level.name,
-        )
+        logger.debug(f"Mock: Read pin {pin} = {current_level.name}")
         return current_level
 
     async def write_digital_output(self, pin: int, level: LogicLevel) -> None:
@@ -352,10 +338,10 @@ class MockInput(DigitalInputService):
             self._operation_count += 1
             self._write_count += 1
 
-            logger.debug("Mock: Write pin %s = %s", pin, level.name)
+            logger.debug(f"Mock: Write pin {pin} = {level.name}")
 
         except Exception as e:
-            logger.error("Failed to write to pin %s: %s", pin, e)
+            logger.error(f"Failed to write to pin {pin}: {e}")
             raise HardwareOperationError("mock_dio", "write_digital_output", str(e)) from e
 
     async def read_multiple_inputs(self, pins: List[int]) -> Dict[int, LogicLevel]:
@@ -399,11 +385,7 @@ class MockInput(DigitalInputService):
             try:
                 await self.write_digital_output(pin, level)
             except Exception as e:
-                logger.error(
-                    "Mock: Failed to write pin %s: %s",
-                    pin,
-                    e,
-                )
+                logger.error(f"Mock: Failed to write pin {pin}: {e}")
                 failed_pins.append(pin)
 
         if failed_pins:
@@ -557,7 +539,7 @@ class MockInput(DigitalInputService):
             )
 
         self._input_states[pin] = level
-        logger.debug("Mock: Set input pin %s to %s", pin, level.name)
+        logger.debug(f"Mock: Set input pin {pin} to {level.name}")
 
     async def simulate_input_change(self, pin: int) -> None:
         """

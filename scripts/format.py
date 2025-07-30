@@ -31,30 +31,29 @@ def main():
     """Run all formatting and quality checks."""
     print("🚀 Starting professional code formatting...\n")
 
-    
     commands = [
         (["black", "."], "Black code formatting"),
         (["isort", "."], "Import organization with isort"),
         (["pylint", "main.py", "src/"], "Pylint static analysis"),
     ]
-    
+
     success_count = 0
     total_commands = len(commands)
-    
+
     for cmd, description in commands:
         if run_command(cmd, description):
             success_count += 1
         print()  # Empty line for readability
-    
+
     # Summary
     print("=" * 60)
     print(f"📊 Summary: {success_count}/{total_commands} tools completed successfully")
-    
+
     if success_count == total_commands:
         print("🎉 All formatting and quality checks passed!")
         print("💡 Your code is now enterprise-ready!")
         return 0
-    
+
     print("⚠️  Some tools reported issues. Please review and fix.")
     return 1
 

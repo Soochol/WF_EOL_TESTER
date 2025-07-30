@@ -44,20 +44,14 @@ class FormField:
 
     name: str
     label: str
-    field_type: (
-        str  # text, number, select, checkbox, textarea
-    )
+    field_type: str  # text, number, select, checkbox, textarea
     value: Any = None
     placeholder: str = ""
     help_text: str = ""
     required: bool = False
     disabled: bool = False
-    validation_rules: List[Dict[str, Any]] = field(
-        default_factory=list
-    )
-    options: Optional[List[Dict[str, str]]] = (
-        None  # For select fields
-    )
+    validation_rules: List[Dict[str, Any]] = field(default_factory=list)
+    options: Optional[List[Dict[str, str]]] = None  # For select fields
 
 
 class SettingsCategory(Enum):
@@ -74,11 +68,9 @@ class SettingsCategory(Enum):
 class SettingsSchema:
     """Complete settings schema definition"""
 
-    categories: Dict[str, List[FormField]] = field(
-        default_factory=dict
-    )
+    categories: Dict[str, List[FormField]] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize default settings schema"""
         if not self.categories:
             self._initialize_default_schema()
@@ -310,14 +302,12 @@ class SettingsFormComponent:
     - Undo/redo support
     """
 
-    def __init__(
-        self, schema: Optional[SettingsSchema] = None
-    ):
+    def __init__(self, schema: Optional[SettingsSchema] = None):
         self.schema = schema or SettingsSchema()
         self._form_data: Dict[str, Any] = {}
         self._validation_errors: List[ValidationError] = []
-        self._change_listeners: List[Callable] = []
-        self._dirty_fields: set = set()
+        self._change_listeners: List[Callable[[str, Any, Any], None]] = []
+        self._dirty_fields: set[str] = set()
         self._history: List[Dict[str, Any]] = []
         self._history_index = -1
 
@@ -326,13 +316,9 @@ class SettingsFormComponent:
 
     def _load_initial_values(self) -> None:
         """Load initial values from schema"""
-        for (
-            category_fields
-        ) in self.schema.categories.values():
+        for category_fields in self.schema.categories.values():
             for form_field in category_fields:
-                self._form_data[form_field.name] = (
-                    form_field.value
-                )
+                self._form_data[form_field.name] = form_field.value
 
     def get_field_value(self, field_name: str) -> Any:
         """Get current field value"""
@@ -350,14 +336,10 @@ class SettingsFormComponent:
         self._dirty_fields.add(field_name)
 
         if validate:
-            field_errors = self._validate_field(
-                field_name, value
-            )
+            field_errors = self._validate_field(field_name, value)
             # Remove old errors for this field
             self._validation_errors = [
-                err
-                for err in self._validation_errors
-                if err.field_name != field_name
+                err for err in self._validation_errors if err.field_name != field_name
             ]
             # Add new errors
             self._validation_errors.extend(field_errors)
@@ -365,20 +347,9 @@ class SettingsFormComponent:
         # Notify listeners
         self._notify_change(field_name, old_value, value)
 
-        return (
-            len(
-                [
-                    err
-                    for err in self._validation_errors
-                    if err.field_name == field_name
-                ]
-            )
-            == 0
-        )
+        return len([err for err in self._validation_errors if err.field_name == field_name]) == 0
 
-    def _validate_field(
-        self, field_name: str, value: Any
-    ) -> List[ValidationError]:
+    def _validate_field(self, field_name: str, value: Any) -> List[ValidationError]:
         """Validate individual field"""
         errors: List[ValidationError] = []
         form_field = self._find_field(field_name)
@@ -387,9 +358,7 @@ class SettingsFormComponent:
             return errors
 
         # Required validation
-        if form_field.required and (
-            value is None or value == ""
-        ):
+        if form_field.required and (value is None or value == ""):
             errors.append(
                 ValidationError(
                     field_name=field_name,
@@ -410,9 +379,7 @@ class SettingsFormComponent:
 
             if rule_type == "pattern":
                 pattern = rule_config.get("pattern")
-                if pattern and not re.match(
-                    pattern, str(value)
-                ):
+                if pattern and not re.match(pattern, str(value)):
                     errors.append(
                         ValidationError(
                             field_name=field_name,
@@ -430,10 +397,7 @@ class SettingsFormComponent:
                 max_val = rule_config.get("max")
                 try:
                     num_value = float(value)
-                    if (
-                        min_val is not None
-                        and num_value < min_val
-                    ):
+                    if min_val is not None and num_value < min_val:
                         errors.append(
                             ValidationError(
                                 field_name=field_name,
@@ -445,10 +409,7 @@ class SettingsFormComponent:
                                 value=value,
                             )
                         )
-                    elif (
-                        max_val is not None
-                        and num_value > max_val
-                    ):
+                    elif max_val is not None and num_value > max_val:
                         errors.append(
                             ValidationError(
                                 field_name=field_name,
@@ -472,13 +433,9 @@ class SettingsFormComponent:
 
         return errors
 
-    def _find_field(
-        self, field_name: str
-    ) -> Optional[FormField]:
+    def _find_field(self, field_name: str) -> Optional[FormField]:
         """Find field by name across all categories"""
-        for (
-            category_fields
-        ) in self.schema.categories.values():
+        for category_fields in self.schema.categories.values():
             for form_field in category_fields:
                 if form_field.name == field_name:
                     return form_field
@@ -489,23 +446,15 @@ class SettingsFormComponent:
         self._validation_errors.clear()
 
         for field_name, value in self._form_data.items():
-            field_errors = self._validate_field(
-                field_name, value
-            )
+            field_errors = self._validate_field(field_name, value)
             self._validation_errors.extend(field_errors)
 
         return len(self._validation_errors) == 0
 
-    def get_validation_errors(
-        self, field_name: Optional[str] = None
-    ) -> List[ValidationError]:
+    def get_validation_errors(self, field_name: Optional[str] = None) -> List[ValidationError]:
         """Get validation errors for specific field or all"""
         if field_name:
-            return [
-                err
-                for err in self._validation_errors
-                if err.field_name == field_name
-            ]
+            return [err for err in self._validation_errors if err.field_name == field_name]
         return self._validation_errors.copy()
 
     def save_to_history(self) -> None:
@@ -513,9 +462,7 @@ class SettingsFormComponent:
         current_state = self._form_data.copy()
 
         # Remove states after current index (for redo)
-        self._history = self._history[
-            : self._history_index + 1
-        ]
+        self._history = self._history[: self._history_index + 1]
 
         # Add new state
         self._history.append(current_state)
@@ -530,12 +477,8 @@ class SettingsFormComponent:
         """Undo last change"""
         if self._history_index > 0:
             self._history_index -= 1
-            self._form_data = self._history[
-                self._history_index
-            ].copy()
-            self._notify_change(
-                "undo", None, self._form_data
-            )
+            self._form_data = self._history[self._history_index].copy()
+            self._notify_change("undo", None, self._form_data)
             return True
         return False
 
@@ -543,12 +486,8 @@ class SettingsFormComponent:
         """Redo last undone change"""
         if self._history_index < len(self._history) - 1:
             self._history_index += 1
-            self._form_data = self._history[
-                self._history_index
-            ].copy()
-            self._notify_change(
-                "redo", None, self._form_data
-            )
+            self._form_data = self._history[self._history_index].copy()
+            self._notify_change("redo", None, self._form_data)
             return True
         return False
 
@@ -560,9 +499,7 @@ class SettingsFormComponent:
             "version": "1.0",
         }
 
-    def import_settings(
-        self, settings_data: Dict[str, Any]
-    ) -> bool:
+    def import_settings(self, settings_data: Dict[str, Any]) -> bool:
         """Import settings from dictionary"""
         try:
             if "settings" not in settings_data:
@@ -575,9 +512,7 @@ class SettingsFormComponent:
                 value,
             ) in imported_settings.items():
                 if self._find_field(field_name):
-                    self.set_field_value(
-                        field_name, value, validate=True
-                    )
+                    self.set_field_value(field_name, value, validate=True)
 
             return self.validate_all()
 
@@ -602,7 +537,7 @@ class SettingsFormComponent:
 
     def render_form_ascii(self) -> str:
         """Render form as ASCII for CLI interface"""
-        form_output = f"""
+        form_output = """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                              Settings Configuration                          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -614,18 +549,12 @@ class SettingsFormComponent:
             fields,
         ) in self.schema.categories.items():
             form_output += (
-                f"┌─ {category.upper().replace('_', ' ')} ─"
-                + "─" * (70 - len(category))
-                + "┐\n"
+                f"┌─ {category.upper().replace('_', ' ')} ─" + "─" * (70 - len(category)) + "┐\n"
             )
 
             for form_field in fields:
-                value = self._form_data.get(
-                    form_field.name, ""
-                )
-                errors = self.get_validation_errors(
-                    form_field.name
-                )
+                value = self._form_data.get(form_field.name, "")
+                errors = self.get_validation_errors(form_field.name)
 
                 # Field label and value
                 form_output += f"│ {form_field.label:.<30} : {str(value):<35} │\n"
@@ -653,9 +582,7 @@ class SettingsFormComponent:
 
         return form_output
 
-    def add_change_listener(
-        self, callback: Callable
-    ) -> None:
+    def add_change_listener(self, callback: Callable[[str, Any, Any], None]) -> None:
         """Add change event listener"""
         self._change_listeners.append(callback)
 
@@ -678,27 +605,19 @@ class FormAccessibilityHelper:
     """WCAG 2.1 AA compliance helper for forms"""
 
     @staticmethod
-    def get_field_aria_attributes(
-        form_field: FormField, has_errors: bool
-    ) -> Dict[str, str]:
+    def get_field_aria_attributes(form_field: FormField, has_errors: bool) -> Dict[str, str]:
         """Generate ARIA attributes for field"""
         attrs = {
             "aria-label": form_field.label,
-            "aria-required": (
-                "true" if form_field.required else "false"
-            ),
+            "aria-required": "true" if form_field.required else "false",
         }
 
         if form_field.help_text:
-            attrs["aria-describedby"] = (
-                f"{form_field.name}_help"
-            )
+            attrs["aria-describedby"] = f"{form_field.name}_help"
 
         if has_errors:
             attrs["aria-invalid"] = "true"
-            attrs[
-                "aria-describedby"
-            ] += f" {form_field.name}_error"
+            attrs["aria-describedby"] += f" {form_field.name}_error"
 
         return attrs
 

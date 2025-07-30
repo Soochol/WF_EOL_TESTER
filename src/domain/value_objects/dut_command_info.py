@@ -6,7 +6,7 @@ Represents basic DUT data needed for command execution.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from domain.exceptions.validation_exceptions import (
     ValidationException,
@@ -120,5 +120,4 @@ class DUTCommandInfo:
         )
 
     def __str__(self) -> str:
-        return f"{self.manufacturer} {self.model_number} (SN: {self.serial_number})"
         return f"{self.manufacturer} {self.model_number} (SN: {self.serial_number})"

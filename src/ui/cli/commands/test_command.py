@@ -4,7 +4,7 @@ Test Command
 Handles EOL test execution commands.
 """
 
-from typing import cast, Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 from loguru import logger
 
@@ -21,23 +21,15 @@ from ui.cli.commands.base import Command, CommandResult
 class TestCommand(Command):
     """Command for EOL test operations"""
 
-    def __init__(
-        self, use_case: Optional[EOLForceTestUseCase] = None
-    ):
-        super().__init__(
-            name="test", description="Execute EOL tests"
-        )
+    def __init__(self, use_case: Optional[EOLForceTestUseCase] = None):
+        super().__init__(name="test", description="Execute EOL tests")
         self._use_case = use_case
 
-    def set_use_case(
-        self, use_case: EOLForceTestUseCase
-    ) -> None:
+    def set_use_case(self, use_case: EOLForceTestUseCase) -> None:
         """Set the use case for test execution"""
         self._use_case = use_case
 
-    async def execute(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute test command
 
@@ -48,9 +40,7 @@ class TestCommand(Command):
             CommandResult with test execution results
         """
         if not self._use_case:
-            return CommandResult.error(
-                "Test system not initialized. Please check configuration."
-            )
+            return CommandResult.error("Test system not initialized. Please check configuration.")
 
         if not args:
             # Interactive test mode
@@ -64,9 +54,7 @@ class TestCommand(Command):
             return await self._profile_test(args[1:])
         if subcommand == "help":
             return CommandResult.info(self.get_help())
-        return CommandResult.error(
-            f"Unknown test subcommand: {subcommand}"
-        )
+        return CommandResult.error(f"Unknown test subcommand: {subcommand}")
 
     def get_subcommands(self) -> Dict[str, str]:
         """Get available subcommands"""
@@ -87,25 +75,17 @@ class TestCommand(Command):
 
             dut_id = input("Enter DUT ID: ").strip()
             if not dut_id:
-                return CommandResult.error(
-                    "DUT ID is required"
-                )
+                return CommandResult.error("DUT ID is required")
 
-            model_number = input(
-                "Enter Model Number (or press Enter for default): "
-            ).strip()
+            model_number = input("Enter Model Number (or press Enter for default): ").strip()
             if not model_number:
                 model_number = "Unknown"
 
-            serial_number = input(
-                "Enter Serial Number (or press Enter for auto): "
-            ).strip()
+            serial_number = input("Enter Serial Number (or press Enter for auto): ").strip()
             if not serial_number:
                 serial_number = f"{dut_id}_SN"
 
-            operator_id = input(
-                "Enter Operator ID: "
-            ).strip()
+            operator_id = input("Enter Operator ID: ").strip()
             if not operator_id:
                 operator_id = "Unknown"
 
@@ -127,15 +107,11 @@ class TestCommand(Command):
             print("Press Ctrl+C to cancel...")
 
             # Execute the test
-            use_case = cast(
-                EOLForceTestUseCase, self._use_case
-            )
+            use_case = cast(EOLForceTestUseCase, self._use_case)
             result = await use_case.execute(test_command)
 
             # Format result
-            status_text = (
-                "PASS" if result.is_passed else "FAIL"
-            )
+            status_text = "PASS" if result.is_passed else "FAIL"
             message = f"""
                 Test Completed: {status_text}
                 DUT ID: {dut_id}
@@ -144,26 +120,16 @@ class TestCommand(Command):
                             """
 
             if result.is_passed:
-                return CommandResult.success(
-                    message, {"result": result}
-                )
-            return CommandResult.error(
-                message, {"result": result}
-            )
+                return CommandResult.success(message, {"result": result})
+            return CommandResult.error(message, {"result": result})
 
         except KeyboardInterrupt:
-            return CommandResult.warning(
-                "Test cancelled by user"
-            )
+            return CommandResult.warning("Test cancelled by user")
         except Exception as e:
             logger.error(f"Test execution failed: {e}")
-            return CommandResult.error(
-                f"Test execution failed: {str(e)}"
-            )
+            return CommandResult.error(f"Test execution failed: {str(e)}")
 
-    async def _quick_test(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def _quick_test(self, args: List[str]) -> CommandResult:
         """Run quick test with minimal input"""
         try:
             # Generate quick test DUT info
@@ -183,44 +149,28 @@ class TestCommand(Command):
                 operator_id="QuickTest",
             )
 
-            print(
-                f"Running quick test for DUT: {dut_info.dut_id}"
-            )
+            print(f"Running quick test for DUT: {dut_info.dut_id}")
 
-            use_case = cast(
-                EOLForceTestUseCase, self._use_case
-            )
+            use_case = cast(EOLForceTestUseCase, self._use_case)
             result = await use_case.execute(test_command)
 
-            status_text = (
-                "PASS" if result.is_passed else "FAIL"
-            )
+            status_text = "PASS" if result.is_passed else "FAIL"
             message = f"Quick test completed: {status_text} (Duration: {result.format_duration()})"
 
-            return CommandResult.success(
-                message, {"result": result}
-            )
+            return CommandResult.success(message, {"result": result})
 
         except Exception as e:
             logger.error(f"Quick test failed: {e}")
-            return CommandResult.error(
-                f"Quick test failed: {str(e)}"
-            )
+            return CommandResult.error(f"Quick test failed: {str(e)}")
 
-    async def _profile_test(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def _profile_test(self, args: List[str]) -> CommandResult:
         """Run test with specific profile"""
         if not args:
-            return CommandResult.error(
-                "Profile name is required. Usage: /test profile <name>"
-            )
+            return CommandResult.error("Profile name is required. Usage: /test profile <name>")
 
         profile_name = args[0]
 
         # Profile-based testing will be implemented in future versions
         # This feature will allow users to create custom test profiles with
         # specific configurations for different DUT types and test scenarios
-        return CommandResult.info(
-            f"Profile testing with '{profile_name}' will be implemented soon"
-        )
+        return CommandResult.info(f"Profile testing with '{profile_name}' will be implemented soon")

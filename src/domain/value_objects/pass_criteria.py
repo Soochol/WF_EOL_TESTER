@@ -5,7 +5,7 @@ Immutable value object containing test pass/fail criteria and validation logic.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from scipy.interpolate import griddata
@@ -257,7 +257,7 @@ class PassCriteria:
 
             return (float(lower_limit), float(upper_limit))
 
-        except Exception as e:
+        except Exception:
             # Fallback to global limits on interpolation failure
             return (
                 self.force_limit_min,

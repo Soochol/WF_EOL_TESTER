@@ -8,7 +8,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from loguru import logger
 
@@ -47,7 +47,6 @@ class JsonProfilePreference(ProfilePreference):
         self._preference_file = Path(preference_file)
         self._max_history_entries = DEFAULT_MAX_HISTORY_ENTRIES
         self._ensure_data_directory()
-
 
     def _ensure_data_directory(self) -> None:
         """
@@ -95,7 +94,7 @@ class JsonProfilePreference(ProfilePreference):
         """
         try:
             preferences = await self._load_preferences()
-            last_used_profile = preferences.get("last_used_profile")
+            last_used_profile = cast(Optional[str], preferences.get("last_used_profile"))
 
             if last_used_profile:
                 logger.debug(f"Loaded last used profile: '{last_used_profile}'")
@@ -117,7 +116,7 @@ class JsonProfilePreference(ProfilePreference):
         """
         try:
             preferences = await self._load_preferences()
-            return preferences.get("usage_history", [])
+            return cast(List[str], preferences.get("usage_history", []))
         except Exception as e:
             logger.warning(f"Failed to load usage history: {e}")
             return []
@@ -150,8 +149,16 @@ class JsonProfilePreference(ProfilePreference):
             return {
                 "preference_file": str(self._preference_file),
                 "file_exists": self._preference_file.exists(),
-                "is_readable": os.access(self._preference_file, os.R_OK) if self._preference_file.exists() else False,
-                "is_writable": os.access(self._preference_file, os.W_OK) if self._preference_file.exists() else os.access(self._preference_file.parent, os.W_OK),
+                "is_readable": (
+                    os.access(self._preference_file, os.R_OK)
+                    if self._preference_file.exists()
+                    else False
+                ),
+                "is_writable": (
+                    os.access(self._preference_file, os.W_OK)
+                    if self._preference_file.exists()
+                    else os.access(self._preference_file.parent, os.W_OK)
+                ),
             }
 
         except Exception as e:
@@ -257,7 +264,6 @@ class JsonProfilePreference(ProfilePreference):
             logger.error(f"Failed to save preferences: {e}")
             raise e
 
-
     # Helper methods for improved readability and maintainability
 
     def _validate_profile_name(self, profile_name: str, operation: str) -> None:
@@ -301,7 +307,6 @@ class JsonProfilePreference(ProfilePreference):
         """
         if old_profile != new_profile:
             logger.debug(f"Last used profile updated: '{old_profile}' → '{new_profile}'")
-
 
     def _update_profile_history(
         self, preferences: Dict[str, Any], profile_name: str
@@ -377,7 +382,7 @@ class JsonProfilePreference(ProfilePreference):
             Exception: If file cannot be read
         """
         with open(self._preference_file, "r", encoding=FILE_ENCODING) as file:
-            return json.load(file)
+            return cast(Dict[str, Any], json.load(file))
 
     def _validate_preferences_data(self, data: Any) -> Dict[str, Any]:
         """
@@ -393,6 +398,3 @@ class JsonProfilePreference(ProfilePreference):
             logger.warning("Invalid preference file format, creating new")
             return {}
         return data
-
-
-

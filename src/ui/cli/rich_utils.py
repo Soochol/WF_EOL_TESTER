@@ -21,6 +21,7 @@ from rich.status import Status
 
 from domain.enums.test_status import TestStatus
 from domain.value_objects.eol_test_result import EOLTestResult
+
 from .rich_formatter import RichFormatter
 
 
@@ -164,18 +165,17 @@ class RichUIManager:
 
         # Execute steps with visual progress indication
         with self.progress_context("Executing test steps...", total_steps=len(steps)) as progress:
-            if hasattr(progress, "add_task"):
-                # Get the task ID for progress updates
-                task_id = progress.tasks[0].id if progress.tasks else None
+            if isinstance(progress, Progress) and progress.tasks:
+                # Get the task ID for progress updates (Progress object)
+                task_id = progress.tasks[0].id
 
                 # Execute each step with progress feedback
                 for step_index, step_description in enumerate(steps):
-                    if task_id:
-                        progress.update(
-                            task_id,
-                            description=f"Step {step_index+1}: {step_description}",
-                            completed=step_index,
-                        )
+                    progress.update(
+                        task_id,
+                        completed=step_index,
+                        description=f"Step {step_index+1}: {step_description}",
+                    )
                     # Add visible delay for demonstration purposes
                     time.sleep(UIManagerConstants.STEP_EXECUTION_DELAY)
 
@@ -286,9 +286,18 @@ class RichUIManager:
 
         menu_text = "\n".join(menu_content) + f"\n\n{prompt}:"
 
-        # Display the menu panel with professional formatting
-        menu_panel = self.formatter.create_message_panel(
-            menu_text, message_type="info", title=f"🧪 {title}"
+        # Display the menu panel with professional formatting (no icon for menus)
+        from rich.panel import Panel
+        from rich.text import Text
+        
+        # Create clean menu content without icons
+        content = Text.from_markup(menu_text)
+        
+        menu_panel = Panel(
+            content,
+            title=f"🧪 {title}",
+            border_style=self.formatter.COLORS["info"],
+            padding=(1, 2)
         )
         self.console.print(menu_panel)
 
@@ -374,7 +383,7 @@ class RichUIManager:
             return
 
         # Aggregate error messages and count occurrences
-        error_message_counts = {}
+        error_message_counts: Dict[str, int] = {}
         for error in errors:
             error_message = error.get("message", "Unknown error")
             current_count = error_message_counts.get(error_message, 0)
@@ -415,7 +424,7 @@ class RichUIManager:
             Dictionary with components organized by category for display
         """
         # Initialize category containers
-        component_categories = {
+        component_categories: Dict[str, Dict[str, Dict[str, Any]]] = {
             "power": {},
             "measurement": {},
             "communication": {},
@@ -445,16 +454,13 @@ class RichUIManager:
         if any(keyword in component_type for keyword in UIManagerConstants.POWER_KEYWORDS):
             return "power"
         # Check for measurement instrument components
-        elif any(keyword in component_type for keyword in UIManagerConstants.MEASUREMENT_KEYWORDS):
+        if any(keyword in component_type for keyword in UIManagerConstants.MEASUREMENT_KEYWORDS):
             return "measurement"
         # Check for communication interface components
-        elif any(
-            keyword in component_type for keyword in UIManagerConstants.COMMUNICATION_KEYWORDS
-        ):
+        if any(keyword in component_type for keyword in UIManagerConstants.COMMUNICATION_KEYWORDS):
             return "communication"
-        else:
-            # Default to communication category for unknown component types
-            return "communication"
+        # Default to communication category for unknown component types
+        return "communication"
 
     def _display_component_groups(
         self, component_groups: Dict[str, Dict[str, Dict[str, Any]]]
@@ -498,7 +504,7 @@ class RichUIManager:
             Dictionary with errors organized by category for structured display
         """
         # Initialize error category containers
-        error_categories = {
+        error_categories: Dict[str, List[Dict[str, Any]]] = {
             "Hardware Errors": [],
             "Software Errors": [],
             "Communication Errors": [],
@@ -529,16 +535,15 @@ class RichUIManager:
         if any(keyword in error_type for keyword in UIManagerConstants.HARDWARE_ERROR_KEYWORDS):
             return "Hardware Errors"
         # Check for software-related errors
-        elif any(keyword in error_type for keyword in UIManagerConstants.SOFTWARE_ERROR_KEYWORDS):
+        if any(keyword in error_type for keyword in UIManagerConstants.SOFTWARE_ERROR_KEYWORDS):
             return "Software Errors"
         # Check for communication-related errors
-        elif any(
+        if any(
             keyword in error_type for keyword in UIManagerConstants.COMMUNICATION_ERROR_KEYWORDS
         ):
             return "Communication Errors"
-        else:
-            # Default category for unrecognized error types
-            return "Other Errors"
+        # Default category for unrecognized error types
+        return "Other Errors"
 
     def _display_error_categories(self, error_categories: Dict[str, List[Dict[str, Any]]]) -> None:
         """Display all error categories that contain errors with organized formatting.

@@ -11,12 +11,18 @@ for different display contexts and user interface scenarios.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from rich.console import Console, Group
 from rich.layout import Layout
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.status import Status
 from rich.table import Table
 from rich.text import Text
@@ -128,7 +134,11 @@ class RichFormatter:
             console: Optional Rich Console instance. If None, creates a new one
                     with default settings optimized for the EOL Tester application.
         """
-        self.console = console or Console()
+        self.console = console or Console(
+            force_terminal=True,
+            legacy_windows=False,
+            color_system="truecolor"
+        )
 
     def create_header_banner(
         self,
@@ -203,15 +213,15 @@ class RichFormatter:
 
         # Create status content
         content = Text()
-        content.append(f"{icon} ", style="bold")
-        content.append(f"{title}: ", style="bold")
-        content.append(status_text, style=f"bold {color}")
+        content.append(f"{icon} ")
+        content.append(f"{title}: ")
+        content.append(status_text, style=color)
 
         # Add details if provided
         if details:
             content.append("\n\n")
             for key, value in details.items():
-                content.append(f"{self.ICONS['bullet']} {key}: ", style="bold")
+                content.append(f"{self.ICONS['bullet']} {key}: ")
                 content.append(f"{value}\n", style=self.COLORS["text"])
 
         return Panel(
@@ -363,12 +373,25 @@ class RichFormatter:
 
             return progress
 
-        # Create spinner status
+        # Create spinner status with improved visibility and terminal compatibility
+        # Try different spinners for better compatibility across terminals
+        spinner_options = ["dots2", "dots", "line", "arc", "arrow3"]
+        selected_spinner = "dots2"
+        
+        # Use simpler spinner for Windows/basic terminals
+        try:
+            import os
+            if os.name == 'nt':  # Windows
+                selected_spinner = "line"
+        except:
+            selected_spinner = "dots"
+            
         return Status(
             f"{self.ICONS['running']} {task_name}",
             console=self.console,
-            spinner="dots",
+            spinner=selected_spinner,
             spinner_style=self.COLORS["primary"],
+            speed=1.0,  # Normal spinner speed
         )
 
     def create_message_panel(
@@ -410,9 +433,17 @@ class RichFormatter:
         color = color_map.get(message_type, self.COLORS["info"])
         icon = icon_map.get(message_type, self.ICONS["info"])
 
+        # Create content with proper Rich markup parsing
+        icon_text = Text()
+        icon_text.append(f"{icon} ", style=f"bold {color}")
+        
+        # Parse Rich markup in the message
+        message_text = Text.from_markup(message)
+        
+        # Combine icon and message
         content = Text()
-        content.append(f"{icon} ", style=f"bold {color}")
-        content.append(message, style=self.COLORS["text"])
+        content.append_text(icon_text)
+        content.append_text(message_text)
 
         panel_title = title or message_type.upper()
 
@@ -459,7 +490,8 @@ class RichFormatter:
         # By model statistics
         if "by_model" in statistics:
             by_model = statistics["by_model"]
-            content.append(self._create_model_stats_table(by_model))
+            model_stats_table = self._create_model_stats_table(by_model)
+            content.append(Group(model_stats_table))
 
         return Panel(
             Group(*content),
@@ -566,7 +598,7 @@ class RichFormatter:
 
         return layout
 
-    def _populate_grid_row(self, row_layout: Layout, components: List[tuple]) -> None:
+    def _populate_grid_row(self, row_layout: Layout, components: List[Tuple[str, Any]]) -> None:
         """Populate a grid row with the provided components using optimal arrangement.
 
         Args:
@@ -834,7 +866,7 @@ class RichFormatter:
             return f"{text_str[:max_length]}..."
         return text_str
 
-    def _format_eol_result_row(self, result: EOLTestResult, show_details: bool) -> List:
+    def _format_eol_result_row(self, result: EOLTestResult, show_details: bool) -> List[Any]:
         """Format EOLTestResult into table row data with consistent styling.
 
         Transforms an EOLTestResult object into properly formatted table row data
@@ -870,7 +902,7 @@ class RichFormatter:
 
         return row_data
 
-    def _format_dict_result_row(self, result: Dict[str, Any], show_details: bool) -> List:
+    def _format_dict_result_row(self, result: Dict[str, Any], show_details: bool) -> List[Any]:
         """Format dictionary result into table row data with consistent styling.
 
         Transforms a dictionary-based test result into properly formatted table
@@ -944,7 +976,7 @@ class RichFormatter:
 
     def _build_core_row_data(
         self, status_icon: str, status_color: str, test_id: str, dut_id: str
-    ) -> List:
+    ) -> List[Any]:
         """Build core row data common to both result formats.
 
         Args:

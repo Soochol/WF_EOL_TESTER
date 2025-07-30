@@ -16,13 +16,14 @@ Key Features:
 import asyncio
 import sys
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from loguru import logger
 from rich.console import Console
 
+from infrastructure.factory import ServiceFactory
+
 from .slash_command_handler import SlashCommandHandler
-from infrastructure.factory import HardwareServiceFactory
 
 
 class SlashCommandExecutor:
@@ -46,15 +47,15 @@ class SlashCommandExecutor:
         Returns:
             True if command succeeded, False otherwise
         """
-        logger.info(f"Executing direct command: {command}")
+        logger.info("Executing direct command: %s", command)
 
         try:
             result = await self.slash_handler.execute_command(command)
-            logger.info(f"Command execution result: {result}")
+            logger.info("Command execution result: %s", result)
             return result
 
         except Exception as e:
-            logger.error(f"Command execution failed: {e}")
+            logger.error("Command execution failed: %s", e)
             return False
 
     async def execute_command_list(self, commands: List[str]) -> Dict[str, bool]:
@@ -84,7 +85,7 @@ class SlashCommandExecutor:
                 self.console.print(f"[green]✓[/green] Command succeeded: {command}")
 
         # Print summary
-        self.console.print(f"\n[bold cyan]Batch execution summary:[/bold cyan]")
+        self.console.print("\n[bold cyan]Batch execution summary:[/bold cyan]")
         successful = sum(1 for success in results.values() if success)
         total = len(results)
         self.console.print(f"Successful: {successful}/{total}")
@@ -119,7 +120,7 @@ class SlashCommandExecutor:
 
                     # Validate it's a slash command
                     if not self.slash_handler.is_slash_command(line):
-                        logger.warning(f"Line {line_num} is not a valid slash command: {line}")
+                        logger.warning("Line %s is not a valid slash command: %s", line_num, line)
                         continue
 
                     commands.append(line)
@@ -139,7 +140,7 @@ class SlashCommandExecutor:
             return {}
         except Exception as e:
             self.console.print(f"[red]Error reading file: {e}[/red]")
-            logger.error(f"File execution error: {e}")
+            logger.error("File execution error: %s", e)
             return {}
 
     def create_demo_script(self, file_path: Path) -> None:
@@ -198,7 +199,7 @@ class SlashCommandExecutor:
 
         except Exception as e:
             self.console.print(f"[red]Error creating demo script: {e}[/red]")
-            logger.error(f"Demo script creation error: {e}")
+            logger.error("Demo script creation error: %s", e)
 
 
 async def create_slash_executor_from_config(
@@ -229,11 +230,12 @@ async def create_slash_executor_from_config(
         "connection_delay": 0.2,
     }
 
-    # Create hardware services
-    robot_service = HardwareServiceFactory.create_robot_service(mock_config)
-    mcu_service = HardwareServiceFactory.create_mcu_service(mock_config)
-    loadcell_service = HardwareServiceFactory.create_loadcell_service(mock_config)
-    power_service = HardwareServiceFactory.create_power_service(mock_config)
+    # Create hardware services using factory instance
+    factory = ServiceFactory()
+    robot_service = factory.create_robot_service(mock_config)
+    mcu_service = factory.create_mcu_service(mock_config)
+    loadcell_service = factory.create_loadcell_service(mock_config)
+    power_service = factory.create_power_service(mock_config)
 
     # Create slash command handler
     slash_handler = SlashCommandHandler(
@@ -247,7 +249,7 @@ async def create_slash_executor_from_config(
     return SlashCommandExecutor(slash_handler)
 
 
-async def main():
+async def main() -> None:
     """Main entry point for direct command execution"""
     import argparse
 

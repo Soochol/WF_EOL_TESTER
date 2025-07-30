@@ -15,6 +15,7 @@ Key Features:
 """
 
 import asyncio
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -24,13 +25,38 @@ from .enhanced_input_manager import create_enhanced_input_manager
 from .rich_formatter import RichFormatter
 
 
+def get_default_model_from_profile() -> Optional[str]:
+    """Get the default model name from the current test profile filename"""
+    try:
+        profiles_dir = Path("configuration/test_profiles")
+        if profiles_dir.exists():
+            # For now, use 'default' as the primary profile
+            # In the future, could be extended to detect the active profile
+            default_profile = profiles_dir / "default.yaml"
+            if default_profile.exists():
+                return "default"
+        return None
+    except Exception as e:
+        logger.debug(f"Could not determine default model from profile: {e}")
+        return None
+
+
 class EnhancedInputIntegrator:
     """Integration layer that replaces basic input with enhanced input throughout the CLI"""
 
-    def __init__(self, console: Console, formatter: RichFormatter):
+    def __init__(
+        self,
+        console: Console,
+        formatter: RichFormatter,
+        configuration_service: Optional[Any] = None,
+    ):
         self.console = console
         self.formatter = formatter
-        self.input_manager = create_enhanced_input_manager(console, formatter)
+        self.configuration_service = configuration_service
+        default_model = get_default_model_from_profile()
+        self.input_manager = create_enhanced_input_manager(
+            console, formatter, default_model, configuration_service
+        )
 
         # Menu option mappings for auto-completion
         self.menu_options = {
@@ -77,32 +103,16 @@ class EnhancedInputIntegrator:
         # Create completions from menu options
         choices = list(options.keys())
 
-        # Add completion suggestions to the input manager temporarily
-        original_completer = self.input_manager.completer
+        # Use the enhanced input manager's built-in completion system
+        choice = await self.input_manager.get_input(
+            prompt_text=prompt_text,
+            input_type="general",
+            placeholder=f"Choose from: {', '.join(choices)}",
+            show_completions=True,
+            enable_history=True,
+        )
 
-        try:
-            # Create a simple completer for menu choices
-            from prompt_toolkit.completion import WordCompleter
-
-            if hasattr(self.input_manager, "completer") and original_completer:
-                menu_completer = WordCompleter(
-                    choices, meta_dict={k: v for k, v in options.items()}
-                )
-                self.input_manager.completer = menu_completer
-
-            choice = await self.input_manager.get_input(
-                prompt_text=prompt_text,
-                input_type="general",
-                placeholder=f"Choose from: {', '.join(choices)}",
-                show_completions=True,
-                enable_history=True,
-            )
-
-            return choice
-
-        finally:
-            # Restore original completer
-            self.input_manager.completer = original_completer
+        return choice
 
     async def get_dut_information(self) -> Optional[Dict[str, str]]:
         """Get DUT information using enhanced input system"""
@@ -222,22 +232,39 @@ class EnhancedMenuSystem:
 
     async def show_main_menu_enhanced(self) -> Optional[str]:
         """Show enhanced main menu with auto-completion and help"""
-        # Display menu
-        menu_content = """[bold cyan]1.[/bold cyan] Execute EOL Test
-[bold cyan]2.[/bold cyan] Execute UseCase (Advanced)
-[bold cyan]3.[/bold cyan] Hardware Control Center
-[bold cyan]4.[/bold cyan] Real-time Monitoring Dashboard
-[bold cyan]5.[/bold cyan] Check Hardware Status
-[bold cyan]6.[/bold cyan] View Test Statistics
-[bold cyan]7.[/bold cyan] Slash Command Mode
-[bold cyan]8.[/bold cyan] Exit
-[bold cyan]help[/bold cyan] Show input help
+        from rich.panel import Panel
+        from rich.text import Text
 
-Please select an option (1-8) or type 'help':"""
+        # Create menu content with proper Rich markup
+        menu_text = Text()
+        menu_text.append("1.", style="bold cyan")
+        menu_text.append(" Execute EOL Test\n")
+        menu_text.append("2.", style="bold cyan")
+        menu_text.append(" Execute UseCase (Advanced)\n")
+        menu_text.append("3.", style="bold cyan")
+        menu_text.append(" Hardware Control Center\n")
+        menu_text.append("4.", style="bold cyan")
+        menu_text.append(" Real-time Monitoring Dashboard\n")
+        menu_text.append("5.", style="bold cyan")
+        menu_text.append(" Check Hardware Status\n")
+        menu_text.append("6.", style="bold cyan")
+        menu_text.append(" View Test Statistics\n")
+        menu_text.append("7.", style="bold cyan")
+        menu_text.append(" Slash Command Mode\n")
+        menu_text.append("8.", style="bold cyan")
+        menu_text.append(" Exit\n")
+        menu_text.append("help", style="bold cyan")
+        menu_text.append(" Show input help\n\n")
+        menu_text.append("Please select an option (1-8) or type 'help':")
 
+        # Create panel with properly styled content
         self.console.print("\n")
-        menu_panel = self.formatter.create_message_panel(
-            menu_content, message_type="info", title="🧪 Enhanced Main Menu"
+        menu_panel = Panel(
+            menu_text,
+            title="🧪 Enhanced Main Menu",
+            title_align="left",
+            border_style="bright_blue",
+            padding=(1, 2),
         )
         self.console.print(menu_panel)
 
@@ -253,17 +280,30 @@ Please select an option (1-8) or type 'help':"""
 
     async def show_hardware_menu_enhanced(self) -> Optional[str]:
         """Show enhanced hardware control menu"""
-        menu_content = """[bold cyan]1.[/bold cyan] Robot Control (AJINEXTEK)
-[bold cyan]2.[/bold cyan] MCU Control (LMA Temperature)
-[bold cyan]3.[/bold cyan] LoadCell Control (BS205)
-[bold cyan]4.[/bold cyan] Power Control (ODA)
-[bold cyan]b.[/bold cyan] Back to Main Menu
+        from rich.panel import Panel
+        from rich.text import Text
 
-Select hardware component (1-4) or 'b' for back:"""
+        # Create menu content with proper Rich styling
+        menu_text = Text()
+        menu_text.append("1.", style="bold cyan")
+        menu_text.append(" Robot Control (AJINEXTEK)\n")
+        menu_text.append("2.", style="bold cyan")
+        menu_text.append(" MCU Control (LMA Temperature)\n")
+        menu_text.append("3.", style="bold cyan")
+        menu_text.append(" LoadCell Control (BS205)\n")
+        menu_text.append("4.", style="bold cyan")
+        menu_text.append(" Power Control (ODA)\n")
+        menu_text.append("b.", style="bold cyan")
+        menu_text.append(" Back to Main Menu\n\n")
+        menu_text.append("Select hardware component (1-4) or 'b' for back:")
 
         self.console.print("\n")
-        menu_panel = self.formatter.create_message_panel(
-            menu_content, message_type="info", title="🔧 Hardware Control Center"
+        menu_panel = Panel(
+            menu_text,
+            title="🔧 Hardware Control Center",
+            title_align="left",
+            border_style="bright_blue",
+            padding=(1, 2),
         )
         self.console.print(menu_panel)
 
@@ -271,14 +311,24 @@ Select hardware component (1-4) or 'b' for back:"""
 
     async def show_usecase_menu_enhanced(self) -> Optional[str]:
         """Show enhanced UseCase selection menu"""
-        menu_content = """[bold cyan]1.[/bold cyan] EOL Force Test
-[bold cyan]b.[/bold cyan] Back to Main Menu
+        from rich.panel import Panel
+        from rich.text import Text
 
-Select UseCase (1) or 'b' for back:"""
+        # Create menu content with proper Rich styling
+        menu_text = Text()
+        menu_text.append("1.", style="bold cyan")
+        menu_text.append(" EOL Force Test\n")
+        menu_text.append("b.", style="bold cyan")
+        menu_text.append(" Back to Main Menu\n\n")
+        menu_text.append("Select UseCase (1) or 'b' for back:")
 
         self.console.print("\n")
-        menu_panel = self.formatter.create_message_panel(
-            menu_content, message_type="info", title="⚙️ UseCase Selection"
+        menu_panel = Panel(
+            menu_text,
+            title="⚙️ UseCase Selection",
+            title_align="left",
+            border_style="bright_blue",
+            padding=(1, 2),
         )
         self.console.print(menu_panel)
 
@@ -327,7 +377,7 @@ Select UseCase (1) or 'b' for back:"""
 class EnhancedSlashCommandInterface:
     """Enhanced slash command interface with full prompt_toolkit features"""
 
-    def __init__(self, integrator: EnhancedInputIntegrator, slash_handler):
+    def __init__(self, integrator: EnhancedInputIntegrator, slash_handler: Any):
         self.integrator = integrator
         self.slash_handler = slash_handler
         self.formatter = integrator.formatter
@@ -465,10 +515,10 @@ class EnhancedSlashCommandInterface:
 
 # Integration factory functions
 def create_enhanced_cli_integrator(
-    console: Console, formatter: RichFormatter
+    console: Console, formatter: RichFormatter, configuration_service: Optional[Any] = None
 ) -> EnhancedInputIntegrator:
     """Factory function to create enhanced CLI integrator"""
-    return EnhancedInputIntegrator(console, formatter)
+    return EnhancedInputIntegrator(console, formatter, configuration_service)
 
 
 def create_enhanced_menu_system(integrator: EnhancedInputIntegrator) -> EnhancedMenuSystem:
@@ -477,16 +527,16 @@ def create_enhanced_menu_system(integrator: EnhancedInputIntegrator) -> Enhanced
 
 
 def create_enhanced_slash_interface(
-    integrator: EnhancedInputIntegrator, slash_handler
+    integrator: EnhancedInputIntegrator, slash_handler: Any
 ) -> EnhancedSlashCommandInterface:
     """Factory function to create enhanced slash command interface"""
     return EnhancedSlashCommandInterface(integrator, slash_handler)
 
 
 # Example usage and testing
-async def demo_enhanced_integration():
+async def demo_enhanced_integration() -> None:
     """Demonstration of enhanced CLI integration"""
-    console = Console()
+    console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
     formatter = RichFormatter(console)
 
     # Create enhanced components

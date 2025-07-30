@@ -14,6 +14,7 @@ Key Features:
 """
 
 import asyncio
+from datetime import datetime
 from typing import Optional
 
 from loguru import logger
@@ -39,6 +40,7 @@ from application.services.test_result_evaluator import (
 from domain.entities.dut import DUT
 from domain.entities.eol_test import EOLTest
 from domain.entities.test_result import TestResult
+from domain.enums.measurement_units import MeasurementUnit
 
 # Removed unused import: TestResult
 from domain.enums.test_status import TestStatus
@@ -57,10 +59,12 @@ from domain.value_objects.eol_test_result import (
 )
 from domain.value_objects.identifiers import (
     DUTId,
+    MeasurementId,
     OperatorId,
     TestId,
 )
 from domain.value_objects.measurements import (
+    ForceValue,
     TestMeasurements,
 )
 from domain.value_objects.test_configuration import (
@@ -147,7 +151,7 @@ class EOLForceTestUseCase:
             or raise descriptive exceptions. Test failures are captured in the result
             object rather than raised as exceptions.
         """
-        logger.info(f"Starting EOL test for DUT {command.dut_info.dut_id}")
+        logger.info("Starting EOL test for DUT {}", command.dut_info.dut_id)
 
         # Phase 1: Initialize test setup
         await self._load_and_validate_configurations()
@@ -161,6 +165,9 @@ class EOLForceTestUseCase:
             test.start_test()
             self._validate_configurations_loaded()
 
+            # Begin test execution (transition from PREPARING to RUNNING)
+            test.begin_execution()
+
             # Phase 3: Execute hardware test phases
             measurements = await self._execute_hardware_test_phases()
 
@@ -169,7 +176,7 @@ class EOLForceTestUseCase:
             await self._save_test_state(test)
 
             execution_duration = self._calculate_execution_duration(start_time)
-            logger.info(f"EOL test completed: {test.test_id}, passed: {is_test_passed}")
+            logger.info("EOL test completed: {}, passed: {}", test.test_id, is_test_passed)
 
             return self._create_success_result(
                 test,
@@ -213,7 +220,7 @@ class EOLForceTestUseCase:
             await self._configuration_validator.validate_test_configuration(self._test_config)
             logger.info("Configuration validation passed")
         except MultiConfigurationValidationError as e:
-            logger.error(f"Configuration validation failed: {e.message}")
+            logger.error("Configuration validation failed: {}", e.message)
             raise TestExecutionException(
                 f"Configuration validation failed: {e.get_context('total_errors')} errors found"
             ) from e
@@ -221,10 +228,62 @@ class EOLForceTestUseCase:
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:
             await self._configuration.mark_profile_as_used(self._profile_name)
-            logger.debug(f"Profile '{self._profile_name}' marked as used successfully")
+            logger.debug("Profile '{}' marked as used successfully", self._profile_name)
         except Exception as pref_error:
             # Profile usage tracking failure should not interrupt test execution
-            logger.warning(f"Failed to mark profile '{self._profile_name}' as used: {pref_error}")
+            logger.warning(
+                "Failed to mark profile '{}' as used: {}", self._profile_name, pref_error
+            )
+
+    async def _generate_unique_test_id(
+        self, serial_number: str, timestamp: Optional[datetime] = None
+    ) -> TestId:
+        """
+        Generate a unique test ID with sequence handling to avoid conflicts
+
+        Args:
+            serial_number: DUT serial number
+            timestamp: Test timestamp (defaults to now)
+
+        Returns:
+            TestId: Unique test ID with format SerialNumber_YYYYMMDD_HHMMSS_XXX
+        """
+        if timestamp is None:
+            timestamp = datetime.now()
+
+        sequence = 1
+        max_attempts = 999
+
+        while sequence <= max_attempts:
+            test_id = TestId.generate_from_serial_datetime(serial_number, timestamp, sequence)
+
+            # Check if this test ID already exists
+            try:
+                if self._repository.test_repository:
+                    existing_test = await self._repository.test_repository.find_by_id(str(test_id))
+                    if existing_test is None:
+                        # ID is unique, we can use it
+                        return test_id
+                    else:
+                        # ID exists, try next sequence
+                        sequence += 1
+                else:
+                    # No repository configured, assume ID is unique
+                    return test_id
+            except Exception as e:
+                # Error checking existence, assume it doesn't exist and use the ID
+                logger.warning(
+                    "Error checking test ID uniqueness for %s: %s. Using ID anyway.", test_id, e
+                )
+                return test_id
+
+        # If we exhausted all sequences, fall back to UUID
+        logger.warning(
+            "Exhausted all sequence numbers for %s at %s. Falling back to UUID format.",
+            serial_number,
+            timestamp.strftime("%Y%m%d_%H%M%S"),
+        )
+        return TestId.generate()
 
     async def _initialize_test_entity(self, command: EOLForceTestCommand) -> EOLTest:
         """
@@ -244,9 +303,12 @@ class EOLForceTestUseCase:
             manufacturer=command.dut_info.manufacturer,
         )
 
+        # Generate unique test ID with serial number and datetime
+        test_id = await self._generate_unique_test_id(command.dut_info.serial_number)
+
         # Create and configure test entity
         test = EOLTest(
-            test_id=TestId.generate(),
+            test_id=test_id,
             dut=dut,
             operator_id=OperatorId(command.operator_id),
             test_configuration=self._test_config.to_dict() if self._test_config else None,
@@ -288,11 +350,14 @@ class EOLForceTestUseCase:
                 )
 
             # Connect all hardware
+            logger.info("Starting hardware connection initialization...")
             await self._hardware_services.connect_all_hardware()
-            logger.debug("Hardware connections initialized successfully")
+            logger.info("Hardware connections initialized successfully")
 
             # Initialize hardware with configuration
+            logger.info("Configuring hardware with test parameters...")
             await self._hardware_services.initialize_hardware(self._test_config)
+            logger.info("Hardware configuration completed")
 
             # Setup test environment
             await self._hardware_services.setup_test(self._test_config)
@@ -308,7 +373,7 @@ class EOLForceTestUseCase:
             return measurements
 
         except Exception as hardware_error:
-            logger.error(f"Hardware test execution failed: {hardware_error}")
+            logger.error("Hardware test execution failed: {}", hardware_error)
             raise TestExecutionException(
                 f"Hardware test execution failed: {str(hardware_error)}"
             ) from hardware_error
@@ -335,13 +400,26 @@ class EOLForceTestUseCase:
                 raise TestExecutionException("Test configuration must be loaded before evaluation")
 
             # Convert measurements to dict format and get pass criteria from config
-            measurements_dict = measurements.to_dict()["measurements"]
+            measurements_dict = measurements.to_legacy_dict()
             pass_criteria = self._test_config.pass_criteria
+
+            # Convert nested dict to flat dict for evaluator
+            # Format: {temperature: {position: {"temperature": temp, "stroke": pos, "force": force}}}
+            # Convert to: {"temp_pos": {"temperature": temp, "position": pos, "force": force}}
+            flat_measurements = {}
+            for temp, positions in measurements_dict.items():
+                for position, measurement_data in positions.items():
+                    key = f"{temp}_{position}"
+                    flat_measurements[key] = {
+                        "temperature": temp,  # Use raw temperature value
+                        "position": position,
+                        "force": ForceValue(measurement_data["force"], MeasurementUnit.NEWTON),
+                    }
 
             # Perform test evaluation using the evaluator service
             # This will raise TestEvaluationError if evaluation fails
             await self._test_result_evaluator.evaluate_measurements(
-                measurements_dict, pass_criteria
+                flat_measurements, pass_criteria
             )
 
             # If we reach here, evaluation passed
@@ -351,9 +429,9 @@ class EOLForceTestUseCase:
                 test_status=TestStatus.COMPLETED,
                 start_time=test.start_time or Timestamp.now(),
                 end_time=Timestamp.now(),
-                measurement_ids=[],  # TODO: Extract measurement IDs from measurements
+                measurement_ids=self._extract_measurement_ids(measurements),
                 pass_criteria=pass_criteria.to_dict(),
-                actual_results=measurements_dict,
+                actual_results=measurements.to_dict(),
             )
             test.complete_test(test_result)
             logger.info("Test evaluation: PASSED")
@@ -370,15 +448,37 @@ class EOLForceTestUseCase:
                 test_status=TestStatus.FAILED,
                 start_time=test.start_time or Timestamp.now(),
                 end_time=Timestamp.now(),
-                measurement_ids=[],  # TODO: Extract measurement IDs from measurements
+                measurement_ids=self._extract_measurement_ids(measurements),
                 pass_criteria=pass_criteria.to_dict(),
-                actual_results=measurements_dict,
+                actual_results=measurements.to_dict(),
                 error_message=error_message,
             )
             # Mark test as failed with detailed error message
             test.fail_test(error_message, test_result)
-            logger.info(f"Test evaluation: FAILED - {error_message}")
+            logger.info("Test evaluation: FAILED - {}", error_message)
             return False
+
+    def _extract_measurement_ids(self, measurements: TestMeasurements) -> list[MeasurementId]:
+        """
+        Extract measurement IDs from test measurements
+
+        Args:
+            measurements: Test measurements containing temperature-position data
+
+        Returns:
+            List of measurement IDs for each measurement point
+        """
+        measurement_ids = []
+        measurement_matrix = measurements.get_measurement_matrix()
+
+        # Generate measurement ID for each measurement point
+        for i, _ in enumerate(measurement_matrix.keys(), 1):
+            # Generate sequential ID in format M0000000001, M0000000002, etc.
+            measurement_id = MeasurementId(f"M{i:010d}")
+            measurement_ids.append(measurement_id)
+
+        logger.debug(f"Generated {len(measurement_ids)} measurement IDs")
+        return measurement_ids
 
     async def _save_test_state(self, test: EOLTest) -> None:
         """
@@ -392,10 +492,10 @@ class EOLForceTestUseCase:
         """
         try:
             await self._repository.save_test_result(test)
-            logger.debug(f"Test state saved successfully for test ID: {test.test_id}")
+            logger.debug("Test state saved successfully for test ID: {}", test.test_id)
         except Exception as save_error:
             # Repository save failures should not fail the test
-            logger.warning(f"Failed to save test state: {save_error}")
+            logger.warning("Failed to save test state: {}", save_error)
 
     def _calculate_execution_duration(self, start_time: float) -> TestDuration:
         """
@@ -435,7 +535,7 @@ class EOLForceTestUseCase:
             test_status=(TestStatus.COMPLETED if is_test_passed else TestStatus.FAILED),
             execution_duration=execution_duration,
             is_passed=is_test_passed,
-            measurement_ids=[],  # TODO: Extract measurement IDs from measurements
+            measurement_ids=self._extract_measurement_ids(measurements),
             test_summary=measurements,
             error_message=None,
         )
@@ -467,7 +567,7 @@ class EOLForceTestUseCase:
             TestExecutionConstants.EXECUTE_EOL_TEST_OPERATION,
         )
 
-        logger.error(f"EOL test failed: {error_context.get('user_message', str(error))}")
+        logger.error("EOL test failed: {}", error_context.get("user_message", str(error)))
 
         # Try to save failure state if test entity exists
         if test is not None:
@@ -475,7 +575,7 @@ class EOLForceTestUseCase:
                 test.fail_test(error_context.get("user_message", str(error)))
                 await self._save_test_state(test)
             except Exception as save_error:
-                logger.warning(f"Failed to save test failure state: {save_error}")
+                logger.warning("Failed to save test failure state: {}", save_error)
 
         # Create failure result with available data
         return EOLTestResult(
@@ -483,7 +583,7 @@ class EOLForceTestUseCase:
             test_status=TestStatus.ERROR,
             execution_duration=execution_duration,
             is_passed=False,
-            measurement_ids=[],  # TODO: Extract measurement IDs from measurements if available
+            measurement_ids=self._extract_measurement_ids(measurements) if measurements else [],
             test_summary=measurements or {},
             error_message=error_context.get("user_message", str(error)),
         )
@@ -507,4 +607,4 @@ class EOLForceTestUseCase:
         except Exception as cleanup_error:
             # Hardware cleanup errors should never fail the test
             test_context = f" for test {test.test_id}" if test else ""
-            logger.warning(f"Hardware cleanup failed{test_context}: {cleanup_error}")
+            logger.warning("Hardware cleanup failed{}: {}", test_context, cleanup_error)

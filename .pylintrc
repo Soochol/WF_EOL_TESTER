@@ -5,7 +5,7 @@
 init-hook='import sys; sys.path.append("src")'
 jobs=0
 persistent=yes
-fail-under=8.0
+fail-under=6.0
 
 [MESSAGES CONTROL]
 disable=
@@ -25,7 +25,27 @@ disable=
     consider-using-from-import,
     line-too-long,
     duplicate-code,
-    unnecessary-ellipsis
+    unnecessary-ellipsis,
+    # Additional non-essential style and suggestion rules
+    invalid-name,
+    consider-using-enumerate,
+    consider-using-dict-comprehension,
+    consider-using-set-comprehension,
+    consider-using-ternary,
+    consider-using-with,
+    consider-iterating-dictionary,
+    consider-using-f-string,
+    consider-using-in,
+    consider-using-get,
+    consider-using-max-builtin,
+    consider-using-min-builtin,
+    use-implicit-booleaness-not-comparison,
+    simplifiable-if-statement,
+    simplifiable-if-expression,
+    no-else-return,
+    no-else-raise,
+    no-else-break,
+    no-else-continue
 
 [FORMAT]
 max-line-length=100

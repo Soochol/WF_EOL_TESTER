@@ -9,6 +9,9 @@ dev-debug.log
 # Profile preferences and user data
 data/
 
+# Test results and logs
+ResultsLog/
+
 # Dependency directories
 node_modules/
 

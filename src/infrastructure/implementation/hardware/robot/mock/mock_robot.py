@@ -72,8 +72,8 @@ class MockRobot(RobotService):
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._response_delay * 2)
 
-        # 95% 확률로 성공
-        success = random.random() > 0.05
+        # 테스트 환경에서는 항상 성공하도록 변경 (원래는 95% 확률)
+        success = True  # random.random() > 0.05
 
         if success:
             self._is_connected = True

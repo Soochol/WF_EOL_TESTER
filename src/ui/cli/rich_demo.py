@@ -8,10 +8,15 @@ for the EOL Tester CLI application.
 import asyncio
 import time
 from datetime import datetime
+from typing import Any, Dict, List, Union, cast
 
 from rich.console import Console
+from rich.progress import Progress
+from rich.status import Status
 
 from domain.enums.test_status import TestStatus
+from domain.value_objects.eol_test_result import EOLTestResult
+
 from .rich_formatter import RichFormatter
 from .rich_utils import RichUIManager
 
@@ -154,7 +159,7 @@ async def demonstrate_rich_ui() -> None:
     formatter.print_header("Test Results Table Display")
 
     # Sample test results data
-    test_results = [
+    test_results: List[Dict[str, Any]] = [
         {
             "test_id": "T20240730001",
             "passed": True,
@@ -194,7 +199,9 @@ async def demonstrate_rich_ui() -> None:
     ]
 
     results_table = formatter.create_test_results_table(
-        test_results, title="Recent Test Results", show_details=True
+        cast(List[Union[EOLTestResult, Dict[str, Any]]], test_results),
+        title="Recent Test Results",
+        show_details=True,
     )
     formatter.print_table(results_table)
 
@@ -258,7 +265,7 @@ async def demonstrate_rich_ui() -> None:
     with formatter.create_progress_display(
         "Processing test data...", total_steps=10, current_step=0
     ) as progress:
-        if hasattr(progress, "tasks") and progress.tasks:
+        if isinstance(progress, Progress) and progress.tasks:
             task_id = progress.tasks[0].id
 
             steps = [
@@ -275,7 +282,7 @@ async def demonstrate_rich_ui() -> None:
             ]
 
             for i, step in enumerate(steps):
-                progress.update(task_id, description=f"Step {i+1}: {step}", completed=i + 1)
+                progress.update(task_id, completed=i + 1, description=f"Step {i+1}: {step}")
                 time.sleep(0.8)
 
     # Spinner demonstration
@@ -284,7 +291,8 @@ async def demonstrate_rich_ui() -> None:
         "Waiting for hardware response...", show_spinner=True
     ) as status:
         for i in range(5):
-            status.update(f"Attempt {i+1}: Connecting to device...")
+            if isinstance(status, Status):
+                status.update(f"Attempt {i+1}: Connecting to device...")
             time.sleep(1)
 
     input("\nPress Enter to continue...")
@@ -339,7 +347,7 @@ async def demonstrate_rich_ui() -> None:
         for i in range(5):
             # Update dashboard data
             dashboard_data["active_tests"] = i % 3
-            dashboard_data["completed_today"] += 1
+            dashboard_data["completed_today"] = cast(int, dashboard_data["completed_today"]) + 1
             dashboard_data["pass_rate"] = 95.6 + (i * 0.2)
             dashboard_data["last_update"] = datetime.now().strftime("%H:%M:%S")
 
@@ -481,21 +489,20 @@ def run_quick_examples() -> None:
     formatter.print_status("Quick Test", TestStatus.COMPLETED, {"Result": "PASSED", "Time": "1.2s"})
 
     # Simple table
-    quick_results = [
+    quick_results: List[Dict[str, Any]] = [
         {"test_id": "Q001", "passed": True, "dut": {"dut_id": "QT001"}},
         {"test_id": "Q002", "passed": False, "dut": {"dut_id": "QT002"}},
     ]
 
-    table = formatter.create_test_results_table(quick_results, "Quick Test Results")
+    table = formatter.create_test_results_table(
+        cast(List[Union[EOLTestResult, Dict[str, Any]]], quick_results), "Quick Test Results"
+    )
     formatter.print_table(table)
 
     console.print("\n[bold]Quick examples complete![/bold]")
 
 
 if __name__ == "__main__":
-    """
-    Run the demonstration when script is executed directly.
-    """
     import sys
 
     if len(sys.argv) > 1 and sys.argv[1] == "quick":

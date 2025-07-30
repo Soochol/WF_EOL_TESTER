@@ -1,0 +1,50 @@
+hardware:
+  voltage: 18.0
+  current: 20.0
+  upper_temperature: 80.0
+  fan_speed: 10
+  max_stroke: 240.0
+  initial_position: 10.0
+test_parameters:
+  temperature_list:
+  - 38.0
+  - 40.0
+  - 42.0
+  - 44.0
+  - 46.0
+  - 48.0
+  - 50.0
+  - 52.0
+  - 54.0
+  - 56.0
+  - 58.0
+  - 60.0
+  stroke_positions:
+  - 10.0
+  - 60.0
+  - 100.0
+  - 140.0
+  - 180.0
+  - 220.0
+  - 240.0
+timing:
+  stabilization_delay: 0.1
+  temperature_stabilization: 0.1
+  power_stabilization: 0.5
+  loadcell_zero_delay: 0.1
+tolerances:
+  measurement_tolerance: 0.001
+  force_precision: 2
+  temperature_precision: 1
+execution:
+  retry_attempts: 3
+  timeout_seconds: 60.0
+safety:
+  max_voltage: 30.0
+  max_current: 30.0
+metadata:
+  profile_name: default
+  description: Auto-generated test configuration profile for default
+  version: '1.0'
+  created_by: YamlConfiguration (auto-generated)
+  created_time: '2025-07-30T20:56:43.899064'

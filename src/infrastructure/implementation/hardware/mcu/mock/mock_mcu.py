@@ -81,9 +81,9 @@ class MockMCU(MCUService):
             # Simulate connection delay
             await asyncio.sleep(self._connection_delay)
 
-            # 95% 확률로 성공
-            if random.random() <= 0.05:
-                raise HardwareConnectionError("mock_mcu", "Simulated connection failure")
+            # 테스트 환경에서는 항상 성공하도록 변경 (원래는 95% 확률)
+            # if random.random() <= 0.05:
+            #     raise HardwareConnectionError("mock_mcu", "Simulated connection failure")
 
             # Start temperature simulation task
             self._temperature_task = asyncio.create_task(self._simulate_temperature())
@@ -233,7 +233,7 @@ class MockMCU(MCUService):
             noise = random.uniform(-0.1, 0.1)
             measured_temp: float = self._current_temperature + noise
 
-            logger.debug(f"Mock MCU temperature: {measured_temp:.1f}°C")
+            logger.debug("Mock MCU temperature: %.1f°C", measured_temp)
             return measured_temp
 
         except Exception as e:

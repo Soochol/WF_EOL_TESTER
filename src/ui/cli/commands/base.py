@@ -96,7 +96,6 @@ class Command(ABC):
         Returns:
             CommandResult indicating success/failure and any data
         """
-        pass
 
     @abstractmethod
     def get_subcommands(self) -> Dict[str, str]:
@@ -106,7 +105,6 @@ class Command(ABC):
         Returns:
             Dictionary mapping subcommand names to descriptions
         """
-        pass
 
     def get_help(self) -> str:
         """

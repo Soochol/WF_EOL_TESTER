@@ -13,13 +13,9 @@ class ExitCommand(Command):
     """Command for exiting the application"""
 
     def __init__(self) -> None:
-        super().__init__(
-            name="exit", description="Exit the application"
-        )
+        super().__init__(name="exit", description="Exit the application")
 
-    async def execute(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute exit command
 
@@ -29,11 +25,8 @@ class ExitCommand(Command):
         Returns:
             CommandResult indicating exit request
         """
-        return CommandResult.success(
-            "Exiting EOL Tester...", {"exit": True}
-        )
+        return CommandResult.success("Exiting EOL Tester...", {"exit": True})
 
     def get_subcommands(self) -> Dict[str, str]:
         """Get available subcommands"""
-        return {}
         return {}

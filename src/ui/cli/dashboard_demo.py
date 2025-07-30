@@ -18,23 +18,30 @@ import asyncio
 import sys
 from pathlib import Path
 
+# Third-party imports
+from loguru import logger
+from rich.align import Align
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
 # Add src to path for imports
 current_dir = Path(__file__).parent
 src_dir = current_dir.parent.parent
 sys.path.insert(0, str(src_dir))
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich.align import Align
-
-# Import dashboard components
-from ui.cli.hardware_monitoring_dashboard import demo_dashboard
-from ui.cli.dashboard_integration import create_dashboard_integrator
-from ui.cli.rich_formatter import RichFormatter
-
-# Import infrastructure for hardware setup
-from infrastructure.factory import create_hardware_service_facade
+# Local application imports (must be after path setup)
+# pylint: disable=wrong-import-position
+from infrastructure.factory import (
+    create_hardware_service_facade,  # pylint: disable=wrong-import-position
+)
+from ui.cli.dashboard_integration import (
+    create_dashboard_integrator,  # pylint: disable=wrong-import-position
+)
+from ui.cli.hardware_monitoring_dashboard import (
+    demo_dashboard,  # pylint: disable=wrong-import-position
+)
+from ui.cli.rich_formatter import RichFormatter  # pylint: disable=wrong-import-position
 
 
 class DashboardDemo:
@@ -48,6 +55,7 @@ class DashboardDemo:
 
     async def run_demo(self) -> None:
         """Run the complete dashboard demonstration"""
+        logger.info("Starting dashboard demonstration")
 
         # Show demo header
         self._show_demo_header()
@@ -56,12 +64,16 @@ class DashboardDemo:
         demo_choice = self._get_demo_choice()
 
         if demo_choice == "1":
+            logger.info("User selected live dashboard demo")
             await self._run_live_dashboard_demo()
         elif demo_choice == "2":
+            logger.info("User selected integration demo")
             await self._run_integration_demo()
         elif demo_choice == "3":
+            logger.info("User selected configuration demo")
             await self._run_configuration_demo()
         else:
+            logger.info("Dashboard demo cancelled by user")
             self.console.print("[yellow]Demo cancelled[/yellow]")
 
     def _show_demo_header(self) -> None:
@@ -162,15 +174,18 @@ Press Enter to start the dashboard or Ctrl+C to cancel...""",
             self.console.print("[dim]Setting up mock hardware...[/dim]")
 
             # Use factory to create hardware facade
+            logger.debug("Creating hardware service facade with mock hardware")
             hardware_facade = create_hardware_service_facade(config_path=None, use_mock=True)
 
             self.console.print("[dim]Starting dashboard...[/dim]")
             self.console.print()
 
             # Run the dashboard demo
+            logger.info("Starting live dashboard with mock hardware")
             await demo_dashboard(hardware_facade)
 
         except ImportError as e:
+            logger.error("Missing dependency for live dashboard demo: %s", e)
             self.formatter.print_message(
                 f"Missing dependency: {str(e)}", message_type="error", title="Import Error"
             )
@@ -178,12 +193,15 @@ Press Enter to start the dashboard or Ctrl+C to cancel...""",
                 "\n[yellow]Please ensure all required packages are installed.[/yellow]"
             )
         except FileNotFoundError as e:
+            logger.error("Configuration file not found for dashboard demo: %s", e)
             self.formatter.print_message(
                 f"Configuration file not found: {str(e)}", message_type="error", title="File Error"
             )
         except KeyboardInterrupt:
+            logger.info("Live dashboard demo interrupted by user")
             self.console.print("\n[yellow]Demo interrupted by user[/yellow]")
         except Exception as e:
+            logger.error("Live dashboard demo failed with unexpected error: %s", e)
             self.formatter.print_message(
                 f"Demo failed: {str(e)}", message_type="error", title="Demo Error"
             )
@@ -231,8 +249,9 @@ The dashboard integrates seamlessly with the Enhanced CLI system:
 
         # Show integration example
         try:
+            logger.debug("Creating hardware facade for integration demo")
             hardware_facade = create_hardware_service_facade(use_mock=True)
-            integrator = create_dashboard_integrator(hardware_facade, self.console, self.formatter)
+            create_dashboard_integrator(hardware_facade, self.console, self.formatter)
 
             self.console.print()
             self.console.print("[bold]Integration Example - Configuration Menu:[/bold]")
@@ -260,12 +279,14 @@ b. Back to Dashboard Menu
             self.console.print(demo_panel)
 
         except ImportError as e:
+            logger.error("Missing integration component for dashboard demo: %s", e)
             self.formatter.print_message(
                 f"Missing integration component: {str(e)}",
                 message_type="error",
                 title="Import Error",
             )
         except Exception as e:
+            logger.error("Integration demo failed with unexpected error: %s", e)
             self.formatter.print_message(
                 f"Integration demo failed: {str(e)}",
                 message_type="error",
@@ -336,11 +357,14 @@ async def main() -> None:
         demo = DashboardDemo()
         await demo.run_demo()
     except KeyboardInterrupt:
+        logger.info("Dashboard demo interrupted by user")
         print("\n[yellow]Demo interrupted by user[/yellow]")
     except ImportError as e:
+        logger.error("Import error in dashboard demo main: %s", e)
         print(f"[red]Import error: {e}[/red]")
         print("[yellow]Please ensure all required dependencies are installed.[/yellow]")
     except Exception as e:
+        logger.error("Dashboard demo main failed with unexpected error: %s", e)
         print(f"[red]Demo failed: {e}[/red]")
         print("[dim]Run with debug mode for more details.[/dim]")
 

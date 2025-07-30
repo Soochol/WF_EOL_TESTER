@@ -7,7 +7,7 @@ Concrete implementation of Configuration interface using JSON files.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from loguru import logger
 
@@ -239,7 +239,7 @@ class JsonConfiguration(Configuration):
         """Load and parse JSON data from file."""
         try:
             with open(file_path, "r", encoding=self.FILE_ENCODING) as f:
-                json_data = json.load(f)
+                json_data = cast(Dict[str, Any], json.load(f))
 
             if json_data is None:
                 raise ConfigurationFormatException(

@@ -187,7 +187,7 @@ class MockPower(PowerService):
             )
             actual_voltage = max(0, self._set_voltage + voltage_error)
 
-            logger.debug(f"Mock Power Supply voltage: {actual_voltage:.3f}V")
+            logger.debug("Mock Power Supply voltage: %.3fV", actual_voltage)
             return actual_voltage
 
         except Exception as e:
@@ -263,7 +263,7 @@ class MockPower(PowerService):
             )
             actual_current = max(0, self._set_current + current_error)
 
-            logger.debug(f"Mock Power Supply current: {actual_current:.3f}A")
+            logger.debug("Mock Power Supply current: %.3fA", actual_current)
             return actual_current
 
         except Exception as e:

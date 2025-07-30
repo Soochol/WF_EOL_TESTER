@@ -18,33 +18,52 @@ Key Features:
 import asyncio
 import json
 import time
-from datetime import datetime
-from typing import Any, Dict, Optional, List
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any, AsyncIterator, Dict, List, Optional
 
+from rich import box
+from rich.align import Align
+from rich.columns import Columns
 from rich.console import Console
-from rich.live import Live
 from rich.layout import Layout
+from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.columns import Columns
-from rich.align import Align
-from rich import box
 
 # Conditional import for loguru to handle missing dependency gracefully
 try:
     from loguru import logger
 except ImportError:
-    import logging
+    from typing import Protocol
 
-    logger = logging.getLogger(__name__)
-    logger.info = lambda msg: print(f"INFO: {msg}")
-    logger.error = lambda msg: print(f"ERROR: {msg}")
-    logger.warning = lambda msg: print(f"WARNING: {msg}")
-    logger.debug = lambda msg: print(f"DEBUG: {msg}")
+    class LoggerProtocol(Protocol):
+        def info(self, msg: str) -> None: ...
+        def error(self, msg: str) -> None: ...
+        def warning(self, msg: str) -> None: ...
+        def debug(self, msg: str) -> None: ...
 
+    class FallbackLogger:
+        def info(self, msg: str) -> None:
+            print(f"INFO: {msg}")
+
+        def error(self, msg: str) -> None:
+            print(f"ERROR: {msg}")
+
+        def warning(self, msg: str) -> None:
+            print(f"WARNING: {msg}")
+
+        def debug(self, msg: str) -> None:
+            print(f"DEBUG: {msg}")
+
+    logger = FallbackLogger()  # type: ignore
+
+from application.interfaces.hardware.loadcell import LoadCellService
+from application.interfaces.hardware.mcu import MCUService
+from application.interfaces.hardware.power import PowerService
+from application.interfaces.hardware.robot import RobotService
 from application.services.hardware_service_facade import HardwareServiceFacade
 
 
@@ -120,19 +139,21 @@ class HardwareDataCollector:
             metrics.robot_connected = await robot_service.is_connected()
 
             if metrics.robot_connected:
-                # Get position for primary axis (axis 0)
-                try:
-                    metrics.robot_position = await robot_service.get_position(0)
-                    metrics.robot_velocity = await robot_service.get_velocity(0)
-                    metrics.robot_is_moving = await robot_service.is_moving(0)
+                # Type narrow to ensure we have a RobotService
+                if isinstance(robot_service, RobotService):
+                    # Get position for primary axis (axis 0)
+                    try:
+                        metrics.robot_position = await robot_service.get_position(0)
+                        metrics.robot_velocity = await robot_service.get_velocity(0)
+                        metrics.robot_is_moving = await robot_service.is_moving(0)
 
-                    motion_status = await robot_service.get_motion_status()
-                    metrics.robot_motion_status = (
-                        motion_status.value if motion_status else "UNKNOWN"
-                    )
-                except Exception as e:
-                    logger.debug(f"Could not get detailed robot data: {e}")
-                    metrics.robot_motion_status = "ERROR"
+                        motion_status = await robot_service.get_motion_status()
+                        metrics.robot_motion_status = (
+                            motion_status.value if motion_status else "UNKNOWN"
+                        )
+                    except Exception as e:
+                        logger.debug(f"Could not get detailed robot data: {e}")
+                        metrics.robot_motion_status = "ERROR"
 
         except Exception as e:
             logger.debug(f"Robot data collection failed: {e}")
@@ -147,15 +168,17 @@ class HardwareDataCollector:
             metrics.mcu_connected = await mcu_service.is_connected()
 
             if metrics.mcu_connected:
-                try:
-                    metrics.mcu_temperature = await mcu_service.get_temperature()
-                    metrics.mcu_fan_speed = await mcu_service.get_fan_speed()
+                # Type narrow to ensure we have an MCUService
+                if isinstance(mcu_service, MCUService):
+                    try:
+                        metrics.mcu_temperature = await mcu_service.get_temperature()
+                        metrics.mcu_fan_speed = await mcu_service.get_fan_speed()
 
-                    test_mode = await mcu_service.get_test_mode()
-                    metrics.mcu_test_mode = test_mode.value if test_mode else "UNKNOWN"
-                except Exception as e:
-                    logger.debug(f"Could not get detailed MCU data: {e}")
-                    metrics.mcu_test_mode = "ERROR"
+                        test_mode = await mcu_service.get_test_mode()
+                        metrics.mcu_test_mode = test_mode.value if test_mode else "UNKNOWN"
+                    except Exception as e:
+                        logger.debug(f"Could not get detailed MCU data: {e}")
+                        metrics.mcu_test_mode = "ERROR"
 
         except Exception as e:
             logger.debug(f"MCU data collection failed: {e}")
@@ -170,12 +193,14 @@ class HardwareDataCollector:
             metrics.loadcell_connected = await loadcell_service.is_connected()
 
             if metrics.loadcell_connected:
-                try:
-                    force_value = await loadcell_service.read_force()
-                    metrics.loadcell_force = force_value.value if force_value else None
-                    metrics.loadcell_raw_value = await loadcell_service.read_raw_value()
-                except Exception as e:
-                    logger.debug(f"Could not get detailed LoadCell data: {e}")
+                # Type narrow to ensure we have a LoadCellService
+                if isinstance(loadcell_service, LoadCellService):
+                    try:
+                        force_value = await loadcell_service.read_force()
+                        metrics.loadcell_force = force_value.value if force_value else None
+                        metrics.loadcell_raw_value = await loadcell_service.read_raw_value()
+                    except Exception as e:
+                        logger.debug(f"Could not get detailed LoadCell data: {e}")
 
         except Exception as e:
             logger.debug(f"LoadCell data collection failed: {e}")
@@ -190,12 +215,14 @@ class HardwareDataCollector:
             metrics.power_connected = await power_service.is_connected()
 
             if metrics.power_connected:
-                try:
-                    metrics.power_voltage = await power_service.get_voltage()
-                    metrics.power_current = await power_service.get_current()
-                    metrics.power_output_enabled = await power_service.is_output_enabled()
-                except Exception as e:
-                    logger.debug(f"Could not get detailed Power data: {e}")
+                # Type narrow to ensure we have a PowerService
+                if isinstance(power_service, PowerService):
+                    try:
+                        metrics.power_voltage = await power_service.get_voltage()
+                        metrics.power_current = await power_service.get_current()
+                        metrics.power_output_enabled = await power_service.is_output_enabled()
+                    except Exception as e:
+                        logger.debug(f"Could not get detailed Power data: {e}")
 
         except Exception as e:
             logger.debug(f"Power data collection failed: {e}")
@@ -225,10 +252,10 @@ class DashboardRenderer:
         layout["hardware"].split_row(Layout(name="left_column"), Layout(name="right_column"))
 
         # Populate layout sections
-        layout["header"] = self._create_header_panel(refresh_rate, is_paused)
-        layout["status"] = self._create_status_summary(metrics)
-        layout["left_column"] = self._create_left_column(metrics)
-        layout["right_column"] = self._create_right_column(metrics)
+        layout["header"].update(self._create_header_panel(refresh_rate, is_paused))
+        layout["status"].update(self._create_status_summary(metrics))
+        layout["left_column"].update(self._create_left_column(metrics))
+        layout["right_column"].update(self._create_right_column(metrics))
 
         return layout
 
@@ -693,7 +720,7 @@ class HardwareMonitoringDashboard:
 
         # Write to file
         try:
-            with open(filename, "w") as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(export_data, f, indent=2)
 
             logger.info(f"Monitoring snapshot exported to {filename}")
@@ -712,21 +739,22 @@ class HardwareMonitoringDashboard:
         return self._metrics_history.copy()
 
     @asynccontextmanager
-    async def monitoring_session(self, refresh_rate: float = 2.0):
+    async def monitoring_session(self, refresh_rate: float = 2.0) -> AsyncIterator[None]:
         """
         Context manager for monitoring sessions
 
         Args:
             refresh_rate: Refresh interval in seconds
         """
+        monitoring_task: Optional[asyncio.Task[None]] = None
         try:
             # Start monitoring in background task
             monitoring_task = asyncio.create_task(self.start_monitoring(refresh_rate))
-            yield self
+            yield
         finally:
             # Stop monitoring
             self.stop_monitoring()
-            if not monitoring_task.done():
+            if monitoring_task is not None and not monitoring_task.done():
                 monitoring_task.cancel()
                 try:
                     await monitoring_task

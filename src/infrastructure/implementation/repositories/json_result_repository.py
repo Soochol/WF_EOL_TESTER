@@ -43,10 +43,7 @@ class JsonResultRepository(TestResultRepository):
         # 디렉토리 생성
         self._data_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(
-            "JsonResultRepository initialized at %s",
-            self._data_dir,
-        )
+        logger.info(f"JsonResultRepository initialized at {self._data_dir}")
 
     async def save(self, test: EOLTest) -> EOLTest:
         """
@@ -80,13 +77,9 @@ class JsonResultRepository(TestResultRepository):
         Returns:
             수정된 테스트
         """
-        return await self.save(
-            test
-        )  # JSON에서는 save와 update가 동일
+        return await self.save(test)  # JSON에서는 save와 update가 동일
 
-    async def find_by_id(
-        self, test_id: str
-    ) -> Optional[EOLTest]:
+    async def find_by_id(self, test_id: str) -> Optional[EOLTest]:
         """
         ID로 테스트 조회
 
@@ -102,20 +95,14 @@ class JsonResultRepository(TestResultRepository):
             return await self._dict_to_test(test_dict)
 
         # 파일에서 로드
-        loaded_test_dict: Optional[Dict[str, Any]] = (
-            await self._load_from_file(test_id)
-        )
+        loaded_test_dict: Optional[Dict[str, Any]] = await self._load_from_file(test_id)
         if loaded_test_dict is not None:
             self._tests_cache[test_id] = loaded_test_dict
-            return await self._dict_to_test(
-                loaded_test_dict
-            )
+            return await self._dict_to_test(loaded_test_dict)
 
         return None
 
-    async def find_by_dut_id(
-        self, dut_id: str
-    ) -> List[EOLTest]:
+    async def find_by_dut_id(self, dut_id: str) -> List[EOLTest]:
         """
         DUT ID로 테스트 목록 조회
 
@@ -131,19 +118,14 @@ class JsonResultRepository(TestResultRepository):
         await self._load_all_tests()
 
         for test_dict in self._tests_cache.values():
-            if (
-                test_dict.get("dut", {}).get("dut_id")
-                == dut_id
-            ):
+            if test_dict.get("dut", {}).get("dut_id") == dut_id:
                 test = await self._dict_to_test(test_dict)
                 tests.append(test)
 
         # 생성 시간으로 정렬 (최신순)
         tests.sort(key=lambda t: t.created_at, reverse=True)
 
-        logger.debug(
-            "Found %d tests for DUT %s", len(tests), dut_id
-        )
+        logger.debug("Found %d tests for DUT %s", len(tests), dut_id)
         return tests
 
     async def delete(self, test_id: str) -> None:
@@ -160,13 +142,8 @@ class JsonResultRepository(TestResultRepository):
         try:
             # 테스트 존재 확인
             file_path = self._get_test_file_path(test_id)
-            if (
-                not file_path.exists()
-                and test_id not in self._tests_cache
-            ):
-                raise ConfigurationNotFoundError(
-                    f"Test {test_id} not found"
-                )
+            if not file_path.exists() and test_id not in self._tests_cache:
+                raise ConfigurationNotFoundError(f"Test {test_id} not found")
 
             # 캐시에서 제거
             if test_id in self._tests_cache:
@@ -176,68 +153,48 @@ class JsonResultRepository(TestResultRepository):
             if file_path.exists():
                 file_path.unlink()
 
-            logger.debug(
-                "Test %s deleted from repository", test_id
-            )
+            logger.debug("Test %s deleted from repository", test_id)
 
         except ConfigurationNotFoundError:
             raise
         except Exception as e:
-            logger.error(
-                "Failed to delete test %s: %s", test_id, e
-            )
+            logger.error("Failed to delete test %s: %s", test_id, e)
             raise RepositoryAccessError(
                 "delete",
                 f"Failed to delete test {test_id}: {str(e)}",
-                file_path=str(
-                    self._get_test_file_path(test_id)
-                ),
+                file_path=str(self._get_test_file_path(test_id)),
             ) from e
 
-    async def _test_to_dict(
-        self, test: EOLTest
-    ) -> Dict[str, Any]:
+    async def _test_to_dict(self, test: EOLTest) -> Dict[str, Any]:
         """테스트 엔티티를 딕셔너리로 변환"""
         try:
             # EOLTest의 내장 to_dict 메서드를 사용하여 완전한 직렬화
             return test.to_dict()
         except Exception as e:
-            logger.error(
-                "Failed to convert EOLTest to dict: %s", e
-            )
+            logger.error("Failed to convert EOLTest to dict: %s", e)
             logger.debug("Test: %s", test)
             raise
 
-    async def _dict_to_test(
-        self, test_dict: Dict[str, Any]
-    ) -> EOLTest:
+    async def _dict_to_test(self, test_dict: Dict[str, Any]) -> EOLTest:
         """딕셔너리를 테스트 엔티티로 변환"""
         try:
             # EOLTest의 from_dict 클래스 메서드를 사용하여 완전한 엔티티 복원
             return EOLTest.from_dict(test_dict)
         except Exception as e:
-            logger.error(
-                "Failed to convert dict to EOLTest: %s", e
-            )
+            logger.error("Failed to convert dict to EOLTest: %s", e)
             logger.debug("Test dict: %s", test_dict)
             raise
 
-    async def _save_to_file(
-        self, test_id: str, test_dict: Dict[str, Any]
-    ) -> None:
+    async def _save_to_file(self, test_id: str, test_dict: Dict[str, Any]) -> None:
         """테스트 데이터를 파일에 저장"""
         file_path = self._get_test_file_path(test_id)
 
         try:
             # 디렉토리가 없으면 생성
-            file_path.parent.mkdir(
-                parents=True, exist_ok=True
-            )
+            file_path.parent.mkdir(parents=True, exist_ok=True)
 
             # JSON 파일로 저장
-            with open(
-                file_path, "w", encoding="utf-8"
-            ) as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(
                     test_dict,
                     f,
@@ -259,9 +216,7 @@ class JsonResultRepository(TestResultRepository):
             )
             raise
 
-    async def _load_from_file(
-        self, test_id: str
-    ) -> Optional[Dict[str, Any]]:
+    async def _load_from_file(self, test_id: str) -> Optional[Dict[str, Any]]:
         """파일에서 테스트 데이터 로드"""
         file_path = self._get_test_file_path(test_id)
 
@@ -269,9 +224,7 @@ class JsonResultRepository(TestResultRepository):
             return None
 
         try:
-            with open(
-                file_path, "r", encoding="utf-8"
-            ) as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 test_dict: Dict[str, Any] = json.load(f)
 
             logger.debug(
@@ -298,9 +251,7 @@ class JsonResultRepository(TestResultRepository):
             test_id = file_path.stem
 
             if test_id not in self._tests_cache:
-                test_dict = await self._load_from_file(
-                    test_id
-                )
+                test_dict = await self._load_from_file(test_id)
                 if test_dict is not None:
                     self._tests_cache[test_id] = test_dict
 
@@ -318,9 +269,7 @@ class JsonResultRepository(TestResultRepository):
         await self._load_all_tests()
         return list(self._tests_cache.values())
 
-    async def cleanup_old_tests(
-        self, days: int = 30
-    ) -> int:
+    async def cleanup_old_tests(self, days: int = 30) -> int:
         """
         오래된 테스트 정리
 
@@ -330,22 +279,16 @@ class JsonResultRepository(TestResultRepository):
         Returns:
             정리된 테스트 수
         """
-        cutoff_date = datetime.now().timestamp() - (
-            days * 24 * 60 * 60
-        )
+        cutoff_date = datetime.now().timestamp() - (days * 24 * 60 * 60)
         deleted_count = 0
 
         await self._load_all_tests()
 
-        for test_id, test_dict in list(
-            self._tests_cache.items()
-        ):
+        for test_id, test_dict in list(self._tests_cache.items()):
             created_at = test_dict.get("created_at")
             if created_at:
                 try:
-                    test_date = datetime.fromisoformat(
-                        created_at
-                    ).timestamp()
+                    test_date = datetime.fromisoformat(created_at).timestamp()
                     if test_date < cutoff_date:
                         try:
                             await self.delete(test_id)

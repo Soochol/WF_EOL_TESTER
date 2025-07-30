@@ -6,7 +6,7 @@ Concrete implementation of ConfigurationRepository using YAML files.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from loguru import logger
@@ -631,7 +631,7 @@ class YamlConfiguration(Configuration):
         self,
         profile_name: str,
         system_version: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Union[str, bool, List[str]]]:
         """
         Validate if a profile is compatible with current system
 
@@ -644,7 +644,7 @@ class YamlConfiguration(Configuration):
         """
         config = await self.load_profile(profile_name)
 
-        compatibility = {
+        compatibility: Dict[str, Union[str, bool, List[str]]] = {
             "profile_name": profile_name,
             "compatible": True,
             "issues": [],
@@ -656,7 +656,9 @@ class YamlConfiguration(Configuration):
             await self.validate_configuration(config)
         except InvalidConfigurationException as e:
             compatibility["compatible"] = False
-            compatibility["issues"].append(str(e))
+            issues_list = compatibility["issues"]
+            if isinstance(issues_list, list):
+                issues_list.append(str(e))
 
         # Add system-specific compatibility checks here
         # For now, just basic validation

@@ -6,7 +6,8 @@ Immutable value objects that represent unique identifiers in the domain.
 
 import re
 import uuid
-from typing import Union
+from datetime import datetime
+from typing import Union, Optional
 
 from domain.exceptions.validation_exceptions import (
     InvalidFormatException,
@@ -74,20 +75,56 @@ class TestId(BaseId):
     def _validate_string_format(self, value: str) -> None:
         super()._validate_string_format(value)
 
-        # Test ID format: TEST_YYYYMMDD_HHMMSS_XXX (or UUID)
-        test_id_pattern = r"^(TEST_\d{8}_\d{6}_\d{3}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+        # Test ID format: SerialNumber_YYYYMMDD_HHMMSS_XXX, TEST_YYYYMMDD_HHMMSS_XXX, or UUID
+        test_id_pattern = r"^([A-Za-z0-9]+_\d{8}_\d{6}_\d{3}|TEST_\d{8}_\d{6}_\d{3}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
 
         if not re.match(test_id_pattern, value.strip()):
             raise InvalidFormatException(
                 "test_id",
                 value,
-                "TEST_YYYYMMDD_HHMMSS_XXX or UUID format",
+                "SerialNumber_YYYYMMDD_HHMMSS_XXX, TEST_YYYYMMDD_HHMMSS_XXX, or UUID format",
             )
 
     @classmethod
     def generate(cls) -> "TestId":
-        """Generate a new random test ID"""
+        """Generate a new random test ID using UUID format"""
         return cls(str(uuid.uuid4()))
+
+    @classmethod
+    def generate_from_serial_datetime(
+        cls,
+        serial_number: str,
+        timestamp: Optional[datetime] = None,
+        sequence: Optional[int] = None
+    ) -> "TestId":
+        """
+        Generate a new test ID using serial number and datetime format
+
+        Args:
+            serial_number: DUT serial number
+            timestamp: Test timestamp (defaults to now)
+            sequence: Sequence number for duplicates (defaults to 001)
+
+        Returns:
+            TestId in format: SerialNumber_YYYYMMDD_HHMMSS_XXX
+        """
+        if timestamp is None:
+            timestamp = datetime.now()
+
+        if sequence is None:
+            sequence = 1
+
+        # Clean serial number to ensure it's alphanumeric
+        clean_serial = re.sub(r'[^A-Za-z0-9]', '', serial_number)
+        if not clean_serial:
+            clean_serial = "UNKNOWN"
+
+        date_str = timestamp.strftime("%Y%m%d")
+        time_str = timestamp.strftime("%H%M%S")
+        seq_str = f"{sequence:03d}"
+
+        test_id_str = f"{clean_serial}_{date_str}_{time_str}_{seq_str}"
+        return cls(test_id_str)
 
     @classmethod
     def from_timestamp(

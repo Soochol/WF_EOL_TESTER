@@ -7,15 +7,6 @@ Replaces the complex dependency injection system.
 
 from typing import Any, Dict, Optional
 
-# Conditional logging import
-logger: Any
-try:
-    from loguru import logger
-except ImportError:
-    import logging
-
-    logger = logging.getLogger(__name__)
-
 from application.interfaces.hardware.digital_input import (
     DigitalInputService,
 )
@@ -29,14 +20,15 @@ from application.interfaces.hardware.power import (
 from application.interfaces.hardware.robot import (
     RobotService,
 )
+from application.services.hardware_service_facade import HardwareServiceFacade
+
+# Hardware implementations
 from infrastructure.implementation.hardware.digital_input.ajinextek.ajinextek_input import (
     AjinextekInput,
 )
 from infrastructure.implementation.hardware.digital_input.mock.mock_input import (
     MockInput,
 )
-
-# Hardware implementations
 from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
     BS205LoadCell,
 )
@@ -55,8 +47,6 @@ from infrastructure.implementation.hardware.power.mock.mock_power import (
 from infrastructure.implementation.hardware.power.oda.oda_power import (
     OdaPower,
 )
-
-# AJINEXTEK robot service
 from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import (
     AjinextekRobot,
 )
@@ -64,8 +54,14 @@ from infrastructure.implementation.hardware.robot.mock.mock_robot import (
     MockRobot,
 )
 
-# Hardware Service Facade
-from application.services.hardware_service_facade import HardwareServiceFacade
+# Conditional logging import
+logger: Any
+try:
+    from loguru import logger
+except ImportError:
+    import logging
+
+    logger = logging.getLogger(__name__)
 
 
 class ServiceFactory:
@@ -151,10 +147,8 @@ class ServiceFactory:
 
         if hw_type == "mock":
             # Mock 서비스
-            logger.info(
-                "Creating Mock MCU service with config: %s",
-                {k: v for k, v in config.items() if k != "model"},
-            )
+            config_filtered = {k: v for k, v in config.items() if k != 'model'}
+            logger.info(f"Creating Mock MCU service with config: {config_filtered}")
             return MockMCU(config=config)
 
         if hw_type == "lma":
@@ -236,16 +230,16 @@ def create_hardware_service_facade(
 ) -> HardwareServiceFacade:
     """
     Create a complete hardware service facade with all hardware services
-    
+
     Args:
         config_path: Path to hardware configuration file (optional)
         use_mock: Force use of mock hardware services
-        
+
     Returns:
         HardwareServiceFacade instance with all services configured
     """
-    logger.info(f"Creating hardware service facade (mock: {use_mock})")
-    
+    logger.info("Creating hardware service facade (mock: %s)", use_mock)
+
     # Default hardware configurations
     default_configs: Dict[str, Dict[str, Any]] = {
         "robot": {
@@ -282,11 +276,11 @@ def create_hardware_service_facade(
             "module_position": 0,
         },
     }
-    
+
     # If config_path is provided, you could load from file here
     # For now, using default configurations
     configs: Dict[str, Dict[str, Any]] = default_configs
-    
+
     try:
         # Create all hardware services
         robot_service = ServiceFactory.create_robot_service(configs["robot"])
@@ -296,7 +290,7 @@ def create_hardware_service_facade(
         digital_input_service = ServiceFactory.create_digital_input_service(
             configs["digital_input"]
         )
-        
+
         # Create and return facade
         facade = HardwareServiceFacade(
             robot_service=robot_service,
@@ -305,10 +299,10 @@ def create_hardware_service_facade(
             power_service=power_service,
             digital_input_service=digital_input_service,
         )
-        
+
         logger.info("Hardware service facade created successfully")
         return facade
-        
+
     except Exception as e:
-        logger.error(f"Failed to create hardware service facade: {e}")
+        logger.error("Failed to create hardware service facade: %s", e)
         raise

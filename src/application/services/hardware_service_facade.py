@@ -144,7 +144,8 @@ class HardwareServiceFacade:
         logger.info("Starting force test sequence...")
         total_tests = len(config.temperature_list) * len(config.stroke_positions)
         logger.info(
-            f"Test matrix: {len(config.temperature_list)}×{len(config.stroke_positions)} = {total_tests} measurements"
+            "Test matrix: %s×%s = %s measurements",
+            len(config.temperature_list), len(config.stroke_positions), total_tests
         )
 
         measurements_dict: Dict[float, Dict[float, Dict[str, Any]]] = {}
@@ -153,7 +154,8 @@ class HardwareServiceFacade:
             # Outer loop: Iterate through temperature list
             for temp_idx, temperature in enumerate(config.temperature_list):
                 logger.info(
-                    f"Setting temperature to {temperature}°C ({temp_idx+1}/{len(config.temperature_list)})"
+                    "Setting temperature to %s°C (%s/%s)",
+                    temperature, temp_idx+1, len(config.temperature_list)
                 )
 
                 # Set MCU temperature for this test cycle
@@ -182,11 +184,19 @@ class HardwareServiceFacade:
 
                     # Take measurements
                     force = await self._loadcell.read_force()
+                    # Get current temperature from MCU
+                    current_temp = await self._mcu.get_temperature()
+                    # Get current position from robot
+                    current_position = await self._robot.get_position(config.axis)
 
                     # Store measurement data using TestMeasurements structure
                     if temperature not in measurements_dict:
                         measurements_dict[temperature] = {}
-                    measurements_dict[temperature][position] = {"force": force.value}
+                    measurements_dict[temperature][position] = {
+                        "temperature": current_temp,
+                        "stroke": current_position,
+                        "force": force.value
+                    }
 
                     # # Allow stabilization between positions (if not last position)
                     # if pos_idx < len(config.stroke_positions) - 1:
@@ -198,10 +208,12 @@ class HardwareServiceFacade:
             measurements = TestMeasurements.from_legacy_dict(measurements_dict)
 
             logger.info(
-                f"Force test sequence completed with {measurements.get_total_measurement_count()} measurements"
+                "Force test sequence completed with %s measurements",
+                measurements.get_total_measurement_count()
             )
             logger.info(
-                f"Test matrix completed: {measurements.get_temperature_count()} temperatures × {len(config.stroke_positions)} positions"
+                "Test matrix completed: %s temperatures × %s positions",
+                measurements.get_temperature_count(), len(config.stroke_positions)
             )
             return measurements
 
@@ -378,7 +390,8 @@ class HardwareServiceFacade:
                 standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
             )
             logger.info(
-                f"MCU standby heating started - operating: {config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
+                "MCU standby heating started - operating: %s°C, standby: %s°C",
+                config.activation_temperature, calculated_standby_temp
             )
 
             # Robot to max stroke position using test configuration

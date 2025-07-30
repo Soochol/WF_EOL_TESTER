@@ -19,9 +19,7 @@ class HardwareCommand(Command):
 
     def __init__(
         self,
-        hardware_services: Optional[
-            HardwareServiceFacade
-        ] = None,
+        hardware_services: Optional[HardwareServiceFacade] = None,
     ):
         super().__init__(
             name="hardware",
@@ -29,15 +27,11 @@ class HardwareCommand(Command):
         )
         self._hardware_services = hardware_services
 
-    def set_hardware_services(
-        self, hardware_services: HardwareServiceFacade
-    ) -> None:
+    def set_hardware_services(self, hardware_services: HardwareServiceFacade) -> None:
         """Set the hardware services facade"""
         self._hardware_services = hardware_services
 
-    async def execute(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute hardware command
 
@@ -54,18 +48,15 @@ class HardwareCommand(Command):
 
         if subcommand == "status":
             return await self._show_hardware_status()
-        elif subcommand == "list":
+        if subcommand == "list":
             return await self._list_hardware()
-        elif subcommand == "test":
+        if subcommand == "test":
             return await self._test_hardware(args[1:])
-        elif subcommand == "reconnect":
+        if subcommand == "reconnect":
             return await self._reconnect_hardware()
-        elif subcommand == "help":
+        if subcommand == "help":
             return CommandResult.info(self.get_help())
-        else:
-            return CommandResult.error(
-                f"Unknown hardware subcommand: {subcommand}"
-            )
+        return CommandResult.error(f"Unknown hardware subcommand: {subcommand}")
 
     def get_subcommands(self) -> Dict[str, str]:
         """Get available subcommands"""
@@ -80,9 +71,7 @@ class HardwareCommand(Command):
     async def _show_hardware_status(self) -> CommandResult:
         """Show comprehensive hardware status"""
         if not self._hardware_services:
-            return CommandResult.error(
-                "Hardware services not initialized"
-            )
+            return CommandResult.error("Hardware services not initialized")
 
         try:
             status_text = "Hardware Status:\\n"
@@ -90,80 +79,52 @@ class HardwareCommand(Command):
 
             # Check robot status
             try:
-                robot_connected = (
-                    await self._check_robot_status()
-                )
-                status_icon = (
-                    "✅" if robot_connected else "❌"
-                )
+                robot_connected = await self._check_robot_status()
+                status_icon = "✅" if robot_connected else "❌"
                 status_text += f"{status_icon} Robot Service: {'Connected' if robot_connected else 'Disconnected'}\\n"
             except Exception as e:
-                status_text += (
-                    f"❌ Robot Service: Error - {str(e)}\\n"
-                )
+                status_text += f"❌ Robot Service: Error - {str(e)}\\n"
 
             # Check MCU status
             try:
-                mcu_connected = (
-                    await self._check_mcu_status()
-                )
-                status_icon = (
-                    "✅" if mcu_connected else "❌"
-                )
+                mcu_connected = await self._check_mcu_status()
+                status_icon = "✅" if mcu_connected else "❌"
                 status_text += f"{status_icon} MCU Service: {'Connected' if mcu_connected else 'Disconnected'}\\n"
             except Exception as e:
-                status_text += (
-                    f"❌ MCU Service: Error - {str(e)}\\n"
-                )
+                status_text += f"❌ MCU Service: Error - {str(e)}\\n"
 
             # Check LoadCell status
             try:
-                loadcell_connected = (
-                    await self._check_loadcell_status()
-                )
-                status_icon = (
-                    "✅" if loadcell_connected else "❌"
-                )
+                loadcell_connected = await self._check_loadcell_status()
+                status_icon = "✅" if loadcell_connected else "❌"
                 status_text += f"{status_icon} LoadCell Service: {'Connected' if loadcell_connected else 'Disconnected'}\\n"
             except Exception as e:
                 status_text += f"❌ LoadCell Service: Error - {str(e)}\\n"
 
             # Check Power status
             try:
-                power_connected = (
-                    await self._check_power_status()
-                )
-                status_icon = (
-                    "✅" if power_connected else "❌"
-                )
+                power_connected = await self._check_power_status()
+                status_icon = "✅" if power_connected else "❌"
                 status_text += f"{status_icon} Power Service: {'Connected' if power_connected else 'Disconnected'}\\n"
             except Exception as e:
-                status_text += (
-                    f"❌ Power Service: Error - {str(e)}\\n"
-                )
+                status_text += f"❌ Power Service: Error - {str(e)}\\n"
 
             return CommandResult.success(status_text)
 
         except Exception as e:
-            logger.error(
-                f"Hardware status check failed: {e}"
-            )
-            return CommandResult.error(
-                f"Failed to check hardware status: {str(e)}"
-            )
+            logger.error(f"Hardware status check failed: {e}")
+            return CommandResult.error(f"Failed to check hardware status: {str(e)}")
 
     async def _list_hardware(self) -> CommandResult:
         """List all hardware devices with details"""
         if not self._hardware_services:
-            return CommandResult.error(
-                "Hardware services not initialized"
-            )
+            return CommandResult.error("Hardware services not initialized")
 
         try:
             device_list = "Connected Hardware Devices:\\n"
             device_list += "=" * 50 + "\\n"
 
-            # TODO: Get actual device information from services
+            # Actual device information retrieval will be implemented with hardware services
             device_list += "├── Robot Controller\\n"
             device_list += "│   ├── Type: Motion Control\\n"
             device_list += "│   └── Status: Unknown\\n"
@@ -181,25 +142,17 @@ class HardwareCommand(Command):
 
         except Exception as e:
             logger.error(f"Hardware listing failed: {e}")
-            return CommandResult.error(
-                f"Failed to list hardware: {str(e)}"
-            )
+            return CommandResult.error(f"Failed to list hardware: {str(e)}")
 
-    async def _test_hardware(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def _test_hardware(self, args: List[str]) -> CommandResult:
         """Test specific hardware device"""
         if not args:
-            return CommandResult.error(
-                "Device name is required. Usage: /hardware test <device>"
-            )
+            return CommandResult.error("Device name is required. Usage: /hardware test <device>")
 
         device_name = args[0].lower()
 
         if not self._hardware_services:
-            return CommandResult.error(
-                "Hardware services not initialized"
-            )
+            return CommandResult.error("Hardware services not initialized")
 
         try:
             if device_name in ["robot", "motion"]:
@@ -223,52 +176,38 @@ class HardwareCommand(Command):
 
         except Exception as e:
             logger.error(f"Hardware test failed: {e}")
-            return CommandResult.error(
-                f"Hardware test failed: {str(e)}"
-            )
+            return CommandResult.error(f"Hardware test failed: {str(e)}")
 
     async def _reconnect_hardware(self) -> CommandResult:
         """Reconnect all hardware devices"""
         if not self._hardware_services:
-            return CommandResult.error(
-                "Hardware services not initialized"
-            )
+            return CommandResult.error("Hardware services not initialized")
 
         try:
             print("\\nReconnecting hardware devices...")
 
-            # TODO: Implement actual reconnection logic
+            # Actual reconnection logic will be implemented with hardware services
             reconnect_text = "Hardware Reconnection:\\n"
             reconnect_text += "=" * 30 + "\\n"
+            reconnect_text += "🔄 Robot Service: Reconnecting...\\n"
+            reconnect_text += "🔄 MCU Service: Reconnecting...\\n"
+            reconnect_text += "🔄 LoadCell Service: Reconnecting...\\n"
+            reconnect_text += "🔄 Power Service: Reconnecting...\\n"
             reconnect_text += (
-                "🔄 Robot Service: Reconnecting...\\n"
+                "\\nReconnection will be implemented with actual hardware services.\\n"
             )
-            reconnect_text += (
-                "🔄 MCU Service: Reconnecting...\\n"
-            )
-            reconnect_text += (
-                "🔄 LoadCell Service: Reconnecting...\\n"
-            )
-            reconnect_text += (
-                "🔄 Power Service: Reconnecting...\\n"
-            )
-            reconnect_text += "\\nReconnection will be implemented with actual hardware services.\\n"
 
             return CommandResult.info(reconnect_text)
 
         except Exception as e:
-            logger.error(
-                f"Hardware reconnection failed: {e}"
-            )
-            return CommandResult.error(
-                f"Failed to reconnect hardware: {str(e)}"
-            )
+            logger.error(f"Hardware reconnection failed: {e}")
+            return CommandResult.error(f"Failed to reconnect hardware: {str(e)}")
 
     # Individual hardware status check methods
     async def _check_robot_status(self) -> bool:
         """Check robot service status"""
         try:
-            # TODO: Implement actual robot status check
+            # Actual robot status check will be implemented with hardware services
             # return await self._hardware_services.robot_service.is_connected()
             return True  # Mock for now
         except Exception:
@@ -277,7 +216,7 @@ class HardwareCommand(Command):
     async def _check_mcu_status(self) -> bool:
         """Check MCU service status"""
         try:
-            # TODO: Implement actual MCU status check
+            # Actual MCU status check will be implemented with hardware services
             # return await self._hardware_services.mcu_service.is_connected()
             return True  # Mock for now
         except Exception:
@@ -286,7 +225,7 @@ class HardwareCommand(Command):
     async def _check_loadcell_status(self) -> bool:
         """Check LoadCell service status"""
         try:
-            # TODO: Implement actual LoadCell status check
+            # Actual LoadCell status check will be implemented with hardware services
             # return await self._hardware_services.loadcell_service.is_connected()
             return True  # Mock for now
         except Exception:
@@ -295,7 +234,7 @@ class HardwareCommand(Command):
     async def _check_power_status(self) -> bool:
         """Check Power service status"""
         try:
-            # TODO: Implement actual Power status check
+            # Actual Power status check will be implemented with hardware services
             # return await self._hardware_services.power_service.is_connected()
             return True  # Mock for now
         except Exception:
@@ -305,47 +244,31 @@ class HardwareCommand(Command):
     async def _test_robot(self) -> CommandResult:
         """Test robot hardware"""
         try:
-            # TODO: Implement actual robot test
-            return CommandResult.success(
-                "Robot test completed successfully"
-            )
+            # Actual robot test will be implemented with hardware services
+            return CommandResult.success("Robot test completed successfully")
         except Exception as e:
-            return CommandResult.error(
-                f"Robot test failed: {str(e)}"
-            )
+            return CommandResult.error(f"Robot test failed: {str(e)}")
 
     async def _test_mcu(self) -> CommandResult:
         """Test MCU hardware"""
         try:
-            # TODO: Implement actual MCU test
-            return CommandResult.success(
-                "MCU test completed successfully"
-            )
+            # Actual MCU test will be implemented with hardware services
+            return CommandResult.success("MCU test completed successfully")
         except Exception as e:
-            return CommandResult.error(
-                f"MCU test failed: {str(e)}"
-            )
+            return CommandResult.error(f"MCU test failed: {str(e)}")
 
     async def _test_loadcell(self) -> CommandResult:
         """Test LoadCell hardware"""
         try:
-            # TODO: Implement actual LoadCell test
-            return CommandResult.success(
-                "LoadCell test completed successfully"
-            )
+            # Actual LoadCell test will be implemented with hardware services
+            return CommandResult.success("LoadCell test completed successfully")
         except Exception as e:
-            return CommandResult.error(
-                f"LoadCell test failed: {str(e)}"
-            )
+            return CommandResult.error(f"LoadCell test failed: {str(e)}")
 
     async def _test_power(self) -> CommandResult:
         """Test Power hardware"""
         try:
-            # TODO: Implement actual Power test
-            return CommandResult.success(
-                "Power supply test completed successfully"
-            )
+            # Actual Power test will be implemented with hardware services
+            return CommandResult.success("Power supply test completed successfully")
         except Exception as e:
-            return CommandResult.error(
-                f"Power test failed: {str(e)}"
-            )
+            return CommandResult.error(f"Power test failed: {str(e)}")

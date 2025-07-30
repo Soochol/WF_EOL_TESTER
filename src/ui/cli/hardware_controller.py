@@ -6,18 +6,21 @@ Allows direct control and monitoring of individual hardware components.
 """
 
 import asyncio
-from typing import List, Optional
 from abc import ABC, abstractmethod
+from typing import List, Optional
 
 from loguru import logger
 from rich.console import Console
+from rich.progress import Progress
+from rich.status import Status
 
-from application.interfaces.hardware.robot import RobotService
-from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.loadcell import LoadCellService
+from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.power import PowerService
+from application.interfaces.hardware.robot import RobotService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.enums.mcu_enums import TestMode
+
 from .rich_formatter import RichFormatter
 from .rich_utils import RichUIManager
 
@@ -31,27 +34,22 @@ class HardwareController(ABC):
     @abstractmethod
     async def show_status(self) -> None:
         """Display hardware status"""
-        pass
 
     @abstractmethod
     async def connect(self) -> bool:
         """Connect to hardware"""
-        pass
 
     @abstractmethod
     async def disconnect(self) -> bool:
         """Disconnect from hardware"""
-        pass
 
     @abstractmethod
     async def show_control_menu(self) -> Optional[str]:
         """Show hardware-specific control menu"""
-        pass
 
     @abstractmethod
     async def execute_command(self, command: str) -> bool:
         """Execute hardware-specific command"""
-        pass
 
 
 class RobotController(HardwareController):
@@ -97,9 +95,18 @@ class RobotController(HardwareController):
         try:
             with self.formatter.create_progress_display(
                 "Connecting to robot...", show_spinner=True
-            ) as status:
+            ) as progress_display:
+                # Ensure minimum display time for spinner visibility
+                await asyncio.sleep(0.5)  # Show spinner for at least 500ms
                 await self.robot_service.connect()
-                status.update("Robot connected successfully")
+                # Handle different types returned by create_progress_display
+                if isinstance(progress_display, Status):
+                    progress_display.update("Robot connected successfully")
+                    await asyncio.sleep(0.3)  # Show success message briefly
+                elif isinstance(progress_display, Progress):
+                    # Progress objects need task_id, but we don't use this case here
+                    # since no total_steps was provided to create_progress_display
+                    pass
 
             self.formatter.print_message("Robot connected successfully", message_type="success")
             return True
@@ -165,10 +172,14 @@ class RobotController(HardwareController):
         try:
             with self.formatter.create_progress_display(
                 "Initializing robot system...", show_spinner=True
-            ) as status:
-                status.update("Initializing robot...")
-                await self.robot_service.initialize()
-                status.update("Robot initialization complete")
+            ) as progress_display:
+                if isinstance(progress_display, Status):
+                    progress_display.update("Initializing robot...")
+                await asyncio.sleep(0.5)  # Show spinner for visibility
+                await self.robot_service.initialize_axes()
+                if isinstance(progress_display, Status):
+                    progress_display.update("Robot initialization complete")
+                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message("Robot initialized successfully", message_type="success")
 
@@ -210,7 +221,7 @@ class MCUController(HardwareController):
             if is_connected:
                 try:
                     # Get temperature information if connected
-                    temperature = await self.mcu_service.get_current_temperature()
+                    temperature = await self.mcu_service.get_temperature()
                     status_details["Temperature"] = f"{temperature:.2f}°C"
                     status_details["Test Mode"] = "Available"
                 except Exception as e:
@@ -232,9 +243,12 @@ class MCUController(HardwareController):
         try:
             with self.formatter.create_progress_display(
                 "Connecting to MCU...", show_spinner=True
-            ) as status:
+            ) as progress_display:
+                await asyncio.sleep(0.5)  # Show spinner for visibility
                 await self.mcu_service.connect()
-                status.update("MCU connected successfully")
+                if isinstance(progress_display, Status):
+                    progress_display.update("MCU connected successfully")
+                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message("MCU connected successfully", message_type="success")
             return True
@@ -301,7 +315,7 @@ class MCUController(HardwareController):
     async def _get_temperature(self) -> None:
         """Get current temperature"""
         try:
-            temperature = await self.mcu_service.get_current_temperature()
+            temperature = await self.mcu_service.get_temperature()
             self.formatter.print_message(
                 f"Current temperature: {temperature:.2f}°C",
                 message_type="info",
@@ -316,7 +330,7 @@ class MCUController(HardwareController):
     async def _enter_test_mode(self) -> None:
         """Enter test mode"""
         try:
-            await self.mcu_service.enter_test_mode(TestMode.NORMAL)
+            await self.mcu_service.set_test_mode(TestMode.MODE_1)
             self.formatter.print_message("Entered test mode successfully", message_type="success")
 
         except Exception as e:
@@ -336,7 +350,7 @@ class MCUController(HardwareController):
                 return
 
             temperature = float(temp_input)
-            await self.mcu_service.set_operating_temperature(temperature)
+            await self.mcu_service.set_temperature(temperature)
 
             self.formatter.print_message(
                 f"Operating temperature set to {temperature:.2f}°C", message_type="success"
@@ -393,9 +407,12 @@ class LoadCellController(HardwareController):
         try:
             with self.formatter.create_progress_display(
                 "Connecting to LoadCell...", show_spinner=True
-            ) as status:
+            ) as progress_display:
+                await asyncio.sleep(0.5)  # Show spinner for visibility
                 await self.loadcell_service.connect()
-                status.update("LoadCell connected successfully")
+                if isinstance(progress_display, Status):
+                    progress_display.update("LoadCell connected successfully")
+                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message("LoadCell connected successfully", message_type="success")
             return True
@@ -477,9 +494,12 @@ class LoadCellController(HardwareController):
         try:
             with self.formatter.create_progress_display(
                 "Performing zero calibration...", show_spinner=True
-            ) as status:
+            ) as progress_display:
+                await asyncio.sleep(0.8)  # Show spinner longer for calibration
                 await self.loadcell_service.zero_calibration()
-                status.update("Zero calibration complete")
+                if isinstance(progress_display, Status):
+                    progress_display.update("Zero calibration complete")
+                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message(
                 "Zero calibration completed successfully", message_type="success"
@@ -573,9 +593,12 @@ class PowerController(HardwareController):
         try:
             with self.formatter.create_progress_display(
                 "Connecting to Power supply...", show_spinner=True
-            ) as status:
+            ) as progress_display:
+                await asyncio.sleep(0.5)  # Show spinner for visibility
                 await self.power_service.connect()
-                status.update("Power supply connected successfully")
+                if isinstance(progress_display, Status):
+                    progress_display.update("Power supply connected successfully")
+                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message(
                 "Power supply connected successfully", message_type="success"
@@ -771,7 +794,8 @@ class HardwareControlManager:
     async def _run_hardware_controller(self, controller: HardwareController) -> None:
         """Run hardware controller loop"""
         self.formatter.print_header(
-            controller.name, f"Individual control for {controller.name.split()[0]} hardware"
+            getattr(controller, "name", "Hardware"),
+            f"Individual control for {getattr(controller, 'name', 'Hardware').split()[0]} hardware",
         )
 
         while True:

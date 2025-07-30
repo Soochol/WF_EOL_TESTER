@@ -55,7 +55,7 @@ class RepositoryService:
             await self._test_repository.save(test)
             logger.debug("Test result saved successfully")
         except Exception as e:
-            logger.error(f"Failed to save test result: {e}")
+            logger.error("Failed to save test result: %s", e)
             raise RepositoryAccessError(operation="save_test_result", reason=str(e)) from e
 
     def get_all_repositories(self) -> dict:

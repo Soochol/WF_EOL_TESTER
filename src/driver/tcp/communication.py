@@ -148,7 +148,7 @@ class TCPCommunication:
 
             self.writer.write(command.encode())
             await self.writer.drain()
-            logger.debug(f"TCP sent: {repr(command)}")
+            logger.debug("TCP sent: %s", repr(command))
 
         except (OSError, ConnectionError) as e:
             logger.error(
@@ -283,7 +283,7 @@ class TCPCommunication:
             return True
 
         except Exception as e:
-            logger.error(f"TCP connection test failed: {e}")
+            logger.error("TCP connection test failed: %s", e)
             self.is_connected = False
             return False
 

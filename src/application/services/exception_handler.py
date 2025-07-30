@@ -424,19 +424,21 @@ class ExceptionHandler:
         classification = self.classify_exception(exception)
 
         # Log the exception
-        log_level = (
-            "error"
-            if classification.severity
-            in [
-                ExceptionSeverity.HIGH,
-                ExceptionSeverity.CRITICAL,
-            ]
-            else "warning"
-        )
-        logger.log(
-            log_level,
-            f"Handling exception in {operation_name}: {exception}",
-        )
+        if classification.severity in [
+            ExceptionSeverity.HIGH,
+            ExceptionSeverity.CRITICAL,
+        ]:
+            logger.error(
+                "Handling exception in {}: {}",
+                operation_name,
+                exception,
+            )
+        else:
+            logger.warning(
+                "Handling exception in {}: {}",
+                operation_name,
+                exception,
+            )
 
         # Prepare handling result
         result = {

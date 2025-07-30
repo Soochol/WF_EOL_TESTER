@@ -566,7 +566,7 @@ class HardwareConfiguration:
         except ValidationException:
             return False
 
-    def with_overrides(self, **overrides) -> "HardwareConfiguration":
+    def with_overrides(self, **overrides: Any) -> "HardwareConfiguration":
         """
         Create new configuration with specific field overrides
 

@@ -22,13 +22,15 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.status import Status
+from rich.table import Table
 
-from application.interfaces.hardware.robot import RobotService
-from application.interfaces.hardware.mcu import MCUService, TestMode
 from application.interfaces.hardware.loadcell import LoadCellService
+from application.interfaces.hardware.mcu import MCUService, TestMode
 from application.interfaces.hardware.power import PowerService
+from application.interfaces.hardware.robot import RobotService
+
 from .rich_formatter import RichFormatter
 from .rich_utils import RichUIManager
 
@@ -50,7 +52,7 @@ class CommandInfo:
 
     command_type: CommandType
     subcommand: Optional[str] = None
-    arguments: List[str] = None
+    arguments: Optional[List[str]] = None
     raw_input: str = ""
 
     def __post_init__(self):
@@ -235,20 +237,20 @@ class RobotCommandHandler(HardwareCommandHandler):
 
             if subcommand == "connect":
                 return await self._connect()
-            elif subcommand == "disconnect":
+            if subcommand == "disconnect":
                 return await self._disconnect()
-            elif subcommand == "status":
+            if subcommand == "status":
                 await self._show_status()
                 return True
-            elif subcommand == "init":
+            if subcommand == "init":
                 return await self._initialize()
-            elif subcommand == "stop":
+            if subcommand == "stop":
                 return await self._emergency_stop()
-            else:
-                self.formatter.print_message(
-                    f"Unknown robot subcommand: {subcommand}", message_type="error"
-                )
-                return False
+
+            self.formatter.print_message(
+                f"Unknown robot subcommand: {subcommand}", message_type="error"
+            )
+            return False
 
         except Exception as e:
             self.formatter.print_message(f"Robot command failed: {str(e)}", message_type="error")
@@ -260,7 +262,8 @@ class RobotCommandHandler(HardwareCommandHandler):
         try:
             with self.formatter.create_progress_display("Connecting to robot...") as status:
                 await self.robot_service.connect()
-                status.update("Robot connected successfully")
+                if isinstance(status, Status):
+                    status.update("Robot connected successfully")
 
             self.formatter.print_message("Robot connected successfully", message_type="success")
             return True
@@ -317,8 +320,9 @@ class RobotCommandHandler(HardwareCommandHandler):
         """Initialize robot system"""
         try:
             with self.formatter.create_progress_display("Initializing robot...") as status:
-                await self.robot_service.initialize()
-                status.update("Robot initialization complete")
+                await self.robot_service.initialize_axes()
+                if isinstance(status, Status):
+                    status.update("Robot initialization complete")
 
             self.formatter.print_message("Robot initialized successfully", message_type="success")
             return True
@@ -367,32 +371,30 @@ class MCUCommandHandler(HardwareCommandHandler):
 
             if subcommand == "connect":
                 return await self._connect()
-            elif subcommand == "disconnect":
+            if subcommand == "disconnect":
                 return await self._disconnect()
-            elif subcommand == "status":
+            if subcommand == "status":
                 await self._show_status()
                 return True
-            elif subcommand == "temp":
+            if subcommand == "temp":
                 if command_info.arguments:
                     return await self._set_temperature(command_info.arguments[0])
-                else:
-                    await self._get_temperature()
-                    return True
-            elif subcommand == "testmode":
+                await self._get_temperature()
+                return True
+            if subcommand == "testmode":
                 return await self._enter_test_mode()
-            elif subcommand == "fan":
+            if subcommand == "fan":
                 if command_info.arguments:
                     return await self._set_fan_speed(command_info.arguments[0])
-                else:
-                    self.formatter.print_message(
-                        "Fan speed argument required (0-100)", message_type="warning"
-                    )
-                    return False
-            else:
                 self.formatter.print_message(
-                    f"Unknown MCU subcommand: {subcommand}", message_type="error"
+                    "Fan speed argument required (0-100)", message_type="warning"
                 )
                 return False
+
+            self.formatter.print_message(
+                f"Unknown MCU subcommand: {subcommand}", message_type="error"
+            )
+            return False
 
         except Exception as e:
             self.formatter.print_message(f"MCU command failed: {str(e)}", message_type="error")
@@ -404,7 +406,8 @@ class MCUCommandHandler(HardwareCommandHandler):
         try:
             with self.formatter.create_progress_display("Connecting to MCU...") as status:
                 await self.mcu_service.connect()
-                status.update("MCU connected successfully")
+                if isinstance(status, Status):
+                    status.update("MCU connected successfully")
 
             self.formatter.print_message("MCU connected successfully", message_type="success")
             return True
@@ -510,7 +513,7 @@ class MCUCommandHandler(HardwareCommandHandler):
         """Set fan speed"""
         try:
             speed = float(speed_str)
-            if not (0 <= speed <= 100):
+            if not 0 <= speed <= 100:
                 self.formatter.print_message(
                     "Fan speed must be between 0-100%", message_type="error"
                 )
@@ -556,24 +559,24 @@ class LoadCellCommandHandler(HardwareCommandHandler):
 
             if subcommand == "connect":
                 return await self._connect()
-            elif subcommand == "disconnect":
+            if subcommand == "disconnect":
                 return await self._disconnect()
-            elif subcommand == "status":
+            if subcommand == "status":
                 await self._show_status()
                 return True
-            elif subcommand == "read":
+            if subcommand == "read":
                 await self._read_force()
                 return True
-            elif subcommand == "zero":
+            if subcommand == "zero":
                 return await self._zero_calibration()
-            elif subcommand == "monitor":
+            if subcommand == "monitor":
                 await self._monitor_force()
                 return True
-            else:
-                self.formatter.print_message(
-                    f"Unknown LoadCell subcommand: {subcommand}", message_type="error"
-                )
-                return False
+
+            self.formatter.print_message(
+                f"Unknown LoadCell subcommand: {subcommand}", message_type="error"
+            )
+            return False
 
         except Exception as e:
             self.formatter.print_message(f"LoadCell command failed: {str(e)}", message_type="error")
@@ -585,7 +588,8 @@ class LoadCellCommandHandler(HardwareCommandHandler):
         try:
             with self.formatter.create_progress_display("Connecting to LoadCell...") as status:
                 await self.loadcell_service.connect()
-                status.update("LoadCell connected successfully")
+                if isinstance(status, Status):
+                    status.update("LoadCell connected successfully")
 
             self.formatter.print_message("LoadCell connected successfully", message_type="success")
             return True
@@ -657,7 +661,8 @@ class LoadCellCommandHandler(HardwareCommandHandler):
         try:
             with self.formatter.create_progress_display("Performing zero calibration...") as status:
                 await self.loadcell_service.zero_calibration()
-                status.update("Zero calibration complete")
+                if isinstance(status, Status):
+                    status.update("Zero calibration complete")
 
             self.formatter.print_message(
                 "Zero calibration completed successfully", message_type="success"
@@ -730,32 +735,30 @@ class PowerCommandHandler(HardwareCommandHandler):
 
             if subcommand == "connect":
                 return await self._connect()
-            elif subcommand == "disconnect":
+            if subcommand == "disconnect":
                 return await self._disconnect()
-            elif subcommand == "status":
+            if subcommand == "status":
                 await self._show_status()
                 return True
-            elif subcommand == "on":
+            if subcommand == "on":
                 return await self._enable_output()
-            elif subcommand == "off":
+            if subcommand == "off":
                 return await self._disable_output()
-            elif subcommand == "voltage":
+            if subcommand == "voltage":
                 if command_info.arguments:
                     return await self._set_voltage(command_info.arguments[0])
-                else:
-                    await self._get_voltage()
-                    return True
-            elif subcommand == "current":
+                await self._get_voltage()
+                return True
+            if subcommand == "current":
                 if command_info.arguments:
                     return await self._set_current_limit(command_info.arguments[0])
-                else:
-                    await self._get_current()
-                    return True
-            else:
-                self.formatter.print_message(
-                    f"Unknown Power subcommand: {subcommand}", message_type="error"
-                )
-                return False
+                await self._get_current()
+                return True
+
+            self.formatter.print_message(
+                f"Unknown Power subcommand: {subcommand}", message_type="error"
+            )
+            return False
 
         except Exception as e:
             self.formatter.print_message(f"Power command failed: {str(e)}", message_type="error")
@@ -767,7 +770,8 @@ class PowerCommandHandler(HardwareCommandHandler):
         try:
             with self.formatter.create_progress_display("Connecting to Power supply...") as status:
                 await self.power_service.connect()
-                status.update("Power supply connected successfully")
+                if isinstance(status, Status):
+                    status.update("Power supply connected successfully")
 
             self.formatter.print_message(
                 "Power supply connected successfully", message_type="success"
@@ -932,6 +936,7 @@ class SlashCommandHandler:
 
     def __init__(
         self,
+        *,
         robot_service: RobotService,
         mcu_service: MCUService,
         loadcell_service: LoadCellService,
@@ -982,7 +987,7 @@ class SlashCommandHandler:
             if command_info.command_type == CommandType.HELP:
                 self._show_help(command_info.arguments)
                 return True
-            elif command_info.command_type == CommandType.ALL:
+            if command_info.command_type == CommandType.ALL:
                 if command_info.subcommand == "status":
                     await self._show_all_status()
                     return True
@@ -991,12 +996,12 @@ class SlashCommandHandler:
             handler = self.handlers.get(command_info.command_type)
             if handler:
                 return await handler.handle_command(command_info)
-            else:
-                self.formatter.print_message(
-                    f"No handler available for command type: {command_info.command_type.value}",
-                    message_type="error",
-                )
-                return False
+
+            self.formatter.print_message(
+                f"No handler available for command type: {command_info.command_type.value}",
+                message_type="error",
+            )
+            return False
 
         except Exception as e:
             self.formatter.print_message(f"Error executing command: {str(e)}", message_type="error")
@@ -1034,9 +1039,13 @@ class SlashCommandHandler:
                     f"Failed to get {cmd_type.value} status: {str(e)}", message_type="error"
                 )
 
-    def _show_help(self, args: List[str]) -> None:
+    def _show_help(self, args: Optional[List[str]]) -> None:
         """Show help information for commands"""
-        if args and args[0].lower() in [cmd.value.replace("/", "") for cmd in CommandType]:
+        if (
+            args
+            and len(args) > 0
+            and args[0].lower() in [cmd.value.replace("/", "") for cmd in CommandType]
+        ):
             # Show help for specific command
             cmd_name = f"/{args[0].lower()}"
             cmd_type = None

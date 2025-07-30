@@ -25,11 +25,11 @@ try:
 except ImportError:
     import logging
 
-    logger = logging.getLogger(__name__)
-    logger.info = lambda msg: print(f"INFO: {msg}")
-    logger.error = lambda msg: print(f"ERROR: {msg}")
-    logger.warning = lambda msg: print(f"WARNING: {msg}")
-    logger.debug = lambda msg: print(f"DEBUG: {msg}")
+    # Configure basic logging when loguru is not available
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    logger = logging.getLogger(__name__)  # type: ignore
 
 from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
@@ -41,16 +41,17 @@ from domain.value_objects.dut_command_info import (
 from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
-from .rich_formatter import RichFormatter
-from .usecase_manager import UseCaseManager
-from .hardware_controller import HardwareControlManager
-from .slash_command_handler import SlashCommandHandler
+
 from .dashboard_integration import create_dashboard_integrator
 from .enhanced_cli_integration import (
     create_enhanced_cli_integrator,
     create_enhanced_menu_system,
     create_enhanced_slash_interface,
 )
+from .hardware_controller import HardwareControlManager
+from .rich_formatter import RichFormatter
+from .slash_command_handler import SlashCommandHandler
+from .usecase_manager import UseCaseManager
 
 
 # Security and validation constants for input protection
@@ -291,31 +292,42 @@ class EnhancedEOLTesterCLI:
     to provide beautiful, professional terminal output.
     """
 
-    def __init__(self, use_case: EOLForceTestUseCase, hardware_facade: Optional[Any] = None):
+    def __init__(
+        self,
+        use_case: EOLForceTestUseCase,
+        hardware_facade: Optional[Any] = None,
+        configuration_service: Optional[Any] = None,
+    ):
         """
         Initialize the enhanced CLI.
 
         Args:
             use_case: EOL test execution use case
             hardware_facade: Hardware service facade for individual hardware control
+            configuration_service: Configuration service for loading DUT defaults
         """
         self._use_case = use_case
         self._hardware_facade = hardware_facade
+        self._configuration_service = configuration_service
         self._running = False
-        self._console = Console()
+        self._console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
         self._formatter = RichFormatter(self._console)
         self._validator = InputValidator()
         self._usecase_manager = UseCaseManager(self._console)
 
         # Initialize enhanced input system
-        self._input_integrator = create_enhanced_cli_integrator(self._console, self._formatter)
+        self._input_integrator = create_enhanced_cli_integrator(
+            self._console, self._formatter, self._configuration_service
+        )
         self._enhanced_menu = create_enhanced_menu_system(self._input_integrator)
 
         # Initialize hardware control manager if hardware facade is provided
         if self._hardware_facade:
-            self._hardware_manager = HardwareControlManager(self._hardware_facade, self._console)
+            self._hardware_manager: Optional[Any] = HardwareControlManager(
+                self._hardware_facade, self._console
+            )
             # Initialize slash command handler
-            self._slash_handler = SlashCommandHandler(
+            self._slash_handler: Optional[Any] = SlashCommandHandler(
                 robot_service=self._hardware_facade._robot,
                 mcu_service=self._hardware_facade._mcu,
                 loadcell_service=self._hardware_facade._loadcell,
@@ -323,11 +335,11 @@ class EnhancedEOLTesterCLI:
                 console=self._console,
             )
             # Initialize enhanced slash command interface
-            self._enhanced_slash_interface = create_enhanced_slash_interface(
+            self._enhanced_slash_interface: Optional[Any] = create_enhanced_slash_interface(
                 self._input_integrator, self._slash_handler
             )
             # Initialize dashboard integrator
-            self._dashboard_integrator = create_dashboard_integrator(
+            self._dashboard_integrator: Optional[Any] = create_dashboard_integrator(
                 self._hardware_facade, self._console, self._formatter
             )
         else:
@@ -464,7 +476,7 @@ class EnhancedEOLTesterCLI:
 
         if result:
             # Wait for user acknowledgment
-            self._wait_for_user_acknowledgment()
+            await self._wait_for_user_acknowledgment()
 
     async def _hardware_control_center(self) -> None:
         """Hardware Control Center - Individual hardware control interface."""
@@ -562,27 +574,20 @@ class EnhancedEOLTesterCLI:
         """
         test_result = None
 
-        # Create and manage progress display for test execution
-        with self._formatter.create_progress_display(
-            "Executing EOL Test...", show_spinner=True
-        ) as progress_status:
-            try:
-                # Update progress status with current operation
-                progress_status.update("Initializing hardware connections...")
+        # Log test execution start
+        logger.info("Starting EOL test execution...")
 
-                # Execute the actual test through the use case
-                test_result = await self._use_case.execute(command)
+        try:
+            # Execute the actual test through the use case
+            test_result = await self._use_case.execute(command)
 
-                # Update progress status for completion
-                progress_status.update("Test completed, processing results...")
+        except Exception as e:
+            # Handle test execution errors with clear feedback
+            self._formatter.print_message(f"Test execution failed: {str(e)}", message_type="error")
+            raise  # Re-raise to allow higher-level error handling
 
-            except Exception as e:
-                # Handle test execution errors with clear feedback
-                progress_status.update("Test execution failed...")
-                self._formatter.print_message(
-                    f"Test execution failed: {str(e)}", message_type="error"
-                )
-                raise  # Re-raise to allow higher-level error handling
+        # Log completion
+        logger.info("EOL test execution completed successfully")
 
         # Display results only if test completed successfully
         if test_result is not None:
@@ -590,7 +595,7 @@ class EnhancedEOLTesterCLI:
             self._display_rich_test_result(test_result)
 
             # Wait for user acknowledgment before continuing
-            self._wait_for_user_acknowledgment()
+            await self._wait_for_user_acknowledgment()
 
     def _display_rich_test_result(self, result: EOLTestResult) -> None:
         """Display test result with Rich formatting."""
@@ -618,9 +623,19 @@ class EnhancedEOLTesterCLI:
 
         # Show test summary if available
         if result.test_summary:
-            self._display_test_summary(result.test_summary)
+            # Handle both dict and TestMeasurements types
+            try:
+                if isinstance(result.test_summary, dict):
+                    self._display_test_summary(result.test_summary)
+                else:
+                    # Convert TestMeasurements to dict representation
+                    summary_dict: Dict[str, Any] = {"summary": str(result.test_summary)}
+                    self._display_test_summary(summary_dict)
+            except Exception:
+                # Fallback to string representation
+                self._display_test_summary({"summary": str(result.test_summary)})
 
-    def _display_test_summary(self, summary: dict) -> None:
+    def _display_test_summary(self, summary: Dict[str, Any]) -> None:
         """Display test summary with Rich formatting."""
         if not summary:
             return
@@ -672,7 +687,7 @@ class EnhancedEOLTesterCLI:
         self._console.print(status_display)
 
         # Wait for user acknowledgment
-        self._wait_for_user_acknowledgment()
+        await self._wait_for_user_acknowledgment()
 
     async def _show_test_statistics(self) -> None:
         """Show comprehensive test and system statistics with Rich formatting."""
@@ -737,17 +752,26 @@ class EnhancedEOLTesterCLI:
                 "Shutting down system...", show_spinner=True
             ) as shutdown_status:
                 # Step 1: Hardware cleanup
-                shutdown_status.update("Cleaning up hardware connections...")
+                try:
+                    shutdown_status.update("Cleaning up hardware connections...")  # type: ignore
+                except (TypeError, AttributeError):
+                    pass  # Progress display doesn't support update messages
                 # NOTE: Hardware cleanup operations would be implemented here
                 # This might include closing serial connections, releasing instruments, etc.
 
                 # Step 2: Configuration persistence
-                shutdown_status.update("Saving configuration...")
+                try:
+                    shutdown_status.update("Saving configuration...")  # type: ignore
+                except (TypeError, AttributeError):
+                    pass  # Progress display doesn't support update messages
                 # NOTE: Configuration saving operations would be implemented here
                 # This might include saving user preferences, test settings, etc.
 
                 # Step 3: Final cleanup
-                shutdown_status.update("Finalizing shutdown...")
+                try:
+                    shutdown_status.update("Finalizing shutdown...")  # type: ignore
+                except (TypeError, AttributeError):
+                    pass  # Progress display doesn't support update messages
                 # NOTE: Final cleanup operations would be implemented here
                 # This might include temporary file cleanup, logging finalization, etc.
 
@@ -794,12 +818,11 @@ class EnhancedEOLTesterCLI:
         # Map technical error types to user-friendly messages
         if "Connection" in error_type_name or "Timeout" in error_type_name:
             return f"Hardware connection failed: {error_message}"
-        elif "Value" in error_type_name:
+        if "Value" in error_type_name:
             return f"Invalid configuration or data: {error_message}"
-        elif "Permission" in error_type_name:
+        if "Permission" in error_type_name:
             return f"Access denied to hardware resources: {error_message}"
-        else:
-            return f"Test execution failed ({error_type_name}): {error_message}"
+        return f"Test execution failed ({error_type_name}): {error_message}"
 
     def _categorize_system_error(self, error: Exception) -> str:
         """Categorize system errors for improved debugging and user feedback.
@@ -819,14 +842,13 @@ class EnhancedEOLTesterCLI:
         # Categorize based on error type patterns
         if "Import" in error_type_name or "Module" in error_type_name:
             return "DEPENDENCY"  # Missing or incompatible dependencies
-        elif "Connection" in error_type_name or "Network" in error_type_name:
+        if "Connection" in error_type_name or "Network" in error_type_name:
             return "NETWORK"  # Network and connection-related issues
-        elif "Permission" in error_type_name or "Access" in error_type_name:
+        if "Permission" in error_type_name or "Access" in error_type_name:
             return "PERMISSION"  # Access control and permission issues
-        elif "Memory" in error_type_name or "Resource" in error_type_name:
+        if "Memory" in error_type_name or "Resource" in error_type_name:
             return "RESOURCE"  # Resource exhaustion and memory issues
-        else:
-            return "UNKNOWN"  # Unrecognized error types
+        return "UNKNOWN"  # Unrecognized error types
 
 
 # Example usage function and integration documentation
@@ -848,7 +870,11 @@ from ui.cli.rich_formatter import RichFormatter
 from rich.console import Console
 
 # Create console and formatter instances for standalone usage
-console = Console()
+console = Console(
+    force_terminal=True,
+    legacy_windows=False,
+    color_system="truecolor"
+)
 formatter = RichFormatter(console)
 
 # Example 1: Professional System Initialization Display

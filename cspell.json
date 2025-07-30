@@ -3,7 +3,11 @@
     "ignorePaths": [],
     "dictionaryDefinitions": [],
     "dictionaries": [],
-    "words": [],
+    "words": [
+        "KILOOHM",
+        "MEGAOHM",
+        "PULLUP"
+    ],
     "ignoreWords": [],
     "import": []
 }

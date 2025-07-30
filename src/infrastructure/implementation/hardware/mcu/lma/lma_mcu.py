@@ -12,6 +12,11 @@ from typing import Any, Dict, Optional
 from loguru import logger
 
 from application.interfaces.hardware.mcu import MCUService
+from domain.enums.mcu_enums import MCUStatus, TestMode
+from domain.exceptions.eol_exceptions import (
+    HardwareConnectionError,
+    HardwareOperationError,
+)
 from driver.serial.serial import (
     SerialConnection,
     SerialManager,
@@ -55,11 +60,6 @@ from infrastructure.implementation.hardware.mcu.lma.error_codes import (
     validate_fan_speed,
     validate_temperature,
 )
-from domain.enums.mcu_enums import MCUStatus, TestMode
-from domain.exceptions.eol_exceptions import (
-    HardwareConnectionError,
-    HardwareOperationError,
-)
 
 
 class LMAMCU(MCUService):
@@ -94,11 +94,11 @@ class LMAMCU(MCUService):
 
         self._connection: Optional[SerialConnection] = None
         self._is_connected = False
-        self._current_temperature = self._temperature
-        self._target_temperature = self._temperature
-        self._current_test_mode = TestMode.MODE_1
-        self._current_fan_speed = self._fan_speed
-        self._mcu_status = MCUStatus.IDLE
+        self._current_temperature: float = self._temperature
+        self._target_temperature: float = self._temperature
+        self._current_test_mode: TestMode = TestMode.MODE_1
+        self._current_fan_speed: float = self._fan_speed
+        self._mcu_status: MCUStatus = MCUStatus.IDLE
 
     async def connect(self) -> None:
         """
@@ -109,7 +109,7 @@ class LMAMCU(MCUService):
         """
 
         try:
-            logger.info(f"Connecting to LMA MCU at {self._port} (baudrate: {self._baudrate})")
+            logger.info("Connecting to LMA MCU at %s (baudrate: %s)", self._port, self._baudrate)
 
             self._connection = await SerialManager.create_connection(
                 port=self._port,
@@ -210,7 +210,7 @@ class LMAMCU(MCUService):
             )
             self._target_temperature = effective_temp
 
-            logger.info(f"LMA target temperature set to {effective_temp}°C")
+            logger.info("LMA target temperature set to %s°C", effective_temp)
 
         except LMAError as e:
             error_msg = f"Failed to set LMA temperature: {e}"
@@ -238,7 +238,7 @@ class LMAMCU(MCUService):
             return self._current_temperature
 
         except LMAError as e:
-            logger.error(f"Failed to get LMA temperature: {e}")
+            logger.error("Failed to get LMA temperature: %s", e)
             raise RuntimeError(f"Temperature measurement failed: {e}") from e
 
     async def set_test_mode(self, mode: TestMode) -> None:
@@ -273,7 +273,7 @@ class LMAMCU(MCUService):
             )
 
             self._current_test_mode = mode
-            logger.info(f"LMA test mode set to {mode}")
+            logger.info("LMA test mode set to %s", mode)
 
         except (LMAError, ValueError) as e:
             error_msg = f"Failed to set LMA test mode: {e}"
@@ -318,7 +318,7 @@ class LMAMCU(MCUService):
             logger.error("MCU boot complete wait timed out")
             raise RuntimeError("MCU boot complete timeout") from e
         except Exception as e:
-            logger.error(f"MCU boot complete wait failed: {e}")
+            logger.error("MCU boot complete wait failed: %s", e)
             raise RuntimeError(f"MCU boot complete timeout: {e}") from e
 
     async def set_fan_speed(self, speed_percent: Optional[float] = None) -> None:
@@ -362,7 +362,7 @@ class LMAMCU(MCUService):
             )
 
             self._current_fan_speed = effective_speed
-            logger.info(f"LMA fan speed set to {effective_speed}% (level {fan_level})")
+            logger.info("LMA fan speed set to %s%% (level %s)", effective_speed, fan_level)
 
         except (LMAError, ValueError) as e:
             error_msg = f"Failed to set LMA fan speed: {e}"
@@ -407,7 +407,7 @@ class LMAMCU(MCUService):
                 STATUS_UPPER_TEMP_OK,
             )
 
-            logger.info(f"LMA upper temperature set to {upper_temp}°C")
+            logger.info("LMA upper temperature set to %s°C", upper_temp)
 
         except LMAError as e:
             error_msg = f"Failed to set LMA upper temperature: {e}"
@@ -574,7 +574,7 @@ class LMAMCU(MCUService):
             # Send frame
             await self._connection.write(frame)
 
-            logger.debug(f"LMA command 0x{command:02X} sent")
+            logger.debug("LMA command 0x%02X sent", command)
 
         except Exception as e:
             raise LMACommunicationError(f"Command send failed: {e}") from e
@@ -613,10 +613,10 @@ class LMAMCU(MCUService):
                         f"message='{response['message']}' (waiting for 0x{target_status:02X})"
                     )
                 else:
-                    logger.debug(f"Received None response (attempt {attempt + 1}/{max_attempts})")
+                    logger.debug("Received None response (attempt %s/%s)", attempt + 1, max_attempts)
 
             except Exception as e:
-                logger.debug(f"Response receive error (attempt {attempt + 1}/{max_attempts}): {e}")
+                logger.debug("Response receive error (attempt %s/%s): %s", attempt + 1, max_attempts, e)
 
         raise LMACommunicationError(
             f"Target response 0x{target_status:02X} not received after {max_attempts} attempts"
@@ -648,7 +648,7 @@ class LMAMCU(MCUService):
                 timeout=self._timeout * 2,  # Allow extra time for complex operations
             )
         except asyncio.TimeoutError as e:
-            logger.error(f"Timeout waiting for response 0x{target_status:02X}")
+            logger.error("Timeout waiting for response 0x%02X", target_status)
             raise TimeoutError(
                 f"Operation timed out waiting for response 0x{target_status:02X}"
             ) from e

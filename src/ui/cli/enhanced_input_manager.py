@@ -19,36 +19,123 @@ Key Features:
 import asyncio
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # Conditional import for prompt_toolkit with graceful fallback
 try:
-    from prompt_toolkit import prompt
-    from prompt_toolkit.application import Application
-    from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-    from prompt_toolkit.completion import (
-        Completer,
-        Completion,
-        PathCompleter,
-        WordCompleter,
+    from prompt_toolkit import prompt  # type: ignore[import-untyped]
+    from prompt_toolkit.auto_suggest import (  # type: ignore[import-untyped]
+        AutoSuggestFromHistory,
     )
-    from prompt_toolkit.document import Document
-    from prompt_toolkit.formatted_text import FormattedText
-    from prompt_toolkit.history import FileHistory, InMemoryHistory
-    from prompt_toolkit.key_binding import KeyBindings
-    from prompt_toolkit.lexers import Lexer
-    from prompt_toolkit.shortcuts import confirm
-    from prompt_toolkit.styles import Style
-    from prompt_toolkit.validation import ValidationError, Validator
+    from prompt_toolkit.completion import (  # type: ignore[import-untyped]
+        Completer as PromptCompleter,
+    )
+    from prompt_toolkit.completion import (  # type: ignore[import-untyped]
+        Completion,
+    )
+    from prompt_toolkit.document import Document  # type: ignore[import-untyped]
+    from prompt_toolkit.formatted_text import (  # type: ignore[import-untyped]
+        FormattedText,
+    )
+    from prompt_toolkit.history import (  # type: ignore[import-untyped]
+        FileHistory,
+        InMemoryHistory,
+    )
+    from prompt_toolkit.key_binding import KeyBindings  # type: ignore[import-untyped]
+    from prompt_toolkit.lexers import (  # type: ignore[import-untyped]
+        Lexer as PromptLexer,
+    )
+    from prompt_toolkit.shortcuts import confirm  # type: ignore[import-untyped]
+    from prompt_toolkit.styles import Style  # type: ignore[import-untyped]
+    from prompt_toolkit.validation import (  # type: ignore[import-untyped]
+        ValidationError,
+    )
+    from prompt_toolkit.validation import (  # type: ignore[import-untyped]
+        Validator as PromptValidator,
+    )
 
     PROMPT_TOOLKIT_AVAILABLE = True
 except ImportError:
+    # Create stub classes and types for type checking when prompt_toolkit is not available
+    class Document:  # type: ignore[no-redef]
+        def __init__(self, text: str, cursor_position: int = 0):
+            self.text = text
+            self.cursor_position = cursor_position
+            self.text_before_cursor = text[:cursor_position]
+            self.lines = text.split("\n")
+
+    class FormattedText:  # type: ignore[no-redef]
+        def __init__(self, data: Any):
+            self.data = data
+
+    class Completion:  # type: ignore[no-redef]
+        def __init__(self, text: str, start_position: int = 0, display_meta: str = ""):
+            self.text = text
+            self.start_position = start_position
+            self.display_meta = display_meta
+
+    class ValidationError(Exception):  # type: ignore[no-redef]
+        def __init__(self, message: str, cursor_position: int = 0):
+            super().__init__(message)
+            self.message = message
+            self.cursor_position = cursor_position
+
+    class StubCompleter:  # type: ignore[no-redef]
+        def get_completions(self, document: Document, complete_event: Any) -> List[Completion]:
+            return []
+
+    class StubLexer:  # type: ignore[no-redef]
+        def lex_document(self, document: Document) -> Any:
+            return lambda line_number: FormattedText([])
+
+    class StubValidator:  # type: ignore[no-redef]
+        def validate(self, document: Document) -> None:
+            pass
+
+    class KeyBindings:  # type: ignore[no-redef]
+        def add(self, key: str) -> Any:
+            def decorator(func: Any) -> Any:
+                return func
+
+            return decorator
+
+    class Style:  # type: ignore[no-redef]
+        @staticmethod
+        def from_dict(data: Dict[str, str]) -> "Style":
+            return Style()
+
+    class FileHistory:  # type: ignore[no-redef]
+        def __init__(self, filename: str):
+            self.filename = filename
+
+    class InMemoryHistory:  # type: ignore[no-redef]
+        pass
+
+    class AutoSuggestFromHistory:  # type: ignore[no-redef]
+        pass
+
+    def prompt(**kwargs: Any) -> str:  # type: ignore[no-redef]
+        return ""
+
+    def confirm(message: str) -> bool:  # type: ignore[no-redef]
+        return False
+
     PROMPT_TOOLKIT_AVAILABLE = False
 
 from loguru import logger
 from rich.console import Console
 
 from .rich_formatter import RichFormatter
+
+# Base class assignments for conditional inheritance
+if PROMPT_TOOLKIT_AVAILABLE:
+    BaseValidator = PromptValidator
+    BaseLexer = PromptLexer
+    BaseCompleter = PromptCompleter
+else:
+    BaseValidator = StubValidator  # pylint: disable=used-before-assignment
+    BaseLexer = StubLexer  # pylint: disable=used-before-assignment
+    BaseCompleter = StubCompleter  # pylint: disable=used-before-assignment
 
 
 class EnhancedInputConfig:
@@ -73,7 +160,7 @@ class EnhancedInputConfig:
     WARNING_STYLE = "bold yellow"
 
 
-class SlashCommandLexer(Lexer):
+class SlashCommandLexer(BaseLexer):  # type: ignore[valid-type,misc]
     """Custom lexer for syntax highlighting of slash commands"""
 
     def __init__(self):
@@ -143,7 +230,7 @@ class SlashCommandLexer(Lexer):
         return FormattedText(tokens)
 
 
-class SlashCommandCompleter(Completer):
+class SlashCommandCompleter(BaseCompleter):  # type: ignore[valid-type,misc]
     """Advanced auto-completion system for slash commands and parameters"""
 
     def __init__(self):
@@ -222,7 +309,7 @@ class SlashCommandCompleter(Completer):
         self.common_models = ["WF-2024-A", "WF-2024-B", "WF-2023-X"]
         self.common_operators = ["Test", "Engineer1", "QA_Team", "Production"]
 
-    def get_completions(self, document: Document, complete_event) -> List[Completion]:
+    def get_completions(self, document: Document, complete_event: Any) -> List[Completion]:
         """Generate completions based on current input"""
         text = document.text_before_cursor
         words = text.split()
@@ -236,8 +323,7 @@ class SlashCommandCompleter(Completer):
 
         if text.startswith("/"):
             return self._complete_slash_command(text, words)
-        else:
-            return self._complete_general_input(text, words)
+        return self._complete_general_input(text, words)
 
     def _complete_slash_command(self, text: str, words: List[str]) -> List[Completion]:
         """Complete slash commands, subcommands, and parameters"""
@@ -250,7 +336,7 @@ class SlashCommandCompleter(Completer):
                 if cmd.startswith(partial_cmd)
             ]
 
-        elif len(words) == 2:
+        if len(words) == 2:
             # Complete subcommand
             cmd = words[0]
             partial_sub = words[1]
@@ -263,14 +349,16 @@ class SlashCommandCompleter(Completer):
                     if sub.startswith(partial_sub)
                 ]
 
-        elif len(words) >= 3:
+        if len(words) >= 3:
             # Complete parameters
             cmd = words[0]
             sub = words[1]
             partial_param = words[-1]
 
-            if cmd in self.commands and sub in self.commands[cmd]["parameters"]:
-                params = self.commands[cmd]["parameters"][sub]
+            if cmd in self.commands and "parameters" in self.commands[cmd]:
+                cmd_params = self.commands[cmd]["parameters"]
+                if isinstance(cmd_params, dict) and sub in cmd_params:
+                    params = cmd_params[sub]
                 return [
                     Completion(
                         param,
@@ -315,10 +403,11 @@ class SlashCommandCompleter(Completer):
         return completions[: EnhancedInputConfig.MAX_COMPLETIONS]
 
 
-class InputValidator(Validator):
+class InputValidator(BaseValidator):  # type: ignore[valid-type,misc]
     """Real-time input validation with visual feedback"""
 
     def __init__(self, validation_type: str = "general"):
+        super().__init__()
         self.validation_type = validation_type
 
         # Validation patterns
@@ -374,10 +463,18 @@ class InputValidator(Validator):
 class EnhancedInputManager:
     """Comprehensive input management system with prompt_toolkit integration"""
 
-    def __init__(self, console: Console, formatter: RichFormatter):
+    def __init__(
+        self,
+        console: Console,
+        formatter: RichFormatter,
+        default_model: Optional[str] = None,
+        configuration_service: Optional[Any] = None,
+    ):
         self.console = console
         self.formatter = formatter
         self.config = EnhancedInputConfig()
+        self.default_model = default_model
+        self.configuration_service = configuration_service
 
         # Initialize history
         self.history_file = self._get_history_file_path()
@@ -416,7 +513,7 @@ class EnhancedInputManager:
         multiline: bool = False,
         show_completions: bool = True,
         enable_history: bool = True,
-        validator_type: str = None,
+        validator_type: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> Optional[str]:
         """Get enhanced input with all advanced features
@@ -495,7 +592,7 @@ class EnhancedInputManager:
         except EOFError:
             return None
         except Exception as e:
-            logger.error(f"Enhanced input error: {e}")
+            logger.error("Enhanced input error: %s", e)
             return await self._fallback_input(prompt_text, input_type)
 
     def _create_key_bindings(self) -> KeyBindings:
@@ -541,7 +638,7 @@ class EnhancedInputManager:
                 f.write("\n".join(history_data))
 
         except Exception as e:
-            logger.warning(f"Failed to save command history: {e}")
+            logger.warning("Failed to save command history: %s", e)
 
     async def _fallback_input(self, prompt_text: str, input_type: str) -> Optional[str]:
         """Fallback input method when prompt_toolkit is not available"""
@@ -570,7 +667,7 @@ class EnhancedInputManager:
         except (KeyboardInterrupt, EOFError):
             return False
         except Exception as e:
-            logger.error(f"Confirmation error: {e}")
+            logger.error("Confirmation error: %s", e)
             return await self._fallback_confirmation(message, default)
 
     async def _fallback_confirmation(self, message: str, default: bool) -> bool:
@@ -615,81 +712,84 @@ class EnhancedInputManager:
             return False, e.message
 
     async def get_dut_info_interactive(self) -> Optional[Dict[str, str]]:
-        """Interactive DUT information collection with enhanced input"""
+        """Interactive DUT information collection with file-based defaults"""
         try:
             self.formatter.print_header("DUT Information Collection")
 
-            # DUT ID (required)
-            self.console.print("\n[bold cyan]DUT ID[/bold cyan] (required):")
-            dut_id = await self.get_input(
+            # Load DUT defaults from configuration file
+            dut_defaults = {}
+            try:
+                if self.configuration_service:
+                    dut_defaults = await self.configuration_service.load_dut_defaults()
+                    self.console.print("[dim]✓ DUT defaults loaded from configuration file[/dim]\n")
+                else:
+                    logger.warning("Configuration service not available, using fallback values")
+            except Exception as e:
+                logger.warning(f"Failed to load DUT defaults: {e}")
+                self.console.print(f"[yellow]⚠ Could not load DUT defaults: {e}[/yellow]")
+                self.console.print("[dim]Using fallback values...[/dim]\n")
+
+            # Use loaded defaults or fallback values
+            dut_id = dut_defaults.get("dut_id", "DEFAULT001")
+            model = dut_defaults.get("model", "Default Model")
+            operator_id = dut_defaults.get("operator_id", "DEFAULT_OP")
+
+            # Display auto-populated information
+            self.console.print("📋 [bold cyan]Auto-populated DUT Information:[/bold cyan]")
+            self.console.print(
+                f"   [bold cyan]DUT ID:[/bold cyan] [green]{dut_id}[/green] [dim](from configuration)[/dim]"
+            )
+            self.console.print(
+                f"   [bold cyan]Model:[/bold cyan] [green]{model}[/green] [dim](from configuration)[/dim]"
+            )
+            self.console.print(
+                f"   [bold cyan]Operator:[/bold cyan] [green]{operator_id}[/green] [dim](from configuration)[/dim]"
+            )
+
+            # Serial Number (only user input required)
+            self.console.print("\n[bold cyan]Serial Number[/bold cyan] [red](required)[/red]:")
+            serial = await self.get_input(
                 prompt_text="  → ",
-                input_type="dut_id",
-                placeholder="e.g., WF001, TEST001",
-                show_completions=True,
-                validator_type="dut_id",
+                input_type="serial",
+                placeholder="e.g., S001, SN20250730001",
+                validator_type="serial",
             )
 
-            if not dut_id:
-                self.formatter.print_message("DUT ID is required", "error")
+            if not serial or not serial.strip():
+                self.formatter.print_message("Serial Number is required", "error")
                 return None
 
-            # Model (optional)
-            self.console.print("\n[bold cyan]Model[/bold cyan] (optional):")
-            model = (
-                await self.get_input(
-                    prompt_text="  → ",
-                    input_type="model",
-                    placeholder="e.g., WF-2024-A (press Enter for 'Unknown')",
-                    show_completions=True,
-                    validator_type="model",
-                )
-                or "Unknown"
-            )
+            # Create final DUT information
+            dut_info = {
+                "id": dut_id,
+                "model": model,
+                "serial": serial.strip(),
+                "operator": operator_id,
+            }
 
-            # Serial Number (optional)
-            self.console.print("\n[bold cyan]Serial Number[/bold cyan] (optional):")
-            serial = (
-                await self.get_input(
-                    prompt_text="  → ",
-                    input_type="serial",
-                    placeholder="e.g., S001 (press Enter for 'N/A')",
-                    validator_type="serial",
-                )
-                or "N/A"
-            )
-
-            # Operator (optional)
-            self.console.print("\n[bold cyan]Operator ID[/bold cyan] (optional):")
-            operator = (
-                await self.get_input(
-                    prompt_text="  → ",
-                    input_type="operator",
-                    placeholder="e.g., Test, Engineer1 (press Enter for 'Test')",
-                    show_completions=True,
-                    validator_type="operator",
-                )
-                or "Test"
-            )
-
-            # Confirmation
-            dut_info = {"id": dut_id, "model": model, "serial": serial, "operator": operator}
-
-            # Display collected information
+            # Display collected information summary
             self.formatter.print_status(
-                "DUT Information Collected",
-                "READY",
-                details={"DUT ID": dut_id, "Model": model, "Serial": serial, "Operator": operator},
+                "DUT Information Ready",
+                "COMPLETE",
+                details={
+                    "DUT ID": dut_id + " (auto)",
+                    "Model": model + " (auto)",
+                    "Serial": serial.strip() + " (user input)",
+                    "Operator": operator_id + " (auto)",
+                },
             )
 
-            # Confirm information
-            if await self.get_confirmation("\nIs this information correct?", default=True):
-                return dut_info
-            else:
-                self.formatter.print_message("DUT information collection cancelled", "warning")
-                return None
+            self.formatter.print_message(
+                "DUT information collection completed successfully", "success"
+            )
+            return dut_info
 
         except (KeyboardInterrupt, EOFError):
-            self.formatter.print_message("DUT information collection cancelled", "info")
+            self.formatter.print_message("DUT information collection cancelled by user", "info")
+            return None
+        except Exception as e:
+            self.formatter.print_message(f"Error during DUT information collection: {e}", "error")
+            logger.error(f"DUT info collection error: {e}")
             return None
 
     async def get_slash_command_interactive(self) -> Optional[str]:
@@ -732,7 +832,7 @@ class EnhancedInputManager:
             }
 
         except Exception as e:
-            logger.error(f"Error getting history stats: {e}")
+            logger.error("Error getting history stats: %s", e)
             return {
                 "total_commands": 0,
                 "unique_commands": 0,
@@ -747,16 +847,19 @@ class EnhancedInputManager:
                 self.history_file.unlink()
             return True
         except Exception as e:
-            logger.error(f"Error clearing history: {e}")
+            logger.error("Error clearing history: %s", e)
             return False
 
 
 # Integration helper functions
 def create_enhanced_input_manager(
-    console: Console, formatter: RichFormatter
+    console: Console,
+    formatter: RichFormatter,
+    default_model: Optional[str] = None,
+    configuration_service: Optional[Any] = None,
 ) -> EnhancedInputManager:
     """Factory function to create EnhancedInputManager instance"""
-    return EnhancedInputManager(console, formatter)
+    return EnhancedInputManager(console, formatter, default_model, configuration_service)
 
 
 def is_prompt_toolkit_available() -> bool:
