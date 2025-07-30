@@ -25,9 +25,7 @@ class Configuration(ABC):
     """
 
     @abstractmethod
-    async def load_profile(
-        self, profile_name: str
-    ) -> TestConfiguration:
+    async def load_profile(self, profile_name: str) -> TestConfiguration:
         """
         Load a configuration profile by name
 
@@ -61,9 +59,7 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def validate_configuration(
-        self, config: TestConfiguration
-    ) -> None:
+    async def validate_configuration(self, config: TestConfiguration) -> None:
         """
         Validate a configuration object against business rules
 
@@ -109,9 +105,7 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def get_profile_info(
-        self, profile_name: str
-    ) -> Dict[str, Any]:
+    async def get_profile_info(self, profile_name: str) -> Dict[str, Any]:
         """
         Get metadata information about a configuration profile
 
@@ -127,9 +121,7 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def save_profile(
-        self, profile_name: str, config: TestConfiguration
-    ) -> None:
+    async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
         """
         Save a configuration as a named profile
 
@@ -144,9 +136,7 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
-    async def delete_profile(
-        self, profile_name: str
-    ) -> None:
+    async def delete_profile(self, profile_name: str) -> None:
         """
         Delete a configuration profile
 

@@ -13,12 +13,7 @@ FRAME_STX_SIZE = 2
 FRAME_CMD_SIZE = 1
 FRAME_LEN_SIZE = 1
 FRAME_ETX_SIZE = 2
-FRAME_OVERHEAD = (
-    FRAME_STX_SIZE
-    + FRAME_CMD_SIZE
-    + FRAME_LEN_SIZE
-    + FRAME_ETX_SIZE
-)
+FRAME_OVERHEAD = FRAME_STX_SIZE + FRAME_CMD_SIZE + FRAME_LEN_SIZE + FRAME_ETX_SIZE
 
 # Command Codes (PC -> Controller)
 CMD_ENTER_TEST_MODE = 0x01
@@ -67,9 +62,7 @@ TEMP_SCALE_FACTOR = 10  # Temperature is sent as integer * 10 (e.g., 40.5°C = 4
 DEFAULT_BAUDRATE = 9600
 DEFAULT_TIMEOUT = 5.0
 DEFAULT_RETRY_COUNT = 3
-BOOT_COMPLETE_TIMEOUT = (
-    60.0  # Boot complete message wait timeout
-)
+BOOT_COMPLETE_TIMEOUT = 60.0  # Boot complete message wait timeout
 
 # Temperature Limits (°C)
 MIN_TEMPERATURE = -40.0

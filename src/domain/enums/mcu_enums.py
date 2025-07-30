@@ -1,4 +1,4 @@
-"""LMA MCU Enumerations"""
+"""MCU-related enumerations for domain layer"""
 from enum import Enum
 
 

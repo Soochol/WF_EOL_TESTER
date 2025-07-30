@@ -31,7 +31,17 @@ class RobotConfig:
 
     # Connection parameters (AJINEXTEK specific)
     irq_no: int = 7
-    axis_count: int = 6
+
+    # Motion parameters
+    default_velocity: float = 100.0
+    default_acceleration: float = 100.0
+    default_deceleration: float = 100.0
+
+    # Positioning settings
+    position_tolerance: float = 0.1
+    homing_velocity: float = 10.0
+    homing_acceleration: float = 100.0
+    homing_deceleration: float = 100.0
 
 
 @dataclass(frozen=True)
@@ -41,10 +51,21 @@ class LoadCellConfig:
     # Hardware model
     model: str = "BS205"
 
+    # Connection parameters
     port: str = "COM3"
     baudrate: int = 9600
     timeout: float = 1.0
     indicator_id: int = 1
+
+    # Mock-related parameters
+    base_force: float = 10.0
+    noise_level: float = 0.1
+    connection_delay: float = 0.1
+
+    # Additional operational parameters
+    max_force_range: float = 1000.0
+    sampling_interval_ms: int = 100
+    zero_tolerance: float = 0.01
 
 
 @dataclass(frozen=True)
@@ -54,9 +75,24 @@ class MCUConfig:
     # Hardware model
     model: str = "LMA"
 
+    # Connection parameters
     port: str = "COM4"
     baudrate: int = 115200
     timeout: float = 2.0
+
+    # Default temperature/fan speed parameters
+    default_temperature: float = 25.0
+    default_fan_speed: float = 50.0
+
+    # Mock-related parameters
+    temperature_drift_rate: float = 0.1
+    response_delay: float = 0.1
+    connection_delay: float = 0.1
+
+    # Operational parameters
+    max_temperature: float = 150.0
+    min_temperature: float = -40.0
+    max_fan_speed: float = 100.0
 
 
 @dataclass(frozen=True)
@@ -66,10 +102,26 @@ class PowerConfig:
     # Hardware model
     model: str = "ODA"
 
+    # Connection parameters
     host: str = "192.168.1.100"
     port: int = 8080
     timeout: float = 5.0
     channel: int = 1
+
+    # Default voltage/current parameters
+    default_voltage: float = 0.0
+    default_current_limit: float = 5.0
+
+    # Mock-related parameters
+    connection_delay: float = 0.2
+    response_delay: float = 0.05
+    voltage_noise: float = 0.01
+
+    # Operational parameters
+    max_voltage: float = 30.0
+    max_current: float = 50.0
+    voltage_accuracy: float = 0.01
+    current_accuracy: float = 0.001
 
 
 @dataclass(frozen=True)
@@ -79,9 +131,25 @@ class DigitalInputConfig:
     # Hardware model
     model: str = "AJINEXTEK"
 
-    board_no: int = 0
+    # Connection parameters
+    board_number: int = 0  # Renamed from board_no for consistency
+    board_no: int = 0  # Keep for backward compatibility
+    module_position: int = 0
+    signal_type: int = 2  # 0=TTL, 1=CMOS, 2=24V industrial
     input_count: int = 8
+
+    # Operational parameters
     debounce_time: float = 0.01
+    debounce_time_ms: int = 10  # Debounce time in milliseconds
+    retry_count: int = 3
+    auto_initialize: bool = True
+
+    # Mock-related parameters
+    total_pins: int = 32  # For mock implementation
+    simulate_noise: bool = False
+    noise_probability: float = 0.01
+    response_delay: float = 0.005  # Response delay in seconds
+    connection_delay: float = 0.1  # Connection delay in seconds
 
 
 @dataclass(frozen=True)
@@ -94,14 +162,10 @@ class HardwareConfiguration:
     """
 
     robot: RobotConfig = field(default_factory=RobotConfig)
-    loadcell: LoadCellConfig = field(
-        default_factory=LoadCellConfig
-    )
+    loadcell: LoadCellConfig = field(default_factory=LoadCellConfig)
     mcu: MCUConfig = field(default_factory=MCUConfig)
     power: PowerConfig = field(default_factory=PowerConfig)
-    digital_input: DigitalInputConfig = field(
-        default_factory=DigitalInputConfig
-    )
+    digital_input: DigitalInputConfig = field(default_factory=DigitalInputConfig)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization"""
@@ -126,20 +190,10 @@ class HardwareConfiguration:
                 "IRQ number cannot be negative",
             )
 
-        if self.robot.axis_count <= 0:
-            raise ValidationException(
-                "robot.axis_count",
-                self.robot.axis_count,
-                "Axis count must be positive",
-            )
-
     def _validate_communication_configs(self) -> None:
         """Validate communication configuration parameters"""
         # LoadCell validation
-        if (
-            self.loadcell.model
-            not in SUPPORTED_LOADCELL_MODELS
-        ):
+        if self.loadcell.model not in SUPPORTED_LOADCELL_MODELS:
             raise ValidationException(
                 "loadcell.model",
                 self.loadcell.model,
@@ -174,6 +228,49 @@ class HardwareConfiguration:
                 "LoadCell indicator ID cannot be negative",
             )
 
+        # Validate mock-related parameters
+        if self.loadcell.base_force < 0:
+            raise ValidationException(
+                "loadcell.base_force",
+                self.loadcell.base_force,
+                "LoadCell base force cannot be negative",
+            )
+
+        if self.loadcell.noise_level < 0:
+            raise ValidationException(
+                "loadcell.noise_level",
+                self.loadcell.noise_level,
+                "LoadCell noise level cannot be negative",
+            )
+
+        if self.loadcell.connection_delay < 0:
+            raise ValidationException(
+                "loadcell.connection_delay",
+                self.loadcell.connection_delay,
+                "LoadCell connection delay cannot be negative",
+            )
+
+        if self.loadcell.max_force_range <= 0:
+            raise ValidationException(
+                "loadcell.max_force_range",
+                self.loadcell.max_force_range,
+                "LoadCell max force range must be positive",
+            )
+
+        if self.loadcell.sampling_interval_ms <= 0:
+            raise ValidationException(
+                "loadcell.sampling_interval_ms",
+                self.loadcell.sampling_interval_ms,
+                "LoadCell sampling interval must be positive",
+            )
+
+        if self.loadcell.zero_tolerance < 0:
+            raise ValidationException(
+                "loadcell.zero_tolerance",
+                self.loadcell.zero_tolerance,
+                "LoadCell zero tolerance cannot be negative",
+            )
+
         # MCU validation
         if self.mcu.model not in SUPPORTED_MCU_MODELS:
             raise ValidationException(
@@ -203,15 +300,74 @@ class HardwareConfiguration:
                 "MCU timeout must be positive",
             )
 
-        # Digital Input validation
-        if (
-            self.digital_input.model
-            not in SUPPORTED_DIGITAL_INPUT_MODELS
+        # Validate default parameters
+        if not (
+            self.mcu.min_temperature <= self.mcu.default_temperature <= self.mcu.max_temperature
         ):
+            raise ValidationException(
+                "mcu.default_temperature",
+                self.mcu.default_temperature,
+                f"MCU default temperature must be between {self.mcu.min_temperature}°C and {self.mcu.max_temperature}°C",
+            )
+
+        if not (0.0 <= self.mcu.default_fan_speed <= self.mcu.max_fan_speed):
+            raise ValidationException(
+                "mcu.default_fan_speed",
+                self.mcu.default_fan_speed,
+                f"MCU default fan speed must be between 0% and {self.mcu.max_fan_speed}%",
+            )
+
+        # Validate mock-related parameters
+        if self.mcu.temperature_drift_rate < 0:
+            raise ValidationException(
+                "mcu.temperature_drift_rate",
+                self.mcu.temperature_drift_rate,
+                "MCU temperature drift rate cannot be negative",
+            )
+
+        if self.mcu.response_delay < 0:
+            raise ValidationException(
+                "mcu.response_delay",
+                self.mcu.response_delay,
+                "MCU response delay cannot be negative",
+            )
+
+        if self.mcu.connection_delay < 0:
+            raise ValidationException(
+                "mcu.connection_delay",
+                self.mcu.connection_delay,
+                "MCU connection delay cannot be negative",
+            )
+
+        # Validate operational parameters
+        if self.mcu.max_temperature <= self.mcu.min_temperature:
+            raise ValidationException(
+                "mcu.max_temperature",
+                self.mcu.max_temperature,
+                f"MCU max temperature must be greater than min temperature ({self.mcu.min_temperature}°C)",
+            )
+
+        if self.mcu.max_fan_speed <= 0:
+            raise ValidationException(
+                "mcu.max_fan_speed",
+                self.mcu.max_fan_speed,
+                "MCU max fan speed must be positive",
+            )
+
+        # Digital Input validation
+        if self.digital_input.model not in SUPPORTED_DIGITAL_INPUT_MODELS:
             raise ValidationException(
                 "digital_input.model",
                 self.digital_input.model,
                 f"Unsupported digital input model. Supported models: {', '.join(SUPPORTED_DIGITAL_INPUT_MODELS)}",
+            )
+
+        # Connection parameters validation
+        if self.digital_input.board_number < 0:
+            raise ValidationException(
+                "digital_input.board_number",
+                self.digital_input.board_number,
+                "Board number cannot be negative",
             )
 
         if self.digital_input.board_no < 0:
@@ -221,6 +377,20 @@ class HardwareConfiguration:
                 "Board number cannot be negative",
             )
 
+        if self.digital_input.module_position < 0:
+            raise ValidationException(
+                "digital_input.module_position",
+                self.digital_input.module_position,
+                "Module position cannot be negative",
+            )
+
+        if self.digital_input.signal_type not in [0, 1, 2]:
+            raise ValidationException(
+                "digital_input.signal_type",
+                self.digital_input.signal_type,
+                "Signal type must be 0 (TTL), 1 (CMOS), or 2 (24V)",
+            )
+
         if self.digital_input.input_count <= 0:
             raise ValidationException(
                 "digital_input.input_count",
@@ -228,11 +398,55 @@ class HardwareConfiguration:
                 "Input count must be positive",
             )
 
+        # Operational parameters validation
         if self.digital_input.debounce_time < 0:
             raise ValidationException(
                 "digital_input.debounce_time",
                 self.digital_input.debounce_time,
                 "Debounce time cannot be negative",
+            )
+
+        if self.digital_input.debounce_time_ms < 0:
+            raise ValidationException(
+                "digital_input.debounce_time_ms",
+                self.digital_input.debounce_time_ms,
+                "Debounce time (ms) cannot be negative",
+            )
+
+        if self.digital_input.retry_count < 0:
+            raise ValidationException(
+                "digital_input.retry_count",
+                self.digital_input.retry_count,
+                "Retry count cannot be negative",
+            )
+
+        # Mock-related parameters validation
+        if self.digital_input.total_pins <= 0:
+            raise ValidationException(
+                "digital_input.total_pins",
+                self.digital_input.total_pins,
+                "Total pins must be positive",
+            )
+
+        if not (0.0 <= self.digital_input.noise_probability <= 1.0):
+            raise ValidationException(
+                "digital_input.noise_probability",
+                self.digital_input.noise_probability,
+                "Noise probability must be between 0.0 and 1.0",
+            )
+
+        if self.digital_input.response_delay < 0:
+            raise ValidationException(
+                "digital_input.response_delay",
+                self.digital_input.response_delay,
+                "Response delay cannot be negative",
+            )
+
+        if self.digital_input.connection_delay < 0:
+            raise ValidationException(
+                "digital_input.connection_delay",
+                self.digital_input.connection_delay,
+                "Connection delay cannot be negative",
             )
 
     def _validate_power_config(self) -> None:
@@ -273,6 +487,72 @@ class HardwareConfiguration:
                 "Power channel must be positive",
             )
 
+        # Validate default parameters
+        if self.power.default_voltage < 0:
+            raise ValidationException(
+                "power.default_voltage",
+                self.power.default_voltage,
+                "Power default voltage cannot be negative",
+            )
+
+        if self.power.default_current_limit <= 0:
+            raise ValidationException(
+                "power.default_current_limit",
+                self.power.default_current_limit,
+                "Power default current limit must be positive",
+            )
+
+        # Validate mock-related parameters
+        if self.power.connection_delay < 0:
+            raise ValidationException(
+                "power.connection_delay",
+                self.power.connection_delay,
+                "Power connection delay cannot be negative",
+            )
+
+        if self.power.response_delay < 0:
+            raise ValidationException(
+                "power.response_delay",
+                self.power.response_delay,
+                "Power response delay cannot be negative",
+            )
+
+        if self.power.voltage_noise < 0:
+            raise ValidationException(
+                "power.voltage_noise",
+                self.power.voltage_noise,
+                "Power voltage noise cannot be negative",
+            )
+
+        # Validate operational parameters
+        if self.power.max_voltage <= 0:
+            raise ValidationException(
+                "power.max_voltage",
+                self.power.max_voltage,
+                "Power max voltage must be positive",
+            )
+
+        if self.power.max_current <= 0:
+            raise ValidationException(
+                "power.max_current",
+                self.power.max_current,
+                "Power max current must be positive",
+            )
+
+        if self.power.voltage_accuracy < 0:
+            raise ValidationException(
+                "power.voltage_accuracy",
+                self.power.voltage_accuracy,
+                "Power voltage accuracy cannot be negative",
+            )
+
+        if self.power.current_accuracy < 0:
+            raise ValidationException(
+                "power.current_accuracy",
+                self.power.current_accuracy,
+                "Power current accuracy cannot be negative",
+            )
+
     def is_valid(self) -> bool:
         """
         Check if configuration is valid
@@ -286,9 +566,7 @@ class HardwareConfiguration:
         except ValidationException:
             return False
 
-    def with_overrides(
-        self, **overrides
-    ) -> "HardwareConfiguration":
+    def with_overrides(self, **overrides) -> "HardwareConfiguration":
         """
         Create new configuration with specific field overrides
 
@@ -321,9 +599,7 @@ class HardwareConfiguration:
             "power",
             "digital_input",
         ]:
-            if config_name in overrides and isinstance(
-                overrides[config_name], dict
-            ):
+            if config_name in overrides and isinstance(overrides[config_name], dict):
                 # Get the appropriate config class
                 config_class = {
                     "robot": RobotConfig,
@@ -334,9 +610,7 @@ class HardwareConfiguration:
                 }[config_name]
 
                 # Create new config instance from dict
-                current_values[config_name] = config_class(
-                    **overrides[config_name]
-                )
+                current_values[config_name] = config_class(**overrides[config_name])
 
         # Create new instance with properly typed config objects
         return HardwareConfiguration(
@@ -346,9 +620,7 @@ class HardwareConfiguration:
             ),
             loadcell=cast(
                 LoadCellConfig,
-                current_values.get(
-                    "loadcell", self.loadcell
-                ),
+                current_values.get("loadcell", self.loadcell),
             ),
             mcu=cast(
                 MCUConfig,
@@ -360,9 +632,7 @@ class HardwareConfiguration:
             ),
             digital_input=cast(
                 DigitalInputConfig,
-                current_values.get(
-                    "digital_input", self.digital_input
-                ),
+                current_values.get("digital_input", self.digital_input),
             ),
         )
 
@@ -372,7 +642,13 @@ class HardwareConfiguration:
             "robot": {
                 "model": self.robot.model,
                 "irq_no": self.robot.irq_no,
-                "axis_count": self.robot.axis_count,
+                "default_velocity": self.robot.default_velocity,
+                "default_acceleration": self.robot.default_acceleration,
+                "default_deceleration": self.robot.default_deceleration,
+                "position_tolerance": self.robot.position_tolerance,
+                "homing_velocity": self.robot.homing_velocity,
+                "homing_acceleration": self.robot.homing_acceleration,
+                "homing_deceleration": self.robot.homing_deceleration,
             },
             "loadcell": {
                 "model": self.loadcell.model,
@@ -380,12 +656,26 @@ class HardwareConfiguration:
                 "baudrate": self.loadcell.baudrate,
                 "timeout": self.loadcell.timeout,
                 "indicator_id": self.loadcell.indicator_id,
+                "base_force": self.loadcell.base_force,
+                "noise_level": self.loadcell.noise_level,
+                "connection_delay": self.loadcell.connection_delay,
+                "max_force_range": self.loadcell.max_force_range,
+                "sampling_interval_ms": self.loadcell.sampling_interval_ms,
+                "zero_tolerance": self.loadcell.zero_tolerance,
             },
             "mcu": {
                 "model": self.mcu.model,
                 "port": self.mcu.port,
                 "baudrate": self.mcu.baudrate,
                 "timeout": self.mcu.timeout,
+                "default_temperature": self.mcu.default_temperature,
+                "default_fan_speed": self.mcu.default_fan_speed,
+                "temperature_drift_rate": self.mcu.temperature_drift_rate,
+                "response_delay": self.mcu.response_delay,
+                "connection_delay": self.mcu.connection_delay,
+                "max_temperature": self.mcu.max_temperature,
+                "min_temperature": self.mcu.min_temperature,
+                "max_fan_speed": self.mcu.max_fan_speed,
             },
             "power": {
                 "model": self.power.model,
@@ -393,19 +683,37 @@ class HardwareConfiguration:
                 "port": self.power.port,
                 "timeout": self.power.timeout,
                 "channel": self.power.channel,
+                "default_voltage": self.power.default_voltage,
+                "default_current_limit": self.power.default_current_limit,
+                "connection_delay": self.power.connection_delay,
+                "response_delay": self.power.response_delay,
+                "voltage_noise": self.power.voltage_noise,
+                "max_voltage": self.power.max_voltage,
+                "max_current": self.power.max_current,
+                "voltage_accuracy": self.power.voltage_accuracy,
+                "current_accuracy": self.power.current_accuracy,
             },
             "digital_input": {
                 "model": self.digital_input.model,
+                "board_number": self.digital_input.board_number,
                 "board_no": self.digital_input.board_no,
+                "module_position": self.digital_input.module_position,
+                "signal_type": self.digital_input.signal_type,
                 "input_count": self.digital_input.input_count,
                 "debounce_time": self.digital_input.debounce_time,
+                "debounce_time_ms": self.digital_input.debounce_time_ms,
+                "retry_count": self.digital_input.retry_count,
+                "auto_initialize": self.digital_input.auto_initialize,
+                "total_pins": self.digital_input.total_pins,
+                "simulate_noise": self.digital_input.simulate_noise,
+                "noise_probability": self.digital_input.noise_probability,
+                "response_delay": self.digital_input.response_delay,
+                "connection_delay": self.digital_input.connection_delay,
             },
         }
 
     @classmethod
-    def from_dict(
-        cls, data: Dict[str, Any]
-    ) -> "HardwareConfiguration":
+    def from_dict(cls, data: Dict[str, Any]) -> "HardwareConfiguration":
         """
         Create configuration from dictionary
 
@@ -434,12 +742,8 @@ class HardwareConfiguration:
             config_name,
             config_class,
         ) in config_classes.items():
-            if config_name in data_copy and isinstance(
-                data_copy[config_name], dict
-            ):
-                data_copy[config_name] = config_class(
-                    **data_copy[config_name]
-                )
+            if config_name in data_copy and isinstance(data_copy[config_name], dict):
+                data_copy[config_name] = config_class(**data_copy[config_name])
 
         # Create instance with properly typed config objects
         return cls(
@@ -451,18 +755,14 @@ class HardwareConfiguration:
                 LoadCellConfig,
                 data_copy.get("loadcell", LoadCellConfig()),
             ),
-            mcu=cast(
-                MCUConfig, data_copy.get("mcu", MCUConfig())
-            ),
+            mcu=cast(MCUConfig, data_copy.get("mcu", MCUConfig())),
             power=cast(
                 PowerConfig,
                 data_copy.get("power", PowerConfig()),
             ),
             digital_input=cast(
                 DigitalInputConfig,
-                data_copy.get(
-                    "digital_input", DigitalInputConfig()
-                ),
+                data_copy.get("digital_input", DigitalInputConfig()),
             ),
         )
 

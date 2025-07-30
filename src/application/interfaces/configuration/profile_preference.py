@@ -18,9 +18,7 @@ class ProfilePreference(ABC):
     """
 
     @abstractmethod
-    async def save_last_used_profile(
-        self, profile_name: str
-    ) -> None:
+    async def save_last_used_profile(self, profile_name: str) -> None:
         """
         Save the last used profile name
 
@@ -75,9 +73,7 @@ class ProfilePreference(ABC):
         ...
 
     @abstractmethod
-    async def update_usage_history(
-        self, profile_name: str
-    ) -> None:
+    async def update_usage_history(self, profile_name: str) -> None:
         """
         Update usage history with a new profile usage
 

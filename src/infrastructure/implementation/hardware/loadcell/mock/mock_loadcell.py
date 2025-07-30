@@ -18,9 +18,6 @@ from domain.exceptions import HardwareOperationError
 from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
-from domain.value_objects.hardware_configuration import (
-    LoadCellConfig,
-)
 from domain.value_objects.measurements import ForceValue
 
 
@@ -29,47 +26,51 @@ class MockLoadCell(LoadCellService):
 
     def __init__(
         self,
-        mock_values: Optional[List[float]] = None,
-        base_force: float = 10.0,
-        noise_level: float = 0.1,
-        connection_delay: float = 0.1,
+        config: Dict[str, Any],
     ):
         """
         초기화
 
         Args:
-            mock_values: 사전 정의된 측정값 리스트
-            base_force: 기본 힘 값 (N)
-            noise_level: 노이즈 레벨 (N)
-            connection_delay: 연결 지연시간 (초)
+            config: LoadCell 연결 설정 딕셔너리
         """
-        self._mock_values = mock_values or []
-        self._base_force = base_force
-        self._noise_level = noise_level
-        self._connection_delay = connection_delay
+        # Extract config values with defaults
+        self._port = config.get("port", "COM3")
+        self._baudrate = config.get("baudrate", 9600)
+        self._timeout = config.get("timeout", 1.0)
+        self._indicator_id = config.get("indicator_id", 1)
+        
+        # Mock-specific config values with defaults
+        self._base_force = config.get("base_force", 10.0)
+        self._noise_level = config.get("noise_level", 0.1)
+        self._connection_delay = config.get("connection_delay", 0.1)
+        self._max_force_range = config.get("max_force_range", 1000.0)
+        self._sampling_interval_ms = config.get("sampling_interval_ms", 100)
+        self._zero_tolerance = config.get("zero_tolerance", 0.01)
+
+        # State initialization
+        # Config values are already stored directly above
+        
+        # Mock values can be provided in config or default to empty
+        self._mock_values = config.get("mock_values", [])
 
         self._is_connected = False
         self._zero_offset = 0.0
         self._value_index = 0
 
         logger.info(
-            f"MockLoadCellAdapter initialized with base force: {base_force}N"
+            f"MockLoadCellAdapter initialized with base force: {self._base_force}N"
         )
 
-    async def connect(
-        self, loadcell_config: LoadCellConfig
-    ) -> None:
+    async def connect(self) -> None:
         """
         하드웨어 연결 (시뮬레이션)
-
-        Args:
-            loadcell_config: LoadCell connection configuration
 
         Raises:
             HardwareConnectionError: If connection fails
         """
         logger.info(
-            f"Connecting to mock LoadCell on {loadcell_config.port} at {loadcell_config.baudrate} baud..."
+            f"Connecting to mock LoadCell on {self._port} at {self._baudrate} baud..."
         )
 
         # 연결 지연 시뮬레이션

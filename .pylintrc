@@ -24,7 +24,8 @@ disable=
     unused-argument,
     consider-using-from-import,
     line-too-long,
-    duplicate-code
+    duplicate-code,
+    unnecessary-ellipsis
 
 [FORMAT]
 max-line-length=100

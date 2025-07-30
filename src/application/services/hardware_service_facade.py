@@ -5,7 +5,7 @@ Facade pattern implementation to group and simplify hardware service interaction
 """
 
 import asyncio
-from typing import Dict
+from typing import Dict, Union, Any
 
 from loguru import logger
 
@@ -28,9 +28,6 @@ from application.interfaces.hardware.robot import (
 from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
-from domain.value_objects.hardware_configuration import (
-    HardwareConfiguration,
-)
 from domain.value_objects.measurements import (
     TestMeasurements,
 )
@@ -51,6 +48,7 @@ class HardwareServiceFacade:
         self,
         robot_service: RobotService,
         mcu_service: MCUService,
+        *,
         loadcell_service: LoadCellService,
         power_service: PowerService,
         digital_input_service: DigitalInputService,
@@ -61,7 +59,7 @@ class HardwareServiceFacade:
         self._power = power_service
         self._digital_input = digital_input_service
 
-    async def connect_all_hardware(self, hardware_config: HardwareConfiguration) -> None:
+    async def connect_all_hardware(self) -> None:
         """Connect all required hardware"""
         logger.info("Connecting hardware...")
 
@@ -70,19 +68,19 @@ class HardwareServiceFacade:
 
         # Check and connect each hardware service
         if not await self._robot.is_connected():
-            connection_tasks.append(self._robot.connect(hardware_config.robot))
+            connection_tasks.append(self._robot.connect())
             hardware_names.append("Robot")
 
         if not await self._mcu.is_connected():
-            connection_tasks.append(self._mcu.connect(hardware_config.mcu))
+            connection_tasks.append(self._mcu.connect())
             hardware_names.append("MCU")
 
         if not await self._power.is_connected():
-            connection_tasks.append(self._power.connect(hardware_config.power))
+            connection_tasks.append(self._power.connect())
             hardware_names.append("Power")
 
         if not await self._loadcell.is_connected():
-            connection_tasks.append(self._loadcell.connect(hardware_config.loadcell))
+            connection_tasks.append(self._loadcell.connect())
             hardware_names.append("LoadCell")
 
         # Execute all connections concurrently
@@ -101,7 +99,6 @@ class HardwareServiceFacade:
     async def initialize_hardware(
         self,
         config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
     ) -> None:
         """Initialize all hardware with configuration settings"""
         logger.info("Initializing hardware with configuration...")
@@ -142,7 +139,6 @@ class HardwareServiceFacade:
     async def perform_force_test_sequence(
         self,
         config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
     ) -> TestMeasurements:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         logger.info("Starting force test sequence...")
@@ -151,7 +147,7 @@ class HardwareServiceFacade:
             f"Test matrix: {len(config.temperature_list)}×{len(config.stroke_positions)} = {total_tests} measurements"
         )
 
-        measurements_dict: Dict[float, Dict[float, Dict[str, float]]] = {}
+        measurements_dict: Dict[float, Dict[float, Dict[str, Any]]] = {}
 
         try:
             # Outer loop: Iterate through temperature list
@@ -216,7 +212,6 @@ class HardwareServiceFacade:
     async def return_to_safe_position(
         self,
         config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
     ) -> None:
         """Return robot to safe standby position"""
         try:
@@ -278,7 +273,6 @@ class HardwareServiceFacade:
     async def setup_test(
         self,
         config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
     ) -> None:
         """Setup hardware for test execution"""
         logger.info("Setting up test...")
@@ -309,7 +303,7 @@ class HardwareServiceFacade:
             logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}%")
 
             # Set LMA standby sequence
-            await self.set_lma_standby(config, hardware_config)
+            await self.set_lma_standby(config)
             logger.info("LMA standby sequence set")
 
             logger.info("Test setup completed successfully")
@@ -328,7 +322,6 @@ class HardwareServiceFacade:
     async def teardown_test(
         self,
         config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
     ) -> None:
         """Teardown test and return hardware to safe state"""
         logger.info("Tearing down test...")
@@ -350,7 +343,7 @@ class HardwareServiceFacade:
             logger.info(f"MCU temperature reset to default: {config.upper_temperature}°C")
 
             # set lma standby sequence
-            await self.set_lma_standby(config, hardware_config)
+            await self.set_lma_standby(config)
             logger.info("LMA standby sequence set for teardown")
 
             # Power teardown - disable output for safety
@@ -367,7 +360,6 @@ class HardwareServiceFacade:
     async def set_lma_standby(
         self,
         config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
     ) -> None:
         """Set LMA standby sequence - coordinate MCU and Robot for LMA standby state"""
         logger.info("Setting LMA standby sequence...")
@@ -426,7 +418,7 @@ class HardwareServiceFacade:
                 details={"config": config.to_dict()},
             ) from e
 
-    def get_hardware_services(self) -> Dict[str, object]:
+    def get_hardware_services(self) -> Dict[str, Union[RobotService, MCUService, PowerService, LoadCellService, DigitalInputService]]:
         """Get direct access to hardware services (for advanced usage)"""
         return {
             "robot": self._robot,

@@ -13,6 +13,15 @@ import platform
 from ctypes import c_char_p, c_double, c_long, POINTER
 from typing import Any, Optional
 
+# Platform-specific ctypes import
+if platform.system() == "Windows":
+    from ctypes import WinDLL  # type: ignore[attr-defined]
+else:
+    # Mock WinDLL class for non-Windows systems
+    class WinDLL:  # type: ignore[misc]
+        def __init__(self, path: str) -> None:
+            pass
+
 from domain.exceptions.robot_exceptions import (
     AXLError,
     AXLMotionError,
@@ -24,13 +33,6 @@ from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
     get_error_message,
 )
-
-# Platform-specific import
-if platform.system() == "Windows":
-    from ctypes import WinDLL  # type: ignore[attr-defined]
-else:
-    # Mock WinDLL for type hints on non-Windows systems
-    WinDLL = Any
 
 
 class AXLWrapper:
@@ -46,8 +48,7 @@ class AXLWrapper:
         else:
             # Linux/개발환경에서는 경고 메시지만 출력
             print(
-                "Warning: Running on non-Windows platform. "
-                "DLL functions will not be available."
+                "Warning: Running on non-Windows platform. " "DLL functions will not be available."
             )
 
     def _load_library(self) -> None:
@@ -56,9 +57,7 @@ class AXLWrapper:
             return
 
         if not os.path.exists(DLL_PATH):
-            raise FileNotFoundError(
-                f"AXL DLL not found at {DLL_PATH}"
-            )
+            raise FileNotFoundError(f"AXL DLL not found at {DLL_PATH}")
 
         try:
             # Load DLL with Windows calling convention
@@ -68,9 +67,7 @@ class AXLWrapper:
                 # This should never be reached due to is_windows check above
                 self.dll = None
         except OSError as e:
-            raise RuntimeError(
-                f"Failed to load AXL DLL: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to load AXL DLL: {e}") from e
 
     def _setup_functions(self) -> None:
         """Setup function signatures for ctypes (Windows only)"""
@@ -91,9 +88,7 @@ class AXLWrapper:
         self.dll.AxlIsOpened.restype = c_long  # type: ignore[attr-defined]
 
         # AxlGetBoardCount
-        self.dll.AxlGetBoardCount.argtypes = [  # type: ignore[attr-defined]
-            POINTER(c_long)
-        ]
+        self.dll.AxlGetBoardCount.argtypes = [POINTER(c_long)]  # type: ignore[attr-defined]
         self.dll.AxlGetBoardCount.restype = c_long  # type: ignore[attr-defined]
 
         # AxlGetLibVersion
@@ -102,9 +97,7 @@ class AXLWrapper:
 
         # === Motion Functions ===
         # AxmInfoGetAxisCount
-        self.dll.AxmInfoGetAxisCount.argtypes = [  # type: ignore[attr-defined]
-            POINTER(c_long)
-        ]
+        self.dll.AxmInfoGetAxisCount.argtypes = [POINTER(c_long)]  # type: ignore[attr-defined]
         self.dll.AxmInfoGetAxisCount.restype = c_long  # type: ignore[attr-defined]
 
         # AxmMotSetPulseOutMethod
@@ -234,9 +227,7 @@ class AXLWrapper:
             return 1  # Mock 1 board on non-Windows
 
         count = c_long()
-        result = self.dll.AxlGetBoardCount(  # type: ignore[attr-defined]
-            ctypes.byref(count)
-        )
+        result = self.dll.AxlGetBoardCount(ctypes.byref(count))  # type: ignore[attr-defined]
         if result != AXT_RT_SUCCESS:
             raise AXLError(
                 get_error_message(result),
@@ -267,9 +258,7 @@ class AXLWrapper:
             return 6  # Mock 6 axes on non-Windows
 
         count = c_long()
-        result = self.dll.AxmInfoGetAxisCount(  # type: ignore[attr-defined]
-            ctypes.byref(count)
-        )
+        result = self.dll.AxmInfoGetAxisCount(ctypes.byref(count))  # type: ignore[attr-defined]
         if result != AXT_RT_SUCCESS:
             raise AXLMotionError(
                 get_error_message(result),
@@ -278,9 +267,7 @@ class AXLWrapper:
             )
         return count.value
 
-    def set_pulse_out_method(
-        self, axis_no: int, method: int
-    ) -> int:
+    def set_pulse_out_method(self, axis_no: int, method: int) -> int:
         """Set pulse output method"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
@@ -288,9 +275,7 @@ class AXLWrapper:
             axis_no, method
         )
 
-    def set_move_unit_per_pulse(
-        self, axis_no: int, unit: float, pulse: int
-    ) -> int:
+    def set_move_unit_per_pulse(self, axis_no: int, unit: float, pulse: int) -> int:
         """Set movement unit per pulse"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
@@ -298,9 +283,7 @@ class AXLWrapper:
             axis_no, unit, pulse
         )
 
-    def servo_on(
-        self, axis_no: int, on_off: int = 1
-    ) -> int:
+    def servo_on(self, axis_no: int, on_off: int = 1) -> int:
         """Turn servo on/off"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
@@ -329,9 +312,7 @@ class AXLWrapper:
             )
         return status.value == 1
 
-    def set_cmd_pos(
-        self, axis_no: int, position: float
-    ) -> int:
+    def set_cmd_pos(self, axis_no: int, position: float) -> int:
         """Set command position"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
@@ -356,9 +337,7 @@ class AXLWrapper:
             )
         return position.value
 
-    def set_act_pos(
-        self, axis_no: int, position: float
-    ) -> int:
+    def set_act_pos(self, axis_no: int, position: float) -> int:
         """Set actual position"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows

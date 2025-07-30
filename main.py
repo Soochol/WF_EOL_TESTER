@@ -4,63 +4,139 @@ EOL Tester Main Entry Point
 Simplified main application with direct service creation.
 """
 
+# Standard library imports
+import asyncio
 import sys
 from pathlib import Path
+from typing import Any, Dict, Tuple
 
-import asyncio
+# Third-party imports
 from loguru import logger
+from yaml import YAMLError
 
-from src.application.services.configuration_service import (
-    ConfigurationService,
-)
-from src.application.services.configuration_validator import (
-    ConfigurationValidator,
-)
-from src.application.services.exception_handler import (
-    ExceptionHandler,
-)
-from src.application.services.hardware_service_facade import (
-    HardwareServiceFacade,
-)
-from src.application.services.repository_service import (
-    RepositoryService,
-)
-from src.application.services.test_result_evaluator import (
-    TestResultEvaluator,
-)
-from src.application.use_cases.eol_force_test import (
-    EOLForceTestUseCase,
-)
+# Local application imports - Services
+from src.application.services.configuration_service import ConfigurationService
+from src.application.services.configuration_validator import ConfigurationValidator
+from src.application.services.exception_handler import ExceptionHandler
+from src.application.services.hardware_service_facade import HardwareServiceFacade
+from src.application.services.repository_service import RepositoryService
+from src.application.services.test_result_evaluator import TestResultEvaluator
+
+# Local application imports - Use Cases
+from src.application.use_cases.eol_force_test import EOLForceTestUseCase
+
+# Local infrastructure imports
 from src.infrastructure.factory import ServiceFactory
 from src.infrastructure.implementation.configuration.json_profile_preference import (
     JsonProfilePreference,
 )
-from src.infrastructure.implementation.configuration.yaml_configuration import (
-    YamlConfiguration,
-)
+from src.infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
 from src.infrastructure.implementation.repositories.json_result_repository import (
     JsonResultRepository,
 )
-from src.ui.cli.eol_tester_cli import EOLTesterCLI
 
-# 상수 정의
-DEFAULT_LOG_ROTATION = "10 MB"
-DEFAULT_LOG_RETENTION = "7 days"
-LOGS_DIRECTORY = "logs"
-EOL_TESTER_LOG_FILE = "eol_tester.log"
+# Local UI imports
+from src.ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
+
+# Application configuration constants
+DEFAULT_LOG_ROTATION_SIZE = "10 MB"
+DEFAULT_LOG_RETENTION_PERIOD = "7 days"
+LOGS_DIRECTORY_NAME = "logs"
+EOL_TESTER_LOG_FILENAME = "eol_tester.log"
+HARDWARE_CONFIG_FILENAME = "hardware.yaml"
+
+
+async def main() -> None:
+    """Main application entry point with simplified orchestration."""
+    setup_logging(debug=False)
+
+    try:
+        logger.info("Creating EOL Tester services...")
+
+        # Create configuration services
+        yaml_configuration, profile_preference = await create_configuration()
+
+        # Create test result repository
+        test_result_repository = await create_repositories()
+
+        # Load hardware configuration
+        logger.info(f"Loading hardware configuration from {HARDWARE_CONFIG_FILENAME}...")
+        try:
+            hardware_config = await yaml_configuration.load_hardware_config()
+            hardware_config_dict = hardware_config.to_dict()
+        except FileNotFoundError as e:
+            logger.error(f"Hardware configuration file not found: {e}")
+            sys.exit(1)
+        except YAMLError as e:
+            logger.error(f"Invalid hardware configuration format: {e}")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Failed to load hardware configuration: {e}")
+            sys.exit(1)
+
+        # Create services
+        try:
+            hardware_services = await create_hardware_services(hardware_config_dict)
+            business_services = await create_business_services(
+                yaml_configuration, profile_preference, test_result_repository
+            )
+        except Exception as e:
+            logger.error(f"Failed to create services: {e}")
+            sys.exit(1)
+
+        (
+            configuration_service,
+            test_result_service,
+            exception_handler,
+            configuration_validator,
+            test_result_evaluator,
+        ) = business_services
+
+        # Create EOL force test use case
+        eol_force_test_use_case = EOLForceTestUseCase(
+            hardware_services=hardware_services,
+            configuration_service=configuration_service,
+            configuration_validator=configuration_validator,
+            repository_service=test_result_service,
+            test_result_evaluator=test_result_evaluator,
+            exception_handler=exception_handler,
+        )
+
+        # Create and run enhanced command line interface with Rich UI
+        try:
+            command_line_interface = EnhancedEOLTesterCLI(
+                eol_force_test_use_case,
+                hardware_services
+            )
+            logger.info("Starting Enhanced EOL Tester application with Rich UI")
+            await command_line_interface.run_interactive()
+            logger.info("Enhanced EOL Tester application finished")
+        except Exception as e:
+            logger.error(f"CLI execution failed: {e}")
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user")
+        sys.exit(0)
+    except Exception:
+        logger.exception("Unexpected application error occurred")
+        sys.exit(1)
 
 
 def setup_logging(debug: bool = False) -> None:
     """
-    로깅 설정
+    Configure application logging with console and file output.
+
+    Sets up structured logging with rotation and compression for file logs,
+    and colored console output with appropriate log levels.
 
     Args:
-        debug: 디버그 모드 여부
+        debug: Enable debug level logging. Defaults to False (INFO level).
     """
-    # 기본 로거 제거
+    # Remove default logger
     logger.remove()
 
-    # 콘솔 로깅
+    # Console logging setup
     log_level = "DEBUG" if debug else "INFO"
     logger.add(
         sys.stderr,
@@ -71,115 +147,109 @@ def setup_logging(debug: bool = False) -> None:
         ),
     )
 
-    # 파일 로깅
-    logs_dir = Path(LOGS_DIRECTORY)
-    logs_dir.mkdir(exist_ok=True)
+    # File logging setup
+    logs_directory = Path(LOGS_DIRECTORY_NAME)
+    logs_directory.mkdir(exist_ok=True)
 
     logger.add(
-        logs_dir / EOL_TESTER_LOG_FILE,
-        rotation=DEFAULT_LOG_ROTATION,
-        retention=DEFAULT_LOG_RETENTION,
+        logs_directory / EOL_TESTER_LOG_FILENAME,
+        rotation=DEFAULT_LOG_ROTATION_SIZE,
+        retention=DEFAULT_LOG_RETENTION_PERIOD,
         compression="zip",
         level="DEBUG",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name} - {message}",
     )
 
 
-async def main() -> None:
-    """메인 애플리케이션 진입점"""
-    # 로깅 설정 (기본값 사용)
-    setup_logging(debug=False)
+async def create_configuration() -> Tuple[YamlConfiguration, JsonProfilePreference]:
+    """Create configuration-related services.
 
-    try:
-        # 서비스 생성 (하드웨어 설정 파일에서 로드)
-        logger.info("Creating EOL Tester services...")
+    Returns:
+        Tuple containing yaml_configuration and profile_preference services.
+    """
+    yaml_configuration = YamlConfiguration()
+    profile_preference = JsonProfilePreference()
+    return yaml_configuration, profile_preference
 
-        # Create repositories first
-        yaml_configuration = YamlConfiguration()
-        profile_preference = JsonProfilePreference()
-        test_result_repository = JsonResultRepository()
 
-        # Load hardware configuration from YAML file
-        logger.info(
-            "Loading hardware configuration from hardware.yaml..."
-        )
-        hardware_config = (
-            await yaml_configuration.load_hardware_config()
-        )
-        hardware_config_dict = hardware_config.to_dict()
+async def create_repositories() -> JsonResultRepository:
+    """Create repository for storing test results.
 
-        # Create hardware services with loaded configuration
-        robot_service = ServiceFactory.create_robot_service(
-            hardware_config_dict["robot"]
-        )
-        mcu_service = ServiceFactory.create_mcu_service(
-            hardware_config_dict["mcu"]
-        )
-        loadcell_service = (
-            ServiceFactory.create_loadcell_service(
-                hardware_config_dict["loadcell"]
-            )
-        )
-        power_service = ServiceFactory.create_power_service(
-            hardware_config_dict["power"]
-        )
-        digital_input_service = (
-            ServiceFactory.create_digital_input_service(
-                hardware_config_dict["digital_input"]
-            )
-        )
+    Returns:
+        JsonResultRepository instance for test result storage.
+    """
+    test_result_repository = JsonResultRepository()
+    return test_result_repository
 
-        # Create services
-        configuration_service = ConfigurationService(
-            configuration=yaml_configuration,
-            profile_preference=profile_preference,
-        )
 
-        test_result_service = RepositoryService(
-            test_repository=test_result_repository
-        )
+async def create_hardware_services(hardware_config_dict: Dict[str, Any]) -> HardwareServiceFacade:
+    """Create hardware services from configuration dictionary.
 
-        # Create individual business services
-        exception_handler = ExceptionHandler()
-        configuration_validator = ConfigurationValidator()
-        test_result_evaluator = TestResultEvaluator()
+    Args:
+        hardware_config_dict: Dictionary containing hardware configuration settings.
 
-        # Create hardware services facade
-        hardware_services = HardwareServiceFacade(
-            robot_service=robot_service,
-            mcu_service=mcu_service,
-            loadcell_service=loadcell_service,
-            power_service=power_service,
-            digital_input_service=digital_input_service,
-        )
+    Returns:
+        HardwareServiceFacade instance with all hardware services configured.
+    """
+    robot_service = ServiceFactory.create_robot_service(hardware_config_dict["robot"])
+    mcu_service = ServiceFactory.create_mcu_service(hardware_config_dict["mcu"])
+    loadcell_service = ServiceFactory.create_loadcell_service(hardware_config_dict["loadcell"])
+    power_service = ServiceFactory.create_power_service(hardware_config_dict["power"])
+    digital_input_service = ServiceFactory.create_digital_input_service(
+        hardware_config_dict["digital_input"]
+    )
 
-        # Use Case 생성
-        use_case = EOLForceTestUseCase(
-            hardware_services=hardware_services,
-            configuration_service=configuration_service,
-            configuration_validator=configuration_validator,
-            repository_service=test_result_service,
-            test_result_evaluator=test_result_evaluator,
-            exception_handler=exception_handler,
-        )
+    return HardwareServiceFacade(
+        robot_service=robot_service,
+        mcu_service=mcu_service,
+        loadcell_service=loadcell_service,
+        power_service=power_service,
+        digital_input_service=digital_input_service,
+    )
 
-        # CLI 생성 및 실행
-        cli = EOLTesterCLI(use_case)
-        logger.info("Starting EOL Tester application")
 
-        await cli.run_interactive()
+async def create_business_services(
+    yaml_configuration: YamlConfiguration,
+    profile_preference: JsonProfilePreference,
+    test_result_repository: JsonResultRepository,
+) -> Tuple[
+    ConfigurationService,
+    RepositoryService,
+    ExceptionHandler,
+    ConfigurationValidator,
+    TestResultEvaluator,
+]:
+    """Create business logic services.
 
-        logger.info("EOL Tester application finished")
+    Args:
+        yaml_configuration: YAML configuration service instance.
+        profile_preference: JSON profile preference service instance.
+        test_result_repository: JSON test result repository instance.
 
-    except KeyboardInterrupt:
-        logger.info("Application interrupted by user")
-    except Exception as e:
-        logger.error(f"Application error: {e}")
-        sys.exit(1)
+    Returns:
+        Tuple containing all business service instances.
+    """
+    configuration_service = ConfigurationService(
+        configuration=yaml_configuration,
+        profile_preference=profile_preference,
+    )
+
+    test_result_service = RepositoryService(test_repository=test_result_repository)
+    exception_handler = ExceptionHandler()
+    configuration_validator = ConfigurationValidator()
+    test_result_evaluator = TestResultEvaluator()
+
+    return (
+        configuration_service,
+        test_result_service,
+        exception_handler,
+        configuration_validator,
+        test_result_evaluator,
+    )
 
 
 if __name__ == "__main__":
-    # Python 3.7+ 호환성을 위해 asyncio.run 사용
+    # Use asyncio.run for Python 3.7+ compatibility
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

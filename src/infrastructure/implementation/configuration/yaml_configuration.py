@@ -38,9 +38,21 @@ class YamlConfiguration(Configuration):
     Provides CRUD operations for configuration profiles with validation and backup support.
     """
 
+    # Configuration constants
+    DEFAULT_CONFIG_PATH = "configuration/test_profiles"
+    HARDWARE_CONFIG_PATH = "configuration"
+    HARDWARE_CONFIG_FILENAME = "hardware.yaml"
+    YAML_FILE_EXTENSION = ".yaml"
+    CONFIGURATION_VERSION = "1.0"
+    YAML_INDENT_SIZE = 2
+    FILE_ENCODING = "utf-8"
+
+    # Protected profiles that cannot be deleted
+    PROTECTED_PROFILES = ["default", "factory", "safety"]
+
     def __init__(
         self,
-        config_path: str = "configuration/test_profiles",
+        config_path: str = DEFAULT_CONFIG_PATH,
     ):
         """
         Initialize YAML configuration service
@@ -55,13 +67,9 @@ class YamlConfiguration(Configuration):
         # Ensure configuration directory exists
         self._config_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(
-            f"YAML Configuration Service initialized with path: {self._config_path}"
-        )
+        logger.info(f"YAML Configuration Service initialized with path: {self._config_path}")
 
-    async def load_profile(
-        self, profile_name: str
-    ) -> TestConfiguration:
+    async def load_profile(self, profile_name: str) -> TestConfiguration:
         """
         Load a configuration profile from YAML file.
         If file does not exist, creates it with default test configuration.
@@ -79,14 +87,10 @@ class YamlConfiguration(Configuration):
         """
         # Check cache first
         if profile_name in self._cache:
-            logger.debug(
-                f"Returning cached configuration for profile '{profile_name}'"
-            )
+            logger.debug(f"Returning cached configuration for profile '{profile_name}'")
             return self._cache[profile_name]
 
-        profile_file = (
-            self._config_path / f"{profile_name}.yaml"
-        )
+        profile_file = self._config_path / f"{profile_name}{self.YAML_FILE_EXTENSION}"
 
         # If file doesn't exist, create it with default test configuration
         if not profile_file.exists():
@@ -96,10 +100,8 @@ class YamlConfiguration(Configuration):
             await self._create_default_profile(profile_name)
 
         try:
-            with open(
-                profile_file, "r", encoding="utf-8"
-            ) as f:
-                yaml_data = yaml.safe_load(f)
+            with open(profile_file, "r", encoding=self.FILE_ENCODING) as yaml_file:
+                yaml_data = yaml.safe_load(yaml_file)
 
             if yaml_data is None:
                 raise ConfigurationFormatException(
@@ -110,16 +112,12 @@ class YamlConfiguration(Configuration):
                 )
 
             # Create configuration object from structured YAML data
-            config = TestConfiguration.from_structured_dict(
-                yaml_data
-            )
+            config = TestConfiguration.from_structured_dict(yaml_data)
 
             # Cache the configuration
             self._cache[profile_name] = config
 
-            logger.info(
-                f"Successfully loaded configuration profile '{profile_name}'"
-            )
+            logger.info(f"Successfully loaded configuration profile '{profile_name}'")
             return config
 
         except yaml.YAMLError as e:
@@ -157,9 +155,7 @@ class YamlConfiguration(Configuration):
             InvalidConfigurationException: If hardware configuration values are invalid
             ConfigurationException: If file operations fail
         """
-        hardware_file = (
-            Path("configuration") / "hardware.yaml"
-        )
+        hardware_file = Path(self.HARDWARE_CONFIG_PATH) / self.HARDWARE_CONFIG_FILENAME
 
         # If file doesn't exist, create it with default hardware configuration
         if not hardware_file.exists():
@@ -169,10 +165,8 @@ class YamlConfiguration(Configuration):
             await self._create_default_hardware_profile()
 
         try:
-            with open(
-                hardware_file, "r", encoding="utf-8"
-            ) as f:
-                yaml_data = yaml.safe_load(f)
+            with open(hardware_file, "r", encoding=self.FILE_ENCODING) as yaml_file:
+                yaml_data = yaml.safe_load(yaml_file)
 
             if yaml_data is None:
                 raise ConfigurationFormatException(
@@ -185,23 +179,15 @@ class YamlConfiguration(Configuration):
             # Extract hardware_config section
             if "hardware_config" not in yaml_data:
                 # Return default hardware configuration if section not found
-                logger.warning(
-                    "No hardware_config section found in hardware.yaml, using defaults"
-                )
+                logger.warning("No hardware_config section found in hardware.yaml, using defaults")
                 return HardwareConfiguration()
 
             hardware_data = yaml_data["hardware_config"]
 
             # Create hardware configuration object
-            hardware_config = (
-                HardwareConfiguration.from_dict(
-                    hardware_data
-                )
-            )
+            hardware_config = HardwareConfiguration.from_dict(hardware_data)
 
-            logger.info(
-                "Successfully loaded hardware configuration from hardware.yaml"
-            )
+            logger.info("Successfully loaded hardware configuration from hardware.yaml")
             return hardware_config
 
         except yaml.YAMLError as e:
@@ -217,9 +203,7 @@ class YamlConfiguration(Configuration):
                 config_source=str(hardware_file),
             ) from e
 
-    async def validate_configuration(
-        self, config: TestConfiguration
-    ) -> None:
+    async def validate_configuration(self, config: TestConfiguration) -> None:
         """
         Validate a configuration object against business rules
 
@@ -242,18 +226,14 @@ class YamlConfiguration(Configuration):
                     parameter_name="test_configuration",
                     invalid_value="TestConfiguration object",
                     validation_rule=(
-                        "; ".join(errors)
-                        if errors
-                        else "Configuration validation failed"
+                        "; ".join(errors) if errors else "Configuration validation failed"
                     ),
                     config_source="validate_configuration",
                 )
         except Exception as e:
             if isinstance(e, InvalidConfigurationException):
                 raise
-            logger.error(
-                f"Configuration validation failed: {e}"
-            )
+            logger.error(f"Configuration validation failed: {e}")
             raise InvalidConfigurationException(
                 parameter_name="test_configuration",
                 invalid_value="TestConfiguration object",
@@ -327,19 +307,13 @@ class YamlConfiguration(Configuration):
         safety_conflicts = {}
 
         # Check voltage safety
-        if (
-            "voltage" in override
-            and override["voltage"] > base.max_voltage
-        ):
+        if "voltage" in override and override["voltage"] > base.max_voltage:
             safety_conflicts["voltage"] = (
                 f"Override voltage {override['voltage']} exceeds safety limit {base.max_voltage}"
             )
 
         # Check current safety
-        if (
-            "current" in override
-            and override["current"] > base.max_current
-        ):
+        if "current" in override and override["current"] > base.max_current:
             safety_conflicts["current"] = (
                 f"Override current {override['current']} exceeds safety limit {base.max_current}"
             )
@@ -361,34 +335,20 @@ class YamlConfiguration(Configuration):
             List of profile names that can be loaded
         """
         try:
-            yaml_files = list(
-                self._config_path.glob("*.yaml")
-            )
-            profiles = [
-                f.stem for f in yaml_files if f.is_file()
-            ]
+            yaml_files = list(self._config_path.glob(f"*{self.YAML_FILE_EXTENSION}"))
+            profiles = [f.stem for f in yaml_files if f.is_file()]
 
             # Filter out backup files
-            profiles = [
-                p
-                for p in profiles
-                if not p.startswith("backup_")
-            ]
+            profiles = [p for p in profiles if not p.startswith("backup_")]
 
-            logger.debug(
-                f"Found {len(profiles)} configuration profiles"
-            )
+            logger.debug(f"Found {len(profiles)} configuration profiles")
             return sorted(profiles)
 
         except Exception as e:
-            logger.warning(
-                f"Failed to list available profiles: {e}"
-            )
+            logger.warning(f"Failed to list available profiles: {e}")
             return []
 
-    async def get_profile_info(
-        self, profile_name: str
-    ) -> Dict[str, Any]:
+    async def get_profile_info(self, profile_name: str) -> Dict[str, Any]:
         """
         Get metadata information about a configuration profile
 
@@ -401,9 +361,7 @@ class YamlConfiguration(Configuration):
         Raises:
             MissingConfigurationException: If profile does not exist
         """
-        profile_file = (
-            self._config_path / f"{profile_name}.yaml"
-        )
+        profile_file = self._config_path / f"{profile_name}{self.YAML_FILE_EXTENSION}"
 
         if not profile_file.exists():
             raise MissingConfigurationException(
@@ -413,7 +371,7 @@ class YamlConfiguration(Configuration):
 
         try:
             # Get file stats
-            stat = profile_file.stat()
+            file_stats = profile_file.stat()
 
             # Load configuration to get computed info
             config = await self.load_profile(profile_name)
@@ -421,13 +379,9 @@ class YamlConfiguration(Configuration):
             return {
                 "profile_name": profile_name,
                 "file_path": str(profile_file),
-                "file_size_bytes": stat.st_size,
-                "created_time": datetime.fromtimestamp(
-                    stat.st_ctime
-                ).isoformat(),
-                "modified_time": datetime.fromtimestamp(
-                    stat.st_mtime
-                ).isoformat(),
+                "file_size_bytes": file_stats.st_size,
+                "created_time": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
+                "modified_time": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
                 "measurement_points": config.get_total_measurement_points(),
                 "estimated_duration_seconds": config.estimate_test_duration_seconds(),
                 "temperature_count": config.get_temperature_count(),
@@ -441,9 +395,7 @@ class YamlConfiguration(Configuration):
                 config_source=str(profile_file),
             ) from e
 
-    async def save_profile(
-        self, profile_name: str, config: TestConfiguration
-    ) -> None:
+    async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
         """
         Save a configuration as a named profile
 
@@ -457,42 +409,34 @@ class YamlConfiguration(Configuration):
         # Validate configuration first (will raise exception if invalid)
         await self.validate_configuration(config)
 
-        profile_file = (
-            self._config_path / f"{profile_name}.yaml"
-        )
+        profile_file = self._config_path / f"{profile_name}{self.YAML_FILE_EXTENSION}"
 
         try:
             # Convert configuration to structured YAML format
-            yaml_data = self._config_to_yaml_structure(
-                config
-            )
+            yaml_data = self._config_to_yaml_structure(config)
 
             # Add metadata
             yaml_data["metadata"] = {
                 "profile_name": profile_name,
                 "created_by": "YamlConfiguration",
                 "created_time": datetime.now().isoformat(),
-                "version": "1.0",
+                "version": self.CONFIGURATION_VERSION,
             }
 
             # Write to file
-            with open(
-                profile_file, "w", encoding="utf-8"
-            ) as f:
+            with open(profile_file, "w", encoding=self.FILE_ENCODING) as yaml_file:
                 yaml.dump(
                     yaml_data,
-                    f,
+                    yaml_file,
                     default_flow_style=False,
                     sort_keys=False,
-                    indent=2,
+                    indent=self.YAML_INDENT_SIZE,
                 )
 
             # Update cache
             self._cache[profile_name] = config
 
-            logger.info(
-                f"Successfully saved configuration profile '{profile_name}'"
-            )
+            logger.info(f"Successfully saved configuration profile '{profile_name}'")
 
         except Exception as e:
             raise ConfigurationException(
@@ -500,9 +444,7 @@ class YamlConfiguration(Configuration):
                 config_source=str(profile_file),
             ) from e
 
-    def _config_to_yaml_structure(
-        self, config: TestConfiguration
-    ) -> Dict[str, Any]:
+    def _config_to_yaml_structure(self, config: TestConfiguration) -> Dict[str, Any]:
         """
         Convert TestConfiguration to structured YAML format
 
@@ -563,7 +505,6 @@ class YamlConfiguration(Configuration):
                 "robot": {
                     "model": hardware_config.robot.model,
                     "irq_no": hardware_config.robot.irq_no,
-                    "axis_count": hardware_config.robot.axis_count,
                 },
                 "loadcell": {
                     "model": hardware_config.loadcell.model,
@@ -594,9 +535,7 @@ class YamlConfiguration(Configuration):
             }
         }
 
-    async def delete_profile(
-        self, profile_name: str
-    ) -> None:
+    async def delete_profile(self, profile_name: str) -> None:
         """
         Delete a configuration profile
 
@@ -607,9 +546,7 @@ class YamlConfiguration(Configuration):
             MissingConfigurationException: If profile does not exist
             ConfigurationSecurityException: If profile is protected
         """
-        profile_file = (
-            self._config_path / f"{profile_name}.yaml"
-        )
+        profile_file = self._config_path / f"{profile_name}{self.YAML_FILE_EXTENSION}"
 
         if not profile_file.exists():
             raise MissingConfigurationException(
@@ -618,7 +555,7 @@ class YamlConfiguration(Configuration):
             )
 
         # Check if profile is protected (default profiles)
-        if profile_name in ["default", "factory", "safety"]:
+        if profile_name in self.PROTECTED_PROFILES:
             raise ConfigurationSecurityException(
                 security_violation=f"Cannot delete protected profile '{profile_name}'",
                 affected_parameters=[profile_name],
@@ -634,9 +571,7 @@ class YamlConfiguration(Configuration):
             if profile_name in self._cache:
                 del self._cache[profile_name]
 
-            logger.info(
-                f"Successfully deleted configuration profile '{profile_name}'"
-            )
+            logger.info(f"Successfully deleted configuration profile '{profile_name}'")
 
         except Exception as e:
             raise ConfigurationException(
@@ -662,26 +597,18 @@ class YamlConfiguration(Configuration):
             TestConfiguration object for the new profile
         """
         # Load template configuration
-        template_config = await self.load_profile(
-            template_name
-        )
+        template_config = await self.load_profile(template_name)
 
         # Apply customizations if provided
         if customizations:
-            new_config = await self.merge_configurations(
-                template_config, customizations
-            )
+            new_config = await self.merge_configurations(template_config, customizations)
         else:
             new_config = template_config
 
         # Save as new profile
-        await self.save_profile(
-            new_profile_name, new_config
-        )
+        await self.save_profile(new_profile_name, new_config)
 
-        logger.info(
-            f"Created profile '{new_profile_name}' from template '{template_name}'"
-        )
+        logger.info(f"Created profile '{new_profile_name}' from template '{template_name}'")
         return new_config
 
     async def get_default_configuration(
@@ -697,9 +624,7 @@ class YamlConfiguration(Configuration):
             return await self.load_profile("default")
         except MissingConfigurationException:
             # Return built-in default if no default profile exists
-            logger.info(
-                "No default profile found, returning built-in default configuration"
-            )
+            logger.info("No default profile found, returning built-in default configuration")
             return TestConfiguration()
 
     async def validate_profile_compatibility(
@@ -747,51 +672,37 @@ class YamlConfiguration(Configuration):
         Raises:
             ConfigurationException: If file creation fails
         """
-        hardware_file = (
-            Path("configuration") / "hardware.yaml"
-        )
+        hardware_file = Path(self.HARDWARE_CONFIG_PATH) / self.HARDWARE_CONFIG_FILENAME
 
         # Ensure configuration directory exists
-        hardware_file.parent.mkdir(
-            parents=True, exist_ok=True
-        )
+        hardware_file.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             # Create default hardware configuration
-            default_hardware_config = (
-                HardwareConfiguration()
-            )
+            default_hardware_config = HardwareConfiguration()
 
             # Convert to YAML structure
-            yaml_data = (
-                self._hardware_config_to_yaml_structure(
-                    default_hardware_config
-                )
-            )
+            yaml_data = self._hardware_config_to_yaml_structure(default_hardware_config)
 
             # Add metadata
             yaml_data["metadata"] = {
                 "description": "Auto-generated hardware configuration",
-                "version": "1.0",
+                "version": self.CONFIGURATION_VERSION,
                 "created_by": "YamlConfiguration (auto-generated)",
                 "created_time": datetime.now().isoformat(),
             }
 
             # Write to file
-            with open(
-                hardware_file, "w", encoding="utf-8"
-            ) as f:
+            with open(hardware_file, "w", encoding=self.FILE_ENCODING) as yaml_file:
                 yaml.dump(
                     yaml_data,
-                    f,
+                    yaml_file,
                     default_flow_style=False,
                     sort_keys=False,
-                    indent=2,
+                    indent=self.YAML_INDENT_SIZE,
                 )
 
-            logger.info(
-                "Successfully created default hardware.yaml"
-            )
+            logger.info("Successfully created default hardware.yaml")
 
         except Exception as e:
             raise ConfigurationException(
@@ -799,9 +710,7 @@ class YamlConfiguration(Configuration):
                 config_source=str(hardware_file),
             ) from e
 
-    async def _create_default_profile(
-        self, profile_name: str
-    ) -> None:
+    async def _create_default_profile(self, profile_name: str) -> None:
         """
         Create a new profile with default test configuration
 
@@ -811,43 +720,35 @@ class YamlConfiguration(Configuration):
         Raises:
             ConfigurationException: If file creation fails
         """
-        profile_file = (
-            self._config_path / f"{profile_name}.yaml"
-        )
+        profile_file = self._config_path / f"{profile_name}{self.YAML_FILE_EXTENSION}"
 
         try:
             # Create default test configuration
             default_test_config = TestConfiguration()
 
             # Convert to YAML structure
-            yaml_data = self._config_to_yaml_structure(
-                default_test_config
-            )
+            yaml_data = self._config_to_yaml_structure(default_test_config)
 
             # Add metadata
             yaml_data["metadata"] = {
                 "profile_name": profile_name,
                 "description": f"Auto-generated test configuration profile for {profile_name}",
-                "version": "1.0",
+                "version": self.CONFIGURATION_VERSION,
                 "created_by": "YamlConfiguration (auto-generated)",
                 "created_time": datetime.now().isoformat(),
             }
 
             # Write to file
-            with open(
-                profile_file, "w", encoding="utf-8"
-            ) as f:
+            with open(profile_file, "w", encoding=self.FILE_ENCODING) as yaml_file:
                 yaml.dump(
                     yaml_data,
-                    f,
+                    yaml_file,
                     default_flow_style=False,
                     sort_keys=False,
-                    indent=2,
+                    indent=self.YAML_INDENT_SIZE,
                 )
 
-            logger.info(
-                f"Successfully created default test profile '{profile_name}'"
-            )
+            logger.info(f"Successfully created default test profile '{profile_name}'")
 
         except Exception as e:
             raise ConfigurationException(

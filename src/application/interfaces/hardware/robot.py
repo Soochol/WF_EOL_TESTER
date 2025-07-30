@@ -8,23 +8,15 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from domain.enums.robot_enums import MotionStatus
-from domain.value_objects.hardware_configuration import (
-    RobotConfig,
-)
 
 
 class RobotService(ABC):
     """Abstract interface for robot control operations"""
 
     @abstractmethod
-    async def connect(
-        self, robot_config: RobotConfig
-    ) -> None:
+    async def connect(self) -> None:
         """
         Connect to robot hardware
-
-        Args:
-            robot_config: Robot connection configuration
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -149,9 +141,7 @@ class RobotService(ABC):
         ...
 
     @abstractmethod
-    async def stop_motion(
-        self, axis: int, deceleration: float
-    ) -> None:
+    async def stop_motion(self, axis: int, deceleration: float) -> None:
         """
         Stop motion on specified axis
 
@@ -175,9 +165,7 @@ class RobotService(ABC):
         ...
 
     @abstractmethod
-    async def is_moving(
-        self, axis: Optional[int] = None
-    ) -> bool:
+    async def is_moving(self, axis: Optional[int] = None) -> bool:
         """
         Check if axis is currently moving
 
@@ -190,9 +178,7 @@ class RobotService(ABC):
         ...
 
     @abstractmethod
-    async def set_velocity(
-        self, axis: int, velocity: float
-    ) -> None:
+    async def set_velocity(self, axis: int, velocity: float) -> None:
         """
         Set default velocity for axis
 

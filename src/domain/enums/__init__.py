@@ -9,6 +9,7 @@ from domain.enums.measurement_units import MeasurementUnit
 from domain.enums.test_status import TestStatus
 from domain.enums.digital_input_enums import PinMode, LogicLevel
 from domain.enums.robot_enums import MotionStatus
+from domain.enums.mcu_enums import TestMode, MCUStatus
 
 __all__ = [
     "HardwareStatus",
@@ -17,4 +18,6 @@ __all__ = [
     "PinMode",
     "LogicLevel",
     "MotionStatus",
+    "TestMode",
+    "MCUStatus",
 ]

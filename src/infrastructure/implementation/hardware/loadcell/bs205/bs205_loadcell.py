@@ -14,18 +14,13 @@ from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
 from domain.enums.measurement_units import MeasurementUnit
-from domain.value_objects.hardware_configuration import (
-    LoadCellConfig,
-)
+from typing import Any, Dict, Optional
 from domain.value_objects.measurements import ForceValue
 from driver.serial.serial import SerialConnection, SerialError, SerialManager
 from infrastructure.implementation.hardware.loadcell.bs205.constants import (
     CMD_IDENTITY,
     CMD_READ_WEIGHT,
     CMD_ZERO,
-    DEFAULT_BAUDRATE,
-    DEFAULT_INDICATOR_ID,
-    DEFAULT_TIMEOUT,
     DEVICE_ID_PATTERN,
     KG_TO_NEWTON,
     STATUS_MESSAGES,
@@ -49,43 +44,36 @@ class BS205LoadCell(LoadCellService):
 
     def __init__(
         self,
-        port: str,
-        baudrate: int = DEFAULT_BAUDRATE,
-        timeout: float = DEFAULT_TIMEOUT,
-        indicator_id: int = DEFAULT_INDICATOR_ID,
+        config: Dict[str, Any],
     ):
         """
         초기화
 
         Args:
-            port: 시리얼 포트 (예: 'COM3', '/dev/ttyUSB0')
-            baudrate: 통신 속도
-            timeout: 통신 타임아웃 (초)
-            indicator_id: 지시계 ID
+            config: LoadCell 연결 설정 딕셔너리
         """
-        self._port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        self._indicator_id = indicator_id
+        # Extract config values with defaults
+        self._port = config.get("port", "COM3")
+        self._baudrate = config.get("baudrate", 9600)
+        self._timeout = config.get("timeout", 1.0)
+        self._indicator_id = config.get("indicator_id", 1)
+        self._max_force_range = config.get("max_force_range", 1000.0)
+        self._sampling_interval_ms = config.get("sampling_interval_ms", 100)
+        self._zero_tolerance = config.get("zero_tolerance", 0.01)
+
+        # State initialization
+        # Config values are already stored directly above
 
         self._connection: Optional[SerialConnection] = None
         self._is_connected = False
 
-    async def connect(self, loadcell_config: LoadCellConfig) -> None:
+    async def connect(self) -> None:
         """
         하드웨어 연결
-
-        Args:
-            loadcell_config: LoadCell connection configuration
 
         Raises:
             HardwareConnectionError: If connection fails
         """
-        # Update connection parameters from config
-        self._port = loadcell_config.port
-        self._baudrate = loadcell_config.baudrate
-        self._timeout = loadcell_config.timeout
-        self._indicator_id = loadcell_config.indicator_id
 
         try:
             logger.info(

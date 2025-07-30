@@ -55,9 +55,6 @@ from domain.value_objects.dut_command_info import (
 from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
-from domain.value_objects.hardware_configuration import (
-    HardwareConfiguration,
-)
 from domain.value_objects.identifiers import (
     DUTId,
     OperatorId,
@@ -128,7 +125,6 @@ class EOLForceTestUseCase:
         # Configuration state
         self._profile_name: Optional[str] = None
         self._test_config: Optional[TestConfiguration] = None
-        self._hardware_config: Optional[HardwareConfiguration] = None
 
     async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
@@ -212,12 +208,6 @@ class EOLForceTestUseCase:
         # Load configuration
         self._test_config = await self._configuration.load_configuration(self._profile_name)
 
-        # Load Hardware Configuration - this method doesn't exist, needs to be implemented
-        # For now, create a default hardware configuration
-        # pylint: disable=fixme
-        # TODO: Implement load_hardware_config method in ConfigurationService
-        self._hardware_config = HardwareConfiguration()
-
         # Validate configuration
         try:
             await self._configuration_validator.validate_test_configuration(self._test_config)
@@ -274,8 +264,7 @@ class EOLForceTestUseCase:
         if self._test_config is None:
             raise TestExecutionException(TestExecutionConstants.TEST_CONFIG_REQUIRED_ERROR)
 
-        if self._hardware_config is None:
-            raise TestExecutionException(TestExecutionConstants.HARDWARE_CONFIG_REQUIRED_ERROR)
+        # Hardware config validation removed - now handled in main.py
 
     async def _execute_hardware_test_phases(
         self,
@@ -292,27 +281,25 @@ class EOLForceTestUseCase:
         logger.info("Starting hardware test phase execution")
 
         try:
-            # Ensure configurations are validated and not None
-            if self._test_config is None or self._hardware_config is None:
+            # Ensure test configuration is validated and not None
+            if self._test_config is None:
                 raise TestExecutionException(
-                    "Configurations must be loaded before hardware test execution"
+                    "Test configuration must be loaded before hardware test execution"
                 )
 
             # Connect all hardware
-            await self._hardware_services.connect_all_hardware(self._hardware_config)
+            await self._hardware_services.connect_all_hardware()
             logger.debug("Hardware connections initialized successfully")
 
             # Initialize hardware with configuration
-            await self._hardware_services.initialize_hardware(
-                self._test_config, self._hardware_config
-            )
+            await self._hardware_services.initialize_hardware(self._test_config)
 
             # Setup test environment
-            await self._hardware_services.setup_test(self._test_config, self._hardware_config)
+            await self._hardware_services.setup_test(self._test_config)
 
             # Execute test measurements
             measurements = await self._hardware_services.perform_force_test_sequence(
-                self._test_config, self._hardware_config
+                self._test_config
             )
             logger.info(
                 f"Hardware test phases completed, {len(measurements)} measurements collected"
@@ -512,11 +499,9 @@ class EOLForceTestUseCase:
             Cleanup failures are logged but never raise exceptions
         """
         try:
-            # Only perform teardown if configurations are available
-            if self._test_config and self._hardware_config:
-                await self._hardware_services.teardown_test(
-                    self._test_config, self._hardware_config
-                )
+            # Only perform teardown if test configuration is available
+            if self._test_config:
+                await self._hardware_services.teardown_test(self._test_config)
             await self._hardware_services.shutdown_hardware()
             logger.debug("Hardware resources cleaned up successfully")
         except Exception as cleanup_error:

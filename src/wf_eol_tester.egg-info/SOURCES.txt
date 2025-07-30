@@ -31,6 +31,7 @@ src/domain/entities/test_result.py
 src/domain/enums/__init__.py
 src/domain/enums/digital_input_enums.py
 src/domain/enums/hardware_status.py
+src/domain/enums/mcu_enums.py
 src/domain/enums/measurement_units.py
 src/domain/enums/robot_enums.py
 src/domain/enums/test_status.py
@@ -83,8 +84,6 @@ src/infrastructure/implementation/hardware/mcu/lma/__init__.py
 src/infrastructure/implementation/hardware/mcu/lma/constants.py
 src/infrastructure/implementation/hardware/mcu/lma/error_codes.py
 src/infrastructure/implementation/hardware/mcu/lma/lma_mcu.py
-src/infrastructure/implementation/hardware/mcu/lma/types/__init__.py
-src/infrastructure/implementation/hardware/mcu/lma/types/enums.py
 src/infrastructure/implementation/hardware/mcu/mock/__init__.py
 src/infrastructure/implementation/hardware/mcu/mock/mock_mcu.py
 src/infrastructure/implementation/hardware/power/mock/__init__.py
@@ -103,7 +102,15 @@ src/infrastructure/implementation/repositories/json_result_repository.py
 src/ui/__init__.py
 src/ui/api/__init__.py
 src/ui/cli/__init__.py
+src/ui/cli/enhanced_eol_tester_cli.py
 src/ui/cli/eol_tester_cli.py
+src/ui/cli/hardware_controller.py
+src/ui/cli/rich_demo.py
+src/ui/cli/rich_formatter.py
+src/ui/cli/rich_utils.py
+src/ui/cli/slash_command_executor.py
+src/ui/cli/slash_command_handler.py
+src/ui/cli/usecase_manager.py
 src/ui/cli/commands/__init__.py
 src/ui/cli/commands/base.py
 src/ui/cli/commands/config_command.py

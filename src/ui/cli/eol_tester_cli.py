@@ -41,9 +41,7 @@ class EOLTesterCLI:
             self._running = True
 
             print("\n" + "=" * 60)
-            print(
-                "EOL Tester - Simplified Version".center(60)
-            )
+            print("EOL Tester - Simplified Version".center(60))
             print("=" * 60)
 
             while self._running:
@@ -124,17 +122,9 @@ class EOLTesterCLI:
                 print("DUT ID is required")
                 return None
 
-            dut_model = (
-                input("DUT Model [Unknown]: ").strip()
-                or "Unknown"
-            )
-            dut_serial = (
-                input("DUT Serial [N/A]: ").strip() or "N/A"
-            )
-            operator = (
-                input("Operator ID [Test]: ").strip()
-                or "Test"
-            )
+            dut_model = input("DUT Model [Unknown]: ").strip() or "Unknown"
+            dut_serial = input("DUT Serial [N/A]: ").strip() or "N/A"
+            operator = input("Operator ID [Test]: ").strip() or "Test"
 
             return {
                 "id": dut_id,
@@ -146,13 +136,9 @@ class EOLTesterCLI:
         except (KeyboardInterrupt, EOFError):
             return None
 
-    async def _execute_test(
-        self, command: EOLForceTestCommand
-    ) -> None:
+    async def _execute_test(self, command: EOLForceTestCommand) -> None:
         """테스트 실행"""
-        print(
-            f"\\nExecuting test for DUT: {command.dut_info.dut_id}"
-        )
+        print(f"\\nExecuting test for DUT: {command.dut_info.dut_id}")
         print("Please wait...")
 
         try:
@@ -168,26 +154,19 @@ class EOLTesterCLI:
 
         input("\\nPress Enter to continue...")
 
-    def _display_test_result(
-        self, result: EOLTestResult
-    ) -> None:
+    def _display_test_result(self, result: EOLTestResult) -> None:
         """테스트 결과 출력"""
         print("\\n" + "=" * 60)
         print("Test Result")
         print("=" * 60)
         print(f"Test ID: {result.test_id}")
         print(f"Status: {result.test_status}")
-        print(
-            f"Result: {'PASSED' if result.is_passed else 'FAILED'}"
-        )
+        print(f"Result: {'PASSED' if result.is_passed else 'FAILED'}")
         duration_str = result.format_duration()
         print(f"Duration: {duration_str}")
 
         # Check if test_summary is available and process it
-        if (
-            hasattr(result, "test_summary")
-            and result.test_summary
-        ):
+        if hasattr(result, "test_summary") and result.test_summary:
             print("\\nTest Summary:")
             if isinstance(result.test_summary, dict):
                 for (
@@ -212,23 +191,13 @@ class EOLTesterCLI:
 
         try:
             print("Hardware Status Check:")
-            print(
-                "  Hardware status monitoring is integrated into test execution"
-            )
-            print(
-                "  Individual hardware status can be checked during EOL test run"
-            )
-            print(
-                "  Connection status is validated automatically before each test"
-            )
+            print("  Hardware status monitoring is integrated into test execution")
+            print("  Individual hardware status can be checked during EOL test run")
+            print("  Connection status is validated automatically before each test")
 
         except Exception as e:
-            print(
-                f"Failed to display hardware status info: {e}"
-            )
-            logger.error(
-                f"Hardware status display error: {e}"
-            )
+            print(f"Failed to display hardware status info: {e}")
+            logger.error(f"Hardware status display error: {e}")
 
         input("\\nPress Enter to continue...")
 
@@ -239,9 +208,7 @@ class EOLTesterCLI:
         try:
             # Hardware cleanup is handled by the use case internally
             # CLI shutdown complete - resources will be cleaned up by garbage collection
-            logger.debug(
-                "CLI shutdown initiated - hardware cleanup handled internally"
-            )
+            logger.debug("CLI shutdown initiated - hardware cleanup handled internally")
 
         except Exception as e:
             logger.warning(f"Error during shutdown: {e}")

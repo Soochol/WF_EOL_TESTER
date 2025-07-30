@@ -5,25 +5,17 @@ Interface for power supply operations and control.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from domain.value_objects.hardware_configuration import (
-    PowerConfig,
-)
 
 
 class PowerService(ABC):
     """Abstract interface for power supply operations"""
 
     @abstractmethod
-    async def connect(
-        self, power_config: PowerConfig
-    ) -> None:
+    async def connect(self) -> None:
         """
         Connect to power supply hardware
-
-        Args:
-            power_config: Power supply connection configuration
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -51,12 +43,12 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
-    async def set_voltage(self, voltage: float) -> None:
+    async def set_voltage(self, voltage: Optional[float] = None) -> None:
         """
         Set output voltage
 
         Args:
-            voltage: Target voltage in volts
+            voltage: Target voltage in volts (uses default if None)
 
         Raises:
             HardwareOperationError: If voltage setting fails
@@ -75,13 +67,13 @@ class PowerService(ABC):
 
     @abstractmethod
     async def set_current_limit(
-        self, current: float
+        self, current: Optional[float] = None
     ) -> None:
         """
         Set current limit
 
         Args:
-            current: Current limit in amperes
+            current: Current limit in amperes (uses default if None)
 
         Raises:
             HardwareOperationError: If current limit setting fails

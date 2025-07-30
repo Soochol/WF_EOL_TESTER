@@ -65,28 +65,26 @@ class LMAError(Exception):
         if self.error_code:
             base_msg = f"[{self.error_code}] {base_msg}"
         if self.details:
-            base_msg = (
-                f"{base_msg}. Details: {self.details}"
-            )
+            base_msg = f"{base_msg}. Details: {self.details}"
         return base_msg
 
 
 class LMACommunicationError(LMAError):
     """LMA communication errors"""
 
-    pass
+    ...
 
 
 class LMAHardwareError(LMAError):
     """LMA hardware errors"""
 
-    pass
+    ...
 
 
 class LMAOperationError(LMAError):
     """LMA operation errors"""
 
-    pass
+    ...
 
 
 def validate_temperature(
@@ -108,15 +106,11 @@ def validate_temperature(
     if not (min_temp <= temperature <= max_temp):
         raise LMAOperationError(
             f"Temperature {temperature}°C is out of range [{min_temp}, {max_temp}]",
-            error_code=int(
-                LMAErrorCode.OPERATION_TEMPERATURE_OUT_OF_RANGE
-            ),
+            error_code=int(LMAErrorCode.OPERATION_TEMPERATURE_OUT_OF_RANGE),
         )
 
 
-def validate_fan_speed(
-    fan_speed: int, min_speed: int = 1, max_speed: int = 10
-) -> None:
+def validate_fan_speed(fan_speed: int, min_speed: int = 1, max_speed: int = 10) -> None:
     """
     Validate fan speed range
 
@@ -131,7 +125,5 @@ def validate_fan_speed(
     if not (min_speed <= fan_speed <= max_speed):
         raise LMAOperationError(
             f"Fan speed {fan_speed} is out of range [{min_speed}, {max_speed}]",
-            error_code=int(
-                LMAErrorCode.OPERATION_FAN_SPEED_OUT_OF_RANGE
-            ),
+            error_code=int(LMAErrorCode.OPERATION_FAN_SPEED_OUT_OF_RANGE),
         )

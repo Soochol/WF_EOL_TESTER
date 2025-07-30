@@ -34,6 +34,12 @@
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "files.autoSave": "onFocusChange",
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/__pycache__/**": true
+    },
     "files.exclude": {
         "**/__pycache__": true,
         "**/*.pyc": true,
@@ -50,6 +56,8 @@
     "python.analysis.autoSearchPaths": true,
     "python.analysis.diagnosticMode": "workspace",
     "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.stubPath": "./typings",
+    "python.analysis.extraPaths": ["./src"],
 
     // === Python Language-Specific Settings ===
     "[python]": {
@@ -168,6 +176,8 @@
     // === IntelliSense and Auto-completion ===
     "python.languageServer": "Pylance",
     "python.analysis.indexing": true,
+    "python.analysis.watchForLibraryChanges": true,
+    "python.analysis.reloadMode": "modified",
     "python.analysis.packageIndexDepths": [
         {
             "name": "sklearn",

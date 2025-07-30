@@ -5,26 +5,18 @@ Interface for MCU (Microcontroller Unit) operations and control.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from domain.value_objects.hardware_configuration import (
-    MCUConfig,
-)
-from infrastructure.implementation.hardware.mcu.lma.types import (
-    TestMode,
-)
+from domain.enums.mcu_enums import TestMode
 
 
 class MCUService(ABC):
     """Abstract interface for MCU operations"""
 
     @abstractmethod
-    async def connect(self, mcu_config: MCUConfig) -> None:
+    async def connect(self) -> None:
         """
         Connect to MCU hardware
-
-        Args:
-            mcu_config: MCU connection configuration
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -71,14 +63,12 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_temperature(
-        self, target_temp: float
-    ) -> None:
+    async def set_temperature(self, target_temp: Optional[float] = None) -> None:
         """
         Set target temperature for the MCU
 
         Args:
-            target_temp: Target temperature in Celsius
+            target_temp: Target temperature in Celsius. None to use default
 
         Raises:
             HardwareOperationError: If temperature setting fails
@@ -86,9 +76,7 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_upper_temperature(
-        self, upper_temp: float
-    ) -> None:
+    async def set_upper_temperature(self, upper_temp: float) -> None:
         """
         Set upper temperature limit for the MCU
 
@@ -134,14 +122,12 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_fan_speed(
-        self, speed_percent: float
-    ) -> None:
+    async def set_fan_speed(self, speed_percent: Optional[float] = None) -> None:
         """
         Set fan speed percentage
 
         Args:
-            speed_percent: Fan speed (0-100%)
+            speed_percent: Fan speed (0-100%). None to use default
 
         Raises:
             HardwareOperationError: If fan speed setting fails
