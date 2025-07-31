@@ -50,6 +50,7 @@ class OdaPower(PowerService):
         self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
         self._is_connected = False
         self._output_enabled = False
+        self._device_identity = None  # Store device identification response
 
     async def connect(self) -> None:
         """
@@ -73,11 +74,12 @@ class OdaPower(PowerService):
             response = await self._send_command("*IDN?")
             if response and "ODA" in response:
                 self._is_connected = True
+                self._device_identity = response  # Store device identity for CLI display
 
                 # 안전을 위해 출력 비활성화
                 await self.disable_output()
 
-                logger.info("ODA Power Supply connected successfully")
+                logger.info(f"ODA Power Supply connected successfully: {response}")
             else:
                 logger.warning("ODA Power Supply identification failed")
                 raise HardwareConnectionError(
@@ -274,6 +276,15 @@ class OdaPower(PowerService):
 
         return self._output_enabled
 
+    async def get_device_identity(self) -> Optional[str]:
+        """
+        Get device identification string
+        
+        Returns:
+            Device identification string from *IDN? command, or None if not connected
+        """
+        return self._device_identity
+
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
@@ -288,6 +299,7 @@ class OdaPower(PowerService):
             "channel": self._channel,
             "output_enabled": self._output_enabled,
             "hardware_type": "ODA",
+            "device_identity": self._device_identity,
         }
 
         if await self.is_connected():

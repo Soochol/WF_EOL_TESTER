@@ -600,9 +600,25 @@ class PowerController(HardwareController):
                     progress_display.update("Power supply connected successfully")
                     await asyncio.sleep(0.3)  # Show success message briefly
 
-            self.formatter.print_message(
-                "Power supply connected successfully", message_type="success"
-            )
+            # Get and display device identity if available
+            device_identity = None
+            if hasattr(self.power_service, 'get_device_identity'):
+                try:
+                    device_identity = await self.power_service.get_device_identity()
+                except Exception:
+                    pass  # Ignore errors getting device identity
+
+            if device_identity:
+                self.formatter.print_message(
+                    f"Power supply connected successfully", message_type="success"
+                )
+                self.formatter.print_message(
+                    f"Device Identity: {device_identity}", message_type="info"
+                )
+            else:
+                self.formatter.print_message(
+                    "Power supply connected successfully", message_type="success"
+                )
             return True
 
         except Exception as e:

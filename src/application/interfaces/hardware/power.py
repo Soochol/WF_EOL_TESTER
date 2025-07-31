@@ -121,6 +121,16 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
+    async def get_device_identity(self) -> Optional[str]:
+        """
+        Get device identification string
+        
+        Returns:
+            Device identification string from *IDN? command, or None if not available
+        """
+        ...
+
+    @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
         """
         Get power supply status

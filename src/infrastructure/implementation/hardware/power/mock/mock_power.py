@@ -336,6 +336,17 @@ class MockPower(PowerService):
 
         return self._output_enabled
 
+    async def get_device_identity(self) -> Optional[str]:
+        """
+        Get device identification string (mock)
+        
+        Returns:
+            Mock device identification string
+        """
+        if not self._is_connected:
+            return None
+        return "MOCK Power Supply, Model PSU-001, Version 1.0"
+
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
