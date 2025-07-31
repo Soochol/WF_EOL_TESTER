@@ -45,6 +45,7 @@ class MockTCPCommunication:
         # Mock responses
         self.responses = {
             "*IDN?": "ODA Technologies,EX-Series,2.1-1.0-1.6",
+            "*ESR?": "0",  # No error status
             "OUTP?": "0",  # Output OFF
             "VOLT?": "12.345",
             "CURR?": "5.000"

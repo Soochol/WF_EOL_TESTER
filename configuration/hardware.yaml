@@ -25,7 +25,7 @@ hardware_config:
     port: 5000
     timeout: 5.0
     channel: 1
-    delimiter: "\n"  # "\n" = LF (default), "\r\n" = CRLF, null = TCP driver handles terminator
+    delimiter: "\r\n"  # "\n" = LF (default), "\r\n" = CRLF, null = TCP driver handles terminator
   digital_input:
     model: MOCK
     board_no: 0

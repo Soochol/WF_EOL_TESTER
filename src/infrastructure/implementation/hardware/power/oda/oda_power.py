@@ -5,6 +5,7 @@ Integrated service for ODA power supply hardware control.
 Combines adapter and controller functionality into a single service.
 """
 
+import asyncio
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -82,6 +83,9 @@ class OdaPower(PowerService):
                 # Clear any error status from previous operations
                 await self._send_command("*CLS")
                 logger.debug("ODA Power Supply error status cleared with *CLS")
+
+                # Small delay before next command
+                await asyncio.sleep(0.1)
 
                 # 안전을 위해 출력 비활성화
                 await self.disable_output()
@@ -288,7 +292,9 @@ class OdaPower(PowerService):
                 # According to manual: "0" = OFF, "1" = ON
                 hardware_state = response.strip() == "1"
                 self._output_enabled = hardware_state  # Sync software state with hardware
-                logger.debug("ODA output state queried: %s (hardware: %s)", hardware_state, response.strip())
+                logger.debug(
+                    "ODA output state queried: %s (hardware: %s)", hardware_state, response.strip()
+                )
                 return hardware_state
             else:
                 logger.warning("No response from OUTP? query, using cached state")
@@ -300,7 +306,7 @@ class OdaPower(PowerService):
     async def get_device_identity(self) -> Optional[str]:
         """
         Get device identification string
-        
+
         Returns:
             Device identification string from *IDN? command, or None if not connected
         """
@@ -359,11 +365,17 @@ class OdaPower(PowerService):
             # Always add delimiter - TCP driver no longer adds terminators
             if self._delimiter:
                 command_with_terminator = f"{command}{self._delimiter}"
-                logger.debug("Adding configured delimiter: %s", repr(self._delimiter))
+                logger.debug(
+                    "Adding configured delimiter: %s to command: %s",
+                    repr(self._delimiter),
+                    repr(command),
+                )
             else:
-                # If no delimiter configured, use default LF for SCPI compatibility  
+                # If no delimiter configured, use default LF for SCPI compatibility
                 command_with_terminator = f"{command}\n"
-                logger.debug("Adding default LF terminator for SCPI compatibility")
+                logger.debug("Adding default LF terminator to command: %s", repr(command))
+
+            logger.debug("Final command to send: %s", repr(command_with_terminator))
 
             # Use query() method for commands that expect responses
             if command.endswith("?"):
@@ -377,6 +389,31 @@ class OdaPower(PowerService):
                 response = response.strip()
 
             logger.debug("ODA command: %s -> response: %s", command, response)
+
+            # Add small delay after each command to prevent overwhelming the device
+            await asyncio.sleep(0.05)  # 50ms delay between commands
+
+            # Check for error status after each command to help debug BEEP/ERR issues
+            if not command.startswith("*") and not command.endswith("?"):
+                try:
+                    # Query error status to help identify what's causing BEEP/ERR
+                    if self._delimiter:
+                        error_query = f"*ESR?{self._delimiter}"
+                    else:
+                        error_query = "*ESR?\n"
+
+                    # Small additional delay before error check
+                    await asyncio.sleep(0.02)
+                    error_status = await self._tcp_comm.query(error_query)
+                    if error_status and error_status.strip() != "0":
+                        logger.warning(
+                            "ODA Power error status after command '%s': %s",
+                            command,
+                            error_status.strip(),
+                        )
+                except Exception as e:
+                    logger.debug("Could not check error status: %s", e)
+
             return response
 
         except Exception as e:
