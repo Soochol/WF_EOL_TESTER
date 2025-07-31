@@ -54,7 +54,7 @@ class OdaPower(PowerService):
         self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
         self._is_connected = False
         self._output_enabled = False
-        self._device_identity = None  # Store device identification response
+        self._device_identity: Optional[str] = None  # Store device identification response
 
     async def connect(self) -> None:
         """
@@ -85,10 +85,13 @@ class OdaPower(PowerService):
                 logger.debug("ODA Power Supply error status cleared with *CLS")
 
                 # Small delay before next command
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.2)
 
                 # 안전을 위해 출력 비활성화
                 await self.disable_output()
+
+                # small delay to ensure device is ready
+                await asyncio.sleep(0.1)
 
                 logger.info("ODA Power Supply connected successfully: %s", response)
             else:
@@ -392,27 +395,6 @@ class OdaPower(PowerService):
 
             # Add small delay after each command to prevent overwhelming the device
             await asyncio.sleep(0.05)  # 50ms delay between commands
-
-            # Check for error status after each command to help debug BEEP/ERR issues
-            if not command.startswith("*") and not command.endswith("?"):
-                try:
-                    # Query error status to help identify what's causing BEEP/ERR
-                    if self._delimiter:
-                        error_query = f"*ESR?{self._delimiter}"
-                    else:
-                        error_query = "*ESR?\n"
-
-                    # Small additional delay before error check
-                    await asyncio.sleep(0.02)
-                    error_status = await self._tcp_comm.query(error_query)
-                    if error_status and error_status.strip() != "0":
-                        logger.warning(
-                            "ODA Power error status after command '%s': %s",
-                            command,
-                            error_status.strip(),
-                        )
-                except Exception as e:
-                    logger.debug("Could not check error status: %s", e)
 
             return response
 

@@ -22,10 +22,10 @@ from driver.serial.exceptions import (
 )
 from driver.serial.serial import SerialConnection, SerialManager
 from infrastructure.implementation.hardware.loadcell.bs205.constants import (
-    CMD_READ_WEIGHT,
-    CMD_ZERO,
     CMD_HOLD,
     CMD_HOLD_RELEASE,
+    CMD_READ_WEIGHT,
+    CMD_ZERO,
     STATUS_MESSAGES,
     ZERO_OPERATION_DELAY,
 )
@@ -66,7 +66,7 @@ class BS205LoadCell(LoadCellService):
 
         self._connection: Optional[SerialConnection] = None
         self._is_connected = False
-        
+
         # Command rate limiting
         self._last_command_time = 0.0
         self._min_command_interval = 0.2  # 200ms minimum between commands
@@ -179,7 +179,7 @@ class BS205LoadCell(LoadCellService):
         try:
             # BS205 바이너리 프로토콜 사용
             response = await self._send_bs205_command(CMD_READ_WEIGHT)
-            
+
             if not response:
                 raise BS205CommunicationError(
                     "No response from BS205 LoadCell",
@@ -265,7 +265,7 @@ class BS205LoadCell(LoadCellService):
     async def hold(self) -> bool:
         """
         Hold 설정 - 현재 측정값을 고정
-        
+
         BS205 프로토콜에서 ID + H 명령으로 현재 표시값을 고정합니다.
         응답이 없으므로 명령 전송 후 성공으로 간주합니다.
 
@@ -301,7 +301,7 @@ class BS205LoadCell(LoadCellService):
     async def hold_release(self) -> bool:
         """
         Hold 해제 - 실시간 측정값 표시
-        
+
         BS205 프로토콜에서 ID + L 명령으로 Hold를 해제하고 실시간 값을 표시합니다.
         응답이 없으므로 명령 전송 후 성공으로 간주합니다.
 
@@ -382,14 +382,16 @@ class BS205LoadCell(LoadCellService):
             "hardware_type": "BS205",
         }
 
-    async def _send_bs205_command(self, command: str, timeout: Optional[float] = None) -> Optional[str]:
+    async def _send_bs205_command(
+        self, command: str, timeout: Optional[float] = None
+    ) -> Optional[str]:
         """
         BS205 바이너리 프로토콜로 명령 전송
-        
+
         Args:
             command: 명령어 ('R', 'Z', 'H', 'L')
             timeout: 응답 타임아웃
-            
+
         Returns:
             파싱된 응답 문자열
         """
@@ -403,49 +405,49 @@ class BS205LoadCell(LoadCellService):
         async with self._command_lock:
             current_time = asyncio.get_event_loop().time()
             time_since_last = current_time - self._last_command_time
-            
+
             if time_since_last < self._min_command_interval:
                 wait_time = self._min_command_interval - time_since_last
                 logger.debug(f"Rate limiting: waiting {wait_time:.2f}s before command")
                 await asyncio.sleep(wait_time)
-            
+
             try:
                 cmd_timeout = timeout if timeout is not None else 3.0  # Increase default timeout
-                
+
                 # BS205 바이너리 명령어 생성: ID + Command
                 # ID=0 → 30H, R → 52H
                 id_byte = ord(str(self._indicator_id))  # '0' → 0x30
                 cmd_byte = ord(command)  # 'R' → 0x52
                 command_bytes = bytes([id_byte, cmd_byte])
-                
+
                 logger.debug(f"Sending BS205 command: {command}")
-                
+
                 # 바이너리 명령어 전송
                 await self._connection.write(command_bytes)
-                
+
                 # Update last command time
                 self._last_command_time = asyncio.get_event_loop().time()
-                
+
                 # Small delay to allow BS205 to prepare response
                 await asyncio.sleep(0.15)  # Increased to 150ms delay
-                
+
                 # Hold, Hold Release, and Zero commands don't return responses
                 if command in [CMD_HOLD, CMD_HOLD_RELEASE, CMD_ZERO]:
                     logger.debug(f"Command '{command}' sent - no response expected")
                     return "OK"  # Return success indicator
-                
+
                 # Read response for other commands
                 response_buffer = await self._read_response(cmd_timeout)
-                
+
                 if not response_buffer:
                     logger.warning("No response data received from BS205")
                     return None
-                    
+
                 # Parse the response
                 ascii_response = self._parse_bs205_response(response_buffer)
-                
+
                 return ascii_response if ascii_response else None
-                
+
             except Exception as e:
                 logger.error(f"BS205 binary command '{command}' failed: {e}")
                 raise BS205CommunicationError(
@@ -456,29 +458,29 @@ class BS205LoadCell(LoadCellService):
     async def _read_response(self, timeout: float) -> bytes:
         """
         Read BS205 response with simple retry strategy
-        
+
         Args:
             timeout: Total timeout for reading
-            
+
         Returns:
             Response bytes or empty bytes if failed
         """
         try:
             # Try to read response data
+            if not self._connection:
+                raise BS205CommunicationError("No connection available")
             response = await self._connection.read(size=64, timeout=timeout)
-            
             # If first read is incomplete, try one more time
             if response and len(response) < 10:  # Minimum expected frame size
                 additional = await self._connection.read(size=32, timeout=0.5)
                 if additional:
                     response += additional
-            
+
             return response
-            
+
         except Exception as e:
             logger.error(f"Error reading response: {e}")
             return b""
-
 
     def _extract_frame_data(self, response_bytes: bytes) -> bytes:
         """
@@ -490,13 +492,13 @@ class BS205LoadCell(LoadCellService):
             if stx_pos != -1:
                 etx_pos = response_bytes.find(0x03, stx_pos)
                 if etx_pos != -1:
-                    return response_bytes[stx_pos + 1:etx_pos]
+                    return response_bytes[stx_pos + 1 : etx_pos]
                 else:
-                    return response_bytes[stx_pos + 1:]
-            
+                    return response_bytes[stx_pos + 1 :]
+
             # No framing, return as-is
             return response_bytes
-            
+
         except Exception as e:
             logger.error(f"Error extracting frame data: {e}")
             return b""
@@ -508,11 +510,11 @@ class BS205LoadCell(LoadCellService):
         try:
             if len(response_bytes) < 5:
                 return ""
-                
+
             data_bytes = self._extract_frame_data(response_bytes)
             if not data_bytes:
                 return ""
-            
+
             # ASCII로 변환 (공백을 _로 표시)
             ascii_data = ""
             for byte_val in data_bytes:
@@ -523,27 +525,27 @@ class BS205LoadCell(LoadCellService):
                         ascii_data += chr(byte_val)
                 else:
                     ascii_data += f"[{byte_val:02X}]"
-            
+
             return ascii_data
-            
+
         except Exception:
             return ""
 
     def _parse_bs205_weight(self, response: str) -> tuple[float, str]:
         """
         BS205 가중치 응답 파싱
-        
+
         응답 형태: "ID + 부호 + 값" (문서 기준)
         예: "0+_7.487", "0-12.34", "15+1.7486"
-        
+
         실제 프로토콜 문서 예시:
         - "1+_7.487" (ID=1, +7.487kg)
         - "1+_ _7487" (ID=1, +7.487kg, 소수점 없음)
         - "15+1.7486" (ID=15, +1.7486kg)
-        
+
         Args:
             response: BS205 응답 문자열
-            
+
         Returns:
             (weight_value, unit) 튜플
         """
@@ -553,60 +555,61 @@ class BS205LoadCell(LoadCellService):
                     f"Invalid BS205 response: '{response}'",
                     error_code=int(BS205ErrorCode.DATA_INVALID_FORMAT),
                 )
-            
+
             logger.debug(f"Parsing BS205 weight response: '{response}'")
-            
+
             # ID 부분과 데이터 부분 분리
             sign_pos = -1
             for i, char in enumerate(response):
-                if char in ['+', '-']:
+                if char in ["+", "-"]:
                     sign_pos = i
                     break
-                    
+
             if sign_pos == -1:
                 raise BS205CommunicationError(
                     f"Cannot find sign (+/-) in BS205 response: '{response}'",
                     error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
                 )
-            
+
             # 부호와 값 추출
             sign = response[sign_pos]
-            value_part = response[sign_pos + 1:]
-            
-            
+            value_part = response[sign_pos + 1 :]
+
             # 값 정리: 언더스코어(_)를 공백으로 변환, 연속 공백 정리
-            value_clean = value_part.replace('_', ' ').strip()
+            value_clean = value_part.replace("_", " ").strip()
             # 연속된 공백을 하나로 정리
             import re
-            value_clean = re.sub(r'\s+', ' ', value_clean)
+
+            value_clean = re.sub(r"\s+", " ", value_clean)
             # 최종적으로 공백 제거하여 숫자만 추출
-            value_clean = value_clean.replace(' ', '')
-            
+            value_clean = value_clean.replace(" ", "")
+
             # 빈 정수 부분 처리 (예: ".487" → "0.487")
-            if value_clean.startswith('.'):
-                value_clean = '0' + value_clean
-            
+            if value_clean.startswith("."):
+                value_clean = "0" + value_clean
+
             # float 변환
             try:
                 weight_value = float(value_clean)
             except ValueError:
                 # 마지막 시도: 숫자만 추출
                 import re
-                numbers = re.findall(r'\d+\.?\d*', value_clean)
+
+                numbers = re.findall(r"\d+\.?\d*", value_clean)
                 if numbers:
                     weight_value = float(numbers[0])
                 else:
                     raise ValueError(f"No valid number found in '{value_clean}'")
-            
+
             # 부호 적용
-            if sign == '-':
+            if sign == "-":
                 weight_value = -weight_value
-                
+
             logger.info(f"Successfully parsed BS205 weight: '{response}' → {weight_value} kg")
-            
+
             # BS205는 kg 단위 사용 (문서 확인)
             return weight_value, "kg"
-            
+
         except ValueError as e:
             raise BS205CommunicationError(
                 f"Cannot convert BS205 weight value: '{response}' → {str(e)}",
@@ -617,5 +620,3 @@ class BS205LoadCell(LoadCellService):
                 f"Failed to parse BS205 weight: '{response}', error: {e}",
                 error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
             ) from e
-
-
