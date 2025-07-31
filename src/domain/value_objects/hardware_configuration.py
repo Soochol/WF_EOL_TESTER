@@ -114,6 +114,9 @@ class PowerConfig:
     timeout: float = 5.0
     channel: int = 1
 
+    # Communication parameters
+    delimiter: Optional[str] = "\n"  # Command terminator (None = TCP driver handles)
+
     # Default voltage/current parameters
     default_voltage: float = 0.0
     default_current_limit: float = 5.0
@@ -739,6 +742,7 @@ class HardwareConfiguration:
                 "port": self.power.port,
                 "timeout": self.power.timeout,
                 "channel": self.power.channel,
+                "delimiter": self.power.delimiter,
                 "default_voltage": self.power.default_voltage,
                 "default_current_limit": self.power.default_current_limit,
                 "connection_delay": self.power.connection_delay,
