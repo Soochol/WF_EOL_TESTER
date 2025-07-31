@@ -805,7 +805,11 @@ class HardwareControlManager:
                     break
 
                 await controller.execute_command(selection)
-                # No pause after any command - return to menu immediately
+                
+                # Pause only for data-reading operations so users can see the results
+                if self._should_pause_after_command(controller, selection):
+                    input("\nPress Enter to continue...")
+                # All other operations return to menu immediately
 
             except (KeyboardInterrupt, EOFError):
                 break
@@ -836,3 +840,29 @@ class HardwareControlManager:
     def list_controllers(self) -> List[str]:
         """Get list of available controller names"""
         return list(self.controllers.keys())
+
+    def _should_pause_after_command(self, controller: HardwareController, command: str) -> bool:
+        """
+        Determine if we should pause after a command to let user see data
+        
+        Args:
+            controller: The hardware controller that executed the command
+            command: The command that was executed
+            
+        Returns:
+            True if we should pause, False otherwise
+        """
+        # Commands that display measurement data and need user to see results
+        data_reading_commands = {
+            # LoadCell data reading commands
+            "LoadCell": {"4"},  # Read Force
+            # MCU data reading commands  
+            "MCU": {"4"},      # Get Temperature
+            # Power and Robot don't have separate data reading commands
+            # (their status already shows the data)
+        }
+        
+        controller_name = type(controller).__name__.replace("Controller", "")
+        commands_needing_pause = data_reading_commands.get(controller_name, set())
+        
+        return command in commands_needing_pause
