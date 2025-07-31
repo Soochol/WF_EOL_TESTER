@@ -44,3 +44,6 @@ venv/
 .venv/
 venv_disabled/
 .venv_disabled/
+*.pyc
+__pycache__/
+*.log
