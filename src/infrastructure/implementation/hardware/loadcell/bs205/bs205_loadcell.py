@@ -26,7 +26,6 @@ from infrastructure.implementation.hardware.loadcell.bs205.constants import (
     CMD_READ_WEIGHT,
     CMD_ZERO,
     DEVICE_ID_PATTERN,
-    KG_TO_NEWTON,
     STATUS_MESSAGES,
     ZERO_OPERATION_DELAY,
 )
@@ -36,7 +35,6 @@ from infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
     BS205ErrorCode,
     BS205HardwareError,
     BS205OperationError,
-    convert_weight_to_force,
     parse_weight_response,
     validate_sample_parameters,
     validate_weight_range,
@@ -182,20 +180,37 @@ class BS205LoadCell(LoadCellService):
                 )
 
             # 응답 파싱 및 검증
-            weight_kg, _ = parse_weight_response(response)
+            weight_value, unit = parse_weight_response(response)
 
-            # 무게 범위 검증
-            validate_weight_range(weight_kg)
-
-            # kg을 Newton으로 변환
-            force_n = convert_weight_to_force(weight_kg, KG_TO_NEWTON)
-
-            logger.debug(
-                "BS205 LoadCell reading: %skg = %.3fN",
-                weight_kg,
-                force_n,
-            )
-            return ForceValue.from_raw_data(force_n, MeasurementUnit.NEWTON)
+            # 단위에 따른 처리
+            if unit == "kg":
+                # 무게 범위 검증
+                validate_weight_range(weight_value)
+                
+                # kg을 kgf로 변환 (1kg = 1kgf 중력하에서)
+                force_kgf = weight_value
+                
+                logger.debug(
+                    "BS205 LoadCell reading: %skg = %.3fkgf",
+                    weight_value,
+                    force_kgf,
+                )
+                return ForceValue.from_raw_data(force_kgf, MeasurementUnit.KILOGRAM_FORCE)
+            
+            elif unit == "N":
+                # 이미 Newton 단위인 경우
+                logger.debug(
+                    "BS205 LoadCell reading: %.3fN",
+                    weight_value,
+                )
+                return ForceValue.from_raw_data(weight_value, MeasurementUnit.NEWTON)
+                
+            else:
+                # 지원하지 않는 단위
+                raise BS205OperationError(
+                    f"Unsupported unit '{unit}' from device",
+                    error_code=int(BS205ErrorCode.OPERATION_INVALID_UNIT),
+                )
 
         except BS205Error:
             raise  # Re-raise BS205 specific errors
