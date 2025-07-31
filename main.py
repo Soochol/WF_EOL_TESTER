@@ -6,6 +6,7 @@ Simplified main application with direct service creation.
 
 # Standard library imports
 import asyncio
+import signal
 import sys
 from pathlib import Path
 from typing import Any, Dict, Tuple
@@ -249,12 +250,44 @@ async def create_business_services(
     )
 
 
+def setup_signal_handlers():
+    """Setup signal handlers for graceful shutdown"""
+    def signal_handler(signum, frame):
+        """Handle termination signals"""
+        _ = frame  # Unused parameter
+        signal_names = {
+            signal.SIGINT: "SIGINT (Ctrl+C)",
+            signal.SIGTERM: "SIGTERM",
+        }
+        
+        # Add Windows-specific signals if available
+        if hasattr(signal, 'SIGBREAK'):
+            signal_names[signal.SIGBREAK] = "SIGBREAK (Ctrl+Break)"
+            
+        signal_name = signal_names.get(signum, f"Signal {signum}")
+        print(f"\\nReceived {signal_name}, exiting...")
+        sys.exit(0)
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Windows-specific signal handling
+    if hasattr(signal, 'SIGBREAK'):
+        signal.signal(signal.SIGBREAK, signal_handler)
+
+
 if __name__ == "__main__":
+    # Setup signal handlers for graceful shutdown
+    setup_signal_handlers()
+    
     # Use asyncio.run for Python 3.7+ compatibility
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\\nExiting...")
+    except EOFError:
+        print("\\nEOF received, exiting...")
     except Exception as e:
         print(f"Startup error: {e}")
         sys.exit(1)
