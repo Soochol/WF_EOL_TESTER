@@ -44,6 +44,9 @@ class OdaPower(PowerService):
         self._max_voltage = config.get("max_voltage", 30.0)
         self._max_current = config.get("max_current", 50.0)
 
+        # Communication settings
+        self._delimiter = config.get("delimiter", "\n")  # Default: LF terminator
+
         # State initialization
         # Config values are already stored directly above
 
@@ -274,7 +277,21 @@ class OdaPower(PowerService):
         if not await self.is_connected():
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
-        return self._output_enabled
+        try:
+            # Query actual hardware state using OUTP? command
+            response = await self._send_command("OUTP?")
+            if response:
+                # According to manual: "0" = OFF, "1" = ON
+                hardware_state = response.strip() == "1"
+                self._output_enabled = hardware_state  # Sync software state with hardware
+                logger.debug("ODA output state queried: %s (hardware: %s)", hardware_state, response.strip())
+                return hardware_state
+            else:
+                logger.warning("No response from OUTP? query, using cached state")
+                return self._output_enabled
+        except Exception as e:
+            logger.error("Failed to query ODA output state: %s", e)
+            return self._output_enabled  # Return cached state on error
 
     async def get_device_identity(self) -> Optional[str]:
         """
@@ -335,7 +352,13 @@ class OdaPower(PowerService):
 
         try:
             # 명령 전송 및 응답 수신 (SCPI 형식)
-            command_with_terminator = f"{command}\n"
+            # Use configurable delimiter or let TCP driver handle terminator
+            if self._delimiter:
+                command_with_terminator = f"{command}{self._delimiter}"
+                logger.debug("Using custom delimiter: %s", repr(self._delimiter))
+            else:
+                command_with_terminator = command  # TCP driver will add terminator
+                logger.debug("Using TCP driver default terminator")
 
             # Use query() method for commands that expect responses
             if command.endswith("?"):
