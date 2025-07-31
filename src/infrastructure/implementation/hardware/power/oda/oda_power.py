@@ -79,7 +79,7 @@ class OdaPower(PowerService):
                 # 안전을 위해 출력 비활성화
                 await self.disable_output()
 
-                logger.info(f"ODA Power Supply connected successfully: {response}")
+                logger.info("ODA Power Supply connected successfully: %s", response)
             else:
                 logger.warning("ODA Power Supply identification failed")
                 raise HardwareConnectionError(
