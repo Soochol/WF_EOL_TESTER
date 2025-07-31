@@ -175,10 +175,36 @@ class BS205LoadCell(LoadCellService):
             )
 
         try:
-            # 현재 무게 읽기 명령
-            response = await self._send_command(CMD_READ_WEIGHT)
+            # 현재 무게 읽기 명령 - 여러 방법 시도
+            response = None
+            commands_to_try = [
+                CMD_READ_WEIGHT,  # "R"
+                "P",              # Print command
+                f"{self._indicator_id}R",  # ID + R
+                "",               # Empty (just read what's available)
+            ]
+            
+            for cmd in commands_to_try:
+                try:
+                    logger.debug(f"Trying read command: '{cmd}'")
+                    if cmd == "":
+                        # 빈 명령어인 경우, 그냥 데이터 읽기 시도
+                        if self._connection:
+                            raw_response = await self._connection.read_until(b"\r", timeout=2.0)
+                            if raw_response:
+                                response = raw_response.decode('ascii').strip()
+                                logger.info(f"Empty command read successful: '{response}'")
+                                break
+                    else:
+                        response = await self._send_command(cmd, timeout=2.0)
+                        if response and response.strip():
+                            logger.info(f"Command '{cmd}' successful: '{response}'")
+                            break
+                except Exception as e:
+                    logger.debug(f"Command '{cmd}' failed: {e}")
+                    continue
 
-            if not response:
+            if not response or not isinstance(response, str):
                 raise BS205CommunicationError(
                     "No response from BS205 LoadCell",
                     error_code=int(BS205ErrorCode.COMM_TIMEOUT),

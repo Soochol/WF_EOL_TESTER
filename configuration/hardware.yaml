@@ -10,7 +10,7 @@ hardware_config:
     bytesize: 8
     stopbits: 1
     parity: even
-    indicator_id: 1
+    indicator_id: 0
   mcu:
     model: MOCK
     port: COM4
