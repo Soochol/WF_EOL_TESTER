@@ -375,7 +375,7 @@ class OdaPower(PowerService):
                 command_with_terminator = f"{command}\n"
                 logger.debug("Adding default LF terminator to command: %s", repr(command))
 
-            logger.info("Final command to send: %s", repr(command_with_terminator))
+            logger.info(f"Final command to send: {repr(command_with_terminator)}")
 
             # Use query() method for commands that expect responses
             if command.endswith("?"):
@@ -388,7 +388,7 @@ class OdaPower(PowerService):
             if response:
                 response = response.strip()
 
-            logger.info("ODA command: %s -> response: %s", command, response)
+            logger.info(f"ODA command: {command} -> response: {response}")
 
             # Add small delay after each command to prevent overwhelming the device
             await asyncio.sleep(0.05)  # 50ms delay between commands
