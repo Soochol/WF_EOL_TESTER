@@ -79,6 +79,10 @@ class OdaPower(PowerService):
                 self._is_connected = True
                 self._device_identity = response  # Store device identity for CLI display
 
+                # Clear any error status from previous operations
+                await self._send_command("*CLS")
+                logger.debug("ODA Power Supply error status cleared with *CLS")
+
                 # 안전을 위해 출력 비활성화
                 await self.disable_output()
 

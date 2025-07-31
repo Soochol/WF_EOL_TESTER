@@ -115,10 +115,9 @@ async def test_delimiter_default():
     # Replace TCP communication with mock
     mock_tcp = MockTCPCommunication(config['host'], config['port'], config['timeout'])
     power._tcp_comm = mock_tcp
-    power._is_connected = True
     
-    # Mock the connect check to return True
-    await mock_tcp.connect()
+    # Test actual connection process to verify *CLS command
+    await power.connect()
     
     try:
         # Test voltage setting
