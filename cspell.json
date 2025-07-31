@@ -4,9 +4,19 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "addopts",
+        "bytesize",
+        "CMOS",
+        "conftest",
+        "filterwarnings",
+        "htmlcov",
         "KILOOHM",
         "MEGAOHM",
-        "PULLUP"
+        "PULLUP",
+        "pycache",
+        "stopbits",
+        "testpaths",
+        "venv"
     ],
     "ignoreWords": [],
     "import": []

@@ -79,6 +79,9 @@ class LMAMCU(MCUService):
         self._port = config.get("port", "COM4")
         self._baudrate = config.get("baudrate", 115200)
         self._timeout = config.get("timeout", 2.0)
+        self._bytesize = config.get("bytesize", 8)
+        self._stopbits = config.get("stopbits", 1)
+        self._parity = config.get("parity", None)
 
         # Operational defaults
         self._temperature = config.get("default_temperature", 25.0)
@@ -115,6 +118,9 @@ class LMAMCU(MCUService):
                 port=self._port,
                 baudrate=self._baudrate,
                 timeout=self._timeout,
+                bytesize=self._bytesize,
+                stopbits=self._stopbits,
+                parity=self._parity,
             )
 
             # Wait for boot complete message with timeout protection

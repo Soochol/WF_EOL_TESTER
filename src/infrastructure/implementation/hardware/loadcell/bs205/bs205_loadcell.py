@@ -14,9 +14,13 @@ from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
 from domain.enums.measurement_units import MeasurementUnit
-from typing import Any, Dict, Optional
 from domain.value_objects.measurements import ForceValue
-from driver.serial.serial import SerialConnection, SerialError, SerialManager
+from driver.serial.exceptions import (
+    SerialCommunicationError,
+    SerialConnectionError,
+    SerialTimeoutError,
+)
+from driver.serial.serial import SerialConnection, SerialManager
 from infrastructure.implementation.hardware.loadcell.bs205.constants import (
     CMD_IDENTITY,
     CMD_READ_WEIGHT,
@@ -56,6 +60,9 @@ class BS205LoadCell(LoadCellService):
         self._port = config.get("port", "COM3")
         self._baudrate = config.get("baudrate", 9600)
         self._timeout = config.get("timeout", 1.0)
+        self._bytesize = config.get("bytesize", 8)
+        self._stopbits = config.get("stopbits", 1)
+        self._parity = config.get("parity", None)
         self._indicator_id = config.get("indicator_id", 1)
         self._max_force_range = config.get("max_force_range", 1000.0)
         self._sampling_interval_ms = config.get("sampling_interval_ms", 100)
@@ -84,6 +91,9 @@ class BS205LoadCell(LoadCellService):
                 port=self._port,
                 baudrate=self._baudrate,
                 timeout=self._timeout,
+                bytesize=self._bytesize,
+                stopbits=self._stopbits,
+                parity=self._parity,
             )
 
             # 연결 테스트 명령 전송
@@ -98,7 +108,7 @@ class BS205LoadCell(LoadCellService):
                 DEVICE_ID_PATTERN,
             )
 
-        except SerialError as e:
+        except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
             error_msg = f"Failed to connect to BS205 LoadCell: {e}"
             logger.error(error_msg)
             self._is_connected = False
@@ -189,7 +199,7 @@ class BS205LoadCell(LoadCellService):
 
         except BS205Error:
             raise  # Re-raise BS205 specific errors
-        except SerialError as e:
+        except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
             raise BS205CommunicationError(
                 f"Communication error: {e}",
                 error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR),
@@ -237,7 +247,7 @@ class BS205LoadCell(LoadCellService):
             )
             return True  # BS205는 응답이 애매할 수 있음
 
-        except SerialError as e:
+        except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
             logger.error(STATUS_MESSAGES["zero_failed"])
             raise BS205OperationError(
                 f"Failed to zero BS205 LoadCell: {e}",
@@ -320,7 +330,7 @@ class BS205LoadCell(LoadCellService):
             응답 문자열
 
         Raises:
-            SerialError: 통신 오류
+            SerialCommunicationError, SerialConnectionError, SerialTimeoutError: 통신 오류
         """
         if not self._connection:
             raise BS205CommunicationError(

@@ -5,7 +5,7 @@ Immutable configuration object containing all hardware device connection paramet
 """
 
 from dataclasses import dataclass, field
-from typing import Any, cast, Dict, Set
+from typing import Any, cast, Dict, Optional, Set
 
 from domain.exceptions.validation_exceptions import (
     ValidationException,
@@ -55,6 +55,9 @@ class LoadCellConfig:
     port: str = "COM3"
     baudrate: int = 9600
     timeout: float = 1.0
+    bytesize: int = 8
+    stopbits: int = 1
+    parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
     indicator_id: int = 1
 
     # Mock-related parameters
@@ -79,6 +82,9 @@ class MCUConfig:
     port: str = "COM4"
     baudrate: int = 115200
     timeout: float = 2.0
+    bytesize: int = 8
+    stopbits: int = 1
+    parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
 
     # Default temperature/fan speed parameters
     default_temperature: float = 25.0
@@ -271,6 +277,28 @@ class HardwareConfiguration:
                 "LoadCell zero tolerance cannot be negative",
             )
 
+        # Validate LoadCell serial parameters
+        if self.loadcell.bytesize not in [5, 6, 7, 8]:
+            raise ValidationException(
+                "loadcell.bytesize",
+                self.loadcell.bytesize,
+                "LoadCell bytesize must be 5, 6, 7, or 8",
+            )
+
+        if self.loadcell.stopbits not in [1, 2]:
+            raise ValidationException(
+                "loadcell.stopbits",
+                self.loadcell.stopbits,
+                "LoadCell stopbits must be 1 or 2",
+            )
+
+        if self.loadcell.parity is not None and self.loadcell.parity.lower() not in ['none', 'even', 'odd', 'mark', 'space']:
+            raise ValidationException(
+                "loadcell.parity",
+                self.loadcell.parity,
+                "LoadCell parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
+            )
+
         # MCU validation
         if self.mcu.model not in SUPPORTED_MCU_MODELS:
             raise ValidationException(
@@ -352,6 +380,28 @@ class HardwareConfiguration:
                 "mcu.max_fan_speed",
                 self.mcu.max_fan_speed,
                 "MCU max fan speed must be positive",
+            )
+
+        # Validate MCU serial parameters
+        if self.mcu.bytesize not in [5, 6, 7, 8]:
+            raise ValidationException(
+                "mcu.bytesize",
+                self.mcu.bytesize,
+                "MCU bytesize must be 5, 6, 7, or 8",
+            )
+
+        if self.mcu.stopbits not in [1, 2]:
+            raise ValidationException(
+                "mcu.stopbits",
+                self.mcu.stopbits,
+                "MCU stopbits must be 1 or 2",
+            )
+
+        if self.mcu.parity is not None and self.mcu.parity.lower() not in ['none', 'even', 'odd', 'mark', 'space']:
+            raise ValidationException(
+                "mcu.parity",
+                self.mcu.parity,
+                "MCU parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
             )
 
         # Digital Input validation
@@ -655,6 +705,9 @@ class HardwareConfiguration:
                 "port": self.loadcell.port,
                 "baudrate": self.loadcell.baudrate,
                 "timeout": self.loadcell.timeout,
+                "bytesize": self.loadcell.bytesize,
+                "stopbits": self.loadcell.stopbits,
+                "parity": self.loadcell.parity,
                 "indicator_id": self.loadcell.indicator_id,
                 "base_force": self.loadcell.base_force,
                 "noise_level": self.loadcell.noise_level,
@@ -668,6 +721,9 @@ class HardwareConfiguration:
                 "port": self.mcu.port,
                 "baudrate": self.mcu.baudrate,
                 "timeout": self.mcu.timeout,
+                "bytesize": self.mcu.bytesize,
+                "stopbits": self.mcu.stopbits,
+                "parity": self.mcu.parity,
                 "default_temperature": self.mcu.default_temperature,
                 "default_fan_speed": self.mcu.default_fan_speed,
                 "temperature_drift_rate": self.mcu.temperature_drift_rate,

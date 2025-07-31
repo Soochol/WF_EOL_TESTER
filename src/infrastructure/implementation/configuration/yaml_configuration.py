@@ -511,6 +511,9 @@ class YamlConfiguration(Configuration):
                     "port": hardware_config.loadcell.port,
                     "baudrate": hardware_config.loadcell.baudrate,
                     "timeout": hardware_config.loadcell.timeout,
+                    "bytesize": hardware_config.loadcell.bytesize,
+                    "stopbits": hardware_config.loadcell.stopbits,
+                    "parity": hardware_config.loadcell.parity,
                     "indicator_id": hardware_config.loadcell.indicator_id,
                 },
                 "mcu": {
@@ -518,6 +521,9 @@ class YamlConfiguration(Configuration):
                     "port": hardware_config.mcu.port,
                     "baudrate": hardware_config.mcu.baudrate,
                     "timeout": hardware_config.mcu.timeout,
+                    "bytesize": hardware_config.mcu.bytesize,
+                    "stopbits": hardware_config.mcu.stopbits,
+                    "parity": hardware_config.mcu.parity,
                 },
                 "power": {
                     "model": hardware_config.power.model,
