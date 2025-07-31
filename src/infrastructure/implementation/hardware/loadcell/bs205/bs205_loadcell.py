@@ -175,43 +175,17 @@ class BS205LoadCell(LoadCellService):
             )
 
         try:
-            # 현재 무게 읽기 명령 - 여러 방법 시도
-            response = None
-            commands_to_try = [
-                CMD_READ_WEIGHT,  # "R"
-                "P",              # Print command
-                f"{self._indicator_id}R",  # ID + R
-                "",               # Empty (just read what's available)
-            ]
+            # BS205 바이너리 프로토콜 사용
+            response = await self._send_bs205_command(CMD_READ_WEIGHT)
             
-            for cmd in commands_to_try:
-                try:
-                    logger.debug(f"Trying read command: '{cmd}'")
-                    if cmd == "":
-                        # 빈 명령어인 경우, 그냥 데이터 읽기 시도
-                        if self._connection:
-                            raw_response = await self._connection.read_until(b"\r", timeout=2.0)
-                            if raw_response:
-                                response = raw_response.decode('ascii').strip()
-                                logger.info(f"Empty command read successful: '{response}'")
-                                break
-                    else:
-                        response = await self._send_command(cmd, timeout=2.0)
-                        if response and response.strip():
-                            logger.info(f"Command '{cmd}' successful: '{response}'")
-                            break
-                except Exception as e:
-                    logger.debug(f"Command '{cmd}' failed: {e}")
-                    continue
-
-            if not response or not isinstance(response, str):
+            if not response:
                 raise BS205CommunicationError(
                     "No response from BS205 LoadCell",
                     error_code=int(BS205ErrorCode.COMM_TIMEOUT),
                 )
 
-            # 응답 파싱 및 검증
-            weight_value, unit = parse_weight_response(response)
+            # 응답 파싱 및 검증 (BS205 형태: "0+_7.487")
+            weight_value, unit = self._parse_bs205_weight(response)
 
             # 단위에 따른 처리
             if unit == "kg":
@@ -269,8 +243,8 @@ class BS205LoadCell(LoadCellService):
         try:
             logger.info("Zeroing BS205 LoadCell")
 
-            # 영점 조정 명령
-            response = await self._send_command(CMD_ZERO)
+            # 영점 조정 명령 (바이너리 프로토콜)
+            response = await self._send_bs205_command(CMD_ZERO)
 
             # 영점 조정 완료 대기
             await asyncio.sleep(ZERO_OPERATION_DELAY)
@@ -354,6 +328,165 @@ class BS205LoadCell(LoadCellService):
                 status["last_error"] = str(e)
 
         return status
+
+    async def _send_bs205_command(self, command: str, timeout: Optional[float] = None) -> Optional[str]:
+        """
+        BS205 바이너리 프로토콜로 명령 전송
+        
+        Args:
+            command: 명령어 ('R', 'Z', 'H', 'L')
+            timeout: 응답 타임아웃
+            
+        Returns:
+            파싱된 응답 문자열
+        """
+        if not self._connection:
+            raise BS205CommunicationError(
+                "No connection available",
+                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
+            )
+
+        try:
+            cmd_timeout = timeout if timeout is not None else self._timeout
+            
+            # BS205 바이너리 명령어 생성: ID + Command
+            # ID=0 → 30H, R → 52H
+            id_byte = ord(str(self._indicator_id))  # '0' → 0x30
+            cmd_byte = ord(command)  # 'R' → 0x52
+            command_bytes = bytes([id_byte, cmd_byte])
+            
+            logger.debug(f"Sending BS205 binary command: ID={self._indicator_id}({id_byte:02X}H) + {command}({cmd_byte:02X}H)")
+            
+            # 바이너리 명령어 전송
+            await self._connection.write(command_bytes)
+            
+            # STX(02H)까지 읽기
+            stx_response = await self._connection.read_until(b"\x02", timeout=cmd_timeout)
+            if not stx_response or stx_response[-1:] != b"\x02":
+                logger.warning("STX not received or invalid")
+                return None
+            
+            # ETX(03H)까지 나머지 응답 읽기
+            response_data = await self._connection.read_until(b"\x03", timeout=cmd_timeout)
+            if not response_data or response_data[-1:] != b"\x03":
+                logger.warning("ETX not received or invalid")
+                return None
+                
+            # STX + 데이터 + ETX 결합
+            full_response = stx_response + response_data[:-1]  # ETX 제거 후 결합
+            
+            # 바이너리 응답을 ASCII로 변환하여 파싱
+            ascii_response = self._parse_bs205_response(full_response)
+            logger.debug(f"BS205 response: {ascii_response}")
+            
+            return ascii_response
+            
+        except Exception as e:
+            logger.error(f"BS205 binary command '{command}' failed: {e}")
+            raise BS205CommunicationError(
+                f"Command '{command}' failed: {e}",
+                error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR),
+            ) from e
+
+    def _parse_bs205_response(self, response_bytes: bytes) -> str:
+        """
+        BS205 바이너리 응답을 ASCII 문자열로 파싱
+        
+        응답 형태: STX(02H) + ID + 부호 + 값 + ETX(03H)
+        예: 02 30 2B 20 37 2E 34 38 37 03 → "0+_7.487"
+        """
+        try:
+            if len(response_bytes) < 4:  # 최소: STX + ID + 부호 + ETX
+                return ""
+                
+            # STX(02H) 확인
+            if response_bytes[0] != 0x02:
+                return ""
+                
+            # ETX(03H) 찾기
+            etx_pos = response_bytes.find(0x03)
+            if etx_pos == -1:
+                return ""
+                
+            # 데이터 부분 추출 (STX와 ETX 사이)
+            data_bytes = response_bytes[1:etx_pos]
+            
+            # ASCII로 변환
+            ascii_data = data_bytes.decode('ascii', errors='ignore')
+            logger.debug(f"Parsed BS205 data: '{ascii_data}'")
+            
+            return ascii_data
+            
+        except Exception as e:
+            logger.error(f"Failed to parse BS205 response: {e}")
+            return ""
+
+    def _parse_bs205_weight(self, response: str) -> tuple[float, str]:
+        """
+        BS205 가중치 응답 파싱
+        
+        응답 형태: "ID + 부호 + 값"
+        예: "0+_7.487", "0-12.34", "15+1.7486"
+        
+        Args:
+            response: BS205 응답 문자열
+            
+        Returns:
+            (weight_value, unit) 튜플
+        """
+        try:
+            if not response or len(response) < 3:
+                raise BS205CommunicationError(
+                    f"Invalid BS205 response: '{response}'",
+                    error_code=int(BS205ErrorCode.DATA_INVALID_FORMAT),
+                )
+            
+            # ID 제거 (첫 번째 또는 처음 두 문자)
+            # "0+_7.487" → "+_7.487" 또는 "15+1.7486" → "+1.7486"
+            if response[1] in ['+', '-']:
+                # 단일 ID인 경우 (0, 1, 2, ...)
+                weight_part = response[1:]
+            elif len(response) > 2 and response[2] in ['+', '-']:
+                # 두 자리 ID인 경우 (10, 15, ...)
+                weight_part = response[2:]
+            else:
+                raise BS205CommunicationError(
+                    f"Cannot find sign in BS205 response: '{response}'",
+                    error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
+                )
+            
+            # 부호 추출
+            sign = weight_part[0]  # '+' 또는 '-'
+            value_part = weight_part[1:]  # "_7.487" 또는 "12.34"
+            
+            # 공백('_' 또는 실제 공백) 제거하고 숫자 추출
+            value_clean = value_part.replace('_', '').replace(' ', '')
+            
+            # 소수점이 없으면 적절한 위치에 추가 (BS205 특성에 따라)
+            if '.' not in value_clean and len(value_clean) > 2:
+                # 마지막 3자리를 소수점 이하로 처리 (예: "7487" → "7.487")
+                value_clean = value_clean[:-3] + '.' + value_clean[-3:]
+            
+            # float 변환
+            weight_value = float(value_clean)
+            if sign == '-':
+                weight_value = -weight_value
+                
+            logger.debug(f"Parsed BS205 weight: '{response}' → {weight_value}")
+            
+            # BS205는 일반적으로 kg 단위 사용
+            return weight_value, "kg"
+            
+        except ValueError as e:
+            raise BS205CommunicationError(
+                f"Cannot convert BS205 weight value: '{response}'",
+                error_code=int(BS205ErrorCode.DATA_CONVERSION_ERROR),
+            ) from e
+        except Exception as e:
+            raise BS205CommunicationError(
+                f"Failed to parse BS205 weight: '{response}', error: {e}",
+                error_code=int(BS205ErrorCode.DATA_PARSING_ERROR),
+            ) from e
 
     async def _send_command(self, command: str, timeout: Optional[float] = None) -> Optional[str]:
         """
