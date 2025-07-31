@@ -386,7 +386,7 @@ class LoadCellController(HardwareController):
                 try:
                     # Get force reading if connected
                     force = await self.loadcell_service.read_force()
-                    status_details["Current Force"] = f"{force:.3f} N"
+                    status_details["Current Force"] = f"{force:.3f} {force.unit}"
                     status_details["Status"] = "Ready"
                 except Exception as e:
                     status_details["Status Error"] = str(e)
@@ -483,7 +483,7 @@ class LoadCellController(HardwareController):
         try:
             force = await self.loadcell_service.read_force()
             self.formatter.print_message(
-                f"Current force reading: {force:.3f} N", message_type="info", title="Force Reading"
+                f"Current force reading: {force:.3f} {force.unit}", message_type="info", title="Force Reading"
             )
 
         except Exception as e:
@@ -522,7 +522,7 @@ class LoadCellController(HardwareController):
 
             initial_force = await self.loadcell_service.read_force()
             initial_panel = self.formatter.create_message_panel(
-                f"Force: {initial_force:.3f} N", message_type="info", title="🔧 Live Force Reading"
+                f"Force: {initial_force:.3f} {initial_force.unit}", message_type="info", title="🔧 Live Force Reading"
             )
 
             with ui_manager.live_display(initial_panel, refresh_per_second=2) as live:
@@ -530,7 +530,7 @@ class LoadCellController(HardwareController):
                     while True:
                         force = await self.loadcell_service.read_force()
                         force_panel = self.formatter.create_message_panel(
-                            f"Force: {force:.3f} N",
+                            f"Force: {force:.3f} {force.unit}",
                             message_type="info",
                             title="🔧 Live Force Reading",
                         )

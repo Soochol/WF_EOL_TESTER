@@ -129,11 +129,11 @@ class MeasurementReading:
 
     @property
     def force(self) -> float:
-        """Get force value in Newtons"""
+        """Get force value in configured unit"""
         return self.force_value.value
 
     def __str__(self) -> str:
-        return f"MeasurementReading(force={self.force:.2f}N)"
+        return f"MeasurementReading(force={self.force:.2f}{self.force_value.unit})"
 
     def __repr__(self) -> str:
         return f"MeasurementReading(force_value={self.force_value}, timestamp={self.timestamp})"
