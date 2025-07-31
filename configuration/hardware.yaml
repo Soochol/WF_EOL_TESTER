@@ -3,7 +3,7 @@ hardware_config:
     model: MOCK
     irq_no: 7
   loadcell:
-    model: BS205
+    model: MOCK
     port: COM3
     baudrate: 9600
     timeout: 1.0

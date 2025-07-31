@@ -804,10 +804,10 @@ class HardwareControlManager:
                 if not selection or selection == "b":
                     break
 
-                await controller.execute_command(selection)
+                success = await controller.execute_command(selection)
                 
-                # Pause only for data-reading operations so users can see the results
-                if self._should_pause_after_command(controller, selection):
+                # Pause only for successful data-reading operations so users can see the results
+                if success and self._should_pause_after_command(controller, selection):
                     input("\nPress Enter to continue...")
                 # All other operations return to menu immediately
 
