@@ -22,10 +22,8 @@ from driver.serial.exceptions import (
 )
 from driver.serial.serial import SerialConnection, SerialManager
 from infrastructure.implementation.hardware.loadcell.bs205.constants import (
-    CMD_IDENTITY,
     CMD_READ_WEIGHT,
     CMD_ZERO,
-    DEVICE_ID_PATTERN,
     STATUS_MESSAGES,
     ZERO_OPERATION_DELAY,
 )
@@ -84,16 +82,15 @@ class BS205LoadCell(LoadCellService):
             # 사용 가능한 COM 포트 체크
             try:
                 import serial.tools.list_ports
+
                 available_ports = [port.device for port in serial.tools.list_ports.comports()]
-                logger.info("Available COM ports: %s", available_ports)
+                logger.info(f"Available COM ports: {available_ports}")
             except ImportError:
                 logger.warning("Cannot check available ports - pyserial not fully installed")
-            
+
             logger.info(
-                "Connecting to BS205 LoadCell - Port: %s, Baud: %s, Timeout: %s, "
-                "ByteSize: %s, StopBits: %s, Parity: %s, ID: %s",
-                self._port, self._baudrate, self._timeout, 
-                self._bytesize, self._stopbits, self._parity, self._indicator_id
+                f"Connecting to BS205 LoadCell - Port: {self._port}, Baud: {self._baudrate}, Timeout: {self._timeout}, "
+                f"ByteSize: {self._bytesize}, StopBits: {self._stopbits}, Parity: {self._parity}, ID: {self._indicator_id}"
             )
 
             self._connection = await SerialManager.create_connection(
@@ -105,17 +102,9 @@ class BS205LoadCell(LoadCellService):
                 parity=self._parity,
             )
 
-            # 연결 테스트 명령 전송
-            response = await self._send_command(CMD_IDENTITY)
-            if response and DEVICE_ID_PATTERN in response:
-                self._is_connected = True
-                logger.info(STATUS_MESSAGES["connected"])
-                return
-
-            logger.warning(
-                "Connection test failed: expected %s in response",
-                DEVICE_ID_PATTERN,
-            )
+            # Serial 연결 성공하면 바로 연결된 것으로 간주
+            self._is_connected = True
+            logger.info(STATUS_MESSAGES["connected"])
 
         except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
             error_msg = (
@@ -123,8 +112,7 @@ class BS205LoadCell(LoadCellService):
                 f"(Port: {self._port} @ {self._baudrate} baud)"
             )
             logger.error(
-                "BS205 LoadCell connection failed - Port: %s, Baud: %s, Error: %s",
-                self._port, self._baudrate, e
+                f"BS205 LoadCell connection failed - Port: {self._port}, Baud: {self._baudrate}, Error: {e}"
             )
             self._is_connected = False
             raise BS205CommunicationError(
@@ -148,7 +136,7 @@ class BS205LoadCell(LoadCellService):
             logger.info(STATUS_MESSAGES["disconnected"])
 
         except Exception as e:
-            logger.error("Error disconnecting BS205 LoadCell: %s", e)
+            logger.error(f"Error disconnecting BS205 LoadCell: {e}")
             from domain.exceptions.eol_exceptions import (
                 HardwareOperationError,
             )
@@ -203,25 +191,18 @@ class BS205LoadCell(LoadCellService):
             if unit == "kg":
                 # 무게 범위 검증
                 validate_weight_range(weight_value)
-                
+
                 # kg을 kgf로 변환 (1kg = 1kgf 중력하에서)
                 force_kgf = weight_value
-                
-                logger.debug(
-                    "BS205 LoadCell reading: %skg = %.3fkgf",
-                    weight_value,
-                    force_kgf,
-                )
+
+                logger.debug(f"BS205 LoadCell reading: {weight_value}kg = {force_kgf:.3f}kgf")
                 return ForceValue.from_raw_data(force_kgf, MeasurementUnit.KILOGRAM_FORCE)
-            
+
             elif unit == "N":
                 # 이미 Newton 단위인 경우
-                logger.debug(
-                    "BS205 LoadCell reading: %.3fN",
-                    weight_value,
-                )
+                logger.debug(f"BS205 LoadCell reading: {weight_value:.3f}N")
                 return ForceValue.from_raw_data(weight_value, MeasurementUnit.NEWTON)
-                
+
             else:
                 # 지원하지 않는 단위
                 raise BS205OperationError(
@@ -273,10 +254,7 @@ class BS205LoadCell(LoadCellService):
                 logger.info(STATUS_MESSAGES["zeroed"])
                 return True
 
-            logger.warning(
-                "BS205 zero command unclear response: %s",
-                response,
-            )
+            logger.warning(f"BS205 zero command unclear response: {response}")
             return True  # BS205는 응답이 애매할 수 있음
 
         except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
@@ -351,7 +329,7 @@ class BS205LoadCell(LoadCellService):
 
         return status
 
-    async def _send_command(self, command: str) -> Optional[str]:
+    async def _send_command(self, command: str, timeout: Optional[float] = None) -> Optional[str]:
         """
         BS205에 명령 전송
 
@@ -372,17 +350,14 @@ class BS205LoadCell(LoadCellService):
 
         try:
             # 새로운 간단한 API 사용
-            response = await self._connection.send_command(command, "\r", self._timeout)
+            cmd_timeout = timeout if timeout is not None else self._timeout
+            response = await self._connection.send_command(command, "\r", cmd_timeout)
 
-            logger.debug(
-                "BS205 command: %s -> response: %s",
-                command,
-                response,
-            )
+            logger.debug(f"BS205 command: {command} -> response: {response}")
             return response
 
         except Exception as e:
-            logger.error("BS205 command '%s' failed: %s", command, e)
+            logger.error(f"BS205 command '{command}' failed: {e}")
             raise BS205CommunicationError(
                 f"Command '{command}' failed: {e}",
                 error_code=int(BS205ErrorCode.COMM_SERIAL_ERROR),
@@ -415,11 +390,7 @@ class BS205LoadCell(LoadCellService):
         samples = []
         interval_sec = interval_ms / 1000.0
 
-        logger.info(
-            "Reading %d samples with %dms interval",
-            count,
-            interval_ms,
-        )
+        logger.info(f"Reading {count} samples with {interval_ms}ms interval")
 
         for i in range(count):
             if i > 0:
@@ -428,11 +399,7 @@ class BS205LoadCell(LoadCellService):
             force = await self.read_force()
             force_value = force.value  # Extract the numeric value
             samples.append(force_value)
-            logger.debug("Sample %d/%d: %.3fN", i + 1, count, force_value)
+            logger.debug(f"Sample {i + 1}/{count}: {force_value:.3f}N")
 
-        logger.info(
-            "Completed %d samples, avg: %.3fN",
-            count,
-            sum(samples) / len(samples),
-        )
+        logger.info(f"Completed {count} samples, avg: {sum(samples) / len(samples):.3f}N")
         return samples

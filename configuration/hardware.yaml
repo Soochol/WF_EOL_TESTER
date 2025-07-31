@@ -4,7 +4,7 @@ hardware_config:
     irq_no: 7
   loadcell:
     model: BS205
-    port: COM9
+    port: COM8
     baudrate: 9600
     timeout: 1.0
     bytesize: 8
