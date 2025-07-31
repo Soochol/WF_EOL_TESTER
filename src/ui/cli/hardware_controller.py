@@ -805,7 +805,7 @@ class HardwareControlManager:
                     break
 
                 success = await controller.execute_command(selection)
-                if success:
+                if success and selection != "1":  # Don't pause after status display
                     # Wait for user acknowledgment after successful commands
                     input("\nPress Enter to continue...")
 
