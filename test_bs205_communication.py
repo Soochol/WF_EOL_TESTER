@@ -288,7 +288,7 @@ async def interactive_test():
     
     logger.info("=" * 60)
     logger.info("Interactive BS205 Test Mode")
-    logger.info("Commands: read, zero, status, samples, quit")
+    logger.info("Commands: read, zero, status, hold, release, quit")
     logger.info("=" * 60)
     
     try:
@@ -308,11 +308,14 @@ async def interactive_test():
                     status = await loadcell.get_status()
                     for k, v in status.items():
                         print(f"  {k}: {v}")
-                elif cmd == 'samples':
-                    samples = await loadcell.read_multiple_samples(5, 200)
-                    print(f"Samples: {samples}")
+                elif cmd == 'hold' or cmd == 'h':
+                    success = await loadcell.hold()
+                    print(f"Hold setting: {'Success' if success else 'Failed'}")
+                elif cmd == 'release' or cmd == 'rel':
+                    success = await loadcell.hold_release()
+                    print(f"Hold release: {'Success' if success else 'Failed'}")
                 else:
-                    print("Unknown command. Available: read, zero, status, samples, quit")
+                    print("Unknown command. Available: read, zero, status, hold, release, quit")
                     
             except KeyboardInterrupt:
                 break

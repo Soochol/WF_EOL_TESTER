@@ -19,6 +19,8 @@ COMMAND_ENCODING = "ascii"
 # BS205 Commands
 CMD_READ_WEIGHT = "R"  # Read current weight value
 CMD_ZERO = "Z"  # Zero calibration
+CMD_HOLD = "H"  # Hold setting (freeze current value)
+CMD_HOLD_RELEASE = "L"  # Hold release (resume real-time display)
 CMD_IDENTITY = "ID"  # Device identification
 CMD_SPAN = "S"  # Span calibration
 CMD_TARE = "T"  # Tare operation
@@ -86,6 +88,8 @@ COMMUNICATION_TIMEOUT_MULTIPLIER = 2.0
 COMMAND_DESCRIPTIONS = {
     CMD_READ_WEIGHT: "Read current weight measurement",
     CMD_ZERO: "Perform zero calibration",
+    CMD_HOLD: "Hold setting - freeze current value",
+    CMD_HOLD_RELEASE: "Hold release - resume real-time display",
     CMD_IDENTITY: "Get device identification",
     CMD_SPAN: "Perform span calibration",
     CMD_TARE: "Perform tare operation",
@@ -101,6 +105,9 @@ STATUS_MESSAGES = {
     "disconnected": "Device disconnected",
     "zeroed": "Zero calibration completed",
     "zero_failed": "Zero calibration failed",
+    "hold_set": "Hold setting activated - value frozen",
+    "hold_released": "Hold released - real-time display resumed",
+    "hold_failed": "Hold operation failed",
     "stable": "Measurement is stable",
     "unstable": "Measurement is unstable",
     "reading_ok": "Weight reading successful",

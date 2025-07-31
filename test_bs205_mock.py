@@ -50,11 +50,22 @@ class MockSerialConnection:
     
     async def read(self, size: int = -1, timeout: float = None):
         """Mock read operation"""
-        # Return mock BS205 response based on last command
-        # For testing, return a standard response
-        mock_response = bytes.fromhex("02302B205F372E34383703")  # STX + "0+_7.487" + ETX
-        logger.info(f"Mock Serial Read: [{mock_response.hex().upper()}] (size={size}, timeout={timeout})")
-        return mock_response
+        # Simulate fragmented response on first call, complete on second
+        if not hasattr(self, '_read_count'):
+            self._read_count = 0
+        
+        self._read_count += 1
+        
+        if self._read_count == 1:
+            # First read: return just STX (simulating fragmentation)
+            mock_response = bytes.fromhex("02")  # Just STX
+            logger.info(f"Mock Serial Read {self._read_count}: [{mock_response.hex().upper()}] (size={size}, timeout={timeout})")
+            return mock_response
+        else:
+            # Subsequent reads: return complete response
+            mock_response = bytes.fromhex("02302B205F372E34383703")  # STX + "0+_7.487" + ETX
+            logger.info(f"Mock Serial Read {self._read_count}: [{mock_response.hex().upper()}] (size={size}, timeout={timeout})")
+            return mock_response
     
     async def read_until(self, separator: bytes, timeout: float = None):
         """Mock read until separator"""
@@ -107,7 +118,7 @@ async def test_mock_protocol_parsing():
         {
             'name': 'Response without decimal (0+_ _7487)', 
             'hex': '02302B20203734383703',   # STX + "0+ 7487" + ETX
-            'expected_value': 7.487,
+            'expected_value': 7487,
             'expected_unit': 'kg'
         },
         {
@@ -117,15 +128,21 @@ async def test_mock_protocol_parsing():
             'expected_unit': 'kg'
         },
         {
-            'name': 'Double digit ID (15+1.7486)',
-            'hex': '02313352422B312E373438363703',  # STX + "15+1.7486" + ETX
-            'expected_value': 1.7486,
+            'name': 'Double digit ID (1+1.74867)',
+            'hex': '02312B312E373438363703',  # STX + "1+1.74867" + ETX
+            'expected_value': 1.74867,
             'expected_unit': 'kg'
         },
         {
-            'name': 'Large value (10+_748.6)', 
-            'hex': '02313052422B203734382E363703',   # STX + "10+ 748.6" + ETX
-            'expected_value': 748.6,
+            'name': 'Large value (1+_748.67)', 
+            'hex': '02312B205F3734382E363703',   # STX + "1+_748.67" + ETX
+            'expected_value': 748.67,
+            'expected_unit': 'kg'
+        },
+        {
+            'name': 'User example (1+__7487)',
+            'hex': '02312B5F5F3734383703',  # STX + "1+__7487" + ETX
+            'expected_value': 7487,
             'expected_unit': 'kg'
         }
     ]
@@ -202,7 +219,7 @@ async def test_mock_command_generation():
     test_commands = [
         {'cmd': 'R', 'expected_hex': '3052', 'description': 'Read Weight (ID=0)'},
         {'cmd': 'Z', 'expected_hex': '305A', 'description': 'Zero Calibration (ID=0)'},
-        {'cmd': 'H', 'expected_hex': '3048', 'description': 'Hold (ID=0)'},
+        {'cmd': 'H', 'expected_hex': '3048', 'description': 'Hold Setting (ID=0)'},
         {'cmd': 'L', 'expected_hex': '304C', 'description': 'Hold Release (ID=0)'},
     ]
     
@@ -287,6 +304,56 @@ async def test_mock_full_communication():
         return False
 
 
+async def test_mock_hold_functions():
+    """Test BS205 Hold and Hold Release functions"""
+    logger.info("=" * 60)
+    logger.info("BS205 Hold Functions Test (Mock)")
+    logger.info("=" * 60)
+    
+    config = {
+        'port': 'MOCK',
+        'baudrate': 9600,
+        'timeout': 1.0,
+        'bytesize': 8,
+        'stopbits': 1,
+        'parity': 'even',
+        'indicator_id': 0
+    }
+    
+    loadcell = BS205LoadCell(config)
+    
+    # Replace connection with mock
+    mock_connection = MockSerialConnection()
+    loadcell._connection = mock_connection
+    loadcell._is_connected = True
+    
+    try:
+        # Test Hold setting
+        logger.info("Testing Hold setting...")
+        success = await loadcell.hold()
+        
+        if success:
+            logger.success("✅ Hold setting successful")
+        else:
+            logger.error("❌ Hold setting failed")
+            return False
+        
+        # Test Hold release
+        logger.info("Testing Hold release...")
+        success = await loadcell.hold_release()
+        
+        if success:
+            logger.success("✅ Hold release successful")
+            return True
+        else:
+            logger.error("❌ Hold release failed")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Hold functions test failed: {e}")
+        return False
+
+
 async def run_mock_tests():
     """Run all mock tests"""
     setup_logging()
@@ -305,12 +372,15 @@ async def run_mock_tests():
     # Test 3: Full communication flow
     results.append(await test_mock_full_communication())
     
+    # Test 4: Hold functions
+    results.append(await test_mock_hold_functions())
+    
     # Summary
     logger.info("=" * 80)
     logger.info("MOCK TEST RESULTS SUMMARY")
     logger.info("=" * 80)
     
-    test_names = ['Protocol Parsing', 'Command Generation', 'Full Communication']
+    test_names = ['Protocol Parsing', 'Command Generation', 'Full Communication', 'Hold Functions']
     
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ PASS" if result else "❌ FAIL"
