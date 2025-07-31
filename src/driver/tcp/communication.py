@@ -12,7 +12,6 @@ from loguru import logger
 
 from driver.tcp.constants import (
     COMMAND_BUFFER_SIZE,
-    COMMAND_TERMINATOR,
     CONNECT_TIMEOUT,
     DEFAULT_PORT,
     DEFAULT_TIMEOUT,
@@ -114,10 +113,14 @@ class TCPCommunication:
 
     async def send_command(self, command: str) -> None:
         """
-        Send command to device
+        Send command to device as-is without adding terminators
+        
+        Note: Upper layers (like hardware services) are responsible for 
+        proper command termination. This driver sends commands exactly 
+        as provided without modification.
 
         Args:
-            command: Command string
+            command: Command string (should include proper termination if needed)
 
         Raises:
             TCPCommunicationError: If command send fails
@@ -131,10 +134,9 @@ class TCPCommunication:
             )
 
         try:
-            # Add terminator if not present
-            if not command.endswith(COMMAND_TERMINATOR):
-                command += COMMAND_TERMINATOR
-
+            # Send command as-is without adding terminator
+            # Upper layers (like ODA Power) are responsible for proper termination
+            
             # Check command length
             if len(command.encode()) > COMMAND_BUFFER_SIZE:
                 logger.error(

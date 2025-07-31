@@ -210,9 +210,9 @@ async def test_delimiter_null():
         last_command = mock_tcp.get_last_sent_command()
         logger.info(f"Output enable command sent: {repr(last_command)}")
         
-        # With null delimiter, command should be sent without terminator
-        # TCP driver would normally add it, but our mock doesn't simulate that
-        expected = "OUTP ON"
+        # With null delimiter, ODA Power now adds default LF for SCPI compatibility
+        # TCP driver no longer adds terminators automatically
+        expected = "OUTP ON\n"
         if last_command == expected:
             logger.success("✅ Null delimiter test PASSED")
             return True

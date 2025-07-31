@@ -352,13 +352,14 @@ class OdaPower(PowerService):
 
         try:
             # 명령 전송 및 응답 수신 (SCPI 형식)
-            # Use configurable delimiter or let TCP driver handle terminator
+            # Always add delimiter - TCP driver no longer adds terminators
             if self._delimiter:
                 command_with_terminator = f"{command}{self._delimiter}"
-                logger.debug("Using custom delimiter: %s", repr(self._delimiter))
+                logger.debug("Adding configured delimiter: %s", repr(self._delimiter))
             else:
-                command_with_terminator = command  # TCP driver will add terminator
-                logger.debug("Using TCP driver default terminator")
+                # If no delimiter configured, use default LF for SCPI compatibility  
+                command_with_terminator = f"{command}\n"
+                logger.debug("Adding default LF terminator for SCPI compatibility")
 
             # Use query() method for commands that expect responses
             if command.endswith("?"):
