@@ -81,8 +81,19 @@ class BS205LoadCell(LoadCellService):
         """
 
         try:
+            # 사용 가능한 COM 포트 체크
+            try:
+                import serial.tools.list_ports
+                available_ports = [port.device for port in serial.tools.list_ports.comports()]
+                logger.info("Available COM ports: %s", available_ports)
+            except ImportError:
+                logger.warning("Cannot check available ports - pyserial not fully installed")
+            
             logger.info(
-                f"Connecting to BS205 LoadCell on {self._port} at {self._baudrate} baud (ID: {self._indicator_id})"
+                "Connecting to BS205 LoadCell - Port: %s, Baud: %s, Timeout: %s, "
+                "ByteSize: %s, StopBits: %s, Parity: %s, ID: %s",
+                self._port, self._baudrate, self._timeout, 
+                self._bytesize, self._stopbits, self._parity, self._indicator_id
             )
 
             self._connection = await SerialManager.create_connection(
@@ -107,8 +118,14 @@ class BS205LoadCell(LoadCellService):
             )
 
         except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
-            error_msg = f"Failed to connect to BS205 LoadCell: {e}"
-            logger.error(error_msg)
+            error_msg = (
+                f"Failed to connect to BS205 LoadCell: {e}\n"
+                f"(Port: {self._port} @ {self._baudrate} baud)"
+            )
+            logger.error(
+                "BS205 LoadCell connection failed - Port: %s, Baud: %s, Error: %s",
+                self._port, self._baudrate, e
+            )
             self._is_connected = False
             raise BS205CommunicationError(
                 error_msg,
