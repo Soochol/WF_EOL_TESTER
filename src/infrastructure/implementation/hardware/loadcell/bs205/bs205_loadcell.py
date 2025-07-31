@@ -245,19 +245,15 @@ class BS205LoadCell(LoadCellService):
         try:
             logger.info("Zeroing BS205 LoadCell")
 
-            # 영점 조정 명령 (바이너리 프로토콜)
-            response = await self._send_bs205_command(CMD_ZERO)
+            # 영점 조정 명령 (바이너리 프로토콜) - 응답 없음
+            await self._send_bs205_command(CMD_ZERO)
 
-            # 영점 조정 완료 대기
-            await asyncio.sleep(ZERO_OPERATION_DELAY)
+            # 영점 조정 완료 대기 (더 긴 시간)
+            await asyncio.sleep(ZERO_OPERATION_DELAY + 1.0)  # 3초 대기
 
-            # 영점 조정 결과 확인
-            if response and ("OK" in response or "Z" in response):
-                logger.info(STATUS_MESSAGES["zeroed"])
-                return True
-
-            logger.warning(f"BS205 zero command unclear response: {response}")
-            return True  # BS205는 응답이 애매할 수 있음
+            # Zero 명령은 응답이 없으므로 성공으로 간주
+            logger.info(STATUS_MESSAGES["zeroed"])
+            return True
 
         except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
             logger.error(STATUS_MESSAGES["zero_failed"])
@@ -433,8 +429,8 @@ class BS205LoadCell(LoadCellService):
                 # Small delay to allow BS205 to prepare response
                 await asyncio.sleep(0.15)  # Increased to 150ms delay
                 
-                # Hold and Hold Release commands don't return responses
-                if command in [CMD_HOLD, CMD_HOLD_RELEASE]:
+                # Hold, Hold Release, and Zero commands don't return responses
+                if command in [CMD_HOLD, CMD_HOLD_RELEASE, CMD_ZERO]:
                     logger.debug(f"Command '{command}' sent - no response expected")
                     return "OK"  # Return success indicator
                 

@@ -20,7 +20,7 @@ hardware_config:
     stopbits: 1
     parity: null
   power:
-    model: MOCK
+    model: ODA
     host: 192.168.11.1
     port: 5000
     timeout: 5.0
