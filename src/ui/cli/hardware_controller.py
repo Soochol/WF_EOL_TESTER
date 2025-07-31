@@ -804,10 +804,8 @@ class HardwareControlManager:
                 if not selection or selection == "b":
                     break
 
-                success = await controller.execute_command(selection)
-                if success and selection != "1":  # Don't pause after status display
-                    # Wait for user acknowledgment after successful commands
-                    input("\nPress Enter to continue...")
+                await controller.execute_command(selection)
+                # No pause after any command - return to menu immediately
 
             except (KeyboardInterrupt, EOFError):
                 break
@@ -830,7 +828,6 @@ class HardwareControlManager:
                     f"Failed to get {name} status: {str(e)}", message_type="error"
                 )
 
-        input("\nPress Enter to continue...")
 
     def get_controller(self, name: str) -> Optional[HardwareController]:
         """Get specific hardware controller by name"""
