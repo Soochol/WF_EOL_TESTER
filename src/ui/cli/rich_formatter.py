@@ -135,9 +135,7 @@ class RichFormatter:
                     with default settings optimized for the EOL Tester application.
         """
         self.console = console or Console(
-            force_terminal=True,
-            legacy_windows=False,
-            color_system="truecolor"
+            force_terminal=True, legacy_windows=False, color_system="truecolor"
         )
 
     def create_header_banner(
@@ -377,15 +375,16 @@ class RichFormatter:
         # Try different spinners for better compatibility across terminals
         spinner_options = ["dots2", "dots", "line", "arc", "arrow3"]
         selected_spinner = "dots2"
-        
+
         # Use simpler spinner for Windows/basic terminals
         try:
             import os
-            if os.name == 'nt':  # Windows
+
+            if os.name == "nt":  # Windows
                 selected_spinner = "line"
         except:
             selected_spinner = "dots"
-            
+
         return Status(
             f"{self.ICONS['running']} {task_name}",
             console=self.console,
@@ -436,10 +435,10 @@ class RichFormatter:
         # Create content with proper Rich markup parsing
         icon_text = Text()
         icon_text.append(f"{icon} ", style=f"bold {color}")
-        
+
         # Parse Rich markup in the message
         message_text = Text.from_markup(message)
-        
+
         # Combine icon and message
         content = Text()
         content.append_text(icon_text)

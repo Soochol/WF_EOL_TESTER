@@ -33,32 +33,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-# Conditional import for loguru to handle missing dependency gracefully
-try:
-    from loguru import logger
-except ImportError:
-    from typing import Protocol
-
-    class LoggerProtocol(Protocol):
-        def info(self, msg: str) -> None: ...
-        def error(self, msg: str) -> None: ...
-        def warning(self, msg: str) -> None: ...
-        def debug(self, msg: str) -> None: ...
-
-    class FallbackLogger:
-        def info(self, msg: str) -> None:
-            print(f"INFO: {msg}")
-
-        def error(self, msg: str) -> None:
-            print(f"ERROR: {msg}")
-
-        def warning(self, msg: str) -> None:
-            print(f"WARNING: {msg}")
-
-        def debug(self, msg: str) -> None:
-            print(f"DEBUG: {msg}")
-
-    logger = FallbackLogger()  # type: ignore
+from loguru import logger
 
 from application.interfaces.hardware.loadcell import LoadCellService
 from application.interfaces.hardware.mcu import MCUService

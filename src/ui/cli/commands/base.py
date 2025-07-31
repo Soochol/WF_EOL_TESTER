@@ -84,9 +84,7 @@ class Command(ABC):
         self.description = description
 
     @abstractmethod
-    async def execute(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute the command with given arguments
 
@@ -119,9 +117,7 @@ class Command(ABC):
         if subcommands:
             help_text += "\nSubcommands:\n"
             for subcmd, desc in subcommands.items():
-                help_text += (
-                    f"  /{self.name} {subcmd} - {desc}\n"
-                )
+                help_text += f"  /{self.name} {subcmd} - {desc}\n"
 
         return help_text
 

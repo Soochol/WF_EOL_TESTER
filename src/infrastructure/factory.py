@@ -54,14 +54,7 @@ from infrastructure.implementation.hardware.robot.mock.mock_robot import (
     MockRobot,
 )
 
-# Conditional logging import
-logger: Any
-try:
-    from loguru import logger
-except ImportError:
-    import logging
-
-    logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class ServiceFactory:

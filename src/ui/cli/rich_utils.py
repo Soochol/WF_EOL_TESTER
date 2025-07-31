@@ -289,15 +289,12 @@ class RichUIManager:
         # Display the menu panel with professional formatting (no icon for menus)
         from rich.panel import Panel
         from rich.text import Text
-        
+
         # Create clean menu content without icons
         content = Text.from_markup(menu_text)
-        
+
         menu_panel = Panel(
-            content,
-            title=f"🧪 {title}",
-            border_style=self.formatter.COLORS["info"],
-            padding=(1, 2)
+            content, title=f"🧪 {title}", border_style=self.formatter.COLORS["info"], padding=(1, 2)
         )
         self.console.print(menu_panel)
 

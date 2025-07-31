@@ -145,7 +145,9 @@ class HardwareServiceFacade:
         total_tests = len(config.temperature_list) * len(config.stroke_positions)
         logger.info(
             "Test matrix: %s×%s = %s measurements",
-            len(config.temperature_list), len(config.stroke_positions), total_tests
+            len(config.temperature_list),
+            len(config.stroke_positions),
+            total_tests,
         )
 
         measurements_dict: Dict[float, Dict[float, Dict[str, Any]]] = {}
@@ -155,7 +157,9 @@ class HardwareServiceFacade:
             for temp_idx, temperature in enumerate(config.temperature_list):
                 logger.info(
                     "Setting temperature to %s°C (%s/%s)",
-                    temperature, temp_idx+1, len(config.temperature_list)
+                    temperature,
+                    temp_idx + 1,
+                    len(config.temperature_list),
                 )
 
                 # Set MCU temperature for this test cycle
@@ -195,7 +199,7 @@ class HardwareServiceFacade:
                     measurements_dict[temperature][position] = {
                         "temperature": current_temp,
                         "stroke": current_position,
-                        "force": force.value
+                        "force": force.value,
                     }
 
                     # # Allow stabilization between positions (if not last position)
@@ -209,11 +213,12 @@ class HardwareServiceFacade:
 
             logger.info(
                 "Force test sequence completed with %s measurements",
-                measurements.get_total_measurement_count()
+                measurements.get_total_measurement_count(),
             )
             logger.info(
                 "Test matrix completed: %s temperatures × %s positions",
-                measurements.get_temperature_count(), len(config.stroke_positions)
+                measurements.get_temperature_count(),
+                len(config.stroke_positions),
             )
             return measurements
 
@@ -391,7 +396,8 @@ class HardwareServiceFacade:
             )
             logger.info(
                 "MCU standby heating started - operating: %s°C, standby: %s°C",
-                config.activation_temperature, calculated_standby_temp
+                config.activation_temperature,
+                calculated_standby_temp,
             )
 
             # Robot to max stroke position using test configuration
@@ -431,7 +437,11 @@ class HardwareServiceFacade:
                 details={"config": config.to_dict()},
             ) from e
 
-    def get_hardware_services(self) -> Dict[str, Union[RobotService, MCUService, PowerService, LoadCellService, DigitalInputService]]:
+    def get_hardware_services(
+        self,
+    ) -> Dict[
+        str, Union[RobotService, MCUService, PowerService, LoadCellService, DigitalInputService]
+    ]:
         """Get direct access to hardware services (for advanced usage)"""
         return {
             "robot": self._robot,

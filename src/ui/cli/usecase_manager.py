@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional, Type
 
 from loguru import logger
 from rich.console import Console
-from rich.status import Status
 
 from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
@@ -18,6 +17,7 @@ from application.use_cases.eol_force_test import (
 )
 from domain.value_objects.dut_command_info import DUTCommandInfo
 
+from .enhanced_input_manager import EnhancedInputManager
 from .rich_formatter import RichFormatter
 from .rich_utils import RichUIManager
 
@@ -49,19 +49,22 @@ class UseCaseExecutor(ABC):
         """Execute the UseCase with Rich UI feedback"""
 
     @abstractmethod
-    def get_parameters(self, formatter: RichFormatter) -> Optional[Any]:
+    async def get_parameters(self, formatter: RichFormatter) -> Optional[Any]:
         """Collect parameters needed for UseCase execution"""
 
 
 class EOLForceTestExecutor(UseCaseExecutor):
     """Executor for EOL Force Test UseCase"""
 
+    def __init__(self, configuration_service: Optional[Any] = None):
+        self.configuration_service = configuration_service
+
     async def execute(
         self, use_case_instance: EOLForceTestUseCase, formatter: RichFormatter
     ) -> Any:
         """Execute EOL Force Test with Rich UI feedback"""
         # Get test parameters from user
-        command = self.get_parameters(formatter)
+        command = await self.get_parameters(formatter)
         if not command:
             return None
 
@@ -88,71 +91,39 @@ class EOLForceTestExecutor(UseCaseExecutor):
             formatter.print_message(f"Test execution failed: {str(e)}", message_type="error")
             raise
 
-    def get_parameters(self, formatter: RichFormatter) -> Optional[EOLForceTestCommand]:
-        """Collect DUT information for EOL test"""
+    async def get_parameters(self, formatter: RichFormatter) -> Optional[EOLForceTestCommand]:
+        """Collect DUT information for EOL test using Enhanced Input Manager"""
         try:
-            # Display input form header
-            form_panel = formatter.create_message_panel(
-                "Please provide the following DUT (Device Under Test) information:",
-                message_type="info",
-                title="📝 DUT Information",
+            # Create Enhanced Input Manager
+            input_manager = EnhancedInputManager(
+                formatter.console, 
+                formatter,
+                configuration_service=self.configuration_service
             )
-            formatter.console.print(form_panel)
 
-            # Collect DUT ID (required)
-            formatter.console.print("\n[bold cyan]DUT ID[/bold cyan] (required):")
-            dut_id = input("  → ").strip()
-            if not dut_id:
-                formatter.print_message(
-                    "DUT ID is required to proceed with the test.", message_type="error"
-                )
+            # Use the enhanced DUT info collection
+            dut_info = await input_manager.get_dut_info_interactive()
+            if not dut_info:
                 return None
-
-            # Collect optional information with defaults
-            formatter.console.print(
-                "[bold cyan]DUT Model[/bold cyan] [dim](default: Unknown)[/dim]:"
-            )
-            dut_model = input("  → ").strip() or "Unknown"
-
-            formatter.console.print(
-                "[bold cyan]DUT Serial Number[/bold cyan] [dim](default: N/A)[/dim]:"
-            )
-            dut_serial = input("  → ").strip() or "N/A"
-
-            formatter.console.print(
-                "[bold cyan]Operator ID[/bold cyan] [dim](default: Test)[/dim]:"
-            )
-            operator_id = input("  → ").strip() or "Test"
 
             # Create DUT command info
             dut_command_info = DUTCommandInfo(
-                dut_id=dut_id,
-                model_number=dut_model,
-                serial_number=dut_serial,
+                dut_id=dut_info["id"],
+                model_number=dut_info["model"],
+                serial_number=dut_info["serial"],
                 manufacturer="Unknown",
             )
 
             # Create and return command
             command = EOLForceTestCommand(
                 dut_info=dut_command_info,
-                operator_id=operator_id,
-            )
-
-            # Show confirmation
-            formatter.print_status(
-                "DUT Information Collected",
-                "READY",
-                details={
-                    "DUT ID": dut_id,
-                    "Model": dut_model,
-                    "Serial": dut_serial,
-                    "Operator": operator_id,
-                },
+                operator_id=dut_info["operator"],
             )
 
             return command
 
         except (KeyboardInterrupt, EOFError):
+            formatter.print_message("DUT information collection cancelled by user", "info")
             return None
 
     def _display_test_result(self, result: Any, formatter: RichFormatter) -> None:
@@ -183,12 +154,13 @@ class EOLForceTestExecutor(UseCaseExecutor):
 class UseCaseManager:
     """Manages UseCase discovery and execution with Rich UI"""
 
-    def __init__(self, console: Optional[Console] = None):
+    def __init__(self, console: Optional[Console] = None, configuration_service: Optional[Any] = None):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
         self.ui_manager = RichUIManager(self.console)
         self.discovered_usecases: List[UseCaseInfo] = []
         self.executors: Dict[str, UseCaseExecutor] = {}
+        self.configuration_service = configuration_service
 
         # Initialize with known UseCases
         self._initialize_usecases()
@@ -204,7 +176,7 @@ class UseCaseManager:
         )
 
         self.discovered_usecases.append(eol_usecase_info)
-        self.executors[eol_usecase_info.name] = EOLForceTestExecutor()
+        self.executors[eol_usecase_info.name] = EOLForceTestExecutor(self.configuration_service)
 
         logger.info(f"Initialized {len(self.discovered_usecases)} UseCases")
 

@@ -18,9 +18,7 @@ class HelpCommand(Command):
             description="Show help information for commands",
         )
 
-    async def execute(
-        self, args: List[str]
-    ) -> CommandResult:
+    async def execute(self, args: List[str]) -> CommandResult:
         """
         Execute help command
 

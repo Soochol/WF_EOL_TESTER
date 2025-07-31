@@ -10,14 +10,7 @@ from typing import Any, Dict, List
 
 import asyncio
 
-# Conditional import for logging
-logger: Any
-try:
-    from loguru import logger
-except ImportError:
-    import logging
-
-    logger = logging.getLogger(__name__)
+from loguru import logger
 
 from application.interfaces.hardware.digital_input import (
     DigitalInputService,

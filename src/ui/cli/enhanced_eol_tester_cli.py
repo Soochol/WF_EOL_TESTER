@@ -14,27 +14,21 @@ Key Features:
 - Progress indication for long-running operations
 """
 
+# Standard library imports
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
+# Third-party imports
+from loguru import logger
 from rich.console import Console
 
-# Conditional import for loguru to handle missing dependency gracefully
-try:
-    from loguru import logger
-except ImportError:
-    import logging
-
-    # Configure basic logging when loguru is not available
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    logger = logging.getLogger(__name__)  # type: ignore
-
+# Local imports - Application layer
 from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
 )
+
+# Local imports - Domain layer
 from domain.value_objects.dut_command_info import (
     DUTCommandInfo,
 )
@@ -42,6 +36,7 @@ from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
 
+# Local imports - UI modules
 from .dashboard_integration import create_dashboard_integrator
 from .enhanced_cli_integration import (
     create_enhanced_cli_integrator,
@@ -52,6 +47,10 @@ from .hardware_controller import HardwareControlManager
 from .rich_formatter import RichFormatter
 from .slash_command_handler import SlashCommandHandler
 from .usecase_manager import UseCaseManager
+
+# TYPE_CHECKING imports
+if TYPE_CHECKING:
+    from application.services.hardware_service_facade import HardwareServiceFacade
 
 
 # Security and validation constants for input protection
@@ -295,7 +294,7 @@ class EnhancedEOLTesterCLI:
     def __init__(
         self,
         use_case: EOLForceTestUseCase,
-        hardware_facade: Optional[Any] = None,
+        hardware_facade: Optional["HardwareServiceFacade"] = None,
         configuration_service: Optional[Any] = None,
     ):
         """
@@ -307,13 +306,13 @@ class EnhancedEOLTesterCLI:
             configuration_service: Configuration service for loading DUT defaults
         """
         self._use_case = use_case
-        self._hardware_facade = hardware_facade
+        self._hardware_facade: Optional["HardwareServiceFacade"] = hardware_facade
         self._configuration_service = configuration_service
         self._running = False
         self._console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
         self._formatter = RichFormatter(self._console)
         self._validator = InputValidator()
-        self._usecase_manager = UseCaseManager(self._console)
+        self._usecase_manager = UseCaseManager(self._console, self._configuration_service)
 
         # Initialize enhanced input system
         self._input_integrator = create_enhanced_cli_integrator(
@@ -658,27 +657,25 @@ class EnhancedEOLTesterCLI:
         """Check and display hardware status with Rich formatting."""
         self._formatter.print_header("Hardware Status Check")
 
-        # Simulate hardware status (in real implementation, this would query actual hardware)
-        hardware_status = {
-            "Power Supply": {
-                "connected": True,
-                "voltage": "24.1V",
-                "current": "2.3A",
-                "status": "OK",
-            },
-            "DMM (Digital Multimeter)": {"connected": True, "model": "34401A", "status": "READY"},
-            "Oscilloscope": {
-                "connected": False,
-                "last_error": "Connection timeout",
-                "status": "ERROR",
-            },
-            "Signal Generator": {
-                "connected": True,
-                "frequency": "1.0 MHz",
-                "amplitude": "5.0V",
-                "status": "OK",
-            },
-        }
+        # Check if hardware facade is available for real-time monitoring
+        if self._hardware_facade:
+            try:
+                # Get actual hardware status from facade
+                hardware_status = await self._collect_real_hardware_status()
+            except Exception as e:
+                # Fallback to simulated data if real status collection fails
+                logger.warning("Failed to collect real hardware status: %s", e)
+                hardware_status = self._get_fallback_hardware_status()
+                self._formatter.print_message(
+                    "Unable to collect real-time hardware status. Showing simulated data.",
+                    message_type="warning",
+                )
+        else:
+            # Use simulated hardware status when facade is not available
+            hardware_status = self._get_fallback_hardware_status()
+            self._formatter.print_message(
+                "Hardware facade not initialized. Showing simulated data.", message_type="info"
+            )
 
         # Display hardware status
         status_display = self._formatter.create_hardware_status_display(
@@ -688,6 +685,173 @@ class EnhancedEOLTesterCLI:
 
         # Wait for user acknowledgment
         await self._wait_for_user_acknowledgment()
+
+    async def _collect_real_hardware_status(self) -> Dict[str, Dict[str, Any]]:
+        """Collect real hardware status from hardware facade services."""
+        hardware_status = {}
+
+        try:
+            # Get hardware services from facade - we know it's not None here due to the caller check
+            assert self._hardware_facade is not None
+            services = self._hardware_facade.get_hardware_services()
+
+            # Collect Robot status
+            try:
+                robot_service = services["robot"]
+                robot_connected = await robot_service.is_connected()
+                robot_status = {
+                    "connected": robot_connected,
+                    "type": "AJINEXTEK Motion Controller",
+                    "status": "READY" if robot_connected else "DISCONNECTED",
+                }
+
+                if robot_connected:
+                    try:
+                        position = await robot_service.get_position(0)  # type: ignore # Axis 0
+                        robot_status["position"] = f"{position:.2f}mm"
+                        motion_status = await robot_service.get_motion_status()  # type: ignore
+                        robot_status["motion_status"] = (
+                            motion_status.value if motion_status else "UNKNOWN"
+                        )
+                    except Exception as e:
+                        logger.debug("Could not get detailed robot data: %s", e)
+                        robot_status["details_error"] = "Status query failed"
+
+                hardware_status["Robot"] = robot_status
+            except Exception as e:
+                logger.debug("Robot status collection failed: %s", e)
+                hardware_status["Robot"] = {
+                    "connected": False,
+                    "type": "AJINEXTEK Motion Controller",
+                    "status": "ERROR",
+                    "error": str(e),
+                }
+
+            # Collect MCU status
+            try:
+                mcu_service = services["mcu"]
+                mcu_connected = await mcu_service.is_connected()
+                mcu_status = {
+                    "connected": mcu_connected,
+                    "type": "LMA Temperature Controller",
+                    "status": "READY" if mcu_connected else "DISCONNECTED",
+                }
+
+                if mcu_connected:
+                    try:
+                        temperature = await mcu_service.get_temperature()  # type: ignore
+                        mcu_status["temperature"] = f"{temperature:.1f}°C"
+                        test_mode = await mcu_service.get_test_mode()  # type: ignore
+                        mcu_status["test_mode"] = test_mode.value if test_mode else "UNKNOWN"
+                    except Exception as e:
+                        logger.debug("Could not get detailed MCU data: %s", e)
+                        mcu_status["details_error"] = "Status query failed"
+
+                hardware_status["MCU"] = mcu_status
+            except Exception as e:
+                logger.debug("MCU status collection failed: %s", e)
+                hardware_status["MCU"] = {
+                    "connected": False,
+                    "type": "LMA Temperature Controller",
+                    "status": "ERROR",
+                    "error": str(e),
+                }
+
+            # Collect LoadCell status
+            try:
+                loadcell_service = services["loadcell"]
+                loadcell_connected = await loadcell_service.is_connected()
+                loadcell_status = {
+                    "connected": loadcell_connected,
+                    "type": "BS205 Force Sensor",
+                    "status": "READY" if loadcell_connected else "DISCONNECTED",
+                }
+
+                if loadcell_connected:
+                    try:
+                        force = await loadcell_service.read_force()  # type: ignore
+                        loadcell_status["force"] = f"{force.value:.3f} N" if force else "N/A"
+                    except Exception as e:
+                        logger.debug("Could not get detailed LoadCell data: %s", e)
+                        loadcell_status["details_error"] = "Status query failed"
+
+                hardware_status["LoadCell"] = loadcell_status
+            except Exception as e:
+                logger.debug("LoadCell status collection failed: %s", e)
+                hardware_status["LoadCell"] = {
+                    "connected": False,
+                    "type": "BS205 Force Sensor",
+                    "status": "ERROR",
+                    "error": str(e),
+                }
+
+            # Collect Power status
+            try:
+                power_service = services["power"]
+                power_connected = await power_service.is_connected()
+                power_status = {
+                    "connected": power_connected,
+                    "type": "ODA Power Supply",
+                    "status": "OK" if power_connected else "DISCONNECTED",
+                }
+
+                if power_connected:
+                    try:
+                        voltage = await power_service.get_voltage()  # type: ignore
+                        current = await power_service.get_current()  # type: ignore
+                        output_enabled = await power_service.is_output_enabled()  # type: ignore
+                        power_status["voltage"] = f"{voltage:.1f}V"
+                        power_status["current"] = f"{current:.2f}A"
+                        power_status["output"] = "ON" if output_enabled else "OFF"
+                    except Exception as e:
+                        logger.debug("Could not get detailed Power data: %s", e)
+                        power_status["details_error"] = "Status query failed"
+
+                hardware_status["Power"] = power_status
+            except Exception as e:
+                logger.debug("Power status collection failed: %s", e)
+                hardware_status["Power"] = {
+                    "connected": False,
+                    "type": "ODA Power Supply",
+                    "status": "ERROR",
+                    "error": str(e),
+                }
+
+        except Exception as e:
+            logger.error("Hardware status collection failed completely: %s", e)
+            raise
+
+        return hardware_status
+
+    def _get_fallback_hardware_status(self) -> Dict[str, Dict[str, Any]]:
+        """Get fallback simulated hardware status when real status is unavailable."""
+        return {
+            "Robot": {
+                "connected": True,
+                "type": "AJINEXTEK Motion Controller",
+                "axes": "6 DOF",
+                "status": "SIMULATED",
+            },
+            "MCU": {
+                "connected": True,
+                "type": "LMA Temperature Controller",
+                "temperature": "25.3°C",
+                "status": "SIMULATED",
+            },
+            "LoadCell": {
+                "connected": True,
+                "type": "BS205 Force Sensor",
+                "force": "0.234 N",
+                "status": "SIMULATED",
+            },
+            "Power": {
+                "connected": True,
+                "type": "ODA Power Supply",
+                "voltage": "24.1V",
+                "current": "2.3A",
+                "status": "SIMULATED",
+            },
+        }
 
     async def _show_test_statistics(self) -> None:
         """Show comprehensive test and system statistics with Rich formatting."""
@@ -779,7 +943,7 @@ class EnhancedEOLTesterCLI:
 
         except Exception as e:
             # Log shutdown errors but don't prevent shutdown completion
-            logger.warning(f"Error during shutdown: {e}")
+            logger.warning("Error during shutdown: %s", e)
 
         logger.info("Enhanced CLI shutdown complete")
 
@@ -918,9 +1082,10 @@ with formatter.create_progress_display("Processing data...") as status:
 
 # Example 6: Hardware Status Dashboard
 hardware_status = {
-    "power_supply": {"connected": True, "voltage": "24.1V", "current": "2.3A"},
-    "dmm_primary": {"connected": True, "model": "34401A", "status": "READY"},
-    "oscilloscope": {"connected": False, "last_error": "Connection timeout"}
+    "Robot": {"connected": True, "type": "AJINEXTEK Motion Controller", "status": "READY"},
+    "MCU": {"connected": True, "type": "LMA Temperature Controller", "status": "READY"},
+    "LoadCell": {"connected": True, "type": "BS205 Force Sensor", "status": "READY"},
+    "Power": {"connected": True, "voltage": "24.1V", "current": "2.3A", "status": "OK"}
 }
 hardware_panel = formatter.create_hardware_status_display(hardware_status)
 console.print(hardware_panel)
