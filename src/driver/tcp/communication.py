@@ -58,26 +58,18 @@ class TCPCommunication:
             TCPConnectionError: If connection fails
         """
         try:
-            self.reader, self.writer = (
-                await asyncio.wait_for(
-                    cast(
-                        Any,
-                        asyncio.open_connection(
-                            self.host, self.port
-                        ),
-                    ),
-                    timeout=CONNECT_TIMEOUT,
-                )
+            self.reader, self.writer = await asyncio.wait_for(
+                cast(
+                    Any,
+                    asyncio.open_connection(self.host, self.port),
+                ),
+                timeout=CONNECT_TIMEOUT,
             )
             self.is_connected = True
-            logger.info(
-                f"TCP connected to {self.host}:{self.port}"
-            )
+            logger.info(f"TCP connected to {self.host}:{self.port}")
 
         except (OSError, asyncio.TimeoutError) as e:
-            logger.error(
-                f"TCP connection failed ({type(e).__name__}): {e}"
-            )
+            logger.error(f"TCP connection failed ({type(e).__name__}): {e}")
             self.is_connected = False
             raise TCPConnectionError(
                 f"Failed to connect to {self.host}:{self.port}",
@@ -100,23 +92,19 @@ class TCPCommunication:
                 self.writer = None
                 self.reader = None
             self.is_connected = False
-            logger.info(
-                f"TCP disconnected from {self.host}:{self.port}"
-            )
+            logger.info(f"TCP disconnected from {self.host}:{self.port}")
             return True
 
         except Exception as e:
-            logger.error(
-                f"Error during TCP disconnect: {e}"
-            )
+            logger.error(f"Error during TCP disconnect: {e}")
             return False
 
     async def send_command(self, command: str) -> None:
         """
         Send command to device as-is without adding terminators
-        
-        Note: Upper layers (like hardware services) are responsible for 
-        proper command termination. This driver sends commands exactly 
+
+        Note: Upper layers (like hardware services) are responsible for
+        proper command termination. This driver sends commands exactly
         as provided without modification.
 
         Args:
@@ -136,7 +124,7 @@ class TCPCommunication:
         try:
             # Send command as-is without adding terminator
             # Upper layers (like ODA Power) are responsible for proper termination
-            
+
             # Check command length
             if len(command.encode()) > COMMAND_BUFFER_SIZE:
                 logger.error(
@@ -153,9 +141,7 @@ class TCPCommunication:
             logger.debug("TCP sent: %s", repr(command))
 
         except (OSError, ConnectionError) as e:
-            logger.error(
-                f"Failed to send TCP command '{command}': {e}"
-            )
+            logger.error(f"Failed to send TCP command '{command}': {e}")
             self.is_connected = False
             raise TCPCommunicationError(
                 f"Failed to send command '{command}'",
@@ -198,10 +184,7 @@ class TCPCommunication:
                     response_data += data
 
                     # Check if we have complete response
-                    if (
-                        RESPONSE_TERMINATOR.encode()
-                        in response_data
-                    ):
+                    if RESPONSE_TERMINATOR.encode() in response_data:
                         break
 
                 except asyncio.TimeoutError:
@@ -209,9 +192,7 @@ class TCPCommunication:
 
             if response_data:
                 response = response_data.decode().strip()
-                logger.debug(
-                    f"TCP received: {repr(response)}"
-                )
+                logger.debug(f"TCP received: {repr(response)}")
                 return response
 
             logger.warning("No TCP response received")
@@ -222,9 +203,7 @@ class TCPCommunication:
             )
 
         except (OSError, ConnectionError) as e:
-            logger.error(
-                f"Failed to receive TCP response: {e}"
-            )
+            logger.error(f"Failed to receive TCP response: {e}")
             self.is_connected = False
             raise TCPCommunicationError(
                 "Failed to receive response",
@@ -296,13 +275,9 @@ class TCPCommunication:
         Raises:
             TCPConnectionError: If reconnection fails
         """
-        logger.info(
-            f"Attempting to reconnect to {self.host}:{self.port}..."
-        )
+        logger.info(f"Attempting to reconnect to {self.host}:{self.port}...")
         await self.disconnect()
-        await asyncio.sleep(
-            1
-        )  # Brief delay before reconnect
+        await asyncio.sleep(1)  # Brief delay before reconnect
         await self.connect()
 
     async def __aenter__(self) -> "TCPCommunication":
@@ -310,8 +285,6 @@ class TCPCommunication:
         await self.connect()
         return self
 
-    async def __aexit__(
-        self, exc_type: Any, exc_val: Any, exc_tb: Any
-    ) -> None:
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
         await self.disconnect()
