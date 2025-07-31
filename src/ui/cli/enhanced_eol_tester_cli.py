@@ -383,6 +383,11 @@ class EnhancedEOLTesterCLI:
             choice = await self._enhanced_menu.show_main_menu_enhanced()
 
             if not choice:
+                # User cancelled (Ctrl+C) or no input - exit gracefully
+                self._running = False
+                self._formatter.print_message(
+                    "Exiting EOL Tester... Goodbye!", message_type="info", title="Goodbye"
+                )
                 return
 
             if choice == "1":
@@ -412,6 +417,9 @@ class EnhancedEOLTesterCLI:
 
         except (KeyboardInterrupt, EOFError):
             self._running = False
+            self._formatter.print_message(
+                "Exiting EOL Tester... Goodbye!", message_type="info", title="Goodbye"
+            )
 
     async def _execute_eol_test(self) -> None:
         """Execute EOL test with Rich UI feedback."""
