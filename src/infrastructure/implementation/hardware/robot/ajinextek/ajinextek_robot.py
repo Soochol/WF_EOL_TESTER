@@ -71,6 +71,11 @@ class AjinextekRobot(RobotService):
         self._motion_status = MotionStatus.IDLE
         self._error_message = None
 
+        # Software limits - initialized with default values, will be updated from .mot file
+        self._software_limits_enabled = False
+        self._software_limit_pos: dict[int, float] = {}
+        self._software_limit_neg: dict[int, float] = {}
+
         # Initialize AXL wrapper
         self._axl = AXLWrapper()
 
@@ -133,6 +138,12 @@ class AjinextekRobot(RobotService):
             self._current_positions = [0.0] * self._axis_count
             for axis in range(self._axis_count):
                 self._servo_states[axis] = False
+
+            # Initialize software limits with default values from .mot file
+            # These will be populated when software limits are read from controller
+            for axis in range(self._axis_count):
+                self._software_limit_pos[axis] = 1000.0  # Default positive limit
+                self._software_limit_neg[axis] = -1000.0  # Default negative limit
 
             # Software limits are now managed by robot controller via .mot file
 
