@@ -441,3 +441,66 @@ class MockPower(PowerService):
             f"Mock load simulation ({resistance}Ω): {actual_voltage:.3f}V, {actual_current:.3f}A"
         )
         return actual_voltage, actual_current
+
+    async def set_current(self, current: float) -> None:
+        """
+        Set output current (시뮬레이션)
+
+        Args:
+            current: Target current in amperes
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current setting fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError(
+                "mock_power",
+                "Power Supply is not connected",
+            )
+
+        try:
+            # 값 범위 검증
+            if not (0 <= current <= self._max_current):
+                raise HardwareOperationError(
+                    "mock_power",
+                    "set_current",
+                    f"Current must be 0-{self._max_current}A, got {current}A",
+                )
+
+            # 설정 지연 시뮬래이션
+            await asyncio.sleep(self._response_delay)
+
+            self._set_current = current
+            logger.info(f"Mock Power Supply current set to: {current}A")
+
+        except Exception as e:
+            logger.error(f"Failed to set mock Power Supply current: {e}")
+            raise HardwareOperationError("mock_power", "set_current", str(e)) from e
+
+    async def get_current_limit(self) -> float:
+        """
+        Get current limit setting (시뮬레이션)
+
+        Returns:
+            Current limit in amperes
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current limit reading fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError(
+                "mock_power",
+                "Power Supply is not connected",
+            )
+
+        try:
+            await asyncio.sleep(self._response_delay)
+            
+            logger.debug("Mock Power Supply current limit: %.3fA", self._set_current)
+            return self._set_current
+
+        except Exception as e:
+            logger.error(f"Failed to get mock Power Supply current limit: {e}")
+            raise HardwareOperationError("mock_power", "get_current_limit", str(e)) from e

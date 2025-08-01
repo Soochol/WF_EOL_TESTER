@@ -43,15 +43,6 @@ class RobotService(ABC):
         """
         ...
 
-    @abstractmethod
-    async def initialize_axes(self) -> None:
-        """
-        Initialize robot axes and perform homing
-
-        Raises:
-            HardwareOperationError: If initialization fails
-        """
-        ...
 
     @abstractmethod
     async def move_to_position(
@@ -230,6 +221,96 @@ class RobotService(ABC):
 
         Returns:
             Current motion status
+        """
+        ...
+
+    @abstractmethod
+    async def enable_servo(self, axis: int) -> None:
+        """
+        Enable servo for specific axis
+
+        This method should be called before attempting motion operations on the axis.
+        It enables the servo motor for the specified axis only.
+
+        Args:
+            axis: Axis number to enable servo for
+
+        Raises:
+            HardwareOperationError: If servo enable operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def disable_servo(self, axis: int) -> None:
+        """
+        Disable servo for specific axis
+
+        This method disables the servo motor for the specified axis.
+        Should be called during shutdown or emergency situations.
+
+        Args:
+            axis: Axis number to disable servo for
+
+        Raises:
+            HardwareOperationError: If servo disable operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def get_axis_count(self) -> int:
+        """
+        Get the number of axes supported by this robot
+
+        Returns:
+            Total number of axes
+        """
+        ...
+
+    @abstractmethod
+    async def get_primary_axis_id(self) -> int:
+        """
+        Get the primary axis ID that should be controlled
+
+        Returns:
+            Primary axis ID from hardware configuration
+        """
+        ...
+
+    @abstractmethod
+    async def home_axis(self, axis: int) -> None:
+        """
+        Home a single axis
+
+        All homing parameters are configured in the robot controller via parameter files.
+
+        Args:
+            axis: Axis number to home
+
+        Raises:
+            HardwareOperationError: If homing operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def home_all_axes(
+        self,
+        velocity: Optional[float] = None,
+        acceleration: Optional[float] = None,
+        deceleration: Optional[float] = None,
+    ) -> bool:
+        """
+        Home all axes
+
+        Args:
+            velocity: Optional homing velocity in mm/s
+            acceleration: Optional homing acceleration in mm/s²
+            deceleration: Optional homing deceleration in mm/s²
+
+        Returns:
+            True if all axes homed successfully
+
+        Raises:
+            HardwareOperationError: If homing operation fails
         """
         ...
 

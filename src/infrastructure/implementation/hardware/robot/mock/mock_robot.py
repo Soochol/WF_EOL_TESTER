@@ -39,24 +39,25 @@ class MockRobot(RobotService):
         """
         # Store configuration from dict
         self._model = config.get("model", "MOCK")
-        self._axis_count = config.get("axis_count", 6)
         self._max_position = max_position
 
-        # Motion parameters with defaults
-        self._velocity = config.get("default_velocity", 100.0)
-        self._acceleration = config.get("default_acceleration", 100.0)
-        self._deceleration = config.get("default_deceleration", 100.0)
-        self._position_tolerance = config.get("position_tolerance", 0.1)
-        self._homing_velocity = config.get("homing_velocity", 10.0)
-        self._homing_acceleration = config.get("homing_acceleration", 100.0)
-        self._homing_deceleration = config.get("homing_deceleration", 100.0)
+        # Motion parameters with hardcoded defaults (TestConfiguration should be used for actual test values)
+        self._velocity = 100.0
+        self._acceleration = 100.0
+        self._deceleration = 100.0
+        self._position_tolerance = 0.1
+        self._homing_velocity = 10.0
+        self._homing_acceleration = 100.0
+        self._homing_deceleration = 100.0
         self._response_delay = response_delay
 
+        # Runtime state - will be initialized during connection
         self._is_connected = False
-        self._current_positions = [0.0] * self._axis_count
+        self._axis_count = 0  # Will be set during connection
+        self._current_positions: List[float] = []
         self._motion_status = MotionStatus.IDLE
         self._max_velocity = 1000.0
-        self._axis_velocities = [self._velocity] * self._axis_count
+        self._axis_velocities: List[float] = []
 
         logger.info(f"MockRobotAdapter initialized with {self._axis_count} axes")
 
@@ -78,6 +79,15 @@ class MockRobot(RobotService):
         if success:
             self._is_connected = True
             self._motion_status = MotionStatus.IDLE
+            
+            # Simulate getting axis count from hardware (mock uses default 6)
+            self._axis_count = 6
+            logger.info("Mock Robot detected %d axes", self._axis_count)
+            
+            # Initialize position tracking and velocities based on detected axis count
+            self._current_positions = [0.0] * self._axis_count
+            self._axis_velocities = [self._velocity] * self._axis_count
+            
             logger.info("Mock Robot connected successfully")
         else:
             logger.warning("Mock Robot connection failed")
@@ -109,33 +119,6 @@ class MockRobot(RobotService):
         """
         return self._is_connected
 
-    async def initialize_axes(self) -> None:
-        """
-        축 초기화 및 홈 위치로 이동 (시뮬레이션)
-
-        Raises:
-            HardwareOperationError: If initialization fails
-        """
-        if not self._is_connected:
-            raise HardwareConnectionError("mock_robot", "Robot is not connected")
-
-        try:
-            logger.info("Starting mock axis initialization")
-            self._motion_status = MotionStatus.HOMING
-
-            # 홈 이동 시뮬레이션 (2초)
-            await asyncio.sleep(2.0)
-
-            # 모든 축을 0 위치로 설정
-            self._current_positions = [0.0] * self._axis_count
-            self._motion_status = MotionStatus.IDLE
-
-            logger.info("Mock axis initialization completed successfully")
-
-        except Exception as e:
-            logger.error(f"Mock axis initialization failed: {e}")
-            self._motion_status = MotionStatus.ERROR
-            raise HardwareOperationError("mock_robot", "initialize_axes", str(e)) from e
 
     async def move_to_position(
         self,
@@ -715,6 +698,15 @@ class MockRobot(RobotService):
         """
         return self._axis_count
 
+    async def get_primary_axis_id(self) -> int:
+        """
+        Get the primary axis ID that should be controlled
+
+        Returns:
+            Primary axis ID (defaults to 0 for first axis)
+        """
+        return 0  # Default to first axis
+
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
@@ -742,6 +734,199 @@ class MockRobot(RobotService):
                 status["last_error"] = str(e)
 
         return status
+
+    async def enable_servo(self, axis: int) -> None:
+        """
+        Enable servo for specific axis (Mock implementation)
+        
+        This method simulates enabling servo motor for the specified axis.
+        In mock mode, this is a no-op operation that logs the action.
+        
+        Args:
+            axis: Axis number to enable servo for
+        
+        Raises:
+            HardwareOperationError: If robot is not connected or invalid axis
+        """
+        if not self._is_connected:
+            raise HardwareOperationError(
+                "mock_robot",
+                "enable_servo", 
+                "Robot is not connected"
+            )
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError(
+                "mock_robot",
+                "enable_servo",
+                f"Invalid axis {axis}. Valid range: 0-{self._axis_count-1}"
+            )
+
+        try:
+            logger.info("Mock robot: Enabling servo for axis %d", axis)
+            
+            # Simulate servo enable delay
+            await asyncio.sleep(self._response_delay)
+            
+            logger.debug("Mock robot: Servo enabled successfully for axis %d", axis)
+            
+        except Exception as e:
+            raise HardwareOperationError(
+                "mock_robot",
+                "enable_servo",
+                str(e)
+            ) from e
+
+    async def disable_servo(self, axis: int) -> None:
+        """
+        Disable servo for specific axis (Mock implementation)
+        
+        This method simulates disabling servo motor for the specified axis.
+        In mock mode, this is a no-op operation that logs the action.
+        
+        Args:
+            axis: Axis number to disable servo for
+        
+        Raises:
+            HardwareOperationError: If robot is not connected or invalid axis
+        """
+        if not self._is_connected:
+            raise HardwareOperationError(
+                "mock_robot",
+                "disable_servo",
+                "Robot is not connected"
+            )
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError(
+                "mock_robot",
+                "disable_servo",
+                f"Invalid axis {axis}. Valid range: 0-{self._axis_count-1}"
+            )
+
+        try:
+            logger.info("Mock robot: Disabling servo for axis %d", axis)
+            
+            # Simulate servo disable delay
+            await asyncio.sleep(self._response_delay)
+            
+            logger.debug("Mock robot: Servo disabled successfully for axis %d", axis)
+            
+        except Exception as e:
+            logger.error("Mock robot: Failed to disable servo for axis %d: %s", axis, e)
+            # Don't raise exception for disable failures during shutdown
+
+    async def home_axis(self, axis: int) -> None:
+        """
+        Home a single axis (Mock implementation)
+
+        Args:
+            axis: Axis number to home
+
+        Raises:
+            HardwareOperationError: If homing operation fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError(
+                "mock_robot",
+                "home_axis",
+                f"Invalid axis {axis}. Valid range: 0-{self._axis_count-1}"
+            )
+
+        try:
+            # Use default homing parameters
+            vel = self._homing_velocity
+            acc = self._homing_acceleration
+            dec = self._homing_deceleration
+
+            logger.info(
+                f"Mock robot: Homing axis {axis} (vel: {vel}mm/s, acc: {acc}mm/s², dec: {dec}mm/s²)"
+            )
+
+            self._motion_status = MotionStatus.MOVING
+
+            # Simulate homing motion - move to zero position
+            homing_time = abs(self._current_positions[axis]) / vel if vel > 0 else 1.0
+            steps = max(int(homing_time / 0.1), 1)
+
+            start_position = self._current_positions[axis]
+            for step in range(steps):
+                await asyncio.sleep(0.1)
+                progress = (step + 1) / steps
+                self._current_positions[axis] = start_position * (1 - progress)
+
+            # Set to exactly zero after homing
+            self._current_positions[axis] = 0.0
+            self._motion_status = MotionStatus.IDLE
+
+            logger.info(f"Mock robot: Axis {axis} homed successfully")
+
+        except Exception as e:
+            logger.error(f"Mock robot: Failed to home axis {axis}: {e}")
+            self._motion_status = MotionStatus.ERROR
+            raise HardwareOperationError("mock_robot", "home_axis", str(e)) from e
+
+    async def home_all_axes(
+        self,
+        velocity: Optional[float] = None,
+        acceleration: Optional[float] = None,
+        deceleration: Optional[float] = None,
+    ) -> bool:
+        """
+        Home all axes (Mock implementation)
+
+        Args:
+            velocity: Optional homing velocity in mm/s
+            acceleration: Optional homing acceleration in mm/s²
+            deceleration: Optional homing deceleration in mm/s²
+
+        Returns:
+            True if all axes homed successfully
+
+        Raises:
+            HardwareOperationError: If homing operation fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+
+        try:
+            vel = velocity or self._homing_velocity
+            acc = acceleration or self._homing_acceleration
+            dec = deceleration or self._homing_deceleration
+
+            logger.info(
+                f"Mock robot: Homing all {self._axis_count} axes "
+                f"(vel: {vel}mm/s, acc: {acc}mm/s², dec: {dec}mm/s²)"
+            )
+
+            self._motion_status = MotionStatus.MOVING
+
+            # Calculate total homing time based on farthest axis
+            max_distance = max(abs(pos) for pos in self._current_positions)
+            homing_time = max_distance / vel if vel > 0 else 1.0
+            steps = max(int(homing_time / 0.1), 1)
+
+            start_positions = self._current_positions.copy()
+            for step in range(steps):
+                await asyncio.sleep(0.1)
+                progress = (step + 1) / steps
+                for i in range(self._axis_count):
+                    self._current_positions[i] = start_positions[i] * (1 - progress)
+
+            # Set all axes to exactly zero after homing
+            self._current_positions = [0.0] * self._axis_count
+            self._motion_status = MotionStatus.IDLE
+
+            logger.info(f"Mock robot: All {self._axis_count} axes homed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Mock robot: Failed to home all axes: {e}")
+            self._motion_status = MotionStatus.ERROR
+            raise HardwareOperationError("mock_robot", "home_all_axes", str(e)) from e
 
     # Mock-specific utility methods
 

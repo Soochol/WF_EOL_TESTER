@@ -7,6 +7,8 @@ Replaces the complex dependency injection system.
 
 from typing import Any, Dict, Optional
 
+from loguru import logger
+
 from application.interfaces.hardware.digital_input import (
     DigitalInputService,
 )
@@ -53,8 +55,6 @@ from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot impo
 from infrastructure.implementation.hardware.robot.mock.mock_robot import (
     MockRobot,
 )
-
-from loguru import logger
 
 
 class ServiceFactory:
@@ -140,7 +140,7 @@ class ServiceFactory:
 
         if hw_type == "mock":
             # Mock 서비스
-            config_filtered = {k: v for k, v in config.items() if k != 'model'}
+            config_filtered = {k: v for k, v in config.items() if k != "model"}
             logger.info(f"Creating Mock MCU service with config: {config_filtered}")
             return MockMCU(config=config)
 
@@ -238,8 +238,6 @@ def create_hardware_service_facade(
         "robot": {
             "model": "mock" if use_mock else "ajinextek",
             "irq_no": 7,
-            "max_velocity": 100.0,
-            "max_acceleration": 1000.0,
         },
         "mcu": {
             "model": "mock" if use_mock else "lma",

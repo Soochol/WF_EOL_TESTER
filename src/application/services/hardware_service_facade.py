@@ -96,6 +96,41 @@ class HardwareServiceFacade:
         else:
             logger.info("All hardware already connected")
 
+    async def startup_initialization(self) -> None:
+        """
+        Perform one-time startup initialization including robot homing
+        
+        This method should be called once when the application starts
+        to perform essential initialization tasks like robot homing.
+        """
+        logger.info("Performing startup initialization...")
+        
+        try:
+            # Connect robot if not already connected
+            if not await self._robot.is_connected():
+                logger.info("Connecting robot for startup initialization...")
+                await self._robot.connect()
+            
+            # Enable servo for primary axis - required before any motion operations
+            primary_axis = await self._robot.get_primary_axis_id()
+            logger.info("Enabling servo for primary axis %d...", primary_axis)
+            await self._robot.enable_servo(primary_axis)
+            
+            # Perform robot homing - this is the main purpose of startup initialization
+            logger.info("Performing robot homing...")
+            # Home primary axis using parameters from .mot file
+            primary_axis = await self._robot.get_primary_axis_id()
+            await self._robot.home_axis(primary_axis)
+            
+            logger.info("Startup initialization completed successfully")
+            
+        except Exception as e:
+            logger.error("Startup initialization failed: %s", e)
+            raise HardwareConnectionException(
+                f"Failed during startup initialization: {str(e)}",
+                details={"operation": "startup_initialization"},
+            ) from e
+
     async def initialize_hardware(
         self,
         config: TestConfiguration,
@@ -116,7 +151,7 @@ class HardwareServiceFacade:
 
             # Initialize robot position using test configuration
             await self._robot.move_absolute(
-                axis=config.axis,
+                axis=config.axis_id,
                 position=config.initial_position,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
@@ -178,7 +213,7 @@ class HardwareServiceFacade:
 
                     # Move to position using test configuration
                     await self._robot.move_absolute(
-                        axis=config.axis,
+                        axis=config.axis_id,
                         position=position,
                         velocity=config.velocity,
                         acceleration=config.acceleration,
@@ -191,7 +226,7 @@ class HardwareServiceFacade:
                     # Get current temperature from MCU
                     current_temp = await self._mcu.get_temperature()
                     # Get current position from robot
-                    current_position = await self._robot.get_position(config.axis)
+                    current_position = await self._robot.get_position(config.axis_id)
 
                     # Store measurement data using TestMeasurements structure
                     if temperature not in measurements_dict:
@@ -234,7 +269,7 @@ class HardwareServiceFacade:
         try:
             # Return to safe position using test configuration
             await self._robot.move_absolute(
-                axis=config.axis,
+                axis=config.axis_id,
                 position=config.initial_position,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
@@ -254,6 +289,17 @@ class HardwareServiceFacade:
         try:
             # Disable power output first for safety
             await self._power.disable_output()
+
+            # Disable servo for primary axis for safety before disconnection
+            if await self._robot.is_connected():
+                try:
+                    primary_axis = await self._robot.get_primary_axis_id()
+                    logger.info("Disabling servo for primary axis %d for safe shutdown...", primary_axis)
+                    await self._robot.disable_servo(primary_axis)
+                    logger.info("Primary axis servo disabled")
+                except Exception as servo_error:
+                    logger.error("Failed to disable servo during shutdown: %s", servo_error)
+                    # Continue with shutdown even if servo disable fails
 
             # Add disconnect tasks
             if await self._robot.is_connected():
@@ -347,7 +393,7 @@ class HardwareServiceFacade:
             # Return robot to safe standby position
             logger.info(f"Returning robot to safe position: {config.initial_position}mm")
             await self._robot.move_absolute(
-                axis=config.axis,
+                axis=config.axis_id,
                 position=config.initial_position,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
@@ -402,7 +448,7 @@ class HardwareServiceFacade:
 
             # Robot to max stroke position using test configuration
             await self._robot.move_absolute(
-                axis=config.axis,
+                axis=config.axis_id,
                 position=config.max_stroke,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
@@ -416,7 +462,7 @@ class HardwareServiceFacade:
 
             # Robot to initial position using test configuration
             await self._robot.move_absolute(
-                axis=config.axis,
+                axis=config.axis_id,
                 position=config.initial_position,
                 velocity=config.velocity,
                 acceleration=config.acceleration,

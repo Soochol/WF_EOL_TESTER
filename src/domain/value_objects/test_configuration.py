@@ -33,7 +33,7 @@ class TestConfiguration:
     fan_speed: int = 10
 
     # Motion control settings
-    axis: int = 0
+    axis_id: int = 0
     velocity: float = 100.0
     acceleration: float = 100.0
     deceleration: float = 100.0
@@ -202,11 +202,11 @@ class TestConfiguration:
 
     def _validate_motion_parameters(self) -> None:
         """Validate motion control parameters"""
-        if self.axis < 0:
+        if self.axis_id < 0:
             raise ValidationException(
-                "axis",
-                self.axis,
-                "Axis number cannot be negative",
+                "axis_id",
+                self.axis_id,
+                "Axis ID cannot be negative",
             )
 
         if self.velocity <= 0:
@@ -434,7 +434,7 @@ class TestConfiguration:
             "timeout_seconds": self.timeout_seconds,
             "max_voltage": self.max_voltage,
             "max_current": self.max_current,
-            "axis": self.axis,
+            "axis_id": self.axis_id,
             "velocity": self.velocity,
             "acceleration": self.acceleration,
             "deceleration": self.deceleration,

@@ -63,6 +63,22 @@ HOME_MODE_3 = 0x03  # Home sensor + Limit + Index
 LIMIT_LEVEL_LOW = 0  # Active low
 LIMIT_LEVEL_HIGH = 1  # Active high
 
+# Homing result status codes (AXT_MOTION_HOME_RESULT_DEF)
+HOME_SUCCESS = 0x01  # Homing completed successfully
+HOME_SEARCHING = 0x02  # Homing in progress
+HOME_ERR_GNT_RANGE = 0x10  # Gantry offset out of range
+HOME_ERR_USER_BREAK = 0x11  # User stopped homing
+HOME_ERR_VELOCITY = 0x12  # Invalid velocity setting
+HOME_ERR_AMP_FAULT = 0x13  # Servo amplifier alarm
+HOME_ERR_NEG_LIMIT = 0x14  # Negative limit sensor detected
+HOME_ERR_POS_LIMIT = 0x15  # Positive limit sensor detected
+HOME_ERR_NOT_DETECT = 0x16  # Home sensor not detected
+HOME_ERR_UNKNOWN = 0xFF  # Unknown axis number
+
+# Limit sensor stop modes
+LIMIT_STOP_DECEL = 0  # Stop with deceleration when limit triggered
+LIMIT_STOP_IMMEDIATE = 1  # Immediate stop when limit triggered
+
 # Pulse output methods
 PULSE_OUT_METHOD_ONEPULSE = 0x00  # 1 pulse method
 PULSE_OUT_METHOD_TWOPULSE = 0x01  # 2 pulse method (CW/CCW)

@@ -320,7 +320,9 @@ class RobotCommandHandler(HardwareCommandHandler):
         """Initialize robot system"""
         try:
             with self.formatter.create_progress_display("Initializing robot...") as status:
-                await self.robot_service.initialize_axes()
+                # Home primary axis using parameters from .mot file
+                primary_axis = await self.robot_service.get_primary_axis_id()
+                await self.robot_service.home_axis(primary_axis)
                 if isinstance(status, Status):
                     status.update("Robot initialization complete")
 

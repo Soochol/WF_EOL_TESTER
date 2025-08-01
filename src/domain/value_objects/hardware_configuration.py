@@ -32,17 +32,6 @@ class RobotConfig:
     # Connection parameters (AJINEXTEK specific)
     irq_no: int = 7
 
-    # Motion parameters
-    default_velocity: float = 100.0
-    default_acceleration: float = 100.0
-    default_deceleration: float = 100.0
-
-    # Positioning settings
-    position_tolerance: float = 0.1
-    homing_velocity: float = 10.0
-    homing_acceleration: float = 100.0
-    homing_deceleration: float = 100.0
-
 
 @dataclass(frozen=True)
 class LoadCellConfig:
@@ -295,7 +284,13 @@ class HardwareConfiguration:
                 "LoadCell stopbits must be 1 or 2",
             )
 
-        if self.loadcell.parity is not None and self.loadcell.parity.lower() not in ['none', 'even', 'odd', 'mark', 'space']:
+        if self.loadcell.parity is not None and self.loadcell.parity.lower() not in [
+            "none",
+            "even",
+            "odd",
+            "mark",
+            "space",
+        ]:
             raise ValidationException(
                 "loadcell.parity",
                 self.loadcell.parity,
@@ -400,7 +395,13 @@ class HardwareConfiguration:
                 "MCU stopbits must be 1 or 2",
             )
 
-        if self.mcu.parity is not None and self.mcu.parity.lower() not in ['none', 'even', 'odd', 'mark', 'space']:
+        if self.mcu.parity is not None and self.mcu.parity.lower() not in [
+            "none",
+            "even",
+            "odd",
+            "mark",
+            "space",
+        ]:
             raise ValidationException(
                 "mcu.parity",
                 self.mcu.parity,
@@ -695,13 +696,6 @@ class HardwareConfiguration:
             "robot": {
                 "model": self.robot.model,
                 "irq_no": self.robot.irq_no,
-                "default_velocity": self.robot.default_velocity,
-                "default_acceleration": self.robot.default_acceleration,
-                "default_deceleration": self.robot.default_deceleration,
-                "position_tolerance": self.robot.position_tolerance,
-                "homing_velocity": self.robot.homing_velocity,
-                "homing_acceleration": self.robot.homing_acceleration,
-                "homing_deceleration": self.robot.homing_deceleration,
             },
             "loadcell": {
                 "model": self.loadcell.model,

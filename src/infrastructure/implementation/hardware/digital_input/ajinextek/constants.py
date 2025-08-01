@@ -62,6 +62,49 @@ RESET_DELAY_MS = 1000
 AXL_LIBRARY_NAME = "AXL.dll"
 AXL_64BIT_LIBRARY_NAME = "AXL64.dll"
 
+# AXL Return Codes
+AXT_RT_SUCCESS = 0
+AXT_RT_DIO_NOT_MODULE = 3051
+AXT_RT_DIO_INVALID_MODULE_NO = 3101
+AXT_RT_DIO_INVALID_OFFSET_NO = 3102
+AXT_RT_DIO_INVALID_VALUE = 3105
+AXT_RT_DIO_OPEN_ERROR = 3001
+
+# Input/Output Level Constants
+LEVEL_LOW = 0
+LEVEL_HIGH = 1
+
+# Interrupt Edge Constants
+UP_EDGE = 1
+DOWN_EDGE = 0
+BOTH_EDGE = 2
+
+# Interrupt Methods
+INTERRUPT_METHOD_MESSAGE = 0
+INTERRUPT_METHOD_CALLBACK = 1
+INTERRUPT_METHOD_EVENT = 2
+
+# Module Type IDs (from AXD manual)
+MODULE_ID_SIO_DI32 = 0x5D00  # 32-input module
+MODULE_ID_SIO_DO32 = 0x5E00  # 32-output module
+MODULE_ID_SIO_DB32 = 0x5F00  # 16-input/16-output module
+MODULE_ID_PCI_DI64R = 0x7D00  # 64-input module
+MODULE_ID_PCI_DO64R = 0x7E00  # 64-output module
+MODULE_ID_PCI_DB64R = 0x7F00  # 32-input/32-output module
+
+# Network Types
+NETWORK_TYPE_RTEX = 0
+NETWORK_TYPE_MECHATROLINK_II = 1
+NETWORK_TYPE_SSCNET_III = 2
+NETWORK_TYPE_SSCNET_III_H = 3
+NETWORK_TYPE_MLIII = 4
+
+# Read/Write Granularity
+GRANULARITY_BIT = 0
+GRANULARITY_BYTE = 1
+GRANULARITY_WORD = 2
+GRANULARITY_DWORD = 3
+
 # Module Types (Ajinextek specific)
 MODULE_TYPE_DI = "DI"  # Digital Input
 MODULE_TYPE_DO = "DO"  # Digital Output
@@ -142,19 +185,11 @@ DEFAULT_CONFIG = {
 }
 
 # Pin Configuration Presets
-PRESET_ALL_INPUTS = {
-    i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)
-}
-PRESET_ALL_OUTPUTS = {
-    i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)
-}
+PRESET_ALL_INPUTS = {i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)}
+PRESET_ALL_OUTPUTS = {i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)}
 PRESET_MIXED_IO = {
-    **{
-        i: PIN_MODE_INPUT for i in range(0, 16)
-    },  # First 16 as inputs
-    **{
-        i: PIN_MODE_OUTPUT for i in range(16, 32)
-    },  # Last 16 as outputs
+    **{i: PIN_MODE_INPUT for i in range(0, 16)},  # First 16 as inputs
+    **{i: PIN_MODE_OUTPUT for i in range(16, 32)},  # Last 16 as outputs
 }
 
 # Status Messages

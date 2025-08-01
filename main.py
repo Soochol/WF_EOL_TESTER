@@ -78,13 +78,30 @@ async def main() -> None:
             sys.exit(1)
 
         # Create services
+        hardware_services = None
         try:
             hardware_services = await create_hardware_services(hardware_config_dict)
+            
+            # Perform one-time startup initialization including robot homing
+            logger.info("Performing startup initialization...")
+            await hardware_services.startup_initialization()
+            
             business_services = await create_business_services(
                 yaml_configuration, profile_preference, test_result_repository
             )
         except Exception as e:
             logger.error(f"Failed to create services: {e}")
+            
+            # Safety: Disable primary axis servo if hardware services were created
+            if hardware_services:
+                try:
+                    primary_axis = await hardware_services._robot.get_primary_axis_id()
+                    logger.info("Disabling servo for primary axis %d for safety due to startup failure...", primary_axis)
+                    await hardware_services._robot.disable_servo(primary_axis)
+                    logger.info("Primary axis servo disabled for safety")
+                except Exception as servo_error:
+                    logger.error(f"Failed to disable servo during cleanup: {servo_error}")
+            
             sys.exit(1)
 
         (
@@ -252,6 +269,7 @@ async def create_business_services(
 
 def setup_signal_handlers():
     """Setup signal handlers for graceful shutdown"""
+
     def signal_handler(signum, frame):
         """Handle termination signals"""
         _ = frame  # Unused parameter
@@ -259,28 +277,28 @@ def setup_signal_handlers():
             signal.SIGINT: "SIGINT (Ctrl+C)",
             signal.SIGTERM: "SIGTERM",
         }
-        
+
         # Add Windows-specific signals if available
-        if hasattr(signal, 'SIGBREAK'):
-            signal_names[signal.SIGBREAK] = "SIGBREAK (Ctrl+Break)"
-            
+        if hasattr(signal, "SIGBREAK"):
+            signal_names[signal.SIGBREAK] = "SIGBREAK (Ctrl+Break)"  # type: ignore[attr-defined]
+
         signal_name = signal_names.get(signum, f"Signal {signum}")
         print(f"\\nReceived {signal_name}, exiting...")
         sys.exit(0)
-    
+
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     # Windows-specific signal handling
-    if hasattr(signal, 'SIGBREAK'):
-        signal.signal(signal.SIGBREAK, signal_handler)
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, signal_handler)  # type: ignore[attr-defined]
 
 
 if __name__ == "__main__":
     # Setup signal handlers for graceful shutdown
     setup_signal_handlers()
-    
+
     # Use asyncio.run for Python 3.7+ compatibility
     try:
         asyncio.run(main())

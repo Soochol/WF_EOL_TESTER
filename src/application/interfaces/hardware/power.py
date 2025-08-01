@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
 
-
 class PowerService(ABC):
     """Abstract interface for power supply operations"""
 
@@ -66,9 +65,7 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
-    async def set_current_limit(
-        self, current: Optional[float] = None
-    ) -> None:
+    async def set_current_limit(self, current: Optional[float] = None) -> None:
         """
         Set current limit
 
@@ -81,12 +78,35 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
+    async def get_current_limit(self) -> float:
+        """
+        Get current limit setting
+
+        Returns:
+            Current limit in amperes
+        """
+        ...
+
+    @abstractmethod
     async def get_current(self) -> float:
         """
         Get current output current
 
         Returns:
             Current in amperes
+        """
+        ...
+
+    @abstractmethod
+    async def set_current(self, current: float) -> None:
+        """
+        Set output current
+
+        Args:
+            current: Current in amperes
+
+        Raises:
+            HardwareOperationError: If current setting fails
         """
         ...
 
@@ -124,7 +144,7 @@ class PowerService(ABC):
     async def get_device_identity(self) -> Optional[str]:
         """
         Get device identification string
-        
+
         Returns:
             Device identification string from *IDN? command, or None if not available
         """

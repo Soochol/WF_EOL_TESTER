@@ -170,7 +170,7 @@ class OdaPower(PowerService):
             logger.info("Setting ODA voltage: %sV", target_voltage)
 
             # 전압 설정
-            voltage_response = await self._send_command(f"VOLT {target_voltage:.3f}")
+            voltage_response = await self._send_command(f"VOLT {target_voltage:.2f}")
 
             if voltage_response is None:
                 # For commands that don't return responses, None is expected success
@@ -211,7 +211,7 @@ class OdaPower(PowerService):
                 )
 
             voltage = float(voltage_response.strip())
-            logger.debug("ODA voltage measurement: %.3fV", voltage)
+            logger.debug("ODA voltage measurement: %.2fV", voltage)
             return voltage
 
         except ValueError as e:
@@ -224,6 +224,46 @@ class OdaPower(PowerService):
             raise HardwareOperationError("oda_power", "get_voltage", str(e)) from e
         except Exception as e:
             raise HardwareOperationError("oda_power", "get_voltage", str(e)) from e
+
+    async def set_current(self, current: float) -> None:
+        """
+        Set output current
+        
+        Args:
+            current: Current in amperes
+            
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current setting fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+
+        # 값 범위 검증
+        if not 0 <= current <= self._max_current:
+            raise HardwareOperationError(
+                "oda_power",
+                "set_current",
+                f"Current must be 0-{self._max_current}A, got {current}A",
+            )
+
+        try:
+            logger.info("Setting ODA current: %.2fA", current)
+
+            response = await self._send_command(f"CURR {current:.2f}")
+
+            if response is None:
+                # For commands that don't return responses, None is expected success
+                logger.info("ODA current setting applied successfully")
+            else:
+                logger.info("ODA current setting response: %s", response)
+
+        except TCPError as e:
+            logger.error("Failed to set ODA current: %s", e)
+            raise HardwareOperationError("oda_power", "set_current", str(e)) from e
+        except Exception as e:
+            logger.error("Unexpected error setting ODA current: %s", e)
+            raise HardwareOperationError("oda_power", "set_current", str(e)) from e
 
     async def enable_output(self) -> None:
         """
@@ -430,7 +470,7 @@ class OdaPower(PowerService):
         try:
             logger.info("Setting ODA current limit: %sA", target_current)
 
-            response = await self._send_command(f"CURR {target_current:.3f}")
+            response = await self._send_command(f"CURR {target_current:.2f}")
 
             if response is None:
                 # For commands that don't return responses, None is expected success
@@ -471,7 +511,7 @@ class OdaPower(PowerService):
                 )
 
             current = float(current_response.strip())
-            logger.debug("ODA current measurement: %.3fA", current)
+            logger.debug("ODA current measurement: %.2fA", current)
             return current
 
         except ValueError as e:
@@ -484,3 +524,43 @@ class OdaPower(PowerService):
             raise HardwareOperationError("oda_power", "get_current", str(e)) from e
         except Exception as e:
             raise HardwareOperationError("oda_power", "get_current", str(e)) from e
+
+    async def get_current_limit(self) -> float:
+        """
+        Get current limit setting
+        
+        Returns:
+            Current limit in amperes
+            
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If current limit reading fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+
+        try:
+            # Query current limit
+            limit_response = await self._send_command("CURR:UCL?")
+
+            if limit_response is None:
+                raise HardwareOperationError(
+                    "oda_power",
+                    "get_current_limit",
+                    "No current limit response",
+                )
+
+            current_limit = float(limit_response.strip())
+            logger.debug("ODA current limit: %.2fA", current_limit)
+            return current_limit
+
+        except ValueError as e:
+            raise HardwareOperationError(
+                "oda_power",
+                "get_current_limit",
+                f"Failed to parse current limit: {e}",
+            ) from e
+        except TCPError as e:
+            raise HardwareOperationError("oda_power", "get_current_limit", str(e)) from e
+        except Exception as e:
+            raise HardwareOperationError("oda_power", "get_current_limit", str(e)) from e
