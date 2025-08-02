@@ -4,12 +4,15 @@ Hardware Configuration Value Object
 Immutable configuration object containing all hardware device connection parameters.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, cast, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set, cast
 
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
+from domain.value_objects.axis_parameter import AxisParameter
 
 # Supported hardware models
 SUPPORTED_ROBOT_MODELS: Set[str] = {"AJINEXTEK", "MOCK"}
@@ -23,14 +26,40 @@ SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {
 
 
 @dataclass(frozen=True)
+class AxisMotionConfig:
+    """축 모션 설정"""
+
+    velocity: float
+    acceleration: float
+    deceleration: float
+
+
+@dataclass(frozen=True)
 class RobotConfig:
     """Robot motion configuration"""
 
     # Hardware model
     model: str = "AJINEXTEK"
 
+    # Motion control parameters
+    axis_id: int = 0
+
     # Connection parameters (AJINEXTEK specific)
     irq_no: int = 7
+
+    # Z축 모션 파라미터
+    axis_z_motion: AxisMotionConfig = field(
+        default_factory=lambda: AxisMotionConfig(200.0, 1000.0, 1000.0)
+    )
+
+    def get_axis_z_parameter(self) -> AxisParameter:
+        """Z축 AxisParameter 생성"""
+        return AxisParameter(
+            axis=self.axis_id,
+            velocity=self.axis_z_motion.velocity,
+            acceleration=self.axis_z_motion.acceleration,
+            deceleration=self.axis_z_motion.deceleration,
+        )
 
 
 @dataclass(frozen=True)
@@ -179,6 +208,13 @@ class HardwareConfiguration:
                 "robot.model",
                 self.robot.model,
                 f"Unsupported robot model. Supported models: {', '.join(SUPPORTED_ROBOT_MODELS)}",
+            )
+
+        if self.robot.axis_id < 0:
+            raise ValidationException(
+                "robot.axis_id",
+                self.robot.axis_id,
+                "Axis ID cannot be negative",
             )
 
         if self.robot.irq_no < 0:
@@ -695,7 +731,13 @@ class HardwareConfiguration:
         return {
             "robot": {
                 "model": self.robot.model,
+                "axis_id": self.robot.axis_id,
                 "irq_no": self.robot.irq_no,
+                "axis_z_motion": {
+                    "velocity": self.robot.axis_z_motion.velocity,
+                    "acceleration": self.robot.axis_z_motion.acceleration,
+                    "deceleration": self.robot.axis_z_motion.deceleration,
+                },
             },
             "loadcell": {
                 "model": self.loadcell.model,
@@ -797,6 +839,12 @@ class HardwareConfiguration:
             config_class,
         ) in config_classes.items():
             if config_name in data_copy and isinstance(data_copy[config_name], dict):
+                # Handle special nested configs
+                if config_name == "robot" and "axis_z_motion" in data_copy[config_name]:
+                    axis_z_motion_data = data_copy[config_name]["axis_z_motion"]
+                    if isinstance(axis_z_motion_data, dict):
+                        data_copy[config_name]["axis_z_motion"] = AxisMotionConfig(**axis_z_motion_data)
+                
                 data_copy[config_name] = config_class(**data_copy[config_name])
 
         # Create instance with properly typed config objects

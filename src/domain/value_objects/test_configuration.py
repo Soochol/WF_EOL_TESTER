@@ -33,15 +33,10 @@ class TestConfiguration:
     fan_speed: int = 10
 
     # Motion control settings
-    axis_id: int = 0
     velocity: float = 100.0
     acceleration: float = 100.0
     deceleration: float = 100.0
 
-    position_tolerance: float = 0.1
-    homing_velocity: float = 10.0
-    homing_acceleration: float = 100.0
-    homing_deceleration: float = 100.0
 
     # Positioning settings
     initial_position: float = 10.0
@@ -202,12 +197,6 @@ class TestConfiguration:
 
     def _validate_motion_parameters(self) -> None:
         """Validate motion control parameters"""
-        if self.axis_id < 0:
-            raise ValidationException(
-                "axis_id",
-                self.axis_id,
-                "Axis ID cannot be negative",
-            )
 
         if self.velocity <= 0:
             raise ValidationException(
@@ -251,33 +240,6 @@ class TestConfiguration:
                 f"Max deceleration must be greater than operating deceleration ({self.deceleration})",
             )
 
-        if self.position_tolerance <= 0:
-            raise ValidationException(
-                "position_tolerance",
-                self.position_tolerance,
-                "Position tolerance must be positive",
-            )
-
-        if self.homing_velocity <= 0:
-            raise ValidationException(
-                "homing_velocity",
-                self.homing_velocity,
-                "Homing velocity must be positive",
-            )
-
-        if self.homing_acceleration <= 0:
-            raise ValidationException(
-                "homing_acceleration",
-                self.homing_acceleration,
-                "Homing acceleration must be positive",
-            )
-
-        if self.homing_deceleration <= 0:
-            raise ValidationException(
-                "homing_deceleration",
-                self.homing_deceleration,
-                "Homing deceleration must be positive",
-            )
 
     def _validate_timing_settings(self) -> None:
         """Validate timing configuration parameters"""
@@ -434,17 +396,12 @@ class TestConfiguration:
             "timeout_seconds": self.timeout_seconds,
             "max_voltage": self.max_voltage,
             "max_current": self.max_current,
-            "axis_id": self.axis_id,
             "velocity": self.velocity,
             "acceleration": self.acceleration,
             "deceleration": self.deceleration,
             "max_velocity": self.max_velocity,
             "max_acceleration": self.max_acceleration,
             "max_deceleration": self.max_deceleration,
-            "position_tolerance": self.position_tolerance,
-            "homing_velocity": self.homing_velocity,
-            "homing_acceleration": self.homing_acceleration,
-            "homing_deceleration": self.homing_deceleration,
         }
 
     @classmethod
@@ -601,7 +558,6 @@ class TestConfiguration:
                 "measurement_tolerance": pass_criteria.get("measurement_tolerance", 0.001),
                 "force_precision": pass_criteria.get("force_precision", 2),
                 "temperature_precision": pass_criteria.get("temperature_precision", 1),
-                "position_tolerance": pass_criteria.get("position_tolerance", 0.5),
                 "max_test_duration": pass_criteria.get("max_test_duration", 300.0),
                 "min_stabilization_time": pass_criteria.get("min_stabilization_time", 0.5),
             }

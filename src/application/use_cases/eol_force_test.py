@@ -151,35 +151,35 @@ class EOLForceTestUseCase:
             or raise descriptive exceptions. Test failures are captured in the result
             object rather than raised as exceptions.
         """
-        logger.info("Starting EOL test for DUT {}", command.dut_info.dut_id)
+        logger.info("Starting EOL test execution for DUT {}", command.dut_info.dut_id)
 
         # Phase 1: Initialize test setup
         await self._load_and_validate_configurations()
-        test = await self._initialize_test_entity(command)
+        test_entity = await self._initialize_test_entity(command)
 
         # Phase 2: Execute test with proper error handling
         start_time = asyncio.get_event_loop().time()
         measurements: Optional[TestMeasurements] = None
 
         try:
-            test.start_test()
+            test_entity.start_test()
             self._validate_configurations_loaded()
 
             # Begin test execution (transition from PREPARING to RUNNING)
-            test.begin_execution()
+            test_entity.begin_execution()
 
             # Phase 3: Execute hardware test phases
             measurements = await self._execute_hardware_test_phases()
 
             # Phase 4: Evaluate results and create success result
-            is_test_passed = await self._evaluate_test_results(test, measurements)
-            await self._save_test_state(test)
+            is_test_passed = await self._evaluate_test_results(test_entity, measurements)
+            await self._save_test_state(test_entity)
 
             execution_duration = self._calculate_execution_duration(start_time)
-            logger.info("EOL test completed: {}, passed: {}", test.test_id, is_test_passed)
+            logger.info("EOL test execution completed: {}, result: {}", test_entity.test_id, "PASSED" if is_test_passed else "FAILED")
 
             return self._create_success_result(
-                test,
+                test_entity,
                 measurements,
                 execution_duration,
                 is_test_passed,
@@ -187,11 +187,11 @@ class EOLForceTestUseCase:
 
         except Exception as e:
             # Phase 5: Handle test failure with proper error context
-            return await self._handle_test_failure(e, test, command, measurements, start_time)
+            return await self._handle_test_failure(e, test_entity, command, measurements, start_time)
 
         finally:
             # Phase 6: Cleanup hardware resources (always executed)
-            await self._cleanup_hardware_resources(test if "test" in locals() else None)
+            await self._cleanup_hardware_resources(test_entity if "test_entity" in locals() else None)
 
     async def _load_and_validate_configurations(
         self,
@@ -307,14 +307,14 @@ class EOLForceTestUseCase:
         test_id = await self._generate_unique_test_id(command.dut_info.serial_number)
 
         # Create and configure test entity
-        test = EOLTest(
+        test_entity = EOLTest(
             test_id=test_id,
             dut=dut,
             operator_id=OperatorId(command.operator_id),
             test_configuration=self._test_config.to_dict() if self._test_config else None,
         )
 
-        return test
+        return test_entity
 
     def _validate_configurations_loaded(self) -> None:
         """
@@ -378,12 +378,12 @@ class EOLForceTestUseCase:
                 f"Hardware test execution failed: {str(hardware_error)}"
             ) from hardware_error
 
-    async def _evaluate_test_results(self, test: EOLTest, measurements: TestMeasurements) -> bool:
+    async def _evaluate_test_results(self, test_entity: EOLTest, measurements: TestMeasurements) -> bool:
         """
         Evaluate test results and determine pass/fail status
 
         Args:
-            test: Test entity to update with results
+            test_entity: Test entity to update with results
             measurements: Collected test measurements
 
         Returns:
@@ -392,7 +392,7 @@ class EOLForceTestUseCase:
         Raises:
             TestExecutionException: If test evaluation fails critically
         """
-        logger.info("Starting test result evaluation")
+        logger.info("Starting test result evaluation and analysis")
 
         try:
             # Ensure test configuration is loaded (should be guaranteed by validation)
@@ -425,15 +425,15 @@ class EOLForceTestUseCase:
             # If we reach here, evaluation passed
             # Create TestResult for successful test completion
             test_result = TestResult(
-                test_id=test.test_id,
+                test_id=test_entity.test_id,
                 test_status=TestStatus.COMPLETED,
-                start_time=test.start_time or Timestamp.now(),
+                start_time=test_entity.start_time or Timestamp.now(),
                 end_time=Timestamp.now(),
                 measurement_ids=self._extract_measurement_ids(measurements),
                 pass_criteria=pass_criteria.to_dict(),
                 actual_results=measurements.to_dict(),
             )
-            test.complete_test(test_result)
+            test_entity.complete_test(test_result)
             logger.info("Test evaluation: PASSED")
             return True
 
@@ -444,9 +444,9 @@ class EOLForceTestUseCase:
 
             # Create TestResult for failed test evaluation
             test_result = TestResult(
-                test_id=test.test_id,
+                test_id=test_entity.test_id,
                 test_status=TestStatus.FAILED,
-                start_time=test.start_time or Timestamp.now(),
+                start_time=test_entity.start_time or Timestamp.now(),
                 end_time=Timestamp.now(),
                 measurement_ids=self._extract_measurement_ids(measurements),
                 pass_criteria=pass_criteria.to_dict(),
@@ -454,7 +454,7 @@ class EOLForceTestUseCase:
                 error_message=error_message,
             )
             # Mark test as failed with detailed error message
-            test.fail_test(error_message, test_result)
+            test_entity.fail_test(error_message, test_result)
             logger.info("Test evaluation: FAILED - {}", error_message)
             return False
 
@@ -480,19 +480,19 @@ class EOLForceTestUseCase:
         logger.debug(f"Generated {len(measurement_ids)} measurement IDs")
         return measurement_ids
 
-    async def _save_test_state(self, test: EOLTest) -> None:
+    async def _save_test_state(self, test_entity: EOLTest) -> None:
         """
         Save test state to repository
 
         Args:
-            test: Test entity to save
+            test_entity: Test entity to save
 
         Note:
             Failures in saving are logged but don't fail the test execution
         """
         try:
-            await self._repository.save_test_result(test)
-            logger.debug("Test state saved successfully for test ID: {}", test.test_id)
+            await self._repository.save_test_result(test_entity)
+            logger.debug("Test entity state saved successfully for test ID: {}", test_entity.test_id)
         except Exception as save_error:
             # Repository save failures should not fail the test
             logger.warning("Failed to save test state: {}", save_error)
@@ -513,7 +513,7 @@ class EOLForceTestUseCase:
 
     def _create_success_result(
         self,
-        test: EOLTest,
+        test_entity: EOLTest,
         measurements: TestMeasurements,
         execution_duration: TestDuration,
         is_test_passed: bool,
@@ -522,7 +522,7 @@ class EOLForceTestUseCase:
         Create successful test result object
 
         Args:
-            test: Completed test entity
+            test_entity: Completed test entity
             measurements: Test measurements
             execution_duration: Total execution time
             is_test_passed: Whether test passed or failed
@@ -531,7 +531,7 @@ class EOLForceTestUseCase:
             EOLTestResult: Success result with all test data
         """
         return EOLTestResult(
-            test_id=test.test_id,
+            test_id=test_entity.test_id,
             test_status=(TestStatus.COMPLETED if is_test_passed else TestStatus.FAILED),
             execution_duration=execution_duration,
             is_passed=is_test_passed,
@@ -543,7 +543,7 @@ class EOLForceTestUseCase:
     async def _handle_test_failure(  # pylint: disable=too-many-arguments
         self,
         error: Exception,
-        test: EOLTest,
+        test_entity: EOLTest,
         command: EOLForceTestCommand,
         measurements: Optional[TestMeasurements],
         start_time: float,
@@ -553,7 +553,7 @@ class EOLForceTestUseCase:
 
         Args:
             error: Exception that caused the failure
-            test: Test entity (may be incomplete)
+            test_entity: Test entity (may be incomplete)
             command: Original command for fallback data
             measurements: Measurements collected before failure (if any)
             start_time: Test start time for duration calculation
@@ -567,19 +567,19 @@ class EOLForceTestUseCase:
             TestExecutionConstants.EXECUTE_EOL_TEST_OPERATION,
         )
 
-        logger.error("EOL test failed: {}", error_context.get("user_message", str(error)))
+        logger.error("EOL test execution failed: {}", error_context.get("user_message", str(error)))
 
         # Try to save failure state if test entity exists
-        if test is not None:
+        if test_entity is not None:
             try:
-                test.fail_test(error_context.get("user_message", str(error)))
-                await self._save_test_state(test)
+                test_entity.fail_test(error_context.get("user_message", str(error)))
+                await self._save_test_state(test_entity)
             except Exception as save_error:
-                logger.warning("Failed to save test failure state: {}", save_error)
+                logger.warning("Failed to save test entity failure state: {}", save_error)
 
         # Create failure result with available data
         return EOLTestResult(
-            test_id=(test.test_id if test else TestId.generate()),
+            test_id=(test_entity.test_id if test_entity else TestId.generate()),
             test_status=TestStatus.ERROR,
             execution_duration=execution_duration,
             is_passed=False,
@@ -588,12 +588,12 @@ class EOLForceTestUseCase:
             error_message=error_context.get("user_message", str(error)),
         )
 
-    async def _cleanup_hardware_resources(self, test: Optional[EOLTest]) -> None:
+    async def _cleanup_hardware_resources(self, test_entity: Optional[EOLTest]) -> None:
         """
         Clean up hardware resources and connections
 
         Args:
-            test: Test entity for logging context (optional)
+            test_entity: Test entity for logging context (optional)
 
         Note:
             Cleanup failures are logged but never raise exceptions
@@ -606,5 +606,5 @@ class EOLForceTestUseCase:
             logger.debug("Hardware resources cleaned up successfully")
         except Exception as cleanup_error:
             # Hardware cleanup errors should never fail the test
-            test_context = f" for test {test.test_id}" if test else ""
+            test_context = f" for test entity {test_entity.test_id}" if test_entity else ""
             logger.warning("Hardware cleanup failed{}: {}", test_context, cleanup_error)

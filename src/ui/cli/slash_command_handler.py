@@ -338,9 +338,11 @@ class RobotCommandHandler(HardwareCommandHandler):
     async def _emergency_stop(self) -> bool:
         """Execute emergency stop"""
         try:
-            await self.robot_service.emergency_stop()
+            # Get primary axis and stop it
+            primary_axis = await self.robot_service.get_primary_axis_id()
+            await self.robot_service.emergency_stop(primary_axis)
             self.formatter.print_message(
-                "Emergency stop executed", message_type="warning", title="Emergency Stop"
+                f"Emergency stop executed for axis {primary_axis}", message_type="warning", title="Emergency Stop"
             )
             return True
 

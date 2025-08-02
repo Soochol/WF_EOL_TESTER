@@ -66,7 +66,6 @@ async def main() -> None:
         logger.info(f"Loading hardware configuration from {HARDWARE_CONFIG_FILENAME}...")
         try:
             hardware_config = await yaml_configuration.load_hardware_config()
-            hardware_config_dict = hardware_config.to_dict()
         except FileNotFoundError as e:
             logger.error(f"Hardware configuration file not found: {e}")
             sys.exit(1)
@@ -80,28 +79,31 @@ async def main() -> None:
         # Create services
         hardware_services = None
         try:
-            hardware_services = await create_hardware_services(hardware_config_dict)
-            
+            hardware_services = await create_hardware_services(hardware_config.to_dict())
+
             # Perform one-time startup initialization including robot homing
             logger.info("Performing startup initialization...")
             await hardware_services.startup_initialization()
-            
+
             business_services = await create_business_services(
                 yaml_configuration, profile_preference, test_result_repository
             )
         except Exception as e:
             logger.error(f"Failed to create services: {e}")
-            
+
             # Safety: Disable primary axis servo if hardware services were created
             if hardware_services:
                 try:
                     primary_axis = await hardware_services._robot.get_primary_axis_id()
-                    logger.info("Disabling servo for primary axis %d for safety due to startup failure...", primary_axis)
+                    logger.info(
+                        "Disabling servo for primary axis %d for safety due to startup failure...",
+                        primary_axis,
+                    )
                     await hardware_services._robot.disable_servo(primary_axis)
                     logger.info("Primary axis servo disabled for safety")
                 except Exception as servo_error:
                     logger.error(f"Failed to disable servo during cleanup: {servo_error}")
-            
+
             sys.exit(1)
 
         (

@@ -1,7 +1,13 @@
 hardware_config:
   robot:
     model: MOCK
+    axis_id: 0
     irq_no: 7
+    # Z축 전용 모션 파라미터
+    axis_z_motion:
+      velocity: 200.0
+      acceleration: 1000.0
+      deceleration: 1000.0
   loadcell:
     model: BS205
     port: COM8

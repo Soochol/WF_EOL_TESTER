@@ -51,12 +51,21 @@ class AXLWrapper:
         self.dll: Optional[Any] = None
         self.is_windows = platform.system() == "Windows"
 
+        # Initialize instance variables
+        self.board_count: int = 0
+        self.version: str = "Unknown"
+
         if self.is_windows:
             self._load_library()
             self._setup_functions()
+            # Initialize board count and version after setup
+            self.board_count = self._get_board_count_internal()
+            self.version = self._get_lib_version_internal()
         else:
             # Linux/개발환경에서는 경고 메시지만 출력
             print("Warning: Running on non-Windows platform. DLL functions will not be available.")
+            self.board_count = 0
+            self.version = "Mock Version 1.0.0"
 
     def _load_library(self) -> None:
         """Load the AXL DLL (Windows only)"""
@@ -365,8 +374,8 @@ class AXLWrapper:
             return True  # Mock opened on non-Windows
         return self.dll.AxlIsOpened() == 1  # type: ignore[no-any-return]
 
-    def get_board_count(self) -> int:
-        """Get the number of boards"""
+    def _get_board_count_internal(self) -> int:
+        """Internal method to get the number of boards"""
         if not self.is_windows or self.dll is None:
             return 1  # Mock 1 board on non-Windows
 
@@ -380,8 +389,12 @@ class AXLWrapper:
             )
         return count.value
 
-    def get_lib_version(self) -> str:
-        """Get library version"""
+    def get_board_count(self) -> int:
+        """Get the number of boards (cached)"""
+        return self.board_count
+
+    def _get_lib_version_internal(self) -> str:
+        """Internal method to get library version"""
         if not self.is_windows or self.dll is None:
             return "Mock Version 1.0.0"  # Mock version on non-Windows
 
@@ -394,6 +407,10 @@ class AXLWrapper:
                 "AxlGetLibVersion",
             )
         return version.value.decode("ascii")
+
+    def get_lib_version(self) -> str:
+        """Get library version (cached)"""
+        return self.version
 
     # === Motion Functions ===
     def get_axis_count(self) -> int:
@@ -589,7 +606,9 @@ class AXLWrapper:
 
         pos_limit = c_long()
         neg_limit = c_long()
-        result = self.dll.AxmSignalReadLimit(axis_no, ctypes.byref(pos_limit), ctypes.byref(neg_limit))
+        result = self.dll.AxmSignalReadLimit(
+            axis_no, ctypes.byref(pos_limit), ctypes.byref(neg_limit)
+        )
         if result != AXT_RT_SUCCESS:
             raise AXLMotionError(
                 get_error_message(result),
@@ -691,36 +710,28 @@ class AXLWrapper:
         return self.dll.AxmMoveMultiStop(axis_array, decel_array, axis_count)  # type: ignore[no-any-return]
 
     # === Parameter Loading/Saving Functions ===
-    def load_para_all(self, file_path: str) -> int:
-        """Load all motion parameters from file"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
-        
-        file_path_bytes = file_path.encode('ascii')
-        return self.dll.AxmMotLoadParaAll(file_path_bytes)  # type: ignore[no-any-return]
-
     def save_para_all(self, file_path: str) -> int:
         """Save all motion parameters to file"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
-        
-        file_path_bytes = file_path.encode('ascii')
+
+        file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotSaveParaAll(file_path_bytes)  # type: ignore[no-any-return]
 
     def load_para(self, axis_no: int, file_path: str) -> int:
         """Load motion parameters for specific axis from file"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
-        
-        file_path_bytes = file_path.encode('ascii')
+
+        file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotLoadPara(axis_no, file_path_bytes)  # type: ignore[no-any-return]
 
     def save_para(self, axis_no: int, file_path: str) -> int:
         """Save motion parameters for specific axis to file"""
         if not self.is_windows or self.dll is None:
             return AXT_RT_SUCCESS  # Mock success on non-Windows
-        
-        file_path_bytes = file_path.encode('ascii')
+
+        file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotSavePara(axis_no, file_path_bytes)  # type: ignore[no-any-return]
 
     # === Motion Parameter Get/Set Functions ===
@@ -825,7 +836,7 @@ class AXLWrapper:
 
     def home_get_rate(self, axis_no: int) -> tuple[int, int]:
         """Get homing progress rate for axis
-        
+
         Returns:
             tuple: (main_step_number, step_number) progress percentages
         """
@@ -834,7 +845,9 @@ class AXLWrapper:
 
         home_main_step = c_ulong()
         home_step = c_ulong()
-        result = self.dll.AxmHomeGetRate(axis_no, ctypes.byref(home_main_step), ctypes.byref(home_step))
+        result = self.dll.AxmHomeGetRate(
+            axis_no, ctypes.byref(home_main_step), ctypes.byref(home_step)
+        )
         if result != AXT_RT_SUCCESS:
             raise AXLMotionError(
                 get_error_message(result),

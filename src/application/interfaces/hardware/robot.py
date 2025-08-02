@@ -5,9 +5,10 @@ Interface for robot control and motion operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from domain.enums.robot_enums import MotionStatus
+from domain.value_objects.axis_parameter import AxisParameter
 
 
 class RobotService(ABC):
@@ -47,17 +48,15 @@ class RobotService(ABC):
     @abstractmethod
     async def move_to_position(
         self,
-        axis: int,
         position: float,
-        velocity: Optional[float] = None,
+        axis_param: AxisParameter,
     ) -> None:
         """
         Move axis to absolute position
 
         Args:
-            axis: Axis number to move
             position: Target position in mm
-            velocity: Optional velocity override in mm/s
+            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
 
         Raises:
             HardwareOperationError: If movement fails
@@ -67,17 +66,15 @@ class RobotService(ABC):
     @abstractmethod
     async def move_relative(
         self,
-        axis: int,
         distance: float,
-        velocity: Optional[float] = None,
+        axis_param: AxisParameter,
     ) -> None:
         """
         Move axis by relative distance
 
         Args:
-            axis: Axis number to move
             distance: Distance to move in mm
-            velocity: Optional velocity override in mm/s
+            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
 
         Raises:
             HardwareOperationError: If movement fails
@@ -87,21 +84,15 @@ class RobotService(ABC):
     @abstractmethod
     async def move_absolute(
         self,
-        axis: int,
         position: float,
-        velocity: Optional[float] = None,
-        acceleration: Optional[float] = None,
-        deceleration: Optional[float] = None,
+        axis_param: AxisParameter,
     ) -> None:
         """
         Move axis to absolute position with motion parameters
 
         Args:
-            axis: Axis number to move
             position: Target position in mm
-            velocity: Optional velocity override in mm/s
-            acceleration: Optional acceleration override in mm/s²
-            deceleration: Optional deceleration override in mm/s²
+            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
 
         Raises:
             HardwareOperationError: If movement fails
@@ -121,24 +112,16 @@ class RobotService(ABC):
         """
         ...
 
-    @abstractmethod
-    async def get_all_positions(self) -> List[float]:
-        """
-        Get current positions of all axes
-
-        Returns:
-            List of positions for all axes in mm
-        """
-        ...
+    # get_all_positions method removed - use individual get_position() for each axis
 
     @abstractmethod
-    async def stop_motion(self, axis: int, deceleration: float) -> None:
+    async def stop_motion(self, axis_param: AxisParameter) -> None:
         """
         Stop motion on specified axis
 
         Args:
-            axis: Axis number to stop
-            deceleration: Deceleration rate for stopping (mm/s²)
+            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+                       deceleration 값이 사용됨
 
         Raises:
             HardwareOperationError: If stop operation fails
@@ -146,9 +129,12 @@ class RobotService(ABC):
         ...
 
     @abstractmethod
-    async def emergency_stop(self) -> None:
+    async def emergency_stop(self, axis: int) -> None:
         """
-        Emergency stop all motion immediately
+        Emergency stop motion immediately for specific axis
+
+        Args:
+            axis: Specific axis to stop
 
         Raises:
             HardwareOperationError: If emergency stop fails
@@ -156,12 +142,12 @@ class RobotService(ABC):
         ...
 
     @abstractmethod
-    async def is_moving(self, axis: Optional[int] = None) -> bool:
+    async def is_moving(self, axis: int) -> bool:
         """
         Check if axis is currently moving
 
         Args:
-            axis: Axis to check (None checks if any axis is moving)
+            axis: Axis to check
 
         Returns:
             True if moving, False otherwise
@@ -198,14 +184,14 @@ class RobotService(ABC):
     @abstractmethod
     async def wait_for_completion(
         self,
-        axis: Optional[int] = None,
+        axis: int,
         timeout: Optional[float] = None,
     ) -> None:
         """
-        Wait for motion to complete
+        Wait for motion to complete on specific axis
 
         Args:
-            axis: Axis to wait for (None waits for all axes)
+            axis: Specific axis to wait for (required for thread safety)
             timeout: Maximum wait time in seconds
 
         Raises:
@@ -291,28 +277,7 @@ class RobotService(ABC):
         """
         ...
 
-    @abstractmethod
-    async def home_all_axes(
-        self,
-        velocity: Optional[float] = None,
-        acceleration: Optional[float] = None,
-        deceleration: Optional[float] = None,
-    ) -> bool:
-        """
-        Home all axes
-
-        Args:
-            velocity: Optional homing velocity in mm/s
-            acceleration: Optional homing acceleration in mm/s²
-            deceleration: Optional homing deceleration in mm/s²
-
-        Returns:
-            True if all axes homed successfully
-
-        Raises:
-            HardwareOperationError: If homing operation fails
-        """
-        ...
+    # home_all_axes method removed - use individual home_axis() for each axis in separate threads
 
     @abstractmethod
     async def get_status(self) -> Dict[str, Any]:

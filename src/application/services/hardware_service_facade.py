@@ -34,6 +34,9 @@ from domain.value_objects.measurements import (
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
+from domain.value_objects.axis_parameter import AxisParameter
+from domain.value_objects.hardware_configuration import HardwareConfiguration
+
 
 
 class HardwareServiceFacade:
@@ -48,6 +51,7 @@ class HardwareServiceFacade:
         self,
         robot_service: RobotService,
         mcu_service: MCUService,
+        hardware_config: HardwareConfiguration,
         *,
         loadcell_service: LoadCellService,
         power_service: PowerService,
@@ -58,6 +62,7 @@ class HardwareServiceFacade:
         self._loadcell = loadcell_service
         self._power = power_service
         self._digital_input = digital_input_service
+        self._hardware_config = hardware_config
 
     async def connect_all_hardware(self) -> None:
         """Connect all required hardware"""
@@ -99,31 +104,31 @@ class HardwareServiceFacade:
     async def startup_initialization(self) -> None:
         """
         Perform one-time startup initialization including robot homing
-        
+
         This method should be called once when the application starts
         to perform essential initialization tasks like robot homing.
         """
         logger.info("Performing startup initialization...")
-        
+
         try:
             # Connect robot if not already connected
             if not await self._robot.is_connected():
                 logger.info("Connecting robot for startup initialization...")
                 await self._robot.connect()
-            
+
             # Enable servo for primary axis - required before any motion operations
             primary_axis = await self._robot.get_primary_axis_id()
             logger.info("Enabling servo for primary axis %d...", primary_axis)
             await self._robot.enable_servo(primary_axis)
-            
+
             # Perform robot homing - this is the main purpose of startup initialization
             logger.info("Performing robot homing...")
             # Home primary axis using parameters from .mot file
             primary_axis = await self._robot.get_primary_axis_id()
             await self._robot.home_axis(primary_axis)
-            
+
             logger.info("Startup initialization completed successfully")
-            
+
         except Exception as e:
             logger.error("Startup initialization failed: %s", e)
             raise HardwareConnectionException(
@@ -150,13 +155,13 @@ class HardwareServiceFacade:
             # await self._mcu.set_fan_speed(config.fan_speed)
 
             # Initialize robot position using test configuration
-            await self._robot.move_absolute(
-                axis=config.axis_id,
-                position=config.initial_position,
+            axis_param = AxisParameter(
+                axis=self._hardware_config.robot.axis_id,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
                 deceleration=config.deceleration,
             )
+            await self._robot.move_absolute(config.initial_position, axis_param)
             await asyncio.sleep(config.stabilization_delay)
 
             # Zero the load cell
@@ -212,13 +217,13 @@ class HardwareServiceFacade:
                     )
 
                     # Move to position using test configuration
-                    await self._robot.move_absolute(
-                        axis=config.axis_id,
-                        position=position,
+                    axis_param = AxisParameter(
+                        axis=self._hardware_config.robot.axis_id,
                         velocity=config.velocity,
                         acceleration=config.acceleration,
                         deceleration=config.deceleration,
                     )
+                    await self._robot.move_absolute(position, axis_param)
                     await asyncio.sleep(config.stabilization_delay)
 
                     # Take measurements
@@ -226,7 +231,7 @@ class HardwareServiceFacade:
                     # Get current temperature from MCU
                     current_temp = await self._mcu.get_temperature()
                     # Get current position from robot
-                    current_position = await self._robot.get_position(config.axis_id)
+                    current_position = await self._robot.get_position(self._hardware_config.robot.axis_id)
 
                     # Store measurement data using TestMeasurements structure
                     if temperature not in measurements_dict:
@@ -268,13 +273,13 @@ class HardwareServiceFacade:
         """Return robot to safe standby position"""
         try:
             # Return to safe position using test configuration
-            await self._robot.move_absolute(
-                axis=config.axis_id,
-                position=config.initial_position,
+            axis_param = AxisParameter(
+                axis=self._hardware_config.robot.axis_id,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
                 deceleration=config.deceleration,
             )
+            await self._robot.move_absolute(config.initial_position, axis_param)
             logger.info(f"Robot returned to safe position: {config.initial_position}mm")
         except Exception as e:
             logger.error(f"Failed to return to safe position: {e}")
@@ -294,7 +299,9 @@ class HardwareServiceFacade:
             if await self._robot.is_connected():
                 try:
                     primary_axis = await self._robot.get_primary_axis_id()
-                    logger.info("Disabling servo for primary axis %d for safe shutdown...", primary_axis)
+                    logger.info(
+                        "Disabling servo for primary axis %d for safe shutdown...", primary_axis
+                    )
                     await self._robot.disable_servo(primary_axis)
                     logger.info("Primary axis servo disabled")
                 except Exception as servo_error:
@@ -392,13 +399,13 @@ class HardwareServiceFacade:
         try:
             # Return robot to safe standby position
             logger.info(f"Returning robot to safe position: {config.initial_position}mm")
-            await self._robot.move_absolute(
-                axis=config.axis_id,
-                position=config.initial_position,
+            axis_param = AxisParameter(
+                axis=self._hardware_config.robot.axis_id,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
                 deceleration=config.deceleration,
             )
+            await self._robot.move_absolute(config.initial_position, axis_param)
             logger.info("Robot returned to safe position")
 
             # Reset MCU temperature to default
@@ -447,13 +454,13 @@ class HardwareServiceFacade:
             )
 
             # Robot to max stroke position using test configuration
-            await self._robot.move_absolute(
-                axis=config.axis_id,
-                position=config.max_stroke,
+            axis_param = AxisParameter(
+                axis=self._hardware_config.robot.axis_id,
                 velocity=config.velocity,
                 acceleration=config.acceleration,
                 deceleration=config.deceleration,
             )
+            await self._robot.move_absolute(config.max_stroke, axis_param)
             logger.info(f"Robot moved to max stroke position: {config.max_stroke}mm")
 
             # Wait for standby heating stabilization
@@ -461,13 +468,7 @@ class HardwareServiceFacade:
             logger.info(f"Standby heating stabilized after {config.standby_stabilization}s")
 
             # Robot to initial position using test configuration
-            await self._robot.move_absolute(
-                axis=config.axis_id,
-                position=config.initial_position,
-                velocity=config.velocity,
-                acceleration=config.acceleration,
-                deceleration=config.deceleration,
-            )
+            await self._robot.move_absolute(config.initial_position, axis_param)
             logger.info(f"Robot moved to initial position: {config.initial_position}mm")
 
             # MCU start standby cooling

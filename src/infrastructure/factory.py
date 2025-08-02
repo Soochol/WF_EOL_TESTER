@@ -210,7 +210,8 @@ class ServiceFactory:
         if hw_type == "ajinextek":
             # AJINEXTEK 실제 하드웨어
             logger.info(
-                "Creating AJINEXTEK Robot service (IRQ: %s)",
+                "Creating AJINEXTEK Robot service (Axis: %s, IRQ: %s)",
+                config.get("axis_id", 0),
                 config.get("irq_no", 7),
             )
             return AjinextekRobot(config=config)
