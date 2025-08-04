@@ -188,21 +188,21 @@ class EOLTest:
         end_time = self._end_time or Timestamp.now()
         return TestDuration.between_timestamps(self._start_time, end_time)
 
-    def start_test(self, total_steps: int = 1) -> None:
+    def prepare_test(self, total_steps: int = 1) -> None:
         """
-        Start test execution
+        Prepare test for execution (transition to PREPARING state)
 
         Args:
             total_steps: Total number of steps in the test
 
         Raises:
-            InvalidTestStateException: If test cannot be started
+            InvalidTestStateException: If test cannot be prepared
         """
         if self._status != TestStatus.NOT_STARTED:
             raise InvalidTestStateException(
                 self._status.value,
                 TestStatus.NOT_STARTED.value,
-                "start_test",
+                "prepare_test",
                 {"test_id": str(self._test_id)},
             )
 
@@ -219,13 +219,13 @@ class EOLTest:
         self._current_step = 0
         self._error_message = None
 
-    def begin_execution(self) -> None:
-        """Begin actual test execution (after preparation)"""
+    def start_execution(self) -> None:
+        """Start actual test execution (transition from PREPARING to RUNNING)"""
         if self._status != TestStatus.PREPARING:
             raise InvalidTestStateException(
                 self._status.value,
                 TestStatus.PREPARING.value,
-                "begin_execution",
+                "start_execution",
                 {"test_id": str(self._test_id)},
             )
 

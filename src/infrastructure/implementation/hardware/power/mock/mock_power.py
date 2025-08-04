@@ -22,49 +22,52 @@ from domain.exceptions import (
 class MockPower(PowerService):
     """Mock 전원 공급 장치 서비스 (테스트용)"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self):
         """
         초기화
-
-        Args:
-            config: Power 연결 설정 딕셔너리
         """
-        # Connection defaults
-        self._host = config.get("host", "192.168.1.100")
-        self._port = config.get("port", 8080)
-        self._timeout = config.get("timeout", 5.0)
-        self._channel = config.get("channel", 1)
-
-        # Operational defaults
-        self._voltage = config.get("default_voltage", 0.0)
-        self._current_limit = config.get("default_current_limit", 5.0)
-
-        # Mock-specific parameters
-        self._connection_delay = config.get("connection_delay", 0.2)
-        self._response_delay = config.get("response_delay", 0.05)
-        self._voltage_noise = config.get("voltage_noise", 0.01)
-
-        # Operational limits and accuracy
-        self._max_voltage = config.get("max_voltage", 30.0)
-        self._max_current = config.get("max_current", 50.0)
-        self._voltage_accuracy = config.get("voltage_accuracy", 0.01)
-        self._current_accuracy = config.get("current_accuracy", 0.001)
-
         # Initialize state
         self._is_connected = False
         self._output_enabled = False
-        self._set_voltage = self._voltage
-        self._set_current = self._current_limit
 
-        logger.info(f"MockPower initialized with {self._max_voltage}V/{self._max_current}A limits")
+        logger.info("MockPower initialized")
 
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        host: str,
+        port: int,
+        timeout: float,
+        channel: int
+    ) -> None:
         """
         Connect to power supply hardware (시뮬레이션)
+
+        Args:
+            host: IP address or hostname
+            port: TCP port number
+            timeout: Connection timeout in seconds
+            channel: Power channel number
 
         Raises:
             HardwareConnectionError: If connection fails
         """
+        # Store connection parameters
+        self._host = host
+        self._port = port
+        self._timeout = timeout
+        self._channel = channel
+
+        # Mock operational defaults
+        self._voltage = 0.0
+        self._current_limit = 5.0
+        self._connection_delay = 0.2
+        self._response_delay = 0.05
+        self._voltage_noise = 0.01
+        self._max_voltage = 30.0
+        self._max_current = 50.0
+        self._voltage_accuracy = 0.01
+        self._current_accuracy = 0.001
+
         logger.info(f"Connecting to mock Power Supply at {self._host}:{self._port}...")
 
         try:
@@ -118,12 +121,12 @@ class MockPower(PowerService):
         """
         return self._is_connected
 
-    async def set_voltage(self, voltage: Optional[float] = None) -> None:
+    async def set_voltage(self, voltage: float) -> None:
         """
         Set output voltage (시뮬레이션)
 
         Args:
-            voltage: Target voltage in volts (uses default if None)
+            voltage: Target voltage in volts
 
         Raises:
             HardwareConnectionError: If not connected
@@ -136,22 +139,11 @@ class MockPower(PowerService):
             )
 
         try:
-            # Apply default + override pattern
-            target_voltage = voltage if voltage is not None else self._voltage
-
-            # 값 범위 검증
-            if not (0 <= target_voltage <= self._max_voltage):
-                raise HardwareOperationError(
-                    "mock_power",
-                    "set_voltage",
-                    f"Voltage must be 0-{self._max_voltage}V, got {target_voltage}V",
-                )
-
             # 설정 지연 시뮬래이션
             await asyncio.sleep(self._response_delay)
 
-            self._set_voltage = target_voltage
-            logger.info(f"Mock Power Supply voltage set to: {target_voltage}V")
+            self._set_voltage = voltage
+            logger.info(f"Mock Power Supply voltage set to: {voltage}V")
 
         except Exception as e:
             logger.error(f"Failed to set mock Power Supply voltage: {e}")
@@ -194,12 +186,12 @@ class MockPower(PowerService):
             logger.error(f"Failed to get mock Power Supply voltage: {e}")
             raise HardwareOperationError("mock_power", "get_voltage", str(e)) from e
 
-    async def set_current_limit(self, current: Optional[float] = None) -> None:
+    async def set_current_limit(self, current: float) -> None:
         """
         Set current limit (시뮬래이션)
 
         Args:
-            current: Current limit in amperes (uses default if None)
+            current: Current limit in amperes
 
         Raises:
             HardwareConnectionError: If not connected
@@ -212,22 +204,11 @@ class MockPower(PowerService):
             )
 
         try:
-            # Apply default + override pattern
-            target_current = current if current is not None else self._current_limit
-
-            # 값 범위 검증
-            if not (0 <= target_current <= self._max_current):
-                raise HardwareOperationError(
-                    "mock_power",
-                    "set_current_limit",
-                    f"Current must be 0-{self._max_current}A, got {target_current}A",
-                )
-
             # 설정 지연 시뮬래이션
             await asyncio.sleep(self._response_delay)
 
-            self._set_current = target_current
-            logger.info(f"Mock Power Supply current limit set to: {target_current}A")
+            self._set_current = current
+            logger.info(f"Mock Power Supply current limit set to: {current}A")
 
         except Exception as e:
             logger.error(f"Failed to set mock Power Supply current limit: {e}")

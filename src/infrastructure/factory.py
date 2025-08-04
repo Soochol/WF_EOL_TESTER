@@ -5,46 +5,20 @@ Simple factory for creating hardware services based on configuration.
 Replaces the complex dependency injection system.
 """
 
-from typing import Any, Dict, Optional
+
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from loguru import logger
 
-from application.interfaces.hardware.digital_input import (
-    DigitalInputService,
-)
-from application.interfaces.hardware.loadcell import (
-    LoadCellService,
-)
-from application.interfaces.hardware.mcu import MCUService
-from application.interfaces.hardware.power import (
-    PowerService,
-)
-from application.interfaces.hardware.robot import (
-    RobotService,
-)
 from application.services.hardware_service_facade import HardwareServiceFacade
-
-# Hardware implementations
 from infrastructure.implementation.hardware.digital_input.ajinextek.ajinextek_input import (
     AjinextekInput,
-)
-from infrastructure.implementation.hardware.digital_input.mock.mock_input import (
-    MockInput,
 )
 from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
     BS205LoadCell,
 )
-from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
-    MockLoadCell,
-)
 from infrastructure.implementation.hardware.mcu.lma.lma_mcu import (
     LMAMCU,
-)
-from infrastructure.implementation.hardware.mcu.mock.mock_mcu import (
-    MockMCU,
-)
-from infrastructure.implementation.hardware.power.mock.mock_power import (
-    MockPower,
 )
 from infrastructure.implementation.hardware.power.oda.oda_power import (
     OdaPower,
@@ -56,232 +30,145 @@ from infrastructure.implementation.hardware.robot.mock.mock_robot import (
     MockRobot,
 )
 
+# Type checking imports for better IDE support
+if TYPE_CHECKING:
+    from infrastructure.implementation.hardware.digital_input.mock.mock_input import (
+        MockInput,
+    )
+    from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
+        MockLoadCell,
+    )
+    from infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
+    from infrastructure.implementation.hardware.power.mock.mock_power import MockPower
+
 
 class ServiceFactory:
     """하드웨어 서비스 팩토리"""
 
     @staticmethod
-    def create_loadcell_service(
-        config: Dict[str, Any],
-    ) -> LoadCellService:
+    def create_loadcell_service(config: Optional[Dict] = None) -> Union['BS205LoadCell', 'MockLoadCell']:
         """
-        LoadCell 서비스 생성
+        LoadCell 서비스 생성 (설정 기반)
 
         Args:
-            config: 하드웨어 설정
+            config: LoadCell 설정 딕셔너리 (model 키로 구분)
 
         Returns:
             LoadCell 서비스 인스턴스
-
-        Raises:
-            ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "bs205")).lower()
+        if config and config.get('model', '').lower() == 'mock':
+            from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
+                MockLoadCell,
+            )
+            logger.info("Creating Mock LoadCell service")
+            return MockLoadCell()
 
-        if hw_type == "mock":
-            # Mock 서비스 (config Dict 전달)
-            logger.info("Creating Mock LoadCell service with config")
-            return MockLoadCell(config=config)
-
-        if hw_type == "bs205":
-            # BS205 실제 하드웨어 (config Dict 전달)
-            logger.info("Creating BS205 LoadCell service with config")
-            return BS205LoadCell(config=config)
-
-        raise ValueError(f"Unsupported loadcell type: {hw_type}")
+        # BS205 실제 하드웨어 (기본 설정)
+        logger.info("Creating BS205 LoadCell service")
+        return BS205LoadCell()
 
     @staticmethod
-    def create_power_service(
-        config: Dict[str, Any],
-    ) -> PowerService:
+    def create_power_service(config: Optional[Dict] = None) -> Union['OdaPower', 'MockPower']:
         """
-        Power 서비스 생성
+        Power 서비스 생성 (설정 기반)
 
         Args:
-            config: 하드웨어 설정
+            config: Power 설정 딕셔너리 (model 키로 구분)
 
         Returns:
             Power 서비스 인스턴스
-
-        Raises:
-            ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "oda")).lower()
+        if config and config.get('model', '').lower() == 'mock':
+            from infrastructure.implementation.hardware.power.mock.mock_power import (
+                MockPower,
+            )
+            logger.info("Creating Mock Power service")
+            return MockPower()
 
-        if hw_type == "mock":
-            # Mock 서비스 (config Dict 전달)
-            logger.info("Creating Mock Power service with config")
-            return MockPower(config=config)
-
-        if hw_type == "oda":
-            # ODA 실제 하드웨어 (config Dict 전달)
-            logger.info("Creating ODA Power service with config")
-            return OdaPower(config=config)
-
-        raise ValueError(f"Unsupported power supply type: {hw_type}")
+        # ODA 실제 하드웨어 (기본 설정)
+        logger.info("Creating ODA Power service")
+        return OdaPower()
 
     @staticmethod
-    def create_mcu_service(
-        config: Dict[str, Any],
-    ) -> MCUService:
+    def create_mcu_service(config: Optional[Dict] = None) -> Union['LMAMCU', 'MockMCU']:
         """
-        MCU 서비스 생성
+        MCU 서비스 생성 (설정 기반)
 
         Args:
-            config: 하드웨어 설정
+            config: MCU 설정 딕셔너리 (model 키로 구분)
 
         Returns:
             MCU 서비스 인스턴스
-
-        Raises:
-            ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "lma")).lower()
+        if config and config.get('model', '').lower() == 'mock':
+            from infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
+            logger.info("Creating Mock MCU service")
+            return MockMCU()
 
-        if hw_type == "mock":
-            # Mock 서비스
-            config_filtered = {k: v for k, v in config.items() if k != "model"}
-            logger.info(f"Creating Mock MCU service with config: {config_filtered}")
-            return MockMCU(config=config)
-
-        if hw_type == "lma":
-            # LMA 실제 하드웨어
-            logger.info(
-                "Creating LMA MCU service with config: %s",
-                {k: v for k, v in config.items() if k != "model"},
-            )
-            return LMAMCU(config=config)
-
-        raise ValueError(f"Unsupported MCU type: {hw_type}")
+        # LMA 실제 하드웨어 (기본 설정)
+        logger.info("Creating LMA MCU service")
+        return LMAMCU()
 
     @staticmethod
-    def create_digital_input_service(
-        config: Dict[str, Any],
-    ) -> DigitalInputService:
+    def create_digital_input_service(config: Optional[Dict] = None) -> Union['AjinextekInput', 'MockInput']:
         """
-        Digital Input 서비스 생성
+        Digital Input 서비스 생성 (설정 기반)
 
         Args:
-            config: 하드웨어 설정
+            config: Digital Input 설정 딕셔너리 (model 키로 구분)
 
         Returns:
             Digital Input 서비스 인스턴스
-
-        Raises:
-            ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "ajinextek")).lower()
+        if config and config.get('model', '').lower() == 'mock':
+            from infrastructure.implementation.hardware.digital_input.mock.mock_input import (
+                MockInput,
+            )
+            logger.info("Creating Mock Digital Input service")
+            # MockInput requires config, so pass a default config if none provided
+            mock_config = config if config else {'model': 'mock'}
+            return MockInput(mock_config)
 
-        if hw_type == "mock":
-            # Mock 서비스
-            logger.info("Creating Mock Digital Input service with config")
-            return MockInput(config=config)
-
-        if hw_type == "ajinextek":
-            # Ajinextek DIO 실제 하드웨어
-            logger.info("Creating Ajinextek Digital Input service with config")
-            return AjinextekInput(config=config)
-
-        raise ValueError(f"Unsupported digital input hardware type: {hw_type}")
+        # Ajinextek DIO 실제 하드웨어 (기본 설정)
+        logger.info("Creating Ajinextek Digital Input service")
+        return AjinextekInput()
 
     @staticmethod
-    def create_robot_service(
-        config: Dict[str, Any],
-    ) -> RobotService:
+    def create_robot_service(config: Optional[Dict] = None) -> Union['AjinextekRobot', 'MockRobot']:
         """
-        Robot 서비스 생성
+        Robot 서비스 생성 (설정 기반)
 
         Args:
-            config: 하드웨어 설정
+            config: Robot 설정 딕셔너리 (model 키로 구분)
 
         Returns:
             Robot 서비스 인스턴스
-
-        Raises:
-            ValueError: 지원되지 않는 하드웨어 타입
         """
-        hw_type = config.get("model", config.get("type", "ajinextek")).lower()
+        if config and config.get('model', '').lower() == 'mock':
+            logger.info("Creating Mock Robot service")
+            return MockRobot()
 
-        if hw_type == "mock":
-            # Mock 서비스 (config Dict 전달)
-            logger.info("Creating Mock Robot service with config")
-            return MockRobot(config=config)
-
-        if hw_type == "ajinextek":
-            # AJINEXTEK 실제 하드웨어
-            logger.info(
-                "Creating AJINEXTEK Robot service (Axis: %s, IRQ: %s)",
-                config.get("axis_id", 0),
-                config.get("irq_no", 7),
-            )
-            return AjinextekRobot(config=config)
-
-        raise ValueError(f"Unsupported robot hardware type: {hw_type}")
+        # AJINEXTEK 실제 하드웨어 (기본 설정)
+        logger.info("Creating AJINEXTEK Robot service")
+        return AjinextekRobot()
 
 
-def create_hardware_service_facade(
-    config_path: Optional[str] = None, use_mock: bool = False
-) -> HardwareServiceFacade:
+def create_hardware_service_facade() -> 'HardwareServiceFacade':
     """
     Create a complete hardware service facade with all hardware services
-
-    Args:
-        config_path: Path to hardware configuration file (optional)
-        use_mock: Force use of mock hardware services
 
     Returns:
         HardwareServiceFacade instance with all services configured
     """
-    logger.info("Creating hardware service facade (mock: %s)", use_mock)
-
-    # Default hardware configurations
-    default_configs: Dict[str, Dict[str, Any]] = {
-        "robot": {
-            "model": "mock" if use_mock else "ajinextek",
-            "irq_no": 7,
-        },
-        "mcu": {
-            "model": "mock" if use_mock else "lma",
-            "port": "COM4",
-            "baudrate": 115200,
-            "timeout": 2.0,
-            "default_temperature": 25.0,
-            "default_fan_speed": 50.0,
-        },
-        "loadcell": {
-            "model": "mock" if use_mock else "bs205",
-            "port": "COM3",
-            "baudrate": 9600,
-            "timeout": 1.0,
-        },
-        "power": {
-            "model": "mock" if use_mock else "oda",
-            "host": "192.168.1.100",
-            "port": 8080,
-            "timeout": 5.0,
-            "default_voltage": 0.0,
-            "default_current_limit": 5.0,
-        },
-        "digital_input": {
-            "model": "mock" if use_mock else "ajinextek",
-            "device_number": 0,
-            "module_position": 0,
-        },
-    }
-
-    # If config_path is provided, you could load from file here
-    # For now, using default configurations
-    configs: Dict[str, Dict[str, Any]] = default_configs
+    logger.info("Creating hardware service facade")
 
     try:
         # Create all hardware services
-        robot_service = ServiceFactory.create_robot_service(configs["robot"])
-        mcu_service = ServiceFactory.create_mcu_service(configs["mcu"])
-        loadcell_service = ServiceFactory.create_loadcell_service(configs["loadcell"])
-        power_service = ServiceFactory.create_power_service(configs["power"])
-        digital_input_service = ServiceFactory.create_digital_input_service(
-            configs["digital_input"]
-        )
+        robot_service = ServiceFactory.create_robot_service()
+        mcu_service = ServiceFactory.create_mcu_service()
+        loadcell_service = ServiceFactory.create_loadcell_service()
+        power_service = ServiceFactory.create_power_service()
+        digital_input_service = ServiceFactory.create_digital_input_service()
 
         # Create and return facade
         facade = HardwareServiceFacade(

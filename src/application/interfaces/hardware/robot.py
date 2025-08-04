@@ -8,16 +8,23 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
 from domain.enums.robot_enums import MotionStatus
-from domain.value_objects.axis_parameter import AxisParameter
 
 
 class RobotService(ABC):
     """Abstract interface for robot control operations"""
 
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(
+        self, 
+        axis_id: int, 
+        irq_no: int
+    ) -> None:
         """
         Connect to robot hardware
+
+        Args:
+            axis_id: Axis ID number
+            irq_no: IRQ number for connection
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -49,14 +56,20 @@ class RobotService(ABC):
     async def move_to_position(
         self,
         position: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Move axis to absolute position
 
         Args:
             position: Target position in mm
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+            axis_id: Axis ID number
+            velocity: Motion velocity
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             HardwareOperationError: If movement fails
@@ -67,14 +80,20 @@ class RobotService(ABC):
     async def move_relative(
         self,
         distance: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Move axis by relative distance
 
         Args:
             distance: Distance to move in mm
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+            axis_id: Axis ID number
+            velocity: Motion velocity
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             HardwareOperationError: If movement fails
@@ -85,14 +104,20 @@ class RobotService(ABC):
     async def move_absolute(
         self,
         position: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Move axis to absolute position with motion parameters
 
         Args:
             position: Target position in mm
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+            axis_id: Axis ID number
+            velocity: Motion velocity
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             HardwareOperationError: If movement fails
@@ -115,13 +140,13 @@ class RobotService(ABC):
     # get_all_positions method removed - use individual get_position() for each axis
 
     @abstractmethod
-    async def stop_motion(self, axis_param: AxisParameter) -> None:
+    async def stop_motion(self, axis_id: int, deceleration: float) -> None:
         """
         Stop motion on specified axis
 
         Args:
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
-                       deceleration 값이 사용됨
+            axis_id: Axis ID number
+            deceleration: Deceleration value for stopping
 
         Raises:
             HardwareOperationError: If stop operation fails

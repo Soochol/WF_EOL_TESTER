@@ -9,11 +9,10 @@ import asyncio
 import signal
 import sys
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
 # Third-party imports
 from loguru import logger
-from yaml import YAMLError
 
 # Local application imports - Services
 from src.application.services.configuration_service import ConfigurationService
@@ -62,48 +61,16 @@ async def main() -> None:
         # Create test result repository
         test_result_repository = await create_repositories()
 
-        # Load hardware configuration
-        logger.info(f"Loading hardware configuration from {HARDWARE_CONFIG_FILENAME}...")
-        try:
-            hardware_config = await yaml_configuration.load_hardware_config()
-        except FileNotFoundError as e:
-            logger.error(f"Hardware configuration file not found: {e}")
-            sys.exit(1)
-        except YAMLError as e:
-            logger.error(f"Invalid hardware configuration format: {e}")
-            sys.exit(1)
-        except Exception as e:
-            logger.error(f"Failed to load hardware configuration: {e}")
-            sys.exit(1)
-
         # Create services
         hardware_services = None
         try:
-            hardware_services = await create_hardware_services(hardware_config.to_dict())
-
-            # Perform one-time startup initialization including robot homing
-            logger.info("Performing startup initialization...")
-            await hardware_services.startup_initialization()
+            hardware_services = await create_hardware_services()
 
             business_services = await create_business_services(
                 yaml_configuration, profile_preference, test_result_repository
             )
         except Exception as e:
             logger.error(f"Failed to create services: {e}")
-
-            # Safety: Disable primary axis servo if hardware services were created
-            if hardware_services:
-                try:
-                    primary_axis = await hardware_services._robot.get_primary_axis_id()
-                    logger.info(
-                        "Disabling servo for primary axis %d for safety due to startup failure...",
-                        primary_axis,
-                    )
-                    await hardware_services._robot.disable_servo(primary_axis)
-                    logger.info("Primary axis servo disabled for safety")
-                except Exception as servo_error:
-                    logger.error(f"Failed to disable servo during cleanup: {servo_error}")
-
             sys.exit(1)
 
         (
@@ -203,22 +170,23 @@ async def create_repositories() -> JsonResultRepository:
     return test_result_repository
 
 
-async def create_hardware_services(hardware_config_dict: Dict[str, Any]) -> HardwareServiceFacade:
-    """Create hardware services from configuration dictionary.
+async def create_hardware_services() -> HardwareServiceFacade:
+    """Create hardware services with default real hardware implementations.
 
-    Args:
-        hardware_config_dict: Dictionary containing hardware configuration settings.
+    All hardware services are created with their default real hardware
+    implementations (AJINEXTEK, LMA, BS205, ODA). These will be used
+    when hardware configuration is loaded in the UseCase.
 
     Returns:
-        HardwareServiceFacade instance with all hardware services configured.
+        HardwareServiceFacade instance with all real hardware services.
     """
-    robot_service = ServiceFactory.create_robot_service(hardware_config_dict["robot"])
-    mcu_service = ServiceFactory.create_mcu_service(hardware_config_dict["mcu"])
-    loadcell_service = ServiceFactory.create_loadcell_service(hardware_config_dict["loadcell"])
-    power_service = ServiceFactory.create_power_service(hardware_config_dict["power"])
-    digital_input_service = ServiceFactory.create_digital_input_service(
-        hardware_config_dict["digital_input"]
-    )
+    # All services are created with default real hardware implementations
+    # They will be used when hardware configuration is loaded in the UseCase
+    robot_service = ServiceFactory.create_robot_service()
+    mcu_service = ServiceFactory.create_mcu_service()
+    loadcell_service = ServiceFactory.create_loadcell_service()
+    power_service = ServiceFactory.create_power_service()
+    digital_input_service = ServiceFactory.create_digital_input_service()
 
     return HardwareServiceFacade(
         robot_service=robot_service,
@@ -251,7 +219,7 @@ async def create_business_services(
         Tuple containing all business service instances.
     """
     configuration_service = ConfigurationService(
-        configuration=yaml_configuration,
+        configuration=yaml_configuration,  # test_configuration, hardware_configuration
         profile_preference=profile_preference,
     )
 

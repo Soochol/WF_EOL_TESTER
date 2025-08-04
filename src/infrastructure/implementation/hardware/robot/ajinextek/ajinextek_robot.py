@@ -25,7 +25,6 @@ from domain.exceptions.robot_exceptions import (
     RobotConnectionError,
     RobotMotionError,
 )
-from domain.value_objects.axis_parameter import AxisParameter
 from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
     AXLWrapper,
 )
@@ -52,20 +51,10 @@ from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
 class AjinextekRobot(RobotService):
     """AJINEXTEK 로봇 통합 서비스"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self):
         """
         초기화
-
-        Args:
-            config: 로봇 설정 딕셔너리 (하드웨어 연결 및 모션 파라미터, axis_id 포함)
         """
-        # Store configuration from dict
-        self._model = config.get("model", "AJINEXTEK")
-        self._irq_no = config.get("irq_no", 7)
-
-        # Axis assignment - this robot instance is responsible for this specific axis
-        self.axis_id: int = config.get("axis_id", 0)
-
         # Library information
         self.version: str = "Unknown"
 
@@ -76,6 +65,10 @@ class AjinextekRobot(RobotService):
         self._servo_state: bool = False
         self._motion_status = MotionStatus.IDLE
         self._error_message = None
+        
+        # Connection parameters - will be set during connect
+        self.axis_id: int = 0
+        self._irq_no: int = 7
 
         # Software limits - initialized with default values, will be updated from .mot file
         self._software_limits_enabled = False
@@ -85,28 +78,40 @@ class AjinextekRobot(RobotService):
         # Initialize AXL wrapper
         self._axl = AXLWrapper()
 
-        logger.info("AjinextekRobotAdapter initialized with IRQ %s", self._irq_no)
+        logger.info("AjinextekRobotAdapter initialized")
 
-    async def connect(self) -> None:
+    async def connect(
+        self, 
+        axis_id: int, 
+        irq_no: int
+    ) -> None:
         """
         하드웨어 연결
+
+        Args:
+            axis_id: Axis ID number
+            irq_no: IRQ number for connection
 
         Raises:
             HardwareConnectionError: If connection fails
         """
 
         try:
-            logger.info("Connecting to AJINEXTEK robot controller (IRQ: %s)", self._irq_no)
+            # Store connection parameters
+            self.axis_id = axis_id
+            self._irq_no = irq_no
 
-            # Open AXL library
-            result = self._axl.open(self._irq_no)
+            logger.info("Connecting to AJINEXTEK robot controller (IRQ: %s, Axis: %s)", irq_no, self.axis_id)
+
+            # Open AXL library with config value
+            result = self._axl.open(irq_no)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
                 logger.error("Failed to open AXL library: %s", error_msg)
                 raise RobotConnectionError(
                     f"Failed to open AXL library: {error_msg}",
                     "AJINEXTEK",
-                    details=f"IRQ: {self._irq_no}, Error: {result}",
+                    details=f"IRQ: {irq_no}, Error: {result}",
                 )
 
             # Get board count for verification
@@ -147,7 +152,7 @@ class AjinextekRobot(RobotService):
             # Software limits are now managed by robot controller via .mot file
 
             # Load robot parameters from configuration file for this axis
-            await self._load_robot_parameters(self.axis_id)
+            await self._load_robot_parameters(axis_id)
 
             # Motion parameters are now loaded from .prm file via AxmMotLoadParaAll
             logger.info("Motion parameters initialized from .prm file")
@@ -156,7 +161,7 @@ class AjinextekRobot(RobotService):
             self._motion_status = MotionStatus.IDLE
 
             logger.info(
-                f"AJINEXTEK robot controller connected successfully (IRQ: {self._irq_no}, Axes: {self._axis_count})"
+                f"AJINEXTEK robot controller connected successfully (IRQ: {irq_no}, Axis: {self.axis_id}, Total Axes: {self._axis_count})"
             )
 
         except Exception as e:
@@ -183,9 +188,8 @@ class AjinextekRobot(RobotService):
             if self._is_connected:
                 # Stop motion and turn off servo for this robot's axis
                 try:
-                    # Create default AxisParameter for stopping motion
-                    stop_param = AxisParameter(self.axis_id, 0.0, 1000.0, 1000.0)
-                    await self.stop_motion(stop_param)
+                    # Stop motion with default deceleration
+                    await self.stop_motion(self.axis_id, 1000.0)
                 except Exception as e:
                     logger.warning("Failed to stop axis %s during disconnect: %s", self.axis_id, e)
 
@@ -292,14 +296,20 @@ class AjinextekRobot(RobotService):
     async def move_absolute(
         self,
         position: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         지정된 축을 절대 위치로 이동
 
         Args:
             position: 절대 위치 (mm)
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+            axis_id: Axis ID number
+            velocity: Motion velocity
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             RobotConnectionError: If robot is not connected
@@ -313,14 +323,17 @@ class AjinextekRobot(RobotService):
             )
 
         # Validate that requested axis matches this robot's assigned axis
-        axis_param.validate_axis(self.axis_id)
+        if axis_id != self.axis_id:
+            raise ValueError(
+                f"This robot instance controls axis {self.axis_id}, cannot operate on axis {axis_id}"
+            )
 
         self._check_axis(self.axis_id)
 
-        # Extract parameters from AxisParameter
-        vel = axis_param.velocity
-        accel = axis_param.acceleration
-        decel = axis_param.deceleration
+        # Use parameters directly
+        vel = velocity
+        accel = acceleration
+        decel = deceleration
 
         try:
             logger.info("Moving axis %s to absolute position: %smm at %smm/s", self.axis_id, position, vel)
@@ -350,7 +363,7 @@ class AjinextekRobot(RobotService):
                 self._set_servo_on()
 
             # Start absolute position move
-            result = self._axl.move_start_pos(axis_param.axis, position, vel, accel, decel)
+            result = self._axl.move_start_pos(self.axis_id, position, vel, accel, decel)
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
@@ -385,33 +398,45 @@ class AjinextekRobot(RobotService):
     async def move_to_position(
         self,
         position: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Move axis to absolute position (interface implementation)
 
         Args:
             position: Target position in mm
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+            axis_id: Axis ID number
+            velocity: Motion velocity
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             HardwareOperationError: If movement fails
             ValueError: If axis doesn't match this robot's axis_id
         """
         # Call the more comprehensive move_absolute method
-        await self.move_absolute(position, axis_param)
+        await self.move_absolute(position, axis_id, velocity, acceleration, deceleration)
 
     async def move_relative(
         self,
         distance: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Move axis by relative distance (interface implementation)
 
         Args:
             distance: Distance to move in mm
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
+            axis_id: Axis ID number
+            velocity: Motion velocity
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             HardwareOperationError: If movement fails
@@ -424,7 +449,10 @@ class AjinextekRobot(RobotService):
             )
 
         # Validate that requested axis matches this robot's assigned axis
-        axis_param.validate_axis(self.axis_id)
+        if axis_id != self.axis_id:
+            raise ValueError(
+                f"This robot instance controls axis {self.axis_id}, cannot operate on axis {axis_id}"
+            )
 
         self._check_axis(self.axis_id)
 
@@ -433,7 +461,7 @@ class AjinextekRobot(RobotService):
         target_position = current_position + distance
 
         # Use move_to_position to reach target
-        await self.move_to_position(target_position, axis_param)
+        await self.move_to_position(target_position, axis_id, velocity, acceleration, deceleration)
 
     async def get_current_position(self, axis: int) -> float:
         """
@@ -493,13 +521,13 @@ class AjinextekRobot(RobotService):
 
         return self._motion_status
 
-    async def stop_motion(self, axis_param: AxisParameter) -> None:
+    async def stop_motion(self, axis_id: int, deceleration: float) -> None:
         """
         지정된 축의 모션 정지
 
         Args:
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
-                       deceleration 값이 사용됨
+            axis_id: Axis ID number
+            deceleration: Deceleration value for stopping
 
         Raises:
             RobotConnectionError: If robot is not connected
@@ -513,14 +541,17 @@ class AjinextekRobot(RobotService):
             )
 
         # Validate that requested axis matches this robot's assigned axis
-        axis_param.validate_axis(self.axis_id)
+        if axis_id != self.axis_id:
+            raise ValueError(
+                f"This robot instance controls axis {self.axis_id}, cannot operate on axis {axis_id}"
+            )
 
         self._check_axis(self.axis_id)
 
         try:
-            logger.info("Stopping motion on axis %s with deceleration %s mm/s²", self.axis_id, axis_param.deceleration)
+            logger.info("Stopping motion on axis %s with deceleration %s mm/s²", self.axis_id, deceleration)
 
-            result = self._axl.move_stop(self.axis_id, axis_param.deceleration)
+            result = self._axl.move_stop(self.axis_id, deceleration)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
                 logger.error("Failed to stop axis %s: %s", self.axis_id, error_msg)
@@ -706,14 +737,19 @@ class AjinextekRobot(RobotService):
 
     async def move_velocity(
         self,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Start continuous velocity (jog) motion on this robot's axis
 
         Args:
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
-                       velocity는 양수/음수로 방향 결정
+            axis_id: Axis ID number
+            velocity: Motion velocity (positive/negative for direction)
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             RobotConnectionError: If robot is not connected
@@ -726,20 +762,23 @@ class AjinextekRobot(RobotService):
             )
 
         # Validate that requested axis matches this robot's assigned axis
-        axis_param.validate_axis(self.axis_id)
+        if axis_id != self.axis_id:
+            raise ValueError(
+                f"This robot instance controls axis {self.axis_id}, cannot operate on axis {axis_id}"
+            )
 
         self._check_axis(self.axis_id)
 
-        # Extract parameters from AxisParameter
-        velocity = axis_param.velocity
-        accel = axis_param.acceleration
-        decel = axis_param.deceleration
+        # Use parameters directly
+        vel = velocity
+        accel = acceleration
+        decel = deceleration
 
         try:
-            logger.info("Starting velocity motion on axis %s: %smm/s", self.axis_id, velocity)
+            logger.info("Starting velocity motion on axis %s: %smm/s", self.axis_id, vel)
 
             # Safety check before motion
-            direction = "positive" if velocity > 0 else "negative"
+            direction = "positive" if vel > 0 else "negative"
             if not await self.is_axis_safe_to_move(self.axis_id, direction):
                 raise RobotMotionError(
                     f"Axis {self.axis_id} is not safe to move {direction}",
@@ -753,7 +792,7 @@ class AjinextekRobot(RobotService):
                 self._set_servo_on()
 
             # Start velocity motion
-            result = self._axl.move_start_vel(self.axis_id, velocity, accel, decel)
+            result = self._axl.move_start_vel(self.axis_id, vel, accel, decel)
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
@@ -781,15 +820,20 @@ class AjinextekRobot(RobotService):
     async def move_signal_search(
         self,
         search_distance: float,
-        axis_param: AxisParameter,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
     ) -> None:
         """
         Start signal search motion on this robot's axis (move until signal is detected)
 
         Args:
             search_distance: Maximum search distance in mm
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
-                       velocity는 양수/음수로 방향 결정
+            axis_id: Axis ID number
+            velocity: Motion velocity (positive/negative for direction)
+            acceleration: Motion acceleration
+            deceleration: Motion deceleration
 
         Raises:
             RobotConnectionError: If robot is not connected
@@ -802,25 +846,28 @@ class AjinextekRobot(RobotService):
             )
 
         # Validate that requested axis matches this robot's assigned axis
-        axis_param.validate_axis(self.axis_id)
+        if axis_id != self.axis_id:
+            raise ValueError(
+                f"This robot instance controls axis {self.axis_id}, cannot operate on axis {axis_id}"
+            )
 
         self._check_axis(self.axis_id)
 
-        # Extract parameters from AxisParameter
-        velocity = axis_param.velocity
-        accel = axis_param.acceleration
-        decel = axis_param.deceleration
+        # Use parameters directly
+        vel = velocity
+        accel = acceleration
+        decel = deceleration
 
         try:
             logger.info(
                 "Starting signal search on axis %s: velocity=%smm/s, distance=%smm",
                 self.axis_id,
-                velocity,
+                vel,
                 search_distance,
             )
 
             # Safety check before motion
-            direction = "positive" if velocity > 0 else "negative"
+            direction = "positive" if vel > 0 else "negative"
             if not await self.is_axis_safe_to_move(self.axis_id, direction):
                 raise RobotMotionError(
                     f"Axis {self.axis_id} is not safe to move {direction}",
@@ -832,7 +879,7 @@ class AjinextekRobot(RobotService):
                 current_pos = await self.get_current_position(self.axis_id)
                 target_pos = (
                     current_pos + search_distance
-                    if velocity > 0
+                    if vel > 0
                     else current_pos - abs(search_distance)
                 )
 
@@ -850,7 +897,7 @@ class AjinextekRobot(RobotService):
                 self._set_servo_on()
 
             # Start signal search motion
-            result = self._axl.move_signal_search(self.axis_id, velocity, accel, decel, search_distance)
+            result = self._axl.move_signal_search(self.axis_id, vel, accel, decel, search_distance)
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
@@ -875,13 +922,13 @@ class AjinextekRobot(RobotService):
                 details=str(e),
             ) from e
 
-    async def stop_velocity_motion(self, axis_param: AxisParameter) -> None:
+    async def stop_velocity_motion(self, axis_id: int, deceleration: float) -> None:
         """
         Stop velocity (jog) motion on this robot's axis with specified deceleration
 
         Args:
-            axis_param: 축 모션 파라미터 (축 번호, 속도, 가속도, 감속도)
-                       deceleration 값이 사용됨
+            axis_id: Axis ID number
+            deceleration: Deceleration value for stopping
 
         Raises:
             RobotConnectionError: If robot is not connected
@@ -894,12 +941,15 @@ class AjinextekRobot(RobotService):
             )
 
         # Validate that requested axis matches this robot's assigned axis
-        axis_param.validate_axis(self.axis_id)
+        if axis_id != self.axis_id:
+            raise ValueError(
+                f"This robot instance controls axis {self.axis_id}, cannot operate on axis {axis_id}"
+            )
 
         self._check_axis(self.axis_id)
 
-        # Extract deceleration from AxisParameter
-        decel = axis_param.deceleration
+        # Use deceleration parameter directly
+        decel = deceleration
 
         try:
             logger.info(
@@ -1625,7 +1675,7 @@ class AjinextekRobot(RobotService):
                     elif home_result == HOME_SEARCHING:
                         # Get progress information for logging
                         try:
-                            _main_step, step = self._axl.home_get_rate(self.axis_id)
+                            _, step = self._axl.home_get_rate(self.axis_id)
                             logger.debug("Homing axis %s: %d%% complete", self.axis_id, step)
                         except Exception:
                             pass  # Progress info is optional

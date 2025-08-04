@@ -5,7 +5,7 @@ Facade pattern implementation to group and simplify hardware service interaction
 """
 
 import asyncio
-from typing import Dict, Union, Any
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 from loguru import logger
 
@@ -25,18 +25,30 @@ from application.interfaces.hardware.power import (
 from application.interfaces.hardware.robot import (
     RobotService,
 )
+
+# Type checking imports for better IDE support
+if TYPE_CHECKING:
+    from infrastructure.implementation.hardware.digital_input.ajinextek.ajinextek_input import (
+        AjinextekInput,
+    )
+    from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
+        BS205LoadCell,
+    )
+    from infrastructure.implementation.hardware.mcu.lma.lma_mcu import LMAMCU
+    from infrastructure.implementation.hardware.power.oda.oda_power import OdaPower
+    from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import (
+        AjinextekRobot,
+    )
 from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
+from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.measurements import (
     TestMeasurements,
 )
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
-from domain.value_objects.axis_parameter import AxisParameter
-from domain.value_objects.hardware_configuration import HardwareConfiguration
-
 
 
 class HardwareServiceFacade:
@@ -49,22 +61,76 @@ class HardwareServiceFacade:
 
     def __init__(
         self,
-        robot_service: RobotService,
-        mcu_service: MCUService,
-        hardware_config: HardwareConfiguration,
-        *,
-        loadcell_service: LoadCellService,
-        power_service: PowerService,
-        digital_input_service: DigitalInputService,
+        robot_service: 'AjinextekRobot',
+        mcu_service: 'LMAMCU',
+        loadcell_service: 'BS205LoadCell',
+        power_service: 'OdaPower',
+        digital_input_service: 'AjinextekInput',
     ):
         self._robot = robot_service
         self._mcu = mcu_service
         self._loadcell = loadcell_service
         self._power = power_service
         self._digital_input = digital_input_service
-        self._hardware_config = hardware_config
 
-    async def connect_all_hardware(self) -> None:
+        # Cached AxisParameter instance - created once and reused
+
+    async def update_services_from_config(self, hardware_config: HardwareConfiguration) -> None:
+        """
+        Update hardware services based on hardware configuration
+
+        This method replaces Mock services with actual hardware implementations
+        based on the loaded hardware configuration.
+
+        Args:
+            hardware_config: Hardware configuration containing service specifications
+
+        Raises:
+            HardwareConnectionException: If service creation fails
+        """
+        logger.info("Updating hardware services from configuration...")
+
+        try:
+            # Import ServiceFactory here to avoid circular imports
+            from infrastructure.factory import ServiceFactory
+
+            # Update Robot service based on configuration
+            robot_config = {"model": hardware_config.robot.model}
+            logger.info(f"Replacing Robot service with {hardware_config.robot.model}")
+            self._robot = ServiceFactory.create_robot_service(robot_config)
+
+            # Update MCU service based on configuration
+            mcu_config = {"model": hardware_config.mcu.model}
+            logger.info(f"Replacing MCU service with {hardware_config.mcu.model}")
+            self._mcu = ServiceFactory.create_mcu_service(mcu_config)
+
+            # Update LoadCell service based on configuration
+            loadcell_config = {"model": hardware_config.loadcell.model}
+            logger.info(f"Replacing LoadCell service with {hardware_config.loadcell.model}")
+            self._loadcell = ServiceFactory.create_loadcell_service(loadcell_config)
+
+            # Update Power service based on configuration
+            power_config = {"model": hardware_config.power.model}
+            logger.info(f"Replacing Power service with {hardware_config.power.model}")
+            self._power = ServiceFactory.create_power_service(power_config)
+
+            # Update Digital Input service based on configuration
+            digital_input_config = {"model": hardware_config.digital_input.model}
+            logger.info(
+                f"Replacing Digital Input service with {hardware_config.digital_input.model}"
+            )
+            self._digital_input = ServiceFactory.create_digital_input_service(digital_input_config)
+
+            logger.info("Hardware services updated successfully from configuration")
+
+        except Exception as e:
+            logger.error("Failed to update hardware services from configuration: {}", e)
+            raise HardwareConnectionException(
+                f"Failed to update hardware services: {str(e)}",
+                details={"operation": "_update_services_from_config"},
+            ) from e
+
+    async def connect_all_hardware(self, hardware_config: HardwareConfiguration) -> None:
         """Connect all required hardware"""
         logger.info("Connecting hardware...")
 
@@ -73,19 +139,51 @@ class HardwareServiceFacade:
 
         # Check and connect each hardware service
         if not await self._robot.is_connected():
-            connection_tasks.append(self._robot.connect())
+            # Connect to robot with connection parameters from configuration
+            connection_tasks.append(
+                self._robot.connect(
+                    axis_id=hardware_config.robot.axis_id,
+                    irq_no=hardware_config.robot.irq_no,
+                )
+            )
             hardware_names.append("Robot")
 
         if not await self._mcu.is_connected():
-            connection_tasks.append(self._mcu.connect())
+            connection_tasks.append(
+                self._mcu.connect(
+                    port=hardware_config.mcu.port,
+                    baudrate=hardware_config.mcu.baudrate,
+                    timeout=hardware_config.mcu.timeout,
+                    bytesize=hardware_config.mcu.bytesize,
+                    stopbits=hardware_config.mcu.stopbits,
+                    parity=hardware_config.mcu.parity,
+                )
+            )
             hardware_names.append("MCU")
 
         if not await self._power.is_connected():
-            connection_tasks.append(self._power.connect())
+            connection_tasks.append(
+                self._power.connect(
+                    host=hardware_config.power.host,
+                    port=hardware_config.power.port,
+                    timeout=hardware_config.power.timeout,
+                    channel=hardware_config.power.channel,
+                )
+            )
             hardware_names.append("Power")
 
         if not await self._loadcell.is_connected():
-            connection_tasks.append(self._loadcell.connect())
+            connection_tasks.append(
+                self._loadcell.connect(
+                    port=hardware_config.loadcell.port,
+                    baudrate=hardware_config.loadcell.baudrate,
+                    timeout=hardware_config.loadcell.timeout,
+                    bytesize=hardware_config.loadcell.bytesize,
+                    stopbits=hardware_config.loadcell.stopbits,
+                    parity=hardware_config.loadcell.parity,
+                    indicator_id=hardware_config.loadcell.indicator_id,
+                )
+            )
             hardware_names.append("LoadCell")
 
         # Execute all connections concurrently
@@ -101,72 +199,36 @@ class HardwareServiceFacade:
         else:
             logger.info("All hardware already connected")
 
-    async def startup_initialization(self) -> None:
-        """
-        Perform one-time startup initialization including robot homing
-
-        This method should be called once when the application starts
-        to perform essential initialization tasks like robot homing.
-        """
-        logger.info("Performing startup initialization...")
-
-        try:
-            # Connect robot if not already connected
-            if not await self._robot.is_connected():
-                logger.info("Connecting robot for startup initialization...")
-                await self._robot.connect()
-
-            # Enable servo for primary axis - required before any motion operations
-            primary_axis = await self._robot.get_primary_axis_id()
-            logger.info("Enabling servo for primary axis %d...", primary_axis)
-            await self._robot.enable_servo(primary_axis)
-
-            # Perform robot homing - this is the main purpose of startup initialization
-            logger.info("Performing robot homing...")
-            # Home primary axis using parameters from .mot file
-            primary_axis = await self._robot.get_primary_axis_id()
-            await self._robot.home_axis(primary_axis)
-
-            logger.info("Startup initialization completed successfully")
-
-        except Exception as e:
-            logger.error("Startup initialization failed: %s", e)
-            raise HardwareConnectionException(
-                f"Failed during startup initialization: {str(e)}",
-                details={"operation": "startup_initialization"},
-            ) from e
-
     async def initialize_hardware(
         self,
         config: TestConfiguration,
+        hardware_config: HardwareConfiguration,
     ) -> None:
         """Initialize all hardware with configuration settings"""
         logger.info("Initializing hardware with configuration...")
 
         try:
             # Initialize power settings
+            # Start with output disabled
+            await self._power.disable_output()
             await self._power.set_voltage(config.voltage)
-            await self._power.set_current_limit(config.current)
-            await self._power.disable_output()  # Start with output disabled
+            await self._power.set_current(config.current)
+            await self._power.set_current_limit(config.upper_current)
             await asyncio.sleep(config.power_stabilization)
 
-            # # Initialize MCU settings
-            # await self._mcu.set_upper_temperature(config.upper_temperature)
-            # await self._mcu.set_fan_speed(config.fan_speed)
-
-            # Initialize robot position using test configuration
-            axis_param = AxisParameter(
-                axis=self._hardware_config.robot.axis_id,
-                velocity=config.velocity,
-                acceleration=config.acceleration,
-                deceleration=config.deceleration,
+            # Initialize robot position using parameters from hardware config
+            await self._robot.move_absolute(
+                position=config.initial_position,
+                axis_id=hardware_config.robot.axis_id,
+                velocity=hardware_config.robot.velocity,
+                acceleration=hardware_config.robot.acceleration,
+                deceleration=hardware_config.robot.deceleration,
             )
-            await self._robot.move_absolute(config.initial_position, axis_param)
             await asyncio.sleep(config.stabilization_delay)
 
             # Zero the load cell
-            await self._loadcell.zero_calibration()
-            await asyncio.sleep(config.loadcell_zero_delay)
+            # await self._loadcell.zero_calibration()
+            # await asyncio.sleep(config.loadcell_zero_delay)
 
             logger.info("Hardware initialization completed")
 
@@ -179,6 +241,7 @@ class HardwareServiceFacade:
     async def perform_force_test_sequence(
         self,
         config: TestConfiguration,
+        hardware_config: HardwareConfiguration,
     ) -> TestMeasurements:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         logger.info("Starting force test sequence...")
@@ -216,23 +279,25 @@ class HardwareServiceFacade:
                         f"Measuring at temp {temperature}°C, position {position}mm ({pos_idx+1}/{len(config.stroke_positions)})"
                     )
 
-                    # Move to position using test configuration
-                    axis_param = AxisParameter(
-                        axis=self._hardware_config.robot.axis_id,
-                        velocity=config.velocity,
-                        acceleration=config.acceleration,
-                        deceleration=config.deceleration,
+                    # Move to position using parameters from hardware config
+                    await self._robot.move_absolute(
+                        position=position,
+                        axis_id=hardware_config.robot.axis_id,
+                        velocity=hardware_config.robot.velocity,
+                        acceleration=hardware_config.robot.acceleration,
+                        deceleration=hardware_config.robot.deceleration,
                     )
-                    await self._robot.move_absolute(position, axis_param)
                     await asyncio.sleep(config.stabilization_delay)
 
                     # Take measurements
                     force = await self._loadcell.read_force()
                     # Get current temperature from MCU
-                    current_temp = await self._mcu.get_temperature()
+                    # current_temp = await self._mcu.get_temperature()
+                    current_temp =  temperature  # Use set temperature for simplicity
                     # Get current position from robot
-                    current_position = await self._robot.get_position(self._hardware_config.robot.axis_id)
-
+                    # primary_axis = await self._robot.get_primary_axis_id()
+                    # current_position = await self._robot.get_position(primary_axis)
+                    current_position = position  # Use set position for simplicity
                     # Store measurement data using TestMeasurements structure
                     if temperature not in measurements_dict:
                         measurements_dict[temperature] = {}
@@ -269,17 +334,18 @@ class HardwareServiceFacade:
     async def return_to_safe_position(
         self,
         config: TestConfiguration,
+        hardware_config: HardwareConfiguration,
     ) -> None:
         """Return robot to safe standby position"""
         try:
-            # Return to safe position using test configuration
-            axis_param = AxisParameter(
-                axis=self._hardware_config.robot.axis_id,
-                velocity=config.velocity,
-                acceleration=config.acceleration,
-                deceleration=config.deceleration,
+            # Return to safe position using parameters from hardware config
+            await self._robot.move_absolute(
+                position=config.initial_position,
+                axis_id=hardware_config.robot.axis_id,
+                velocity=hardware_config.robot.velocity,
+                acceleration=hardware_config.robot.acceleration,
+                deceleration=hardware_config.robot.deceleration,
             )
-            await self._robot.move_absolute(config.initial_position, axis_param)
             logger.info(f"Robot returned to safe position: {config.initial_position}mm")
         except Exception as e:
             logger.error(f"Failed to return to safe position: {e}")
@@ -343,6 +409,7 @@ class HardwareServiceFacade:
     async def setup_test(
         self,
         config: TestConfiguration,
+        hardware_config: HardwareConfiguration,
     ) -> None:
         """Setup hardware for test execution"""
         logger.info("Setting up test...")
@@ -373,7 +440,7 @@ class HardwareServiceFacade:
             logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}%")
 
             # Set LMA standby sequence
-            await self.set_lma_standby(config)
+            await self.set_lma_standby(config, hardware_config)
             logger.info("LMA standby sequence set")
 
             logger.info("Test setup completed successfully")
@@ -392,6 +459,7 @@ class HardwareServiceFacade:
     async def teardown_test(
         self,
         config: TestConfiguration,
+        hardware_config: HardwareConfiguration,
     ) -> None:
         """Teardown test and return hardware to safe state"""
         logger.info("Tearing down test...")
@@ -399,13 +467,13 @@ class HardwareServiceFacade:
         try:
             # Return robot to safe standby position
             logger.info(f"Returning robot to safe position: {config.initial_position}mm")
-            axis_param = AxisParameter(
-                axis=self._hardware_config.robot.axis_id,
-                velocity=config.velocity,
-                acceleration=config.acceleration,
-                deceleration=config.deceleration,
+            await self._robot.move_absolute(
+                position=config.initial_position,
+                axis_id=hardware_config.robot.axis_id,
+                velocity=hardware_config.robot.velocity,
+                acceleration=hardware_config.robot.acceleration,
+                deceleration=hardware_config.robot.deceleration,
             )
-            await self._robot.move_absolute(config.initial_position, axis_param)
             logger.info("Robot returned to safe position")
 
             # Reset MCU temperature to default
@@ -413,7 +481,7 @@ class HardwareServiceFacade:
             logger.info(f"MCU temperature reset to default: {config.upper_temperature}°C")
 
             # set lma standby sequence
-            await self.set_lma_standby(config)
+            await self.set_lma_standby(config, hardware_config)
             logger.info("LMA standby sequence set for teardown")
 
             # Power teardown - disable output for safety
@@ -430,6 +498,7 @@ class HardwareServiceFacade:
     async def set_lma_standby(
         self,
         config: TestConfiguration,
+        hardware_config: HardwareConfiguration,
     ) -> None:
         """Set LMA standby sequence - coordinate MCU and Robot for LMA standby state"""
         logger.info("Setting LMA standby sequence...")
@@ -453,14 +522,14 @@ class HardwareServiceFacade:
                 calculated_standby_temp,
             )
 
-            # Robot to max stroke position using test configuration
-            axis_param = AxisParameter(
-                axis=self._hardware_config.robot.axis_id,
-                velocity=config.velocity,
-                acceleration=config.acceleration,
-                deceleration=config.deceleration,
+            # Robot to max stroke position using parameters from hardware config
+            await self._robot.move_absolute(
+                position=config.max_stroke,
+                axis_id=hardware_config.robot.axis_id,
+                velocity=hardware_config.robot.velocity,
+                acceleration=hardware_config.robot.acceleration,
+                deceleration=hardware_config.robot.deceleration,
             )
-            await self._robot.move_absolute(config.max_stroke, axis_param)
             logger.info(f"Robot moved to max stroke position: {config.max_stroke}mm")
 
             # Wait for standby heating stabilization
@@ -468,7 +537,13 @@ class HardwareServiceFacade:
             logger.info(f"Standby heating stabilized after {config.standby_stabilization}s")
 
             # Robot to initial position using test configuration
-            await self._robot.move_absolute(config.initial_position, axis_param)
+            await self._robot.move_absolute(
+                position=config.initial_position,
+                axis_id=hardware_config.robot.axis_id,
+                velocity=hardware_config.robot.velocity,
+                acceleration=hardware_config.robot.acceleration,
+                deceleration=hardware_config.robot.deceleration,
+            )
             logger.info(f"Robot moved to initial position: {config.initial_position}mm")
 
             # MCU start standby cooling

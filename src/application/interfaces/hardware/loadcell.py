@@ -5,7 +5,7 @@ Interface for load cell operations and force measurement.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from domain.value_objects.measurements import ForceValue
 
@@ -14,9 +14,27 @@ class LoadCellService(ABC):
     """Abstract interface for load cell operations"""
 
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str],
+        indicator_id: int
+    ) -> None:
         """
         Connect to load cell hardware
+
+        Args:
+            port: Serial port (e.g., "COM3")
+            baudrate: Baud rate (e.g., 9600)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
+            indicator_id: Indicator device ID
 
         Raises:
             HardwareConnectionError: If connection fails

@@ -85,6 +85,26 @@ class ConfigurationService:
                 file_path=f"{profile_name}.yaml",
             ) from e
 
+    async def load_hardware_config(self):
+        """
+        Load hardware configuration
+        
+        Returns:
+            HardwareConfiguration object containing the loaded hardware settings
+            
+        Raises:
+            RepositoryAccessError: If hardware configuration loading fails
+        """
+        try:
+            return await self._configuration.load_hardware_config()
+        except Exception as e:
+            logger.error(f"Failed to load hardware configuration: {e}")
+            raise RepositoryAccessError(
+                operation="load_hardware_config",
+                reason=str(e),
+                file_path="hardware.yaml",
+            ) from e
+
     async def list_available_profiles(self) -> List[str]:
         """
         Get list of available configuration profiles

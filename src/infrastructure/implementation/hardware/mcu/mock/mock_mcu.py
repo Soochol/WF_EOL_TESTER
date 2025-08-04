@@ -22,59 +22,76 @@ from domain.enums.mcu_enums import MCUStatus, TestMode
 class MockMCU(MCUService):
     """Mock MCU 서비스 (테스트용)"""
 
-    def __init__(
-        self,
-        config: Dict[str, Any],
-    ):
+    def __init__(self):
         """
         초기화
-
-        Args:
-            config: MCU 설정 딕셔너리
         """
-        # Connection defaults
-        self._port = config.get("port", "COM4")
-        self._baudrate = config.get("baudrate", 115200)
-        self._timeout = config.get("timeout", 2.0)
-
-        # Operational defaults
-        self._temperature = config.get("default_temperature", 25.0)
-        self._fan_speed = config.get("default_fan_speed", 50.0)
-
-        # Mock-specific defaults
-        self._temperature_drift_rate = config.get("temperature_drift_rate", 0.1)
-        self._response_delay = config.get("response_delay", 0.1)
-        self._connection_delay = config.get("connection_delay", 0.1)
-
-        # Limits
-        self._max_temperature = config.get("max_temperature", 150.0)
-        self._min_temperature = config.get("min_temperature", -40.0)
-        self._max_fan_speed = config.get("max_fan_speed", 100.0)
-
         # State initialization
-        # Config values are already stored directly above
-        self._initial_temperature = self._temperature
-
         self._is_connected = False
+        self._current_test_mode = TestMode.MODE_1
+        self._mcu_status = MCUStatus.IDLE
+
+        # Connection parameters (will be set during connect)
+        self._port = ""
+        self._baudrate = 0
+        self._timeout = 0.0
+        self._bytesize = 0
+        self._stopbits = 0
+        self._parity: Optional[str] = None
+
+        # Mock operational defaults
+        self._temperature = 25.0
+        self._fan_speed = 50.0
+        self._temperature_drift_rate = 0.1
+        self._response_delay = 0.1
+        self._connection_delay = 0.1
+        self._max_temperature = 150.0
+        self._min_temperature = -40.0
+        self._max_fan_speed = 100.0
+
+        # Initialize temperature values
+        self._initial_temperature = self._temperature
         self._current_temperature = self._initial_temperature
         self._target_temperature = self._initial_temperature
         self._upper_temperature_limit = self._max_temperature
-        self._current_test_mode = TestMode.MODE_1
-        self._current_fan_speed: float = self._fan_speed
-        self._mcu_status = MCUStatus.IDLE
+        self._current_fan_speed = self._fan_speed
 
         # Temperature simulation
         self._temperature_task: Optional[asyncio.Task[None]] = None
         self._heating_enabled = False
         self._cooling_enabled = False
 
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str]
+    ) -> None:
         """
         하드웨어 연결 (시뮬레이션)
+
+        Args:
+            port: Serial port (e.g., "COM4")
+            baudrate: Baud rate (e.g., 115200)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
 
         Raises:
             HardwareConnectionError: If connection fails
         """
+        # Store connection parameters
+        self._port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        self._bytesize = bytesize
+        self._stopbits = stopbits
+        self._parity = parity
+
         try:
             logger.info(f"Connecting to Mock MCU on {self._port} at {self._baudrate} baud")
 

@@ -55,27 +55,20 @@ from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes 
 class AjinextekInput(DigitalInputService):
     """Ajinextek DIO 카드 통합 서비스"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self):
         """
-        초기화
-
-        Args:
-            config: 설정 딕셔너리 (HardwareConfiguration의 digital_input 섹션)
+        초기화 (기본 Ajinextek 설정 사용)
         """
-        # Connection/Hardware defaults
-        self._board_number = config.get(
-            "board_number", config.get("board_no", DEFAULT_BOARD_NUMBER)
-        )
-        self._module_position = config.get("module_position", DEFAULT_MODULE_POSITION)
-        self._signal_type = config.get("signal_type", 2)  # 24V industrial
-        self._input_count = config.get("input_count", 8)
+        # Default connection/hardware parameters
+        self._board_number = DEFAULT_BOARD_NUMBER
+        self._module_position = DEFAULT_MODULE_POSITION
+        self._signal_type = 2  # 24V industrial
+        self._input_count = 8
 
-        # Operational defaults
-        self._debounce_time_ms = config.get(
-            "debounce_time_ms", int(config.get("debounce_time", 0.01) * 1000)
-        )
-        self._retry_count = config.get("retry_count", DEFAULT_RETRY_COUNT)
-        self._auto_initialize = config.get("auto_initialize", True)
+        # Default operational parameters
+        self._debounce_time_ms = 10  # 10ms default
+        self._retry_count = DEFAULT_RETRY_COUNT
+        self._auto_initialize = True
 
         # Validate parameters
         validate_board_number(self._board_number)

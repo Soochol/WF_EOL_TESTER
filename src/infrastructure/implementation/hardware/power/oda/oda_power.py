@@ -24,52 +24,45 @@ from driver.tcp.exceptions import TCPError
 class OdaPower(PowerService):
     """ODA 전원 공급 장치 통합 서비스"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self):
         """
         초기화
-
-        Args:
-            config: Power 연결 설정 딕셔너리
         """
-        # Connection defaults
-        self._host = config.get("host", "192.168.1.100")
-        self._port = config.get("port", 8080)
-        self._timeout = config.get("timeout", 5.0)
-        self._channel = config.get("channel", 1)
-
-        # Operational defaults
-        self._voltage = config.get("default_voltage", 0.0)
-        self._current_limit = config.get("default_current_limit", 5.0)
-
-        # Operational limits
-        self._max_voltage = config.get("max_voltage", 30.0)
-        self._max_current = config.get("max_current", 50.0)
-
-        # Communication settings
-        self._delimiter = config.get("delimiter", "\n")  # Default: LF terminator
-
         # State initialization
-        # Config values are already stored directly above
-
-        self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
         self._is_connected = False
         self._output_enabled = False
         self._device_identity: Optional[str] = None  # Store device identification response
 
-    async def connect(self) -> None:
+    async def connect(self, host: str, port: int, timeout: float, channel: int) -> None:
         """
         Connect to power supply hardware
+
+        Args:
+            host: IP address or hostname
+            port: TCP port number
+            timeout: Connection timeout in seconds
+            channel: Power channel number
 
         Raises:
             HardwareConnectionError: If connection fails
         """
 
         try:
+
+            # Store actual values being used
+            self._host = host
+            self._port = port
+            self._timeout = timeout
+            self._channel = channel
+
+            # Create TCP connection with config values
+            self._tcp_comm = TCPCommunication(host, port, timeout)
+
             logger.info(
                 "Connecting to ODA Power Supply at %s:%s (Channel: %s)",
-                self._host,
-                self._port,
-                self._channel,
+                host,
+                port,
+                channel,
             )
 
             await self._tcp_comm.connect()
@@ -141,12 +134,12 @@ class OdaPower(PowerService):
         """
         return self._is_connected and self._tcp_comm.is_connected
 
-    async def set_voltage(self, voltage: Optional[float] = None) -> None:
+    async def set_voltage(self, voltage: float) -> None:
         """
         Set output voltage
 
         Args:
-            voltage: Target voltage in volts (uses default if None)
+            voltage: Target voltage in volts
 
         Raises:
             HardwareConnectionError: If not connected
@@ -155,22 +148,11 @@ class OdaPower(PowerService):
         if not await self.is_connected():
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
-        # Apply default + override pattern
-        target_voltage = voltage if voltage is not None else self._voltage
-
-        # 값 범위 검증
-        if not 0 <= target_voltage <= self._max_voltage:
-            raise HardwareOperationError(
-                "oda_power",
-                "set_voltage",
-                f"Voltage must be 0-{self._max_voltage}V, got {target_voltage}V",
-            )
-
         try:
-            logger.info("Setting ODA voltage: %sV", target_voltage)
+            logger.info("Setting ODA voltage: %sV", voltage)
 
             # 전압 설정
-            voltage_response = await self._send_command(f"VOLT {target_voltage:.2f}")
+            voltage_response = await self._send_command(f"VOLT {voltage:.2f}")
 
             if voltage_response is None:
                 # For commands that don't return responses, None is expected success
@@ -228,24 +210,16 @@ class OdaPower(PowerService):
     async def set_current(self, current: float) -> None:
         """
         Set output current
-        
+
         Args:
             current: Current in amperes
-            
+
         Raises:
             HardwareConnectionError: If not connected
             HardwareOperationError: If current setting fails
         """
         if not await self.is_connected():
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
-
-        # 값 범위 검증
-        if not 0 <= current <= self._max_current:
-            raise HardwareOperationError(
-                "oda_power",
-                "set_current",
-                f"Current must be 0-{self._max_current}A, got {current}A",
-            )
 
         try:
             logger.info("Setting ODA current: %.2fA", current)
@@ -405,18 +379,9 @@ class OdaPower(PowerService):
 
         try:
             # 명령 전송 및 응답 수신 (SCPI 형식)
-            # Always add delimiter - TCP driver no longer adds terminators
-            if self._delimiter:
-                command_with_terminator = f"{command}{self._delimiter}"
-                logger.debug(
-                    "Adding configured delimiter: %s to command: %s",
-                    repr(self._delimiter),
-                    repr(command),
-                )
-            else:
-                # If no delimiter configured, use default LF for SCPI compatibility
-                command_with_terminator = f"{command}\n"
-                logger.debug("Adding default LF terminator to command: %s", repr(command))
+            # Always add LF terminator for SCPI compatibility
+            command_with_terminator = f"{command}\n"
+            logger.debug("Adding LF terminator to command: %s", repr(command))
 
             logger.info(f"Final command to send: {repr(command_with_terminator)}")
 
@@ -442,12 +407,12 @@ class OdaPower(PowerService):
             logger.error("ODA command '%s' failed: %s", command, e)
             raise TCPError(f"Communication failed: {e}") from e
 
-    async def set_current_limit(self, current: Optional[float] = None) -> None:
+    async def set_current_limit(self, current: float) -> None:
         """
         Set current limit
 
         Args:
-            current: Current limit in amperes (uses default if None)
+            current: Current limit in amperes
 
         Raises:
             HardwareConnectionError: If not connected
@@ -456,21 +421,10 @@ class OdaPower(PowerService):
         if not await self.is_connected():
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
-        # Apply default + override pattern
-        target_current = current if current is not None else self._current_limit
-
-        # 값 범위 검증
-        if not 0 <= target_current <= self._max_current:
-            raise HardwareOperationError(
-                "oda_power",
-                "set_current_limit",
-                f"Current must be 0-{self._max_current}A, got {target_current}A",
-            )
-
         try:
-            logger.info("Setting ODA current limit: %sA", target_current)
+            logger.info("Setting ODA current limit: %sA", current)
 
-            response = await self._send_command(f"CURR {target_current:.2f}")
+            response = await self._send_command(f"CURR {current:.2f}")
 
             if response is None:
                 # For commands that don't return responses, None is expected success
@@ -528,10 +482,10 @@ class OdaPower(PowerService):
     async def get_current_limit(self) -> float:
         """
         Get current limit setting
-        
+
         Returns:
             Current limit in amperes
-            
+
         Raises:
             HardwareConnectionError: If not connected
             HardwareOperationError: If current limit reading fails

@@ -24,51 +24,60 @@ from domain.value_objects.measurements import ForceValue
 class MockLoadCell(LoadCellService):
     """Mock 로드셀 서비스 (테스트용)"""
 
-    def __init__(
-        self,
-        config: Dict[str, Any],
-    ):
+    def __init__(self):
         """
         초기화
-
-        Args:
-            config: LoadCell 연결 설정 딕셔너리
         """
-        # Extract config values with defaults
-        self._port = config.get("port", "COM3")
-        self._baudrate = config.get("baudrate", 9600)
-        self._timeout = config.get("timeout", 1.0)
-        self._indicator_id = config.get("indicator_id", 1)
-        
-        # Mock-specific config values with defaults
-        self._base_force = config.get("base_force", 10.0)
-        self._noise_level = config.get("noise_level", 0.1)
-        self._connection_delay = config.get("connection_delay", 0.1)
-        self._max_force_range = config.get("max_force_range", 1000.0)
-        self._sampling_interval_ms = config.get("sampling_interval_ms", 100)
-        self._zero_tolerance = config.get("zero_tolerance", 0.01)
-
         # State initialization
-        # Config values are already stored directly above
-        
-        # Mock values can be provided in config or default to empty
-        self._mock_values = config.get("mock_values", [])
-
         self._is_connected = False
         self._zero_offset = 0.0
         self._value_index = 0
 
-        logger.info(
-            f"MockLoadCellAdapter initialized with base force: {self._base_force}N"
-        )
+        logger.info("MockLoadCell initialized")
 
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str],
+        indicator_id: int
+    ) -> None:
         """
         하드웨어 연결 (시뮬레이션)
+
+        Args:
+            port: Serial port (e.g., "COM3")
+            baudrate: Baud rate (e.g., 9600)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
+            indicator_id: Indicator device ID
 
         Raises:
             HardwareConnectionError: If connection fails
         """
+        # Store connection parameters
+        self._port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        self._bytesize = bytesize
+        self._stopbits = stopbits
+        self._parity = parity
+        self._indicator_id = indicator_id
+        
+        # Mock operational defaults
+        self._base_force = 10.0
+        self._noise_level = 0.1
+        self._connection_delay = 0.1
+        self._max_force_range = 1000.0
+        self._sampling_interval_ms = 100
+        self._zero_tolerance = 0.01
+        self._mock_values = []
+
         logger.info(
             f"Connecting to mock LoadCell on {self._port} at {self._baudrate} baud..."
         )

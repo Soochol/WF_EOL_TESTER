@@ -42,28 +42,21 @@ from infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
 class BS205LoadCell(LoadCellService):
     """BS205 로드셀 통합 서비스"""
 
-    def __init__(
-        self,
-        config: Dict[str, Any],
-    ):
+    def __init__(self):
         """
         초기화
-
-        Args:
-            config: LoadCell 연결 설정 딕셔너리
         """
-        # Extract config values with defaults
-        self._port = config.get("port", "COM3")
-        self._baudrate = config.get("baudrate", 9600)
-        self._timeout = config.get("timeout", 1.0)
-        self._bytesize = config.get("bytesize", 8)
-        self._stopbits = config.get("stopbits", 1)
-        self._parity = config.get("parity", None)
-        self._indicator_id = config.get("indicator_id", 1)
+
+        # Connection parameters (will be set during connect)
+        self._port = ""
+        self._baudrate = 0
+        self._timeout = 0.0
+        self._bytesize = 0
+        self._stopbits = 0
+        self._parity: Optional[str] = None
+        self._indicator_id = 0
 
         # State initialization
-        # Config values are already stored directly above
-
         self._connection: Optional[SerialConnection] = None
         self._is_connected = False
 
@@ -72,15 +65,43 @@ class BS205LoadCell(LoadCellService):
         self._min_command_interval = 0.2  # 200ms minimum between commands
         self._command_lock = asyncio.Lock()
 
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str],
+        indicator_id: int
+    ) -> None:
         """
         하드웨어 연결
+
+        Args:
+            port: Serial port (e.g., "COM3")
+            baudrate: Baud rate (e.g., 9600)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
+            indicator_id: Indicator device ID
 
         Raises:
             HardwareConnectionError: If connection fails
         """
 
         try:
+
+            # Store actual values being used
+            self._port = port
+            self._baudrate = baudrate
+            self._timeout = timeout
+            self._bytesize = bytesize
+            self._stopbits = stopbits
+            self._parity = parity
+            self._indicator_id = indicator_id
+
             # 사용 가능한 COM 포트 체크
             try:
                 import serial.tools.list_ports
@@ -91,17 +112,17 @@ class BS205LoadCell(LoadCellService):
                 logger.warning("Cannot check available ports - pyserial not fully installed")
 
             logger.info(
-                f"Connecting to BS205 LoadCell - Port: {self._port}, Baud: {self._baudrate}, Timeout: {self._timeout}, "
-                f"ByteSize: {self._bytesize}, StopBits: {self._stopbits}, Parity: {self._parity}, ID: {self._indicator_id}"
+                f"Connecting to BS205 LoadCell - Port: {port}, Baud: {baudrate}, Timeout: {timeout}, "
+                f"ByteSize: {bytesize}, StopBits: {stopbits}, Parity: {parity}, ID: {indicator_id}"
             )
 
             self._connection = await SerialManager.create_connection(
-                port=self._port,
-                baudrate=self._baudrate,
-                timeout=self._timeout,
-                bytesize=self._bytesize,
-                stopbits=self._stopbits,
-                parity=self._parity,
+                port=port,
+                baudrate=baudrate,
+                timeout=timeout,
+                bytesize=bytesize,
+                stopbits=stopbits,
+                parity=parity,
             )
 
             # Serial 연결 성공하면 바로 연결된 것으로 간주
@@ -225,42 +246,6 @@ class BS205LoadCell(LoadCellService):
                 error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
             ) from e
 
-    async def zero(self) -> bool:
-        """
-        영점 조정
-
-        Returns:
-            영점 조정 성공 여부
-
-        Raises:
-            BS205HardwareError: 연결되지 않은 경우
-            BS205OperationError: 영점 조정 실패
-        """
-        if not await self.is_connected():
-            raise BS205HardwareError(
-                "BS205 LoadCell is not connected",
-                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
-            )
-
-        try:
-            logger.info("Zeroing BS205 LoadCell")
-
-            # 영점 조정 명령 (바이너리 프로토콜) - 응답 없음
-            await self._send_bs205_command(CMD_ZERO)
-
-            # 영점 조정 완료 대기 (더 긴 시간)
-            await asyncio.sleep(ZERO_OPERATION_DELAY + 1.0)  # 3초 대기
-
-            # Zero 명령은 응답이 없으므로 성공으로 간주
-            logger.info(STATUS_MESSAGES["zeroed"])
-            return True
-
-        except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
-            logger.error(STATUS_MESSAGES["zero_failed"])
-            raise BS205OperationError(
-                f"Failed to zero BS205 LoadCell: {e}",
-                error_code=int(BS205ErrorCode.OPERATION_ZERO_FAILED),
-            ) from e
 
     async def hold(self) -> bool:
         """
@@ -336,7 +321,7 @@ class BS205LoadCell(LoadCellService):
 
     async def zero_calibration(self) -> None:
         """
-        영점 조정 (zero_calibration은 zero 메서드를 래핑)
+        영점 조정
 
         Raises:
             HardwareOperationError: If calibration fails
@@ -345,19 +330,31 @@ class BS205LoadCell(LoadCellService):
             HardwareOperationError,
         )
 
-        try:
-            success = await self.zero()
-            if not success:
-                raise HardwareOperationError(
-                    "bs205_loadcell",
-                    "zero_calibration",
-                    "Zero calibration failed",
-                )
-        except Exception as e:
+        if not await self.is_connected():
             raise HardwareOperationError(
                 "bs205_loadcell",
                 "zero_calibration",
-                f"Zero calibration failed: {e}",
+                "BS205 LoadCell is not connected"
+            )
+
+        try:
+            logger.info("Zeroing BS205 LoadCell")
+
+            # 영점 조정 명령 (바이너리 프로토콜) - 응답 없음
+            await self._send_bs205_command(CMD_ZERO)
+
+            # 영점 조정 완료 대기 (더 긴 시간)
+            await asyncio.sleep(ZERO_OPERATION_DELAY)
+
+            # Zero 명령은 응답이 없으므로 성공으로 간주
+            logger.info(STATUS_MESSAGES["zeroed"])
+
+        except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
+            logger.error(STATUS_MESSAGES["zero_failed"])
+            raise HardwareOperationError(
+                "bs205_loadcell",
+                "zero_calibration",
+                f"Failed to zero BS205 LoadCell: {e}",
             ) from e
 
     async def read_raw_value(self) -> float:

@@ -57,6 +57,7 @@ from domain.value_objects.dut_command_info import (
 from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
+from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.identifiers import (
     DUTId,
     MeasurementId,
@@ -114,21 +115,22 @@ class EOLForceTestUseCase:
         hardware_services: HardwareServiceFacade,
         configuration_service: ConfigurationService,
         configuration_validator: ConfigurationValidator,
+        test_result_evaluator: TestResultEvaluator,
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
-        test_result_evaluator: TestResultEvaluator,
     ):
         # Core service dependencies
         self._hardware_services = hardware_services
         self._configuration = configuration_service
         self._configuration_validator = configuration_validator
+        self._test_result_evaluator = test_result_evaluator
         self._repository = repository_service
         self._exception_handler = exception_handler
-        self._test_result_evaluator = test_result_evaluator
 
         # Configuration state
         self._profile_name: Optional[str] = None
         self._test_config: Optional[TestConfiguration] = None
+        self._hardware_config: Optional[HardwareConfiguration] = None
 
     async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
@@ -153,20 +155,24 @@ class EOLForceTestUseCase:
         """
         logger.info("Starting EOL test execution for DUT {}", command.dut_info.dut_id)
 
-        # Phase 1: Initialize test setup
-        await self._load_and_validate_configurations()
         test_entity = await self._initialize_test_entity(command)
 
         # Phase 2: Execute test with proper error handling
         start_time = asyncio.get_event_loop().time()
         measurements: Optional[TestMeasurements] = None
 
+        # Phase 1: Initialize test setup
+        await self._load_and_validate_configurations()
+
+        # Apply hardware configuration to services
+        await self._apply_hardware_configuration()
+
         try:
-            test_entity.start_test()
+            test_entity.prepare_test()
             self._validate_configurations_loaded()
 
-            # Begin test execution (transition from PREPARING to RUNNING)
-            test_entity.begin_execution()
+            # Start test execution (transition from PREPARING to RUNNING)
+            test_entity.start_execution()
 
             # Phase 3: Execute hardware test phases
             measurements = await self._execute_hardware_test_phases()
@@ -176,7 +182,11 @@ class EOLForceTestUseCase:
             await self._save_test_state(test_entity)
 
             execution_duration = self._calculate_execution_duration(start_time)
-            logger.info("EOL test execution completed: {}, result: {}", test_entity.test_id, "PASSED" if is_test_passed else "FAILED")
+            logger.info(
+                "EOL test execution completed: {}, result: {}",
+                test_entity.test_id,
+                "PASSED" if is_test_passed else "FAILED",
+            )
 
             return self._create_success_result(
                 test_entity,
@@ -187,11 +197,15 @@ class EOLForceTestUseCase:
 
         except Exception as e:
             # Phase 5: Handle test failure with proper error context
-            return await self._handle_test_failure(e, test_entity, command, measurements, start_time)
+            return await self._handle_test_failure(
+                e, test_entity, command, measurements, start_time
+            )
 
         finally:
             # Phase 6: Cleanup hardware resources (always executed)
-            await self._cleanup_hardware_resources(test_entity if "test_entity" in locals() else None)
+            await self._cleanup_hardware_resources(
+                test_entity if "test_entity" in locals() else None
+            )
 
     async def _load_and_validate_configurations(
         self,
@@ -212,8 +226,12 @@ class EOLForceTestUseCase:
         # Load profile name
         self._profile_name = await self._configuration.get_active_profile_name()
 
-        # Load configuration
+        # Load test configuration
         self._test_config = await self._configuration.load_configuration(self._profile_name)
+
+        # Load hardware configuration
+        self._hardware_config = await self._configuration.load_hardware_config()
+        logger.info("Hardware configuration loaded successfully")
 
         # Validate configuration
         try:
@@ -326,7 +344,33 @@ class EOLForceTestUseCase:
         if self._test_config is None:
             raise TestExecutionException(TestExecutionConstants.TEST_CONFIG_REQUIRED_ERROR)
 
-        # Hardware config validation removed - now handled in main.py
+        if self._hardware_config is None:
+            raise TestExecutionException(TestExecutionConstants.HARDWARE_CONFIG_REQUIRED_ERROR)
+
+    async def _apply_hardware_configuration(self) -> None:
+        """
+        Apply hardware configuration by replacing Mock services with actual hardware implementations
+
+        This method uses the loaded hardware configuration to replace the default Mock services
+        with actual hardware implementations based on the configuration specifications.
+
+        Raises:
+            TestExecutionException: If hardware configuration is not loaded or service replacement fails
+        """
+        if self._hardware_config is None:
+            raise TestExecutionException("Hardware configuration must be loaded before applying")
+
+        try:
+            logger.info("Replacing Mock services with actual hardware implementations...")
+
+            # Replace Mock services with actual hardware services based on configuration
+            await self._hardware_services.update_services_from_config(self._hardware_config)
+
+            logger.info("Hardware services successfully updated with actual implementations")
+
+        except Exception as e:
+            logger.error("Failed to apply hardware configuration: {}", e)
+            raise TestExecutionException(f"Failed to apply hardware configuration: {str(e)}") from e
 
     async def _execute_hardware_test_phases(
         self,
@@ -340,31 +384,31 @@ class EOLForceTestUseCase:
         Raises:
             TestExecutionException: If hardware test execution fails
         """
+        # Validate configurations are loaded (guaranteed by _validate_configurations_loaded())
+        assert self._hardware_config is not None
+        assert self._test_config is not None
+
         logger.info("Starting hardware test phase execution")
 
         try:
-            # Ensure test configuration is validated and not None
-            if self._test_config is None:
-                raise TestExecutionException(
-                    "Test configuration must be loaded before hardware test execution"
-                )
-
             # Connect all hardware
             logger.info("Starting hardware connection initialization...")
-            await self._hardware_services.connect_all_hardware()
+            await self._hardware_services.connect_all_hardware(self._hardware_config)
             logger.info("Hardware connections initialized successfully")
 
             # Initialize hardware with configuration
             logger.info("Configuring hardware with test parameters...")
-            await self._hardware_services.initialize_hardware(self._test_config)
+            await self._hardware_services.initialize_hardware(
+                self._test_config, self._hardware_config
+            )
             logger.info("Hardware configuration completed")
 
             # Setup test environment
-            await self._hardware_services.setup_test(self._test_config)
+            await self._hardware_services.setup_test(self._test_config, self._hardware_config)
 
             # Execute test measurements
             measurements = await self._hardware_services.perform_force_test_sequence(
-                self._test_config
+                self._test_config, self._hardware_config
             )
             logger.info(
                 f"Hardware test phases completed, {len(measurements)} measurements collected"
@@ -378,7 +422,9 @@ class EOLForceTestUseCase:
                 f"Hardware test execution failed: {str(hardware_error)}"
             ) from hardware_error
 
-    async def _evaluate_test_results(self, test_entity: EOLTest, measurements: TestMeasurements) -> bool:
+    async def _evaluate_test_results(
+        self, test_entity: EOLTest, measurements: TestMeasurements
+    ) -> bool:
         """
         Evaluate test results and determine pass/fail status
 
@@ -394,11 +440,11 @@ class EOLForceTestUseCase:
         """
         logger.info("Starting test result evaluation and analysis")
 
-        try:
-            # Ensure test configuration is loaded (should be guaranteed by validation)
-            if self._test_config is None:
-                raise TestExecutionException("Test configuration must be loaded before evaluation")
+        # Validate configurations are loaded
+        if self._test_config is None:
+            raise TestExecutionException("Test configuration must be loaded before evaluation")
 
+        try:
             # Convert measurements to dict format and get pass criteria from config
             measurements_dict = measurements.to_legacy_dict()
             pass_criteria = self._test_config.pass_criteria
@@ -492,7 +538,9 @@ class EOLForceTestUseCase:
         """
         try:
             await self._repository.save_test_result(test_entity)
-            logger.debug("Test entity state saved successfully for test ID: {}", test_entity.test_id)
+            logger.debug(
+                "Test entity state saved successfully for test ID: {}", test_entity.test_id
+            )
         except Exception as save_error:
             # Repository save failures should not fail the test
             logger.warning("Failed to save test state: {}", save_error)
@@ -600,8 +648,10 @@ class EOLForceTestUseCase:
         """
         try:
             # Only perform teardown if test configuration is available
-            if self._test_config:
-                await self._hardware_services.teardown_test(self._test_config)
+            if self._test_config and self._hardware_config:
+                await self._hardware_services.teardown_test(
+                    self._test_config, self._hardware_config
+                )
             await self._hardware_services.shutdown_hardware()
             logger.debug("Hardware resources cleaned up successfully")
         except Exception as cleanup_error:

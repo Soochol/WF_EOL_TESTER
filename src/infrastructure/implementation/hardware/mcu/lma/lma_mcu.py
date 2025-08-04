@@ -65,36 +65,27 @@ from infrastructure.implementation.hardware.mcu.lma.error_codes import (
 class LMAMCU(MCUService):
     """LMA MCU 통합 서비스"""
 
-    def __init__(
-        self,
-        config: Dict[str, Any],
-    ):
+    def __init__(self):
         """
-        초기화
-
-        Args:
-            config: MCU 설정 딕셔너리
+        초기화 (기본 LMA 설정 사용)
         """
-        # Connection defaults
-        self._port = config.get("port", "COM4")
-        self._baudrate = config.get("baudrate", 115200)
-        self._timeout = config.get("timeout", 2.0)
-        self._bytesize = config.get("bytesize", 8)
-        self._stopbits = config.get("stopbits", 1)
-        self._parity = config.get("parity", None)
 
-        # Operational defaults
-        self._temperature = config.get("default_temperature", 25.0)
-        self._fan_speed = config.get("default_fan_speed", 50.0)
+        # Connection parameters (will be set during connect)
+        self._port = ""
+        self._baudrate = 0
+        self._timeout = 0.0
+        self._bytesize = 0
+        self._stopbits = 0
+        self._parity: Optional[str] = None
 
-        # Limits
-        self._max_temperature = config.get("max_temperature", 150.0)
-        self._min_temperature = config.get("min_temperature", -40.0)
-        self._max_fan_speed = config.get("max_fan_speed", 100.0)
+        # Default operational parameters
+        self._temperature = 25.0
+        self._fan_speed = 50.0
+        self._max_temperature = 150.0
+        self._min_temperature = -40.0
+        self._max_fan_speed = 100.0
 
         # State initialization
-        # Config values are already stored directly above
-
         self._connection: Optional[SerialConnection] = None
         self._is_connected = False
         self._current_temperature: float = self._temperature
@@ -103,24 +94,50 @@ class LMAMCU(MCUService):
         self._current_fan_speed: float = self._fan_speed
         self._mcu_status: MCUStatus = MCUStatus.IDLE
 
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str]
+    ) -> None:
         """
         하드웨어 연결
+
+        Args:
+            port: Serial port (e.g., "COM4")
+            baudrate: Baud rate (e.g., 115200)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
 
         Raises:
             HardwareConnectionError: If connection fails
         """
 
         try:
-            logger.info("Connecting to LMA MCU at %s (baudrate: %s)", self._port, self._baudrate)
+
+            # Store actual values being used
+            self._port = port
+            self._baudrate = baudrate
+            self._timeout = timeout
+            self._bytesize = bytesize
+            self._stopbits = stopbits
+            self._parity = parity
+
+
+            logger.info("Connecting to LMA MCU at %s (baudrate: %s)", port, baudrate)
 
             self._connection = await SerialManager.create_connection(
-                port=self._port,
-                baudrate=self._baudrate,
-                timeout=self._timeout,
-                bytesize=self._bytesize,
-                stopbits=self._stopbits,
-                parity=self._parity,
+                port=port,
+                baudrate=baudrate,
+                timeout=timeout,
+                bytesize=bytesize,
+                stopbits=stopbits,
+                parity=parity,
             )
 
             # Wait for boot complete message with timeout protection
@@ -318,7 +335,7 @@ class LMAMCU(MCUService):
             # Add timeout protection to boot complete wait
             await asyncio.wait_for(
                 self._wait_for_boot_complete(),
-                timeout=BOOT_COMPLETE_TIMEOUT + 1.0,  # Add extra buffer time
+                timeout=BOOT_COMPLETE_TIMEOUT,  # Add extra buffer time
             )
         except asyncio.TimeoutError as e:
             logger.error("MCU boot complete wait timed out")

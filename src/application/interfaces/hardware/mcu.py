@@ -14,9 +14,25 @@ class MCUService(ABC):
     """Abstract interface for MCU operations"""
 
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str]
+    ) -> None:
         """
         Connect to MCU hardware
+
+        Args:
+            port: Serial port (e.g., "COM4")
+            baudrate: Baud rate (e.g., 115200)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
 
         Raises:
             HardwareConnectionError: If connection fails

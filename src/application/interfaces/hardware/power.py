@@ -12,9 +12,21 @@ class PowerService(ABC):
     """Abstract interface for power supply operations"""
 
     @abstractmethod
-    async def connect(self) -> None:
+    async def connect(
+        self,
+        host: str,
+        port: int,
+        timeout: float,
+        channel: int
+    ) -> None:
         """
         Connect to power supply hardware
+
+        Args:
+            host: IP address or hostname
+            port: TCP port number
+            timeout: Connection timeout in seconds
+            channel: Power channel number
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -42,12 +54,12 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
-    async def set_voltage(self, voltage: Optional[float] = None) -> None:
+    async def set_voltage(self, voltage: float) -> None:
         """
         Set output voltage
 
         Args:
-            voltage: Target voltage in volts (uses default if None)
+            voltage: Target voltage in volts
 
         Raises:
             HardwareOperationError: If voltage setting fails
@@ -65,12 +77,12 @@ class PowerService(ABC):
         ...
 
     @abstractmethod
-    async def set_current_limit(self, current: Optional[float] = None) -> None:
+    async def set_current_limit(self, current: float) -> None:
         """
         Set current limit
 
         Args:
-            current: Current limit in amperes (uses default if None)
+            current: Current limit in amperes
 
         Raises:
             HardwareOperationError: If current limit setting fails

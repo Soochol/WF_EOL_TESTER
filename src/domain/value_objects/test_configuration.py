@@ -22,9 +22,10 @@ class TestConfiguration:
     Two configurations with same values are considered identical.
     """
 
-    # Hardware power settings
+    # Power settings
     voltage: float = 18.0
     current: float = 20.0
+    upper_current: float = 30.0
 
     # MCU settings
     upper_temperature: float = 80.0
@@ -36,7 +37,6 @@ class TestConfiguration:
     velocity: float = 100.0
     acceleration: float = 100.0
     deceleration: float = 100.0
-
 
     # Positioning settings
     initial_position: float = 10.0
