@@ -5,7 +5,7 @@ Interface for robot control and motion operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from domain.enums.robot_enums import MotionStatus
 
@@ -15,8 +15,8 @@ class RobotService(ABC):
 
     @abstractmethod
     async def connect(
-        self, 
-        axis_id: int, 
+        self,
+        axis_id: int,
         irq_no: int
     ) -> None:
         """
@@ -52,29 +52,6 @@ class RobotService(ABC):
         ...
 
 
-    @abstractmethod
-    async def move_to_position(
-        self,
-        position: float,
-        axis_id: int,
-        velocity: float,
-        acceleration: float,
-        deceleration: float,
-    ) -> None:
-        """
-        Move axis to absolute position
-
-        Args:
-            position: Target position in mm
-            axis_id: Axis ID number
-            velocity: Motion velocity
-            acceleration: Motion acceleration
-            deceleration: Motion deceleration
-
-        Raises:
-            HardwareOperationError: If movement fails
-        """
-        ...
 
     @abstractmethod
     async def move_relative(
@@ -179,51 +156,7 @@ class RobotService(ABC):
         """
         ...
 
-    @abstractmethod
-    async def set_velocity(self, axis: int, velocity: float) -> None:
-        """
-        Set default velocity for axis
 
-        Args:
-            axis: Axis number
-            velocity: Velocity in mm/s
-
-        Raises:
-            HardwareOperationError: If velocity setting fails
-        """
-        ...
-
-    @abstractmethod
-    async def get_velocity(self, axis: int) -> float:
-        """
-        Get current velocity setting for axis
-
-        Args:
-            axis: Axis number
-
-        Returns:
-            Current velocity in mm/s
-        """
-        ...
-
-    @abstractmethod
-    async def wait_for_completion(
-        self,
-        axis: int,
-        timeout: Optional[float] = None,
-    ) -> None:
-        """
-        Wait for motion to complete on specific axis
-
-        Args:
-            axis: Specific axis to wait for (required for thread safety)
-            timeout: Maximum wait time in seconds
-
-        Raises:
-            HardwareOperationError: If wait operation fails
-            TimeoutError: If motion doesn't complete within timeout
-        """
-        ...
 
     @abstractmethod
     async def get_motion_status(self) -> MotionStatus:
@@ -277,15 +210,6 @@ class RobotService(ABC):
         """
         ...
 
-    @abstractmethod
-    async def get_primary_axis_id(self) -> int:
-        """
-        Get the primary axis ID that should be controlled
-
-        Returns:
-            Primary axis ID from hardware configuration
-        """
-        ...
 
     @abstractmethod
     async def home_axis(self, axis: int) -> None:

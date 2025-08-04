@@ -5,7 +5,7 @@ Facade pattern implementation to group and simplify hardware service interaction
 """
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 from loguru import logger
 
@@ -26,19 +26,8 @@ from application.interfaces.hardware.robot import (
     RobotService,
 )
 
-# Type checking imports for better IDE support
-if TYPE_CHECKING:
-    from infrastructure.implementation.hardware.digital_input.ajinextek.ajinextek_input import (
-        AjinextekInput,
-    )
-    from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
-        BS205LoadCell,
-    )
-    from infrastructure.implementation.hardware.mcu.lma.lma_mcu import LMAMCU
-    from infrastructure.implementation.hardware.power.oda.oda_power import OdaPower
-    from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import (
-        AjinextekRobot,
-    )
+# Type checking imports removed as they are no longer needed
+# The constructor now uses interface types instead of concrete types
 from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
@@ -61,11 +50,11 @@ class HardwareServiceFacade:
 
     def __init__(
         self,
-        robot_service: 'AjinextekRobot',
-        mcu_service: 'LMAMCU',
-        loadcell_service: 'BS205LoadCell',
-        power_service: 'OdaPower',
-        digital_input_service: 'AjinextekInput',
+        robot_service: RobotService,
+        mcu_service: MCUService,
+        loadcell_service: LoadCellService,
+        power_service: PowerService,
+        digital_input_service: DigitalInputService,
     ):
         self._robot = robot_service
         self._mcu = mcu_service
@@ -293,7 +282,7 @@ class HardwareServiceFacade:
                     force = await self._loadcell.read_force()
                     # Get current temperature from MCU
                     # current_temp = await self._mcu.get_temperature()
-                    current_temp =  temperature  # Use set temperature for simplicity
+                    current_temp = temperature  # Use set temperature for simplicity
                     # Get current position from robot
                     # primary_axis = await self._robot.get_primary_axis_id()
                     # current_position = await self._robot.get_position(primary_axis)
@@ -351,7 +340,9 @@ class HardwareServiceFacade:
             logger.error(f"Failed to return to safe position: {e}")
             raise
 
-    async def shutdown_hardware(self) -> None:
+    async def shutdown_hardware(
+        self, hardware_config: Optional[HardwareConfiguration] = None
+    ) -> None:
         """Safely shutdown all hardware"""
         logger.info("Shutting down hardware...")
 
@@ -362,13 +353,13 @@ class HardwareServiceFacade:
             await self._power.disable_output()
 
             # Disable servo for primary axis for safety before disconnection
-            if await self._robot.is_connected():
+            if await self._robot.is_connected() and hardware_config is not None:
                 try:
-                    primary_axis = await self._robot.get_primary_axis_id()
                     logger.info(
-                        "Disabling servo for primary axis %d for safe shutdown...", primary_axis
+                        "Disabling servo for primary axis %d for safe shutdown...",
+                        hardware_config.robot.axis_id,
                     )
-                    await self._robot.disable_servo(primary_axis)
+                    await self._robot.disable_servo(hardware_config.robot.axis_id)
                     logger.info("Primary axis servo disabled")
                 except Exception as servo_error:
                     logger.error("Failed to disable servo during shutdown: %s", servo_error)
