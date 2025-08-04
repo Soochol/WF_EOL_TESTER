@@ -23,6 +23,7 @@ from rich.console import Console
 
 from infrastructure.factory import ServiceFactory
 
+from .config_reader import CLIConfigReader
 from .slash_command_handler import SlashCommandHandler
 
 
@@ -213,37 +214,30 @@ async def create_slash_executor_from_config(
     Returns:
         Configured SlashCommandExecutor instance
     """
-    # For demo purposes, create mock hardware services
-    # In a real application, you would load from configuration
-
     console = Console()
 
-    # Create mock hardware services using the factory
-    mock_config = {
-        "model": "mock",
-        "port": "COM_MOCK",
-        "baudrate": 115200,
-        "timeout": 2.0,
-        "default_temperature": 25.0,
-        "default_fan_speed": 50.0,
-        "response_delay": 0.1,
-        "connection_delay": 0.2,
-    }
-
-    # Create hardware services using factory instance
+    # Create configuration reader
+    config_reader = CLIConfigReader(config_path)
+    
+    # Create hardware services based on CLI configuration mode
+    hardware_config = {"model": "mock"} if config_reader.is_mock_mode() else None
+    logger.info(f"Creating hardware services in {'mock' if config_reader.is_mock_mode() else 'real'} mode")
+    
+    # Create hardware services using factory with correct configuration
     factory = ServiceFactory()
-    robot_service = factory.create_robot_service(mock_config)
-    mcu_service = factory.create_mcu_service(mock_config)
-    loadcell_service = factory.create_loadcell_service(mock_config)
-    power_service = factory.create_power_service(mock_config)
-
-    # Create slash command handler
+    robot_service = factory.create_robot_service(hardware_config)
+    mcu_service = factory.create_mcu_service(hardware_config)
+    loadcell_service = factory.create_loadcell_service(hardware_config)
+    power_service = factory.create_power_service(hardware_config)
+    
+    # Create slash command handler with configuration
     slash_handler = SlashCommandHandler(
         robot_service=robot_service,
         mcu_service=mcu_service,
         loadcell_service=loadcell_service,
         power_service=power_service,
         console=console,
+        config_reader=config_reader,
     )
 
     return SlashCommandExecutor(slash_handler)

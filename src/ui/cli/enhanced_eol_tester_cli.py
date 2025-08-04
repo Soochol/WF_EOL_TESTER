@@ -38,6 +38,7 @@ from domain.value_objects.eol_test_result import (
 
 # Local imports - UI modules
 from .dashboard_integration import create_dashboard_integrator
+from .config_reader import CLIConfigReader
 from .enhanced_cli_integration import (
     create_enhanced_cli_integrator,
     create_enhanced_menu_system,
@@ -47,6 +48,9 @@ from .hardware_controller import HardwareControlManager
 from .rich_formatter import RichFormatter
 from .slash_command_handler import SlashCommandHandler
 from .usecase_manager import UseCaseManager
+
+# Import ServiceFactory for creating CLI hardware services
+from infrastructure.factory import ServiceFactory
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
@@ -325,13 +329,27 @@ class EnhancedEOLTesterCLI:
             self._hardware_manager: Optional[Any] = HardwareControlManager(
                 self._hardware_facade, self._console
             )
-            # Initialize slash command handler
+            # Initialize configuration reader for CLI commands
+            self._config_reader = CLIConfigReader()
+            
+            # Create hardware services for CLI based on configuration mode
+            cli_hardware_config = {"model": "mock"} if self._config_reader.is_mock_mode() else None
+            logger.info(f"Creating CLI hardware services in {'mock' if self._config_reader.is_mock_mode() else 'real'} mode")
+            
+            # Create individual hardware services for SlashCommandHandler
+            cli_robot_service = ServiceFactory.create_robot_service(cli_hardware_config)
+            cli_mcu_service = ServiceFactory.create_mcu_service(cli_hardware_config)
+            cli_loadcell_service = ServiceFactory.create_loadcell_service(cli_hardware_config)
+            cli_power_service = ServiceFactory.create_power_service(cli_hardware_config)
+            
+            # Initialize slash command handler with CLI-specific hardware services
             self._slash_handler: Optional[Any] = SlashCommandHandler(
-                robot_service=self._hardware_facade._robot,
-                mcu_service=self._hardware_facade._mcu,
-                loadcell_service=self._hardware_facade._loadcell,
-                power_service=self._hardware_facade._power,
+                robot_service=cli_robot_service,
+                mcu_service=cli_mcu_service,
+                loadcell_service=cli_loadcell_service,
+                power_service=cli_power_service,
                 console=self._console,
+                config_reader=self._config_reader,
             )
             # Initialize enhanced slash command interface
             self._enhanced_slash_interface: Optional[Any] = create_enhanced_slash_interface(

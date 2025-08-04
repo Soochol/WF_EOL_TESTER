@@ -18,7 +18,7 @@ import asyncio
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 from rich.console import Console
@@ -31,6 +31,7 @@ from application.interfaces.hardware.mcu import MCUService, TestMode
 from application.interfaces.hardware.power import PowerService
 from application.interfaces.hardware.robot import RobotService
 
+from .config_reader import CLIConfigReader
 from .rich_formatter import RichFormatter
 from .rich_utils import RichUIManager
 
@@ -226,9 +227,11 @@ class HardwareCommandHandler:
 class RobotCommandHandler(HardwareCommandHandler):
     """Command handler for robot hardware operations"""
 
-    def __init__(self, robot_service: RobotService, formatter: RichFormatter):
+    def __init__(self, robot_service: RobotService, formatter: RichFormatter, config_reader: Optional[CLIConfigReader] = None):
         super().__init__(formatter)
         self.robot_service = robot_service
+        self.config_reader = config_reader
+        self._connection_params = self._get_connection_params()
 
     async def handle_command(self, command_info: CommandInfo) -> bool:
         """Handle robot commands"""
@@ -257,11 +260,25 @@ class RobotCommandHandler(HardwareCommandHandler):
             logger.error(f"Robot command error: {e}")
             return False
 
+    def _get_connection_params(self) -> Dict[str, Any]:
+        """Get connection parameters from configuration"""
+        if self.config_reader:
+            try:
+                return self.config_reader.get_connection_params("robot")
+            except Exception as e:
+                logger.warning(f"Failed to load robot config, using defaults: {e}")
+        
+        # Fallback to hardcoded defaults
+        return {"axis_id": 0, "irq_no": 7}
+    
     async def _connect(self) -> bool:
         """Connect to robot"""
         try:
             with self.formatter.create_progress_display("Connecting to robot...") as status:
-                await self.robot_service.connect()
+                await self.robot_service.connect(
+                    axis_id=self._connection_params.get("axis_id", 0),
+                    irq_no=self._connection_params.get("irq_no", 7)
+                )
                 if isinstance(status, Status):
                     status.update("Robot connected successfully")
 
@@ -342,7 +359,9 @@ class RobotCommandHandler(HardwareCommandHandler):
             primary_axis = await self.robot_service.get_primary_axis_id()
             await self.robot_service.emergency_stop(primary_axis)
             self.formatter.print_message(
-                f"Emergency stop executed for axis {primary_axis}", message_type="warning", title="Emergency Stop"
+                f"Emergency stop executed for axis {primary_axis}",
+                message_type="warning",
+                title="Emergency Stop",
             )
             return True
 
@@ -364,9 +383,11 @@ class RobotCommandHandler(HardwareCommandHandler):
 class MCUCommandHandler(HardwareCommandHandler):
     """Command handler for MCU hardware operations"""
 
-    def __init__(self, mcu_service: MCUService, formatter: RichFormatter):
+    def __init__(self, mcu_service: MCUService, formatter: RichFormatter, config_reader: Optional[CLIConfigReader] = None):
         super().__init__(formatter)
         self.mcu_service = mcu_service
+        self.config_reader = config_reader
+        self._connection_params = self._get_connection_params()
 
     async def handle_command(self, command_info: CommandInfo) -> bool:
         """Handle MCU commands"""
@@ -405,11 +426,36 @@ class MCUCommandHandler(HardwareCommandHandler):
             logger.error(f"MCU command error: {e}")
             return False
 
+    def _get_connection_params(self) -> Dict[str, Any]:
+        """Get connection parameters from configuration"""
+        if self.config_reader:
+            try:
+                return self.config_reader.get_connection_params("mcu")
+            except Exception as e:
+                logger.warning(f"Failed to load MCU config, using defaults: {e}")
+        
+        # Fallback to hardcoded defaults
+        return {
+            "port": "/dev/ttyUSB1",
+            "baudrate": 115200,
+            "timeout": 2.0,
+            "bytesize": 8,
+            "stopbits": 1,
+            "parity": None
+        }
+    
     async def _connect(self) -> bool:
         """Connect to MCU"""
         try:
             with self.formatter.create_progress_display("Connecting to MCU...") as status:
-                await self.mcu_service.connect()
+                await self.mcu_service.connect(
+                    port=self._connection_params.get("port", "/dev/ttyUSB1"),
+                    baudrate=self._connection_params.get("baudrate", 115200),
+                    timeout=self._connection_params.get("timeout", 2.0),
+                    bytesize=self._connection_params.get("bytesize", 8),
+                    stopbits=self._connection_params.get("stopbits", 1),
+                    parity=self._connection_params.get("parity"),
+                )
                 if isinstance(status, Status):
                     status.update("MCU connected successfully")
 
@@ -551,9 +597,11 @@ class MCUCommandHandler(HardwareCommandHandler):
 class LoadCellCommandHandler(HardwareCommandHandler):
     """Command handler for LoadCell hardware operations"""
 
-    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter):
+    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter, config_reader: Optional[CLIConfigReader] = None):
         super().__init__(formatter)
         self.loadcell_service = loadcell_service
+        self.config_reader = config_reader
+        self._connection_params = self._get_connection_params()
         self._monitoring = False
 
     async def handle_command(self, command_info: CommandInfo) -> bool:
@@ -587,11 +635,38 @@ class LoadCellCommandHandler(HardwareCommandHandler):
             logger.error(f"LoadCell command error: {e}")
             return False
 
+    def _get_connection_params(self) -> Dict[str, Any]:
+        """Get connection parameters from configuration"""
+        if self.config_reader:
+            try:
+                return self.config_reader.get_connection_params("loadcell")
+            except Exception as e:
+                logger.warning(f"Failed to load LoadCell config, using defaults: {e}")
+        
+        # Fallback to hardcoded defaults
+        return {
+            "port": "/dev/ttyUSB0",
+            "baudrate": 9600,
+            "timeout": 1.0,
+            "bytesize": 8,
+            "stopbits": 1,
+            "parity": None,
+            "indicator_id": 1
+        }
+    
     async def _connect(self) -> bool:
         """Connect to LoadCell"""
         try:
             with self.formatter.create_progress_display("Connecting to LoadCell...") as status:
-                await self.loadcell_service.connect()
+                await self.loadcell_service.connect(
+                    port=self._connection_params.get("port", "/dev/ttyUSB0"),
+                    baudrate=self._connection_params.get("baudrate", 9600),
+                    timeout=self._connection_params.get("timeout", 1.0),
+                    bytesize=self._connection_params.get("bytesize", 8),
+                    stopbits=self._connection_params.get("stopbits", 1),
+                    parity=self._connection_params.get("parity"),
+                    indicator_id=self._connection_params.get("indicator_id", 1),
+                )
                 if isinstance(status, Status):
                     status.update("LoadCell connected successfully")
 
@@ -702,7 +777,15 @@ class LoadCellCommandHandler(HardwareCommandHandler):
                             f"Force: {force:.3f} N", message_type="info", title="Live Force Reading"
                         )
                         live.update(force_panel)
-                        await asyncio.sleep(0.5)
+                        # Get refresh rate from configuration
+                        refresh_rate = 0.5  # default
+                        if self.config_reader:
+                            try:
+                                defaults = self.config_reader.get_command_defaults("loadcell")
+                                refresh_rate = defaults.get("monitor_refresh_rate", 0.5)
+                            except Exception:
+                                pass
+                        await asyncio.sleep(refresh_rate)
 
                 except KeyboardInterrupt:
                     self._monitoring = False
@@ -728,9 +811,11 @@ class LoadCellCommandHandler(HardwareCommandHandler):
 class PowerCommandHandler(HardwareCommandHandler):
     """Command handler for Power hardware operations"""
 
-    def __init__(self, power_service: PowerService, formatter: RichFormatter):
+    def __init__(self, power_service: PowerService, formatter: RichFormatter, config_reader: Optional[CLIConfigReader] = None):
         super().__init__(formatter)
         self.power_service = power_service
+        self.config_reader = config_reader
+        self._connection_params = self._get_connection_params()
 
     async def handle_command(self, command_info: CommandInfo) -> bool:
         """Handle Power commands"""
@@ -769,11 +854,32 @@ class PowerCommandHandler(HardwareCommandHandler):
             logger.error(f"Power command error: {e}")
             return False
 
+    def _get_connection_params(self) -> Dict[str, Any]:
+        """Get connection parameters from configuration"""
+        if self.config_reader:
+            try:
+                return self.config_reader.get_connection_params("power")
+            except Exception as e:
+                logger.warning(f"Failed to load Power config, using defaults: {e}")
+        
+        # Fallback to hardcoded defaults
+        return {
+            "host": "192.168.1.100",
+            "port": 5025,
+            "timeout": 5.0,
+            "channel": 1
+        }
+    
     async def _connect(self) -> bool:
         """Connect to Power supply"""
         try:
             with self.formatter.create_progress_display("Connecting to Power supply...") as status:
-                await self.power_service.connect()
+                await self.power_service.connect(
+                    host=self._connection_params.get("host", "192.168.1.100"),
+                    port=self._connection_params.get("port", 5025),
+                    timeout=self._connection_params.get("timeout", 5.0),
+                    channel=self._connection_params.get("channel", 1)
+                )
                 if isinstance(status, Status):
                     status.update("Power supply connected successfully")
 
@@ -946,20 +1052,22 @@ class SlashCommandHandler:
         loadcell_service: LoadCellService,
         power_service: PowerService,
         console: Optional[Console] = None,
+        config_reader: Optional[CLIConfigReader] = None,
     ):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
         self.parser = CommandParser()
+        self.config_reader = config_reader or CLIConfigReader()
 
-        # Initialize hardware command handlers
+        # Initialize hardware command handlers with configuration
         self.handlers = {
-            CommandType.ROBOT: RobotCommandHandler(robot_service, self.formatter),
-            CommandType.MCU: MCUCommandHandler(mcu_service, self.formatter),
-            CommandType.LOADCELL: LoadCellCommandHandler(loadcell_service, self.formatter),
-            CommandType.POWER: PowerCommandHandler(power_service, self.formatter),
+            CommandType.ROBOT: RobotCommandHandler(robot_service, self.formatter, self.config_reader),
+            CommandType.MCU: MCUCommandHandler(mcu_service, self.formatter, self.config_reader),
+            CommandType.LOADCELL: LoadCellCommandHandler(loadcell_service, self.formatter, self.config_reader),
+            CommandType.POWER: PowerCommandHandler(power_service, self.formatter, self.config_reader),
         }
 
-        logger.info("Slash command handler initialized with all hardware services")
+        logger.info("Slash command handler initialized with all hardware services and configuration")
 
     async def execute_command(self, input_text: str) -> bool:
         """Execute a slash command

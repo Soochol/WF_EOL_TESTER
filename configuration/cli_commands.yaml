@@ -1,0 +1,73 @@
+cli_config:
+  # Global CLI settings
+  hardware_mode: "mock"  # "mock" or "real" - controls whether to use mock or real hardware
+  
+  # Command-specific configuration for CLI slash commands
+  commands:
+    robot:
+      connection:
+        axis_id: 0
+        irq_no: 7
+      defaults:
+        velocity: 200.0
+        acceleration: 1000.0
+        deceleration: 1000.0
+      
+    mcu:
+      connection:
+        port: "/dev/ttyUSB1"
+        baudrate: 115200
+        timeout: 2.0
+        bytesize: 8
+        stopbits: 1
+        parity: null
+      defaults:
+        temperature_range: [20.0, 100.0]
+        fan_speed_range: [0, 100]
+      
+    loadcell:
+      connection:
+        port: "/dev/ttyUSB0"
+        baudrate: 9600
+        timeout: 1.0
+        bytesize: 8
+        stopbits: 1
+        parity: "even"
+        indicator_id: 1
+      defaults:
+        force_range: [-1000.0, 1000.0]  # Newton
+        calibration_timeout: 10.0
+        monitor_refresh_rate: 0.5  # seconds
+      
+    power:
+      connection:
+        host: "192.168.1.100"
+        port: 5025
+        timeout: 5.0
+        channel: 1
+      defaults:
+        voltage_range: [0.0, 30.0]  # Volts
+        current_limit_range: [0.0, 5.0]  # Amperes
+        output_enabled: false
+  
+  # Global CLI preferences and behavior settings
+  preferences:
+    auto_connect: false
+    show_progress: true
+    verbose_errors: true
+    confirmation_required: true
+    retry_attempts: 3
+    command_timeout: 30.0  # seconds
+    
+  # Display and formatting preferences  
+  display:
+    refresh_rate: 2.0  # seconds for monitoring displays
+    decimal_precision: 3
+    show_timestamps: true
+    color_theme: "default"
+    
+metadata:
+  description: "CLI command configuration for EOL Tester slash commands"
+  version: "1.0"
+  created_by: "CLI Configuration System"
+  created_time: "2025-08-04"
