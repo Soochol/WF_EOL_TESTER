@@ -24,6 +24,7 @@ from src.application.services.test_result_evaluator import TestResultEvaluator
 
 # Local application imports - Use Cases
 from src.application.use_cases.eol_force_test import EOLForceTestUseCase
+from src.domain.value_objects.hardware_model import HardwareModel
 
 # Local infrastructure imports
 from src.infrastructure.factory import ServiceFactory
@@ -45,7 +46,6 @@ DEFAULT_LOG_ROTATION_SIZE = "10 MB"
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"
 LOGS_DIRECTORY_NAME = "logs"
 EOL_TESTER_LOG_FILENAME = "eol_tester.log"
-HARDWARE_CONFIG_FILENAME = "hardware.yaml"
 
 
 async def main() -> None:
@@ -61,25 +61,26 @@ async def main() -> None:
         # Create test result repository
         test_result_repository = await create_repositories()
 
+        # Load hardware model
+        hardware_model = await yaml_configuration.load_hardware_model()
+
         # Create services
         hardware_services = None
         try:
-            hardware_services = await create_hardware_services()
+            hardware_services = await create_hardware_services(hardware_model)
 
-            business_services = await create_business_services(
+            (
+                configuration_service,
+                test_result_service,
+                exception_handler,
+                configuration_validator,
+                test_result_evaluator,
+            ) = await create_business_services(
                 yaml_configuration, profile_preference, test_result_repository
             )
         except Exception as e:
             logger.error(f"Failed to create services: {e}")
             sys.exit(1)
-
-        (
-            configuration_service,
-            test_result_service,
-            exception_handler,
-            configuration_validator,
-            test_result_evaluator,
-        ) = business_services
 
         # Create EOL force test use case
         eol_force_test_use_case = EOLForceTestUseCase(
@@ -170,23 +171,26 @@ async def create_repositories() -> JsonResultRepository:
     return test_result_repository
 
 
-async def create_hardware_services() -> HardwareServiceFacade:
-    """Create hardware services with default real hardware implementations.
+async def create_hardware_services(hardware_model: HardwareModel) -> HardwareServiceFacade:
+    """Create hardware services based on hardware model specifications.
 
-    All hardware services are created with their default real hardware
-    implementations (AJINEXTEK, LMA, BS205, ODA). These will be used
-    when hardware configuration is loaded in the UseCase.
+    Args:
+        hardware_model: Hardware model specifications (which hardware types to use)
 
     Returns:
-        HardwareServiceFacade instance with all real hardware services.
+        HardwareServiceFacade instance with configured hardware services.
     """
-    # All services are created with default real hardware implementations
-    # They will be used when hardware configuration is loaded in the UseCase
-    robot_service = ServiceFactory.create_robot_service()
-    mcu_service = ServiceFactory.create_mcu_service()
-    loadcell_service = ServiceFactory.create_loadcell_service()
-    power_service = ServiceFactory.create_power_service()
-    digital_input_service = ServiceFactory.create_digital_input_service()
+    # Convert hardware model to dictionary for ServiceFactory
+    hw_model_dict = hardware_model.to_dict()
+
+    # Create services directly using model dictionary
+    robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
+    mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
+    loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
+    power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
+    digital_input_service = ServiceFactory.create_digital_input_service(
+        {"model": hw_model_dict["digital_io"]}
+    )
 
     return HardwareServiceFacade(
         robot_service=robot_service,

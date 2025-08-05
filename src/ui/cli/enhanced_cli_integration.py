@@ -16,12 +16,12 @@ Key Features:
 
 import asyncio
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 from rich.console import Console
 
-from .enhanced_input_manager import create_enhanced_input_manager
+# from .enhanced_input_manager import create_enhanced_input_manager  # Removed
 from .rich_formatter import RichFormatter
 
 
@@ -53,10 +53,11 @@ class EnhancedInputIntegrator:
         self.console = console
         self.formatter = formatter
         self.configuration_service = configuration_service
-        default_model = get_default_model_from_profile()
-        self.input_manager = create_enhanced_input_manager(
-            console, formatter, default_model, configuration_service
-        )
+        # default_model = get_default_model_from_profile()  # Not needed anymore
+        # self.input_manager = create_enhanced_input_manager(
+        #     console, formatter, default_model, configuration_service
+        # )
+        self.input_manager = None  # Enhanced input functionality removed
 
         # Menu option mappings for auto-completion
         self.menu_options = {
@@ -64,11 +65,7 @@ class EnhancedInputIntegrator:
                 "1": "Execute EOL Test",
                 "2": "Execute UseCase (Advanced)",
                 "3": "Hardware Control Center",
-                "4": "Real-time Monitoring Dashboard",
-                "5": "Check Hardware Status",
-                "6": "View Test Statistics",
-                "7": "Slash Command Mode",
-                "8": "Exit",
+                "4": "Exit",
             },
             "hardware_menu": {
                 "1": "Robot Control",
@@ -103,24 +100,44 @@ class EnhancedInputIntegrator:
         # Create completions from menu options
         choices = list(options.keys())
 
-        # Use the enhanced input manager's built-in completion system
-        choice = await self.input_manager.get_input(
-            prompt_text=prompt_text,
-            input_type="general",
-            placeholder=f"Choose from: {', '.join(choices)}",
-            show_completions=True,
-            enable_history=True,
-        )
-
-        return choice
+        # Simple input replacement (enhanced input functionality removed)
+        self.console.print(f"[dim]Choose from: {', '.join(choices)}[/dim]")
+        choice = input(prompt_text).strip()
+        return choice if choice else None
 
     async def get_dut_information(self) -> Optional[Dict[str, str]]:
-        """Get DUT information using enhanced input system"""
-        return await self.input_manager.get_dut_info_interactive()
+        """Get DUT information using simple input (enhanced functionality removed)"""
+        self.console.print("[bold cyan]DUT Information Collection[/bold cyan]")
+        
+        # Load default values from configuration if available
+        defaults = {}
+        if self.configuration_service:
+            try:
+                defaults = await self.configuration_service.load_dut_defaults()
+                self.console.print(f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]")
+            except Exception as e:
+                self.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
+
+        dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
+        if not dut_id:
+            dut_id = defaults.get('dut_id', '')
+            if not dut_id:
+                return None
+
+        model = input(f"Model [{defaults.get('model', '')}]: ").strip()
+        if not model:
+            model = defaults.get('model', 'Unknown')
+
+        operator = input(f"Operator [{defaults.get('operator_id', '')}]: ").strip()
+        if not operator:
+            operator = defaults.get('operator_id', 'Unknown')
+
+        return {"id": dut_id, "model": model, "operator": operator}
 
     async def get_slash_command(self) -> Optional[str]:
-        """Get slash command using enhanced input system"""
-        return await self.input_manager.get_slash_command_interactive()
+        """Get slash command using simple input (enhanced functionality removed)"""
+        command = input("Slash Command → ").strip()
+        return command if command else None
 
     async def get_validated_input(
         self,
@@ -141,16 +158,10 @@ class EnhancedInputIntegrator:
             Validated input string or None
         """
         while True:
-            result = await self.input_manager.get_input(
-                prompt_text=prompt,
-                input_type=input_type,
-                placeholder=placeholder,
-                show_completions=input_type in ["dut_id", "model", "operator"],
-                validator_type=input_type,
-            )
+            if placeholder:
+                self.console.print(f"[dim]{placeholder}[/dim]")
 
-            if result is None:  # User cancelled
-                return None
+            result = input(prompt).strip()
 
             if not result and required:
                 self.formatter.print_message(
@@ -161,18 +172,17 @@ class EnhancedInputIntegrator:
             return result if result else None
 
     async def get_confirmation(self, message: str, default: bool = False) -> bool:
-        """Get confirmation with enhanced UI"""
-        return await self.input_manager.get_confirmation(message, default)
+        """Get confirmation with simple input (enhanced functionality removed)"""
+        default_text = "[Y/n]" if default else "[y/N]"
+        response = input(f"{message} {default_text}: ").strip().lower()
+
+        if not response:
+            return default
+        return response in ["y", "yes"]
 
     async def wait_for_acknowledgment(self, message: str = "Press Enter to continue...") -> None:
-        """Wait for user acknowledgment with enhanced input"""
-        await self.input_manager.get_input(
-            prompt_text="",
-            input_type="general",
-            placeholder=message,
-            show_completions=False,
-            enable_history=False,
-        )
+        """Wait for user acknowledgment with simple input (enhanced functionality removed)"""
+        input(message)
 
     def show_input_help(self) -> None:
         """Show help information about enhanced input features"""
@@ -214,12 +224,12 @@ class EnhancedInputIntegrator:
         self.console.print(help_panel)
 
     def get_history_statistics(self) -> Dict[str, Any]:
-        """Get command history statistics"""
-        return self.input_manager.get_history_stats()
+        """Get command history statistics (enhanced functionality removed)"""
+        return {"total_commands": 0, "unique_commands": 0, "most_used": [], "recent_commands": []}
 
     def clear_command_history(self) -> bool:
-        """Clear command history"""
-        return self.input_manager.clear_history()
+        """Clear command history (enhanced functionality removed)"""
+        return True  # Always return success since no history to clear
 
 
 class EnhancedMenuSystem:
@@ -244,18 +254,10 @@ class EnhancedMenuSystem:
         menu_text.append("3.", style="bold cyan")
         menu_text.append(" Hardware Control Center\n")
         menu_text.append("4.", style="bold cyan")
-        menu_text.append(" Real-time Monitoring Dashboard\n")
-        menu_text.append("5.", style="bold cyan")
-        menu_text.append(" Check Hardware Status\n")
-        menu_text.append("6.", style="bold cyan")
-        menu_text.append(" View Test Statistics\n")
-        menu_text.append("7.", style="bold cyan")
-        menu_text.append(" Slash Command Mode\n")
-        menu_text.append("8.", style="bold cyan")
         menu_text.append(" Exit\n")
         menu_text.append("help", style="bold cyan")
         menu_text.append(" Show input help\n\n")
-        menu_text.append("Please select an option (1-8) or type 'help':")
+        menu_text.append("Please select an option (1-4) or type 'help':")
 
         # Create panel with properly styled content
         self.console.print("\n")
@@ -374,143 +376,6 @@ class EnhancedMenuSystem:
                     )
 
 
-class EnhancedSlashCommandInterface:
-    """Enhanced slash command interface with full prompt_toolkit features"""
-
-    def __init__(self, integrator: EnhancedInputIntegrator, slash_handler: Any):
-        self.integrator = integrator
-        self.slash_handler = slash_handler
-        self.formatter = integrator.formatter
-        self.console = integrator.console
-
-    async def run_enhanced_slash_mode(self) -> None:
-        """Run enhanced slash command mode with full features"""
-        self.formatter.print_header(
-            "Enhanced Slash Command Mode",
-            "Professional hardware control with auto-completion and history",
-        )
-
-        # Show enhanced introduction
-        intro_content = """Welcome to Enhanced Slash Command Mode!
-
-[bold cyan]Enhanced Features:[/bold cyan]
-• [green]Auto-completion[/green] - Press Tab for command suggestions
-• [green]Command history[/green] - Use Up/Down arrows to browse history
-• [green]Syntax highlighting[/green] - Commands are visually highlighted
-• [green]Real-time validation[/green] - Instant feedback on command syntax
-• [green]Smart suggestions[/green] - Context-aware parameter completion
-
-[bold cyan]Available Commands:[/bold cyan]
-• [cyan]/robot[/cyan] connect, disconnect, status, init, stop
-• [cyan]/mcu[/cyan] connect, disconnect, status, temp [value], testmode, fan [speed]
-• [cyan]/loadcell[/cyan] connect, disconnect, status, read, zero, monitor
-• [cyan]/power[/cyan] connect, disconnect, status, on, off, voltage [value], current [value]
-• [cyan]/all[/cyan] status - Show all hardware status
-• [cyan]/help[/cyan] [command] - Show help information
-
-[bold]Type commands and press Enter. Use 'exit' to return to main menu.[/bold]
-[dim]Tip: Press Ctrl+L to clear screen, Ctrl+R to search history[/dim]"""
-
-        intro_panel = self.formatter.create_message_panel(
-            intro_content, message_type="info", title="🚀 Getting Started"
-        )
-        self.console.print(intro_panel)
-        self.console.print("")
-
-        command_count = 0
-
-        while True:
-            try:
-                # Get enhanced command input
-                command_input = await self.integrator.get_slash_command()
-
-                if command_input is None:
-                    # User cancelled (Ctrl+C or Ctrl+D)
-                    self.formatter.print_message(
-                        "Exiting Enhanced Slash Command Mode", message_type="info"
-                    )
-                    break
-
-                # Check for exit commands
-                if command_input.lower() in ["exit", "quit", "back"]:
-                    self.formatter.print_message(
-                        "Exiting Enhanced Slash Command Mode", message_type="info"
-                    )
-                    break
-
-                # Skip empty input
-                if not command_input:
-                    continue
-
-                command_count += 1
-
-                # Show command feedback
-                self.console.print(
-                    f"[dim]Executing command #{command_count}: {command_input}[/dim]"
-                )
-
-                # Execute the command
-                if self.slash_handler.is_slash_command(command_input):
-                    success = await self.slash_handler.execute_command(command_input)
-
-                    if success:
-                        self.console.print(
-                            "[dim green]✓ Command completed successfully[/dim green]"
-                        )
-                    else:
-                        self.console.print("[dim red]✗ Command failed or had errors[/dim red]")
-
-                    self.console.print("")  # Add spacing
-                else:
-                    # Provide helpful guidance for non-slash commands
-                    self.formatter.print_message(
-                        f"Commands must start with '/'. Did you mean '/{command_input}'?",
-                        message_type="warning",
-                    )
-
-                    # Show suggestions
-                    suggestions = self._get_command_suggestions(command_input)
-                    if suggestions:
-                        suggestion_text = "Suggestions: " + ", ".join(suggestions)
-                        self.formatter.print_message(suggestion_text, message_type="info")
-
-            except KeyboardInterrupt:
-                self.formatter.print_message(
-                    "\nExiting Enhanced Slash Command Mode", message_type="info"
-                )
-                break
-            except Exception as e:
-                self.formatter.print_message(
-                    f"Command processing error: {str(e)}", message_type="error"
-                )
-                logger.error(f"Enhanced slash command error: {e}")
-
-        # Show session summary
-        if command_count > 0:
-            self.formatter.print_message(
-                f"Session completed. {command_count} commands executed.",
-                message_type="info",
-                title="Session Summary",
-            )
-
-    def _get_command_suggestions(self, input_text: str) -> List[str]:
-        """Get command suggestions for invalid input"""
-        commands = ["/robot", "/mcu", "/loadcell", "/power", "/all", "/help"]
-
-        # Simple fuzzy matching
-        suggestions = []
-        input_lower = input_text.lower()
-
-        for cmd in commands:
-            cmd_name = cmd[1:]  # Remove /
-            if (
-                input_lower in cmd_name
-                or cmd_name.startswith(input_lower)
-                or any(input_lower in part for part in cmd_name.split("_"))
-            ):
-                suggestions.append(cmd)
-
-        return suggestions[:3]  # Return top 3 suggestions
 
 
 # Integration factory functions
@@ -526,11 +391,6 @@ def create_enhanced_menu_system(integrator: EnhancedInputIntegrator) -> Enhanced
     return EnhancedMenuSystem(integrator)
 
 
-def create_enhanced_slash_interface(
-    integrator: EnhancedInputIntegrator, slash_handler: Any
-) -> EnhancedSlashCommandInterface:
-    """Factory function to create enhanced slash command interface"""
-    return EnhancedSlashCommandInterface(integrator, slash_handler)
 
 
 # Example usage and testing

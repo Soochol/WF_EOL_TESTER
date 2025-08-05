@@ -1,9 +1,9 @@
 """
-Mock Input Hardware Module
+Mock DIO Hardware Module
 
-This module contains the mock input hardware implementation for testing and development.
+This module contains the mock DIO hardware implementation for testing and development.
 """
 
-from .mock_input import MockInput
+from .mock_dio import MockDIO
 
-__all__ = ["MockInput"]
+__all__ = ["MockDIO"]

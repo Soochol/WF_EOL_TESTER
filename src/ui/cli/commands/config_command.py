@@ -104,21 +104,29 @@ class ConfigCommand(Command):
 
                 config_text = "Hardware Configuration:\\n"
                 config_text += "=" * 50 + "\\n"
-                config_text += f"├── Robot: {hw_config.robot.model}\\n"
+                config_text += "├── Robot Hardware\\n"
                 config_text += f"│   └── IRQ No: {hw_config.robot.irq_no}\\n"
-                config_text += f"├── LoadCell: {hw_config.loadcell.model}\\n"
+                config_text += "├── LoadCell Hardware\\n"
                 config_text += f"│   ├── Port: {hw_config.loadcell.port}\\n"
                 config_text += f"│   └── Baudrate: {hw_config.loadcell.baudrate}\\n"
-                config_text += f"├── MCU: {hw_config.mcu.model}\\n"
+                config_text += "├── MCU Hardware\\n"
                 config_text += f"│   ├── Port: {hw_config.mcu.port}\\n"
                 config_text += f"│   └── Baudrate: {hw_config.mcu.baudrate}\\n"
-                config_text += f"├── Power: {hw_config.power.model}\\n"
+                config_text += "├── Power Hardware\\n"
                 config_text += f"│   ├── Host: {hw_config.power.host}\\n"
                 config_text += f"│   ├── Port: {hw_config.power.port}\\n"
                 config_text += f"│   └── Channel: {hw_config.power.channel}\\n"
-                config_text += f"└── Digital Input: {hw_config.digital_input.model}\\n"
-                config_text += f"    ├── Board: {hw_config.digital_input.board_no}\\n"
-                config_text += f"    └── Inputs: {hw_config.digital_input.input_count}\\n"
+                config_text += "└── Digital I/O Hardware\\n"
+                config_text += (
+                    f"    ├── Start Left: {hw_config.digital_io.operator_start_button_left}\\n"
+                )
+                config_text += (
+                    f"    ├── Start Right: {hw_config.digital_io.operator_start_button_right}\\n"
+                )
+                config_text += f"    ├── Red Lamp: {hw_config.digital_io.tower_lamp_red}\\n"
+                config_text += f"    ├── Yellow Lamp: {hw_config.digital_io.tower_lamp_yellow}\\n"
+                config_text += f"    ├── Green Lamp: {hw_config.digital_io.tower_lamp_green}\\n"
+                config_text += f"    └── Beep: {hw_config.digital_io.beep}\\n"
 
                 return CommandResult.success(config_text)
 

@@ -5,21 +5,11 @@ Interface for digital input operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import List
 
 
 class DigitalInputService(ABC):
     """Abstract interface for digital input operations"""
-
-    @abstractmethod
-    async def initialize(self, config: Dict[str, Any]) -> None:
-        """
-        Initialize the digital input service
-
-        Args:
-            config: Configuration dictionary containing initialization parameters
-        """
-        ...
 
     @abstractmethod
     async def read_input(self, channel: int) -> bool:

@@ -20,9 +20,11 @@ from application.interfaces.hardware.power import PowerService
 from application.interfaces.hardware.robot import RobotService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.enums.mcu_enums import TestMode
+from domain.value_objects.hardware_configuration import HardwareConfiguration
 
+from .config_reader import CLIConfigReader
 from .rich_formatter import RichFormatter
-from .rich_utils import RichUIManager
+# from .rich_utils import RichUIManager  # Removed
 
 
 class HardwareController(ABC):
@@ -59,6 +61,7 @@ class RobotController(HardwareController):
         super().__init__(formatter)
         self.robot_service = robot_service
         self.name = "Robot Control System"
+        self.config_reader = CLIConfigReader()
 
     async def show_status(self) -> None:
         """Display robot status"""
@@ -93,12 +96,17 @@ class RobotController(HardwareController):
     async def connect(self) -> bool:
         """Connect to robot"""
         try:
+            # Get connection parameters from configuration
+            connection_params = self.config_reader.get_connection_params("robot")
+            axis_id = connection_params.get("axis_id", 0)
+            irq_no = connection_params.get("irq_no", 7)
+
             with self.formatter.create_progress_display(
                 "Connecting to robot...", show_spinner=True
             ) as progress_display:
                 # Ensure minimum display time for spinner visibility
                 await asyncio.sleep(0.5)  # Show spinner for at least 500ms
-                await self.robot_service.connect()
+                await self.robot_service.connect(axis_id=axis_id, irq_no=irq_no)
                 # Handle different types returned by create_progress_display
                 if isinstance(progress_display, Status):
                     progress_display.update("Robot connected successfully")
@@ -132,19 +140,19 @@ class RobotController(HardwareController):
 
     async def show_control_menu(self) -> Optional[str]:
         """Show enhanced Robot control menu with status information"""
-        
+
         # Get current status information
         try:
             is_connected = await self.robot_service.is_connected()
             connection_status = "🟢 Connected" if is_connected else "🔴 Disconnected"
-            
+
             if is_connected:
                 try:
                     # Get robot status information
                     status = await self.robot_service.get_status()
                     is_initialized = status.get("initialized", False)
                     current_position = status.get("position", "Unknown")
-                    
+
                     init_status = "🟢 Ready" if is_initialized else "🔴 Not Initialized"
                     position_info = f"📍 {current_position}"
                 except Exception:
@@ -153,7 +161,7 @@ class RobotController(HardwareController):
             else:
                 init_status = "🔴 Not Initialized"
                 position_info = "📍 Unknown"
-                
+
         except Exception:
             connection_status = "❓ Unknown"
             init_status = "❓ Unknown"
@@ -165,7 +173,7 @@ class RobotController(HardwareController):
             "2": "🔌 Connect",
             "3": "❌ Disconnect",
             "4": f"⚙️ Initialize Robot    [Status: {init_status}]",
-            "5": f"🚨 Emergency Stop      ⚠️  [Safety Critical]",
+            "5": "🚨 Emergency Stop      ⚠️  [Safety Critical]",
             "b": "⬅️  Back to Hardware Menu",
             # Shortcuts
             "s": "📊 Show Status (shortcut)",
@@ -182,19 +190,20 @@ class RobotController(HardwareController):
             f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, init=initialize, stop=emergency[/dim]"
         )
 
-        ui_manager = RichUIManager(self.formatter.console)
-        return ui_manager.create_interactive_menu(
-            menu_options, 
-            title=enhanced_title, 
-            prompt="Select Robot operation (number or shortcut)"
-        )
+        # Simple menu replacement (RichUIManager removed)
+        self.formatter.print_header(enhanced_title)
+        
+        for key, value in menu_options.items():
+            self.formatter.console.print(f"[cyan]{key}[/cyan]. {value}")
+            
+        return input("Select Robot operation (number or shortcut): ").strip()
 
     async def execute_command(self, command: str) -> bool:
         """Execute robot command with support for shortcuts"""
         try:
             # Normalize command input
             cmd = command.strip().lower()
-            
+
             if cmd == "1" or cmd == "s":
                 await self.show_status()
             elif cmd == "2" or cmd == "c":
@@ -222,9 +231,10 @@ class RobotController(HardwareController):
                 if isinstance(progress_display, Status):
                     progress_display.update("Initializing robot...")
                 await asyncio.sleep(0.5)  # Show spinner for visibility
-                # Home primary axis using parameters from .mot file
-                primary_axis = await self.robot_service.get_primary_axis_id()
-                await self.robot_service.home_axis(primary_axis)
+                # Home primary axis using axis_id from configuration
+                connection_params = self.config_reader.get_connection_params("robot")
+                axis_id = connection_params.get("axis_id", 0)
+                await self.robot_service.home_axis(axis_id)
                 if isinstance(progress_display, Status):
                     progress_display.update("Robot initialization complete")
                     await asyncio.sleep(0.3)  # Show success message briefly
@@ -239,11 +249,14 @@ class RobotController(HardwareController):
     async def _emergency_stop(self) -> None:
         """Execute emergency stop"""
         try:
-            # Get primary axis and stop it
-            primary_axis = await self.robot_service.get_primary_axis_id()
-            await self.robot_service.emergency_stop(primary_axis)
+            # Get axis_id from configuration and stop it
+            connection_params = self.config_reader.get_connection_params("robot")
+            axis_id = connection_params.get("axis_id", 0)
+            await self.robot_service.emergency_stop(axis_id)
             self.formatter.print_message(
-                f"Emergency stop executed for axis {primary_axis}", message_type="warning", title="Emergency Stop"
+                f"Emergency stop executed for axis {axis_id}",
+                message_type="warning",
+                title="Emergency Stop",
             )
 
         except Exception as e:
@@ -291,11 +304,22 @@ class MCUController(HardwareController):
     async def connect(self) -> bool:
         """Connect to MCU"""
         try:
+            # Get MCU configuration
+            hw_config = HardwareConfiguration()
+            mcu_config = hw_config.mcu
+
             with self.formatter.create_progress_display(
                 "Connecting to MCU...", show_spinner=True
             ) as progress_display:
                 await asyncio.sleep(0.5)  # Show spinner for visibility
-                await self.mcu_service.connect()
+                await self.mcu_service.connect(
+                    port=mcu_config.port,
+                    baudrate=mcu_config.baudrate,
+                    timeout=mcu_config.timeout,
+                    bytesize=mcu_config.bytesize,
+                    stopbits=mcu_config.stopbits,
+                    parity=mcu_config.parity,
+                )
                 if isinstance(progress_display, Status):
                     progress_display.update("MCU connected successfully")
                     await asyncio.sleep(0.3)  # Show success message briefly
@@ -324,18 +348,18 @@ class MCUController(HardwareController):
 
     async def show_control_menu(self) -> Optional[str]:
         """Show enhanced MCU control menu with status information"""
-        
+
         # Get current status information
         try:
             is_connected = await self.mcu_service.is_connected()
             connection_status = "🟢 Connected" if is_connected else "🔴 Disconnected"
-            
+
             if is_connected:
                 try:
                     # Get MCU status information
                     temperature = await self.mcu_service.get_temperature()
                     temp_info = f"🌡️ {temperature:.1f}°C"
-                    
+
                     # Get test mode status (if available)
                     status = await self.mcu_service.get_status()
                     test_mode = status.get("test_mode", "Normal")
@@ -346,7 +370,7 @@ class MCUController(HardwareController):
             else:
                 temp_info = "🌡️ --.-°C"
                 mode_info = "🧪 Unknown Mode"
-                
+
         except Exception:
             connection_status = "❓ Unknown"
             temp_info = "🌡️ --.-°C"
@@ -377,19 +401,20 @@ class MCUController(HardwareController):
             f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, temp=temperature, test=testmode[/dim]"
         )
 
-        ui_manager = RichUIManager(self.formatter.console)
-        return ui_manager.create_interactive_menu(
-            menu_options, 
-            title=enhanced_title, 
-            prompt="Select MCU operation (number or shortcut)"
-        )
+        # Simple menu replacement (RichUIManager removed)
+        self.formatter.print_header(enhanced_title)
+        
+        for key, value in menu_options.items():
+            self.formatter.console.print(f"[cyan]{key}[/cyan]. {value}")
+            
+        return input("Select MCU operation (number or shortcut): ").strip()
 
     async def execute_command(self, command: str) -> bool:
         """Execute MCU command with support for shortcuts"""
         try:
             # Normalize command input
             cmd = command.strip().lower()
-            
+
             if cmd == "1" or cmd == "s":
                 await self.show_status()
             elif cmd == "2" or cmd == "c":
@@ -503,11 +528,23 @@ class LoadCellController(HardwareController):
     async def connect(self) -> bool:
         """Connect to LoadCell"""
         try:
+            # Get LoadCell configuration
+            hw_config = HardwareConfiguration()
+            loadcell_config = hw_config.loadcell
+
             with self.formatter.create_progress_display(
                 "Connecting to LoadCell...", show_spinner=True
             ) as progress_display:
                 await asyncio.sleep(0.5)  # Show spinner for visibility
-                await self.loadcell_service.connect()
+                await self.loadcell_service.connect(
+                    port=loadcell_config.port,
+                    baudrate=loadcell_config.baudrate,
+                    timeout=loadcell_config.timeout,
+                    bytesize=loadcell_config.bytesize,
+                    stopbits=loadcell_config.stopbits,
+                    parity=loadcell_config.parity,
+                    indicator_id=loadcell_config.indicator_id,
+                )
                 if isinstance(progress_display, Status):
                     progress_display.update("LoadCell connected successfully")
                     await asyncio.sleep(0.3)  # Show success message briefly
@@ -538,18 +575,18 @@ class LoadCellController(HardwareController):
 
     async def show_control_menu(self) -> Optional[str]:
         """Show enhanced LoadCell control menu with status information"""
-        
+
         # Get current status information
         try:
             is_connected = await self.loadcell_service.is_connected()
             connection_status = "🟢 Connected" if is_connected else "🔴 Disconnected"
-            
+
             if is_connected:
                 try:
                     # Get current force reading
                     force_value = await self.loadcell_service.read_force()
                     force_info = f"⚖️ {force_value.value:.3f} {force_value.unit.value}"
-                    
+
                     # Get status information
                     status = await self.loadcell_service.get_status()
                     hardware_type = status.get("hardware_type", "Unknown")
@@ -560,7 +597,7 @@ class LoadCellController(HardwareController):
             else:
                 force_info = "⚖️ ---.--- kgf"
                 device_info = "📱 Unknown"
-                
+
         except Exception:
             connection_status = "❓ Unknown"
             force_info = "⚖️ ---.--- kgf"
@@ -572,7 +609,7 @@ class LoadCellController(HardwareController):
             "2": "🔌 Connect",
             "3": "❌ Disconnect",
             "4": f"⚖️ Read Force          [{force_info}]",
-            "5": f"🎌 Zero Calibration    [Reset to 0.000]",
+            "5": "🎌 Zero Calibration    [Reset to 0.000]",
             "6": f"📊 Monitor Force (Live) [{force_info}]",
             "b": "⬅️  Back to Hardware Menu",
             # Shortcuts
@@ -591,19 +628,20 @@ class LoadCellController(HardwareController):
             f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, read=force, zero=calibrate, live=monitor[/dim]"
         )
 
-        ui_manager = RichUIManager(self.formatter.console)
-        return ui_manager.create_interactive_menu(
-            menu_options, 
-            title=enhanced_title, 
-            prompt="Select LoadCell operation (number or shortcut)"
-        )
+        # Simple menu replacement (RichUIManager removed)
+        self.formatter.print_header(enhanced_title)
+        
+        for key, value in menu_options.items():
+            self.formatter.console.print(f"[cyan]{key}[/cyan]. {value}")
+            
+        return input("Select LoadCell operation (number or shortcut): ").strip()
 
     async def execute_command(self, command: str) -> bool:
         """Execute LoadCell command with support for shortcuts"""
         try:
             # Normalize command input
             cmd = command.strip().lower()
-            
+
             if cmd == "1" or cmd == "s":
                 await self.show_status()
             elif cmd == "2" or cmd == "c":
@@ -621,7 +659,9 @@ class LoadCellController(HardwareController):
             return True
 
         except Exception as e:
-            self.formatter.print_message(f"❌ LoadCell command failed: {str(e)}", message_type="error")
+            self.formatter.print_message(
+                f"❌ LoadCell command failed: {str(e)}", message_type="error"
+            )
             return False
 
     async def _read_force(self) -> None:
@@ -629,7 +669,9 @@ class LoadCellController(HardwareController):
         try:
             force = await self.loadcell_service.read_force()
             self.formatter.print_message(
-                f"Current force reading: {force:.3f} {force.unit}", message_type="info", title="Force Reading"
+                f"Current force reading: {force:.3f} {force.unit}",
+                message_type="info",
+                title="Force Reading",
             )
 
         except Exception as e:
@@ -663,30 +705,25 @@ class LoadCellController(HardwareController):
                 title="Force Monitor",
             )
 
-            # Create live display for force monitoring
-            ui_manager = RichUIManager(self.formatter.console)
-
+            # Simple force monitoring replacement (RichUIManager removed)
             initial_force = await self.loadcell_service.read_force()
-            initial_panel = self.formatter.create_message_panel(
-                f"Force: {initial_force:.3f} {initial_force.unit}", message_type="info", title="🔧 Live Force Reading"
+            self.formatter.print_message(
+                f"Force: {initial_force:.3f} {initial_force.unit}",
+                message_type="info",
+                title="🔧 Live Force Reading",
             )
+            
+            # Use simple loop instead of live display
+            self.formatter.console.print("[dim]Press Ctrl+C to stop monitoring...[/dim]")
+            
+            try:
+                while True:
+                    force = await self.loadcell_service.read_force()
+                    self.formatter.console.print(f"Force: {force:.3f} {force.unit}")
+                    await asyncio.sleep(0.5)
 
-            with ui_manager.live_display(initial_panel, refresh_per_second=2) as live:
-                try:
-                    while True:
-                        force = await self.loadcell_service.read_force()
-                        force_panel = self.formatter.create_message_panel(
-                            f"Force: {force:.3f} {force.unit}",
-                            message_type="info",
-                            title="🔧 Live Force Reading",
-                        )
-                        live.update(force_panel)
-                        await asyncio.sleep(0.5)
-
-                except KeyboardInterrupt:
-                    pass
-
-            self.formatter.print_message("Force monitoring stopped", message_type="info")
+            except KeyboardInterrupt:
+                self.formatter.print_message("Force monitoring stopped", message_type="info")
 
         except Exception as e:
             self.formatter.print_message(f"Force monitoring failed: {str(e)}", message_type="error")
@@ -737,18 +774,27 @@ class PowerController(HardwareController):
     async def connect(self) -> bool:
         """Connect to Power supply"""
         try:
+            # Get Power configuration
+            hw_config = HardwareConfiguration()
+            power_config = hw_config.power
+
             with self.formatter.create_progress_display(
                 "Connecting to Power supply...", show_spinner=True
             ) as progress_display:
                 await asyncio.sleep(0.5)  # Show spinner for visibility
-                await self.power_service.connect()
+                await self.power_service.connect(
+                    host=power_config.host,
+                    port=power_config.port,
+                    timeout=power_config.timeout,
+                    channel=power_config.channel,
+                )
                 if isinstance(progress_display, Status):
                     progress_display.update("Power supply connected successfully")
                     await asyncio.sleep(0.3)  # Show success message briefly
 
             # Get and display device identity if available
             device_identity = None
-            if hasattr(self.power_service, 'get_device_identity'):
+            if hasattr(self.power_service, "get_device_identity"):
                 try:
                     device_identity = await self.power_service.get_device_identity()
                 except Exception:
@@ -756,7 +802,7 @@ class PowerController(HardwareController):
 
             if device_identity:
                 self.formatter.print_message(
-                    f"Power supply connected successfully", message_type="success"
+                    "Power supply connected successfully", message_type="success"
                 )
                 self.formatter.print_message(
                     f"Device Identity: {device_identity}", message_type="info"
@@ -790,12 +836,12 @@ class PowerController(HardwareController):
 
     async def show_control_menu(self) -> Optional[str]:
         """Show enhanced Power control menu with status information"""
-        
+
         # Get current status information
         try:
             is_connected = await self.power_service.is_connected()
             connection_status = "🟢 Connected" if is_connected else "🔴 Disconnected"
-            
+
             if is_connected:
                 try:
                     # Get current settings and output status
@@ -803,7 +849,7 @@ class PowerController(HardwareController):
                     current = await self.power_service.get_current()
                     is_output_on = await self.power_service.is_output_enabled()
                     output_status = "🟢 ON" if is_output_on else "🔴 OFF"
-                    
+
                     voltage_info = f"⚡ {voltage:.2f}V"
                     current_info = f"🔌 {current:.2f}A"
                 except Exception:
@@ -812,9 +858,9 @@ class PowerController(HardwareController):
                     output_status = "❓ Unknown"
             else:
                 voltage_info = "⚡ --.-V"
-                current_info = "🔌 --.-A"  
+                current_info = "🔌 --.-A"
                 output_status = "🔴 OFF"
-                
+
         except Exception:
             connection_status = "❓ Unknown"
             voltage_info = "⚡ --.-V"
@@ -823,7 +869,7 @@ class PowerController(HardwareController):
 
         # Enhanced menu options with icons and grouping
         menu_options = {
-            "1": f"📊 Show Status",
+            "1": "📊 Show Status",
             "2": "🔌 Connect",
             "3": "❌ Disconnect",
             "4": f"✅ Enable Output      ⚠️  [Current: {output_status}]",
@@ -850,19 +896,20 @@ class PowerController(HardwareController):
             f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, on=enable, off=disable, v=voltage, curr=current, i=current-limit[/dim]"
         )
 
-        ui_manager = RichUIManager(self.formatter.console)
-        return ui_manager.create_interactive_menu(
-            menu_options, 
-            title=enhanced_title, 
-            prompt="Select Power operation (number or shortcut)"
-        )
+        # Simple menu replacement (RichUIManager removed)
+        self.formatter.print_header(enhanced_title)
+        
+        for key, value in menu_options.items():
+            self.formatter.console.print(f"[cyan]{key}[/cyan]. {value}")
+            
+        return input("Select Power operation (number or shortcut): ").strip()
 
     async def execute_command(self, command: str) -> bool:
         """Execute Power command with support for shortcuts"""
         try:
             # Normalize command input
             cmd = command.strip().lower()
-            
+
             # Number-based commands (original)
             if cmd == "1" or cmd == "s":
                 await self.show_status()
@@ -895,42 +942,54 @@ class PowerController(HardwareController):
             try:
                 voltage = await self.power_service.get_voltage()
                 current = await self.power_service.get_current()
-                
+
                 # Show safety warning with current settings
                 self.formatter.print_message(
                     f"⚠️  WARNING: About to enable HIGH VOLTAGE output!\n"
                     f"   Current settings: ⚡ {voltage:.2f}V, 🔌 {current:.2f}A\n"
                     f"   Ensure all safety precautions are in place.",
-                    message_type="warning"
+                    message_type="warning",
                 )
-                
+
                 # Ask for confirmation
-                confirm = input("\n🔴 Are you sure you want to enable output? (yes/no): ").strip().lower()
-                
-                if confirm not in ['yes', 'y']:
-                    self.formatter.print_message("❌ Output enable cancelled by user", message_type="info")
+                confirm = (
+                    input("\n🔴 Are you sure you want to enable output? (yes/no): ").strip().lower()
+                )
+
+                if confirm not in ["yes", "y"]:
+                    self.formatter.print_message(
+                        "❌ Output enable cancelled by user", message_type="info"
+                    )
                     return
-                    
+
             except Exception:
                 # If we can't get voltage/current, still ask for confirmation
                 self.formatter.print_message(
-                    f"⚠️  WARNING: About to enable power output!\n"
-                    f"   Ensure all safety precautions are in place.",
-                    message_type="warning"
+                    "⚠️  WARNING: About to enable power output!\n"
+                    "   Ensure all safety precautions are in place.",
+                    message_type="warning",
                 )
-                
-                confirm = input("\n🔴 Are you sure you want to enable output? (yes/no): ").strip().lower()
-                
-                if confirm not in ['yes', 'y']:
-                    self.formatter.print_message("❌ Output enable cancelled by user", message_type="info")
+
+                confirm = (
+                    input("\n🔴 Are you sure you want to enable output? (yes/no): ").strip().lower()
+                )
+
+                if confirm not in ["yes", "y"]:
+                    self.formatter.print_message(
+                        "❌ Output enable cancelled by user", message_type="info"
+                    )
                     return
 
             # Proceed with enabling output
             await self.power_service.enable_output()
-            self.formatter.print_message("✅ Power output enabled successfully", message_type="success")
+            self.formatter.print_message(
+                "✅ Power output enabled successfully", message_type="success"
+            )
 
         except Exception as e:
-            self.formatter.print_message(f"❌ Failed to enable output: {str(e)}", message_type="error")
+            self.formatter.print_message(
+                f"❌ Failed to enable output: {str(e)}", message_type="error"
+            )
 
     async def _disable_output(self) -> None:
         """Disable power output"""
@@ -954,42 +1013,49 @@ class PowerController(HardwareController):
                 current_info = f"⚡ Current: {current_voltage:.2f}V"
             except Exception:
                 current_info = "⚡ Current: Unknown"
-            
+
             # Enhanced voltage input prompt
-            self.formatter.console.print(f"[bold cyan]⚡ Set Output Voltage[/bold cyan]")
+            self.formatter.console.print("[bold cyan]⚡ Set Output Voltage[/bold cyan]")
             self.formatter.console.print(f"[dim]   {current_info}[/dim]")
-            self.formatter.console.print(f"[yellow]   Enter new voltage (V) or 'cancel' to abort:[/yellow]")
-            
+            self.formatter.console.print(
+                "[yellow]   Enter new voltage (V) or 'cancel' to abort:[/yellow]"
+            )
+
             voltage_input = input("  → ").strip()
 
-            if not voltage_input or voltage_input.lower() == 'cancel':
+            if not voltage_input or voltage_input.lower() == "cancel":
                 self.formatter.print_message("❌ Voltage setting cancelled", message_type="info")
                 return
 
             voltage = float(voltage_input)
-            
+
             # Show what will be set
             self.formatter.print_message(
-                f"⚡ Setting voltage: {current_voltage:.2f}V → {voltage:.2f}V",
-                message_type="info"
+                f"⚡ Setting voltage: {current_voltage:.2f}V → {voltage:.2f}V", message_type="info"
             )
-            
+
             await self.power_service.set_voltage(voltage)
 
             # Read back the actual voltage set by the device
             try:
                 actual_voltage = await self.power_service.get_voltage()
                 self.formatter.print_message(
-                    f"✅ Voltage set successfully - Actual: {actual_voltage:.2f}V", 
-                    message_type="success"
+                    f"✅ Voltage set successfully - Actual: {actual_voltage:.2f}V",
+                    message_type="success",
                 )
             except Exception:
-                self.formatter.print_message(f"✅ Voltage set to {voltage:.2f}V successfully", message_type="success")
+                self.formatter.print_message(
+                    f"✅ Voltage set to {voltage:.2f}V successfully", message_type="success"
+                )
 
         except ValueError:
-            self.formatter.print_message("❌ Invalid voltage value - please enter a number", message_type="error")
+            self.formatter.print_message(
+                "❌ Invalid voltage value - please enter a number", message_type="error"
+            )
         except Exception as e:
-            self.formatter.print_message(f"❌ Failed to set voltage: {str(e)}", message_type="error")
+            self.formatter.print_message(
+                f"❌ Failed to set voltage: {str(e)}", message_type="error"
+            )
 
     async def _set_current(self) -> None:
         """Set output current with enhanced UX"""
@@ -1000,48 +1066,55 @@ class PowerController(HardwareController):
                 current_info = f"🔋 Current: {current_value:.2f}A"
             except Exception:
                 current_info = "🔋 Current: Unknown"
-            
+
             # Enhanced current input prompt
-            self.formatter.console.print(f"[bold cyan]🔋 Set Output Current[/bold cyan]")
+            self.formatter.console.print("[bold cyan]🔋 Set Output Current[/bold cyan]")
             self.formatter.console.print(f"[dim]   {current_info}[/dim]")
-            self.formatter.console.print(f"[yellow]   Enter new current (A) or 'cancel' to abort:[/yellow]")
-            
+            self.formatter.console.print(
+                "[yellow]   Enter new current (A) or 'cancel' to abort:[/yellow]"
+            )
+
             current_input = input("  → ").strip()
 
-            if not current_input or current_input.lower() == 'cancel':
+            if not current_input or current_input.lower() == "cancel":
                 self.formatter.print_message("❌ Current setting cancelled", message_type="info")
                 return
 
             current = float(current_input)
-            
+
             # Show what will be set
             try:
                 self.formatter.print_message(
                     f"🔋 Setting current: {current_value:.2f}A → {current:.2f}A",
-                    message_type="info"
+                    message_type="info",
                 )
             except:
                 self.formatter.print_message(
-                    f"🔋 Setting current to {current:.2f}A",
-                    message_type="info"
+                    f"🔋 Setting current to {current:.2f}A", message_type="info"
                 )
-            
+
             await self.power_service.set_current(current)
 
             # Read back the actual current set by the device
             try:
                 actual_current = await self.power_service.get_current()
                 self.formatter.print_message(
-                    f"✅ Current set successfully - Actual: {actual_current:.2f}A", 
-                    message_type="success"
+                    f"✅ Current set successfully - Actual: {actual_current:.2f}A",
+                    message_type="success",
                 )
             except Exception:
-                self.formatter.print_message(f"✅ Current set to {current:.2f}A successfully", message_type="success")
+                self.formatter.print_message(
+                    f"✅ Current set to {current:.2f}A successfully", message_type="success"
+                )
 
         except ValueError:
-            self.formatter.print_message("❌ Invalid current value - please enter a number", message_type="error")
+            self.formatter.print_message(
+                "❌ Invalid current value - please enter a number", message_type="error"
+            )
         except Exception as e:
-            self.formatter.print_message(f"❌ Failed to set current: {str(e)}", message_type="error")
+            self.formatter.print_message(
+                f"❌ Failed to set current: {str(e)}", message_type="error"
+            )
 
     async def _set_current_limit(self) -> None:
         """Set current limit with enhanced UX"""
@@ -1052,40 +1125,43 @@ class PowerController(HardwareController):
                 current_info = f"🔌 Current Limit: {current_limit:.2f}A"
             except Exception:
                 current_info = "🔌 Current Limit: Unknown"
-            
+
             # Enhanced current input prompt
-            self.formatter.console.print(f"[bold cyan]🔌 Set Current Limit[/bold cyan]")
+            self.formatter.console.print("[bold cyan]🔌 Set Current Limit[/bold cyan]")
             self.formatter.console.print(f"[dim]   {current_info}[/dim]")
-            self.formatter.console.print(f"[yellow]   Enter new current limit (A) or 'cancel' to abort:[/yellow]")
-            
+            self.formatter.console.print(
+                "[yellow]   Enter new current limit (A) or 'cancel' to abort:[/yellow]"
+            )
+
             current_input = input("  → ").strip()
 
-            if not current_input or current_input.lower() == 'cancel':
-                self.formatter.print_message("❌ Current limit setting cancelled", message_type="info")
+            if not current_input or current_input.lower() == "cancel":
+                self.formatter.print_message(
+                    "❌ Current limit setting cancelled", message_type="info"
+                )
                 return
 
             current = float(current_input)
-            
+
             # Show what will be set
             try:
                 self.formatter.print_message(
                     f"🔌 Setting current limit: {current_limit:.2f}A → {current:.2f}A",
-                    message_type="info"
+                    message_type="info",
                 )
             except:
                 self.formatter.print_message(
-                    f"🔌 Setting current limit to {current:.2f}A",
-                    message_type="info"
+                    f"🔌 Setting current limit to {current:.2f}A", message_type="info"
                 )
-            
+
             await self.power_service.set_current_limit(current)
 
             # Read back the actual current limit set by the device
             try:
                 actual_limit = await self.power_service.get_current_limit()
                 self.formatter.print_message(
-                    f"✅ Current limit set successfully - Actual: {actual_limit:.2f}A", 
-                    message_type="success"
+                    f"✅ Current limit set successfully - Actual: {actual_limit:.2f}A",
+                    message_type="success",
                 )
             except Exception:
                 self.formatter.print_message(
@@ -1093,7 +1169,9 @@ class PowerController(HardwareController):
                 )
 
         except ValueError:
-            self.formatter.print_message("❌ Invalid current value - please enter a number", message_type="error")
+            self.formatter.print_message(
+                "❌ Invalid current value - please enter a number", message_type="error"
+            )
         except Exception as e:
             self.formatter.print_message(
                 f"❌ Failed to set current limit: {str(e)}", message_type="error"
@@ -1106,7 +1184,7 @@ class HardwareControlManager:
     def __init__(self, hardware_facade: HardwareServiceFacade, console: Optional[Console] = None):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
-        self.ui_manager = RichUIManager(self.console)
+        # self.ui_manager = RichUIManager(self.console)  # Removed
 
         # Initialize hardware controllers
         self.controllers = {
@@ -1118,6 +1196,15 @@ class HardwareControlManager:
 
         logger.info(f"Initialized {len(self.controllers)} hardware controllers")
 
+    def _create_simple_menu(self, menu_options: dict, title: str, prompt: str) -> str:
+        """Simple menu replacement for RichUIManager functionality"""
+        self.formatter.print_header(title)
+        
+        for key, value in menu_options.items():
+            self.console.print(f"[cyan]{key}[/cyan]. {value}")
+            
+        return input(f"{prompt}: ").strip()
+
     async def show_hardware_menu(self) -> Optional[str]:
         """Display hardware selection menu"""
         menu_options = {
@@ -1125,21 +1212,16 @@ class HardwareControlManager:
             "2": "MCU Control",
             "3": "LoadCell Control",
             "4": "Power Control",
-            "5": "All Hardware Status",
             "b": "Back to Main Menu",
         }
 
-        return self.ui_manager.create_interactive_menu(
+        return self._create_simple_menu(
             menu_options, title="Hardware Control Center", prompt="Select hardware to control"
         )
 
     async def execute_hardware_control(self, selection: str) -> None:
         """Execute hardware control based on selection"""
         if selection == "b":
-            return
-
-        if selection == "5":
-            await self._show_all_hardware_status()
             return
 
         # Map selection to controller
@@ -1177,20 +1259,6 @@ class HardwareControlManager:
                 )
                 logger.error(f"Hardware control error: {e}")
 
-    async def _show_all_hardware_status(self) -> None:
-        """Show status of all hardware components"""
-        self.formatter.print_header("All Hardware Status", "Overview of all hardware components")
-
-        for name, controller in self.controllers.items():
-            try:
-                await controller.show_status()
-                self.formatter.console.print("")  # Add spacing
-            except Exception as e:
-                self.formatter.print_message(
-                    f"Failed to get {name} status: {str(e)}", message_type="error"
-                )
-
-
     def get_controller(self, name: str) -> Optional[HardwareController]:
         """Get specific hardware controller by name"""
         return self.controllers.get(name)
@@ -1198,4 +1266,3 @@ class HardwareControlManager:
     def list_controllers(self) -> List[str]:
         """Get list of available controller names"""
         return list(self.controllers.keys())
-

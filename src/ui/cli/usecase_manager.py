@@ -17,9 +17,9 @@ from application.use_cases.eol_force_test import (
 )
 from domain.value_objects.dut_command_info import DUTCommandInfo
 
-from .enhanced_input_manager import EnhancedInputManager
+# from .enhanced_input_manager import EnhancedInputManager  # Removed
 from .rich_formatter import RichFormatter
-from .rich_utils import RichUIManager
+# from .rich_utils import RichUIManager  # Removed
 
 
 class UseCaseInfo:
@@ -92,32 +92,50 @@ class EOLForceTestExecutor(UseCaseExecutor):
             raise
 
     async def get_parameters(self, formatter: RichFormatter) -> Optional[EOLForceTestCommand]:
-        """Collect DUT information for EOL test using Enhanced Input Manager"""
+        """Collect DUT information for EOL test using simple input (enhanced functionality removed)"""
         try:
-            # Create Enhanced Input Manager
-            input_manager = EnhancedInputManager(
-                formatter.console, 
-                formatter,
-                configuration_service=self.configuration_service
-            )
-
-            # Use the enhanced DUT info collection
-            dut_info = await input_manager.get_dut_info_interactive()
-            if not dut_info:
-                return None
+            formatter.console.print("[bold cyan]DUT Information Collection[/bold cyan]")
+            
+            # Load default values from configuration if available
+            defaults = {}
+            if self.configuration_service:
+                try:
+                    defaults = await self.configuration_service.load_dut_defaults()
+                    formatter.console.print(f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]")
+                except Exception as e:
+                    formatter.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
+            
+            # Collect DUT information with default support
+            dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
+            if not dut_id:
+                dut_id = defaults.get('dut_id', '')
+                if not dut_id:
+                    return None
+                    
+            model = input(f"Model [{defaults.get('model', '')}]: ").strip()
+            if not model:
+                model = defaults.get('model', 'Unknown')
+                
+            serial = input("Serial Number: ").strip()
+            if not serial:
+                serial = "Unknown"
+                
+            operator = input(f"Operator ID [{defaults.get('operator_id', '')}]: ").strip()
+            if not operator:
+                operator = defaults.get('operator_id', 'Unknown')
 
             # Create DUT command info
             dut_command_info = DUTCommandInfo(
-                dut_id=dut_info["id"],
-                model_number=dut_info["model"],
-                serial_number=dut_info["serial"],
-                manufacturer="Unknown",
+                dut_id=dut_id,
+                model_number=model,
+                serial_number=serial,
+                manufacturer=defaults.get('manufacturer', 'Unknown'),
             )
 
             # Create and return command
             command = EOLForceTestCommand(
                 dut_info=dut_command_info,
-                operator_id=dut_info["operator"],
+                operator_id=operator,
             )
 
             return command
@@ -157,7 +175,7 @@ class UseCaseManager:
     def __init__(self, console: Optional[Console] = None, configuration_service: Optional[Any] = None):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
-        self.ui_manager = RichUIManager(self.console)
+        # self.ui_manager = RichUIManager(self.console)  # Removed
         self.discovered_usecases: List[UseCaseInfo] = []
         self.executors: Dict[str, UseCaseExecutor] = {}
         self.configuration_service = configuration_service
@@ -200,10 +218,13 @@ class UseCaseManager:
             menu_options[str(i)] = f"{usecase_info.name} - {usecase_info.description}"
         menu_options["b"] = "Back to Main Menu"
 
-        # Show menu
-        selected = self.ui_manager.create_interactive_menu(
-            menu_options, title="Select UseCase to Execute", prompt="Please select a UseCase"
-        )
+        # Show menu with simple interface (RichUIManager removed)
+        self.formatter.print_header("Select UseCase to Execute")
+        
+        for key, value in menu_options.items():
+            self.console.print(f"[cyan]{key}[/cyan]. {value}")
+            
+        selected = input("Please select a UseCase: ").strip()
 
         return selected
 

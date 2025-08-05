@@ -715,34 +715,36 @@ class JsonConfiguration(Configuration):
         return {
             "hardware_config": {
                 "robot": {
-                    "model": hardware_config.robot.model,
                     "irq_no": hardware_config.robot.irq_no,
                 },
                 "loadcell": {
-                    "model": hardware_config.loadcell.model,
                     "port": hardware_config.loadcell.port,
                     "baudrate": hardware_config.loadcell.baudrate,
                     "timeout": hardware_config.loadcell.timeout,
                     "indicator_id": hardware_config.loadcell.indicator_id,
                 },
                 "mcu": {
-                    "model": hardware_config.mcu.model,
                     "port": hardware_config.mcu.port,
                     "baudrate": hardware_config.mcu.baudrate,
                     "timeout": hardware_config.mcu.timeout,
                 },
                 "power": {
-                    "model": hardware_config.power.model,
                     "host": hardware_config.power.host,
                     "port": hardware_config.power.port,
                     "timeout": hardware_config.power.timeout,
                     "channel": hardware_config.power.channel,
                 },
-                "digital_input": {
-                    "model": hardware_config.digital_input.model,
-                    "board_no": hardware_config.digital_input.board_no,
-                    "input_count": hardware_config.digital_input.input_count,
-                    "debounce_time": hardware_config.digital_input.debounce_time,
+                "digital_io": {
+                    "operator_start_button_left": (
+                        hardware_config.digital_io.operator_start_button_left
+                    ),
+                    "operator_start_button_right": (
+                        hardware_config.digital_io.operator_start_button_right
+                    ),
+                    "tower_lamp_red": hardware_config.digital_io.tower_lamp_red,
+                    "tower_lamp_yellow": hardware_config.digital_io.tower_lamp_yellow,
+                    "tower_lamp_green": hardware_config.digital_io.tower_lamp_green,
+                    "beep": hardware_config.digital_io.beep,
                 },
             }
         }

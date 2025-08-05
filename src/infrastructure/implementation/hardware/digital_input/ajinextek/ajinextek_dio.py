@@ -1,0 +1,832 @@
+"""
+Ajinextek DIO Input Service
+
+Service implementation for Ajinextek Digital I/O cards.
+Provides digital input/output control through AXL library.
+"""
+
+from typing import Any, Dict, List, Optional
+
+from loguru import logger
+
+from application.interfaces.hardware.digital_input import (
+    DigitalInputService,
+)
+from infrastructure.implementation.hardware.digital_input.ajinextek.axl_wrapper import (
+    AXLDIOWrapper,
+)
+from infrastructure.implementation.hardware.digital_input.ajinextek.constants import (
+    MAX_INPUT_CHANNELS,
+    MAX_OUTPUT_CHANNELS,
+    MODULE_ID_PCI_DB64R,
+    MODULE_ID_PCI_DI64R,
+    MODULE_ID_PCI_DO64R,
+    MODULE_ID_SIO_DB32,
+    MODULE_ID_SIO_DI32,
+    MODULE_ID_SIO_DO32,
+    STATUS_MESSAGES,
+)
+from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes import (
+    AjinextekChannelError,
+    AjinextekDIOError,
+    AjinextekErrorCode,
+    AjinextekHardwareError,
+    AjinextekOperationError,
+    validate_channel_list,
+    validate_pin_values,
+)
+
+
+class AjinextekDIO(DigitalInputService):
+    """Ajinextek DIO 카드 통합 서비스"""
+
+    def __init__(self):
+        """
+        초기화 (기본 Ajinextek 설정 사용)
+        """
+
+        # State tracking
+        self._is_connected = False
+
+        # AXL library interface
+        self._axl_lib = None
+        self._detected_modules: Dict[int, Dict[str, Any]] = {}
+        self._module_input_counts: Dict[int, int] = {}
+        self._module_output_counts: Dict[int, int] = {}
+        self._active_module_no: Optional[int] = None
+
+        # runtime parameters
+        self._module_count: int = 0
+        self._input_count: int = 0
+        self._output_count: int = 0
+
+    # ========================================================================
+    # Connection & Lifecycle Management
+    # ========================================================================
+
+    async def connect(self, irq_no: int = 7) -> bool:
+        """
+        DIO 하드웨어 연결
+
+        Args:
+            irq_no: IRQ 번호 (기본값: 7)
+
+        Returns:
+            연결 성공 여부
+
+        Raises:
+            AjinextekHardwareError: 하드웨어 연결 실패
+        """
+        try:
+            logger.info("Connecting to Ajinextek DIO hardware")
+
+            # Load AXL library (placeholder)
+            if not await self._load_axl_library():
+                raise AjinextekHardwareError(
+                    "Failed to load AXL library",
+                    error_code=int(AjinextekErrorCode.LIBRARY_NOT_LOADED),
+                )
+
+            # Open board connection (placeholder)
+            if not await self._open_board(irq_no):
+                raise AjinextekHardwareError(
+                    "Failed to open DIO board",
+                    error_code=int(AjinextekErrorCode.BOARD_NOT_DETECTED),
+                )
+
+            # Detect and configure modules (placeholder)
+            if not await self._detect_modules():
+                raise AjinextekHardwareError(
+                    "Failed to detect modules on DIO board",
+                    error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
+                )
+
+            self._is_connected = True
+
+            logger.info(STATUS_MESSAGES["board_connected"])
+            return True
+
+        except AjinextekDIOError:
+            raise
+        except Exception as e:
+            raise AjinextekHardwareError(
+                f"Unexpected error connecting to DIO hardware: {e}",
+                error_code=int(AjinextekErrorCode.HARDWARE_INITIALIZATION_FAILED),
+            ) from e
+
+    async def disconnect(self) -> None:
+        """
+        DIO 하드웨어 연결 해제
+        """
+        try:
+            if self._is_connected:
+                # Close board connection (placeholder)
+                await self._close_board()
+
+            self._is_connected = False
+
+            logger.info(STATUS_MESSAGES["board_disconnected"])
+
+        except Exception as e:
+            logger.error(f"Error disconnecting DIO hardware: {e}")
+            raise
+
+    async def is_connected(self) -> bool:
+        """
+        연결 상태 확인
+
+        Returns:
+            연결 상태
+        """
+        return self._is_connected
+
+    # ========================================================================
+    # Core Public API (Interface Implementation)
+    # ========================================================================
+
+    async def read_input(self, channel: int) -> bool:
+        """
+        Read digital input from specified channel
+
+        Args:
+            channel: Digital input channel number
+
+        Returns:
+            True if input is HIGH, False if LOW
+
+        Raises:
+            AjinextekChannelError: 유효하지 않은 채널
+            AjinextekHardwareError: 하드웨어 통신 실패
+        """
+        if not await self.is_connected():
+            raise AjinextekHardwareError(
+                "DIO hardware not connected",
+                error_code=int(AjinextekErrorCode.HARDWARE_NOT_CONNECTED),
+            )
+
+        # Check input channel range
+        if not (0 <= channel < self._input_count):
+            raise AjinextekChannelError(
+                f"Input channel {channel} out of range [0, {self._input_count-1}]",
+                error_code=int(AjinextekErrorCode.CHANNEL_NOT_CONFIGURED),
+            )
+
+        try:
+            # Read from hardware
+            hw_value = await self._read_hardware_input(channel)
+
+            # Return hardware value directly as bool
+            result = bool(hw_value)
+
+            logger.debug(f"Read input channel {channel}: {result}")
+            return result
+
+        except Exception as e:
+            raise AjinextekOperationError(
+                f"Failed to read input channel {channel}: {e}",
+                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
+    async def write_output(self, channel: int, level: bool) -> bool:
+        """
+        Write digital output to specified channel
+
+        Args:
+            channel: Digital output channel number
+            level: Output logic level (True=HIGH, False=LOW)
+
+        Returns:
+            True if write was successful, False otherwise
+
+        Raises:
+            AjinextekChannelError: 유효하지 않은 채널
+            AjinextekHardwareError: 하드웨어 통신 실패
+        """
+        if not await self.is_connected():
+            raise AjinextekHardwareError(
+                "DIO hardware not connected",
+                error_code=int(AjinextekErrorCode.HARDWARE_NOT_CONNECTED),
+            )
+
+        # Check output channel range
+        if not (0 <= channel < self._output_count):
+            raise AjinextekChannelError(
+                f"Output channel {channel} out of range [0, {self._output_count-1}]",
+                error_code=int(AjinextekErrorCode.CHANNEL_NOT_CONFIGURED),
+            )
+
+        try:
+            # Convert bool to hardware value
+            hw_value = 1 if level else 0
+
+            # Write to hardware
+            success = await self._write_hardware_output(channel, hw_value)
+
+            if success:
+                logger.debug(f"Write output channel {channel}: {'HIGH' if level else 'LOW'}")
+                return True
+            else:
+                logger.warning(f"Failed to write output channel {channel}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error writing output channel {channel}: {e}")
+            raise AjinextekOperationError(
+                f"Failed to write output channel {channel}: {e}",
+                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
+    async def get_input_count(self) -> int:
+        """
+        Get the number of available digital input channels
+
+        Returns:
+            Number of digital input channels
+        """
+        return self._input_count
+
+    async def read_all_inputs(self) -> List[bool]:
+        """
+        Read all available digital inputs
+
+        Returns:
+            List of boolean values representing all input states
+        """
+        results = []
+        for channel in range(await self.get_input_count()):
+            try:
+                value = await self.read_input(channel)
+                results.append(value)
+            except Exception as e:
+                logger.warning(f"Failed to read input channel {channel}: {e}")
+                results.append(False)  # Default to False on error
+        return results
+
+    # ========================================================================
+    # Batch Operations
+    # ========================================================================
+
+    async def read_multiple_inputs(self, pins: List[int]) -> Dict[int, bool]:
+        """
+        다중 디지털 입력 읽기 (최적화된 배치 작업)
+
+        Args:
+            pins: 읽을 핀 번호 리스트
+
+        Returns:
+            핀별 bool 값 딕셔너리 (True=HIGH, False=LOW)
+        """
+        validate_channel_list(pins, MAX_INPUT_CHANNELS)
+
+        if not pins:
+            return {}
+
+        results = {}
+
+        try:
+            # Use optimized batch reading if available and advantageous
+            if self._axl_lib is not None and self._active_module_no is not None and len(pins) >= 8:
+                # Try to use batch reading for better performance
+                sorted_pins = sorted(pins)
+
+                # Group consecutive pins for batch reading
+                pin_groups = self._group_consecutive_pins(sorted_pins)
+
+                for start_pin, count in pin_groups:
+                    try:
+                        # Use batch read from AXL wrapper
+                        batch_values = self._axl_lib.batch_read_inputs(
+                            self._active_module_no, start_pin, count
+                        )
+
+                        # Map batch results back to individual pins
+                        for i, value in enumerate(batch_values):
+                            pin_index = start_pin + i
+                            if pin_index in pins:
+                                results[pin_index] = bool(value)
+
+                    except Exception as e:
+                        logger.warning(
+                            f"Batch read failed for pins {start_pin}-{start_pin+count-1}, using individual reads: {e}"
+                        )
+                        # Fallback to individual pin reads
+                        for pin_offset in range(count):
+                            pin_index = start_pin + pin_offset
+                            if pin_index in pins:
+                                try:
+                                    results[pin_index] = await self.read_input(pin_index)
+                                except Exception:
+                                    results[pin_index] = False
+
+                # Read any remaining individual pins not in groups
+                for pin in pins:
+                    if pin not in results:
+                        try:
+                            results[pin] = await self.read_input(pin)
+                        except Exception:
+                            results[pin] = False
+            else:
+                # Use individual reads for smaller batches or when batch reading is not available
+                for pin in pins:
+                    results[pin] = await self.read_input(pin)
+
+        except Exception as e:
+            logger.error(f"Multiple input read failed: {e}")
+            # Fallback to individual reads
+            for pin in pins:
+                try:
+                    results[pin] = await self.read_input(pin)
+                except Exception:
+                    results[pin] = False
+
+        logger.debug(f"Read multiple inputs: {len(pins)} pins, {len(results)} results")
+        return results
+
+    def _group_consecutive_pins(self, sorted_pins: List[int]) -> List[tuple[int, int]]:
+        """Group consecutive pins for batch reading optimization"""
+        if not sorted_pins:
+            return []
+
+        groups = []
+        start = sorted_pins[0]
+        count = 1
+
+        for i in range(1, len(sorted_pins)):
+            if sorted_pins[i] == sorted_pins[i - 1] + 1:
+                # Consecutive pin
+                count += 1
+            else:
+                # Gap found, create group
+                if count >= 4:  # Only create groups for 4+ consecutive pins
+                    groups.append((start, count))
+                else:
+                    # Add individual pins for small groups
+                    for pin_offset in range(count):
+                        groups.append((start + pin_offset, 1))
+
+                start = sorted_pins[i]
+                count = 1
+
+        # Add the last group
+        if count >= 4:
+            groups.append((start, count))
+        else:
+            for pin_offset in range(count):
+                groups.append((start + pin_offset, 1))
+
+        return groups
+
+    async def write_multiple_outputs(self, pin_values: Dict[int, bool]) -> bool:
+        """
+        다중 디지털 출력 쓰기 (최적화된 배치 작업)
+
+        Args:
+            pin_values: 핀별 출력 레벨 딕셔너리 (True=HIGH, False=LOW)
+
+        Returns:
+            출력 성공 여부
+        """
+        if not pin_values:
+            return True
+
+        # Convert bool values to integers for validation
+        pin_int_values = {pin: 1 if level else 0 for pin, level in pin_values.items()}
+        validate_pin_values(pin_int_values, MAX_OUTPUT_CHANNELS)
+
+        try:
+            success_count = 0
+
+            # Use optimized batch writing if available and advantageous
+            if (
+                self._axl_lib is not None
+                and self._active_module_no is not None
+                and len(pin_values) >= 8
+            ):
+
+                # Convert pin_values to sorted list format for batch writing
+                sorted_pins = sorted(pin_values.keys())
+                pin_groups = self._group_consecutive_pins(sorted_pins)
+
+                for start_pin, count in pin_groups:
+                    if count >= 4:  # Use batch write for groups of 4 or more
+                        try:
+                            # Prepare values for batch write
+                            batch_values = []
+                            for pin_offset in range(count):
+                                pin_index = start_pin + pin_offset
+                                if pin_index in pin_values:
+                                    batch_values.append(pin_values[pin_index])
+                                else:
+                                    batch_values.append(False)  # Default value
+
+                            # Use batch write from AXL wrapper
+                            self._axl_lib.batch_write_outputs(
+                                self._active_module_no, start_pin, batch_values
+                            )
+
+                            # Count successful writes in this batch
+                            for pin_offset in range(count):
+                                pin_index = start_pin + pin_offset
+                                if pin_index in pin_values:
+                                    success_count += 1
+
+                        except Exception as e:
+                            logger.warning(
+                                f"Batch write failed for pins {start_pin}-{start_pin+count-1}, using individual writes: {e}"
+                            )
+                            # Fallback to individual pin writes
+                            for pin_offset in range(count):
+                                pin_index = start_pin + pin_offset
+                                if pin_index in pin_values:
+                                    try:
+                                        if await self.write_output(
+                                            pin_index, pin_values[pin_index]
+                                        ):
+                                            success_count += 1
+                                    except Exception:
+                                        pass  # Continue with other pins
+                    else:
+                        # Use individual writes for small groups
+                        for pin_offset in range(count):
+                            pin_index = start_pin + pin_offset
+                            if pin_index in pin_values:
+                                try:
+                                    if await self.write_output(pin_index, pin_values[pin_index]):
+                                        success_count += 1
+                                except Exception:
+                                    pass  # Continue with other pins
+            else:
+                # Use individual writes for smaller batches or when batch writing is not available
+                for pin, level in pin_values.items():
+                    try:
+                        if await self.write_output(pin, level):
+                            success_count += 1
+                    except Exception:
+                        pass  # Continue with other pins
+
+            all_success = success_count == len(pin_values)
+            logger.debug(f"Write multiple outputs: {success_count}/{len(pin_values)} successful")
+            return all_success
+
+        except Exception as e:
+            logger.error(f"Error writing multiple outputs: {e}")
+            return False
+
+    async def reset_all_outputs(self) -> bool:
+        """
+        모든 출력을 LOW로 리셋
+
+        Returns:
+            리셋 성공 여부
+        """
+        if self._output_count == 0:
+            return True
+
+        # Reset all output channels to LOW
+        reset_values = {channel: False for channel in range(self._output_count)}
+        success = await self.write_multiple_outputs(reset_values)
+
+        if success:
+            logger.info(STATUS_MESSAGES["all_outputs_reset"])
+
+        return success
+
+    # ========================================================================
+    # Status & Information
+    # ========================================================================
+
+    async def get_status(self) -> Dict[str, Any]:
+        """
+        하드웨어 상태 조회
+
+        Returns:
+            상태 정보 딕셔너리
+        """
+        status = {
+            "connected": await self.is_connected(),
+            "hardware_type": "Ajinextek DIO",
+            "module_count": self._module_count,
+            "detected_input_count": self._input_count,
+            "detected_output_count": self._output_count,
+            "input_channels": list(range(self._input_count)),
+            "output_channels": list(range(self._output_count)),
+        }
+
+        if await self.is_connected():
+            try:
+                status["hardware_info"] = await self._get_hardware_info()
+                status["last_error"] = None
+            except Exception as e:
+                status["hardware_info"] = None
+                status["last_error"] = str(e)
+
+        return status
+
+    # ========================================================================
+    # Private Methods (Internal Implementation)
+    # ========================================================================
+
+    async def _load_axl_library(self) -> bool:
+        """Load AXL library using singleton manager"""
+        try:
+            if self._axl_lib is None:
+                self._axl_lib = AXLDIOWrapper()
+                logger.info("AXL DIO library loaded successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to load AXL library: {e}")
+            raise AjinextekHardwareError(
+                f"Failed to load AXL library: {e}",
+                error_code=int(AjinextekErrorCode.LIBRARY_NOT_LOADED),
+            ) from e
+
+    async def _open_board(self, irq_no: int) -> bool:
+        """
+        Open DIO board connection using singleton AXL manager
+
+        Based on C code: AxlOpen(irq_no) where irq_no is the IRQ number
+
+        Args:
+            irq_no: IRQ 번호
+        """
+        try:
+            if self._axl_lib is None:
+                raise AjinextekHardwareError("AXL library not loaded")
+
+            # Check if library is already opened
+            if self._axl_lib.is_opened():
+                logger.info("라이브러리가 이미 초기화되어 있습니다.")
+                return True
+
+            # Open AXL library with specified IRQ number
+            result = self._axl_lib.axl_open(irq_no)
+
+            if result == 0:  # AXT_RT_SUCCESS
+                logger.info("라이브러리가 초기화되었습니다.")
+                return True
+            else:
+                error_msg = f"AxlOpen() : ERROR code 0x{result:x}"
+                logger.error(error_msg)
+                raise AjinextekHardwareError(
+                    error_msg,
+                    error_code=result,
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to open DIO board: {e}")
+            raise AjinextekHardwareError(
+                f"Failed to open DIO board: {e}",
+                error_code=int(AjinextekErrorCode.BOARD_NOT_DETECTED),
+            ) from e
+
+    async def _close_board(self) -> bool:
+        """
+        Close DIO board connection
+
+        Based on C code: AxlClose() - Close library
+        """
+        try:
+            if self._axl_lib is None:
+                return True  # Already closed
+
+            # Close AXL library (equivalent to AxlClose())
+            result = self._axl_lib.axl_close()
+
+            if result:
+                logger.info("라이브러리가 종료되었습니다.")
+                return True
+            else:
+                logger.warning("라이브러리가 정상적으로 종료되지 않았습니다.")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to close DIO board: {e}")
+            return False
+
+    async def _detect_modules(self) -> bool:
+        """
+        Detect and configure DIO modules
+
+        Based on C code sequence:
+        1. AxdInfoIsDIOModule(&uStatus) - Check if DIO module exists
+        2. AxdInfoGetModuleCount(&lModuleCounts) - Get module count
+        3. For each module: get input/output counts
+        """
+        try:
+            if self._axl_lib is None:
+                raise AjinextekHardwareError("AXL library not loaded")
+
+            # 1. Check if DIO modules exist (AxdInfoIsDIOModule)
+            status = self._axl_lib.is_dio_module()
+            if not status:
+                error_msg = "AxdInfoIsDIOModule() : ERROR ( NOT STATUS_EXIST )"
+                logger.error(error_msg)
+                return False
+
+            logger.info("DIO 모듈이 존재 합니다.")
+
+            # 2. Get total module count (AxdInfoGetModuleCount)
+            try:
+                self._module_count = self._axl_lib.get_module_count()
+                logger.info(f"DIO 모듈의 개수 : {self._module_count}")
+            except Exception as e:
+                error_msg = f"AxdInfoGetModuleCounts() : ERROR code {e}"
+                logger.error(error_msg)
+                raise AjinextekHardwareError(error_msg) from e
+
+            # 3. For each module, get input and output counts
+            self._detected_modules.clear()
+
+            for module_no in range(self._module_count):
+                try:
+                    # Get input count (AxdInfoGetInputCount)
+                    self._input_count = self._axl_lib.get_input_count(module_no)
+
+                    # Get output count (AxdInfoGetOutputCount)
+                    self._output_count = self._axl_lib.get_output_count(module_no)
+
+                    logger.info(
+                        f"{module_no}번째 모듈 : 입력 접점 {self._input_count}개, 출력 접점 {self._output_count}개"
+                    )
+
+                    # Store module information
+                    self._detected_modules[module_no] = {
+                        "input_count": self._input_count,
+                        "output_count": self._output_count,
+                        "module_id": None,  # Could be determined later
+                    }
+
+                    self._module_input_counts[module_no] = self._input_count
+                    self._module_output_counts[module_no] = self._output_count
+
+                except Exception as e:
+                    logger.error(f"Failed to get counts for module {module_no}: {e}")
+                    continue
+
+            # Set active module (use first module by default)
+            if self._detected_modules:
+                self._active_module_no = min(self._detected_modules.keys())
+                logger.info(f"Active module set to: {self._active_module_no}")
+                return True
+            else:
+                logger.warning("No modules could be configured")
+                return False
+
+        except Exception as e:
+            logger.error(f"Module detection failed: {e}")
+            raise AjinextekHardwareError(
+                f"Module detection failed: {e}",
+                error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
+            ) from e
+
+    async def _configure_module(self, module_no: int) -> None:
+        """Configure specific DIO module"""
+        try:
+            if self._axl_lib is None:
+                raise AjinextekHardwareError("AXL library not loaded")
+
+            # Get module information
+            board_no, module_pos, module_id = self._axl_lib.get_module_info(module_no)
+
+            # Get input count
+            try:
+                self._input_count = self._axl_lib.get_input_count(module_no)
+                self._module_input_counts[module_no] = self._input_count
+            except Exception as e:
+                logger.warning(f"Failed to get input count for module {module_no}: {e}")
+                self._module_input_counts[module_no] = 0
+
+            # Get output count
+            try:
+                self._output_count = self._axl_lib.get_output_count(module_no)
+                self._module_output_counts[module_no] = self._output_count
+            except Exception as e:
+                logger.warning(f"Failed to get output count for module {module_no}: {e}")
+                self._module_output_counts[module_no] = 0
+
+            # Get module status
+            module_status = self._axl_lib.get_module_status(module_no)
+
+            # Determine module type from module ID
+            module_type = self._get_module_type_from_id(module_id)
+
+            # Store module information
+            self._detected_modules[module_no] = {
+                "board_no": board_no,
+                "module_pos": module_pos,
+                "module_id": module_id,
+                "module_type": module_type,
+                "input_count": self._module_input_counts[module_no],
+                "output_count": self._module_output_counts[module_no],
+                "status": module_status,
+            }
+
+            logger.info(
+                f"Module {module_no} configured: {module_type}, "
+                f"{self._module_input_counts[module_no]} inputs, "
+                f"{self._module_output_counts[module_no]} outputs"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to configure module {module_no}: {e}")
+            raise
+
+    def _get_module_type_from_id(self, module_id: int) -> str:
+        """Get module type string from module ID"""
+        module_type_mapping = {
+            MODULE_ID_SIO_DI32: "SIO-DI32 (32 Input)",
+            MODULE_ID_SIO_DO32: "SIO-DO32 (32 Output)",
+            MODULE_ID_SIO_DB32: "SIO-DB32 (16 Input/16 Output)",
+            MODULE_ID_PCI_DI64R: "PCI-DI64R (64 Input)",
+            MODULE_ID_PCI_DO64R: "PCI-DO64R (64 Output)",
+            MODULE_ID_PCI_DB64R: "PCI-DB64R (32 Input/32 Output)",
+        }
+        return module_type_mapping.get(module_id, f"Unknown Module (ID: 0x{module_id:04X})")
+
+    async def _read_hardware_input(self, pin: int) -> int:
+        """Read input from hardware"""
+        try:
+            if self._axl_lib is None:
+                raise AjinextekHardwareError("AXL library not loaded")
+
+            if self._active_module_no is None:
+                raise AjinextekHardwareError("No active module configured")
+
+            # Read input bit from hardware
+            value = self._axl_lib.read_input_bit(self._active_module_no, pin)
+            return 1 if value else 0
+
+        except Exception as e:
+            logger.error(f"Failed to read hardware input pin {pin}: {e}")
+            raise AjinextekOperationError(
+                f"Hardware input read failed for pin {pin}: {e}",
+                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
+    async def _write_hardware_output(self, pin: int, value: int) -> bool:
+        """Write output to hardware"""
+        try:
+            if self._axl_lib is None:
+                raise AjinextekHardwareError("AXL library not loaded")
+
+            if self._active_module_no is None:
+                raise AjinextekHardwareError("No active module configured")
+
+            # Write output bit to hardware
+            self._axl_lib.write_output_bit(self._active_module_no, pin, bool(value))
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to write hardware output pin {pin}: {e}")
+            raise AjinextekOperationError(
+                f"Hardware output write failed for pin {pin}: {e}",
+                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
+    async def _get_hardware_info(self) -> Dict[str, Any]:
+        """Get hardware information"""
+        try:
+            if self._axl_lib is None:
+                raise AjinextekHardwareError("AXL library not loaded")
+
+            # Collect information about detected modules
+            modules_info = []
+            total_inputs = 0
+            total_outputs = 0
+
+            for module_no, module_data in self._detected_modules.items():
+                modules_info.append(
+                    {
+                        "module_no": module_no,
+                        "module_type": module_data["module_type"],
+                        "board_no": module_data["board_no"],
+                        "module_pos": module_data["module_pos"],
+                        "module_id": f"0x{module_data['module_id']:04X}",
+                        "input_count": module_data["input_count"],
+                        "output_count": module_data["output_count"],
+                        "status": f"0x{module_data['status']:04X}",
+                    }
+                )
+                total_inputs += module_data["input_count"]
+                total_outputs += module_data["output_count"]
+
+            return {
+                "library_name": "AJINEXTEK AXL",
+                "active_module_no": self._active_module_no,
+                "detected_modules": len(self._detected_modules),
+                "modules_info": modules_info,
+                "total_inputs": total_inputs,
+                "total_outputs": total_outputs,
+                "module_count": self._module_count,
+                "runtime_input_count": self._input_count,
+                "runtime_output_count": self._output_count,
+                "supported_operations": ["bit", "byte", "word", "dword"],
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to get hardware info: {e}")
+            return {
+                "error": str(e),
+                "active_module_no": self._active_module_no,
+                "detected_modules": len(self._detected_modules),
+            }

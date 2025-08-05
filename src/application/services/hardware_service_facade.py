@@ -64,60 +64,6 @@ class HardwareServiceFacade:
 
         # Cached AxisParameter instance - created once and reused
 
-    async def update_services_from_config(self, hardware_config: HardwareConfiguration) -> None:
-        """
-        Update hardware services based on hardware configuration
-
-        This method replaces Mock services with actual hardware implementations
-        based on the loaded hardware configuration.
-
-        Args:
-            hardware_config: Hardware configuration containing service specifications
-
-        Raises:
-            HardwareConnectionException: If service creation fails
-        """
-        logger.info("Updating hardware services from configuration...")
-
-        try:
-            # Import ServiceFactory here to avoid circular imports
-            from infrastructure.factory import ServiceFactory
-
-            # Update Robot service based on configuration
-            robot_config = {"model": hardware_config.robot.model}
-            logger.info(f"Replacing Robot service with {hardware_config.robot.model}")
-            self._robot = ServiceFactory.create_robot_service(robot_config)
-
-            # Update MCU service based on configuration
-            mcu_config = {"model": hardware_config.mcu.model}
-            logger.info(f"Replacing MCU service with {hardware_config.mcu.model}")
-            self._mcu = ServiceFactory.create_mcu_service(mcu_config)
-
-            # Update LoadCell service based on configuration
-            loadcell_config = {"model": hardware_config.loadcell.model}
-            logger.info(f"Replacing LoadCell service with {hardware_config.loadcell.model}")
-            self._loadcell = ServiceFactory.create_loadcell_service(loadcell_config)
-
-            # Update Power service based on configuration
-            power_config = {"model": hardware_config.power.model}
-            logger.info(f"Replacing Power service with {hardware_config.power.model}")
-            self._power = ServiceFactory.create_power_service(power_config)
-
-            # Update Digital Input service based on configuration
-            digital_input_config = {"model": hardware_config.digital_input.model}
-            logger.info(
-                f"Replacing Digital Input service with {hardware_config.digital_input.model}"
-            )
-            self._digital_input = ServiceFactory.create_digital_input_service(digital_input_config)
-
-            logger.info("Hardware services updated successfully from configuration")
-
-        except Exception as e:
-            logger.error("Failed to update hardware services from configuration: {}", e)
-            raise HardwareConnectionException(
-                f"Failed to update hardware services: {str(e)}",
-                details={"operation": "_update_services_from_config"},
-            ) from e
 
     async def connect_all_hardware(self, hardware_config: HardwareConfiguration) -> None:
         """Connect all required hardware"""

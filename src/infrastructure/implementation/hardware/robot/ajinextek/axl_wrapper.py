@@ -55,40 +55,33 @@ class AXLWrapper:
         self.board_count: int = 0
         self.version: str = "Unknown"
 
-        if self.is_windows:
-            self._load_library()
-            self._setup_functions()
-            # Initialize board count and version after setup
-            self.board_count = self._get_board_count_internal()
-            self.version = self._get_lib_version_internal()
-        else:
-            # Linux/개발환경에서는 경고 메시지만 출력
-            print("Warning: Running on non-Windows platform. DLL functions will not be available.")
-            self.board_count = 0
-            self.version = "Mock Version 1.0.0"
+        if not self.is_windows:
+            raise AXLError(
+                "AXL Motion library is only supported on Windows platform. "
+                "For development/testing on other platforms, use MockRobot instead."
+            )
+            
+        self._load_library()
+        self._setup_functions()
+        # Initialize board count and version after setup
+        self.board_count = self._get_board_count_internal()
+        self.version = self._get_lib_version_internal()
 
     def _load_library(self) -> None:
-        """Load the AXL DLL (Windows only)"""
-        if not self.is_windows:
-            return
-
+        """Load the AXL DLL"""
         if not os.path.exists(DLL_PATH):
             raise FileNotFoundError(f"AXL DLL not found at {DLL_PATH}")
 
         try:
             # Load DLL with Windows calling convention
-            if platform.system() == "Windows":
-                self.dll = WinDLL(str(DLL_PATH))
-            else:
-                # This should never be reached due to is_windows check above
-                self.dll = None
+            self.dll = WinDLL(str(DLL_PATH))
         except OSError as e:
             raise RuntimeError(f"Failed to load AXL DLL: {e}") from e
 
     def _setup_functions(self) -> None:
-        """Setup function signatures for ctypes (Windows only)"""
-        if not self.is_windows or self.dll is None:
-            return
+        """Setup function signatures for ctypes"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         # === Library Functions ===
         # AxlOpen
@@ -358,26 +351,26 @@ class AXLWrapper:
     # === Library Functions ===
     def open(self, irq_no: int = 7) -> int:
         """Initialize and open the AXL library"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxlOpen(irq_no)  # type: ignore[no-any-return]
 
     def close(self) -> int:
         """Close the AXL library"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxlClose()  # type: ignore[no-any-return]
 
     def is_opened(self) -> bool:
         """Check if library is opened"""
-        if not self.is_windows or self.dll is None:
-            return True  # Mock opened on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxlIsOpened() == 1  # type: ignore[no-any-return]
 
     def _get_board_count_internal(self) -> int:
         """Internal method to get the number of boards"""
-        if not self.is_windows or self.dll is None:
-            return 1  # Mock 1 board on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         count = c_long()
         result = self.dll.AxlGetBoardCount(ctypes.byref(count))
@@ -395,8 +388,8 @@ class AXLWrapper:
 
     def _get_lib_version_internal(self) -> str:
         """Internal method to get library version"""
-        if not self.is_windows or self.dll is None:
-            return "Mock Version 1.0.0"  # Mock version on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         version = ctypes.create_string_buffer(32)
         result = self.dll.AxlGetLibVersion(version)
@@ -415,8 +408,8 @@ class AXLWrapper:
     # === Motion Functions ===
     def get_axis_count(self) -> int:
         """Get total number of axes"""
-        if not self.is_windows or self.dll is None:
-            return 6  # Mock 6 axes on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         count = c_long()
         result = self.dll.AxmInfoGetAxisCount(ctypes.byref(count))
@@ -430,34 +423,34 @@ class AXLWrapper:
 
     def set_pulse_out_method(self, axis_no: int, method: int) -> int:
         """Set pulse output method"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetPulseOutMethod(axis_no, method)  # type: ignore[no-any-return]
 
     def set_move_unit_per_pulse(self, axis_no: int, unit: float, pulse: int) -> int:
         """Set movement unit per pulse"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetMoveUnitPerPulse(  # type: ignore[no-any-return]
             axis_no, unit, pulse
         )
 
     def servo_on(self, axis_no: int, on_off: int = 1) -> int:
         """Turn servo on/off"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmSignalServoOn(axis_no, on_off)  # type: ignore[no-any-return]
 
     def servo_off(self, axis_no: int) -> int:
         """Turn servo off (convenience method)"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmSignalServoOn(axis_no, 0)  # type: ignore[no-any-return]
 
     def is_servo_on(self, axis_no: int) -> bool:
         """Check if servo is on"""
-        if not self.is_windows or self.dll is None:
-            return True  # Mock servo on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         status = c_long()
         result = self.dll.AxmSignalIsServoOn(axis_no, ctypes.byref(status))
@@ -471,14 +464,14 @@ class AXLWrapper:
 
     def set_cmd_pos(self, axis_no: int, position: float) -> int:
         """Set command position"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmStatusSetCmdPos(axis_no, position)  # type: ignore[no-any-return]
 
     def get_cmd_pos(self, axis_no: int) -> float:
         """Get command position"""
-        if not self.is_windows or self.dll is None:
-            return 0.0  # Mock position on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         position = c_double()
         result = self.dll.AxmStatusGetCmdPos(axis_no, ctypes.byref(position))
@@ -492,14 +485,14 @@ class AXLWrapper:
 
     def set_act_pos(self, axis_no: int, position: float) -> int:
         """Set actual position"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmStatusSetActPos(axis_no, position)  # type: ignore[no-any-return]
 
     def get_act_pos(self, axis_no: int) -> float:
         """Get actual position"""
-        if not self.is_windows or self.dll is None:
-            return 0.0  # Mock position on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         position = c_double()
         result = self.dll.AxmStatusGetActPos(axis_no, ctypes.byref(position))
@@ -520,22 +513,22 @@ class AXLWrapper:
         decel: float,
     ) -> int:
         """Start position move"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMoveStartPos(  # type: ignore[no-any-return]
             axis_no, position, velocity, accel, decel
         )
 
     def move_stop(self, axis_no: int, decel: float) -> int:
         """Stop motion"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMoveStop(axis_no, decel)  # type: ignore[no-any-return]
 
     def read_in_motion(self, axis_no: int) -> bool:
         """Check if axis is in motion"""
-        if not self.is_windows or self.dll is None:
-            return False  # Mock not moving on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         status = c_long()
         result = self.dll.AxmStatusReadInMotion(axis_no, ctypes.byref(status))
@@ -556,8 +549,8 @@ class AXLWrapper:
         offset: float,
     ) -> int:
         """Set homing method"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmHomeSetMethod(  # type: ignore[no-any-return]
             axis_no, home_dir, signal_level, mode, offset
         )
@@ -571,23 +564,23 @@ class AXLWrapper:
         decel: float,
     ) -> int:
         """Set homing velocities"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmHomeSetVel(  # type: ignore[no-any-return]
             axis_no, vel_first, vel_second, accel, decel
         )
 
     def home_set_start(self, axis_no: int) -> int:
         """Start homing"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmHomeSetStart(axis_no)  # type: ignore[no-any-return]
 
     # === Additional Status and Safety Functions ===
     def read_servo_alarm(self, axis_no: int) -> bool:
         """Read servo alarm status"""
-        if not self.is_windows or self.dll is None:
-            return False  # Mock no alarm on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         alarm_status = c_long()
         result = self.dll.AxmSignalReadServoAlarm(axis_no, ctypes.byref(alarm_status))
@@ -601,8 +594,8 @@ class AXLWrapper:
 
     def read_limit_status(self, axis_no: int) -> tuple[bool, bool]:
         """Read positive and negative limit sensor status"""
-        if not self.is_windows or self.dll is None:
-            return (False, False)  # Mock no limits on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         pos_limit = c_long()
         neg_limit = c_long()
@@ -619,20 +612,20 @@ class AXLWrapper:
 
     def set_limit_config(self, axis_no: int, pos_level: int, neg_level: int, stop_mode: int) -> int:
         """Set limit sensor configuration"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmSignalSetLimit(axis_no, pos_level, neg_level, stop_mode)  # type: ignore[no-any-return]
 
     def set_abs_rel_mode(self, axis_no: int, mode: int) -> int:
         """Set absolute/relative coordinate mode"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetAbsRelMode(axis_no, mode)  # type: ignore[no-any-return]
 
     def get_abs_rel_mode(self, axis_no: int) -> int:
         """Get current coordinate mode"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock absolute mode on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         mode = c_long()
         result = self.dll.AxmMotGetAbsRelMode(axis_no, ctypes.byref(mode))
@@ -647,8 +640,8 @@ class AXLWrapper:
     # === Velocity Motion Functions ===
     def move_start_vel(self, axis_no: int, velocity: float, accel: float, decel: float) -> int:
         """Start velocity (jog) motion"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMoveStartVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]
 
     def move_signal_search(
@@ -660,8 +653,8 @@ class AXLWrapper:
         search_distance: float,
     ) -> int:
         """Start signal search motion"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMoveSignalSearch(  # type: ignore[no-any-return]
             axis_no, velocity, accel, decel, search_distance
         )
@@ -676,8 +669,8 @@ class AXLWrapper:
         decels: list[float],
     ) -> int:
         """Start multi-axis synchronized motion"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         axis_count = len(axis_list)
         if not all(len(lst) == axis_count for lst in [positions, velocities, accels, decels]):
@@ -696,8 +689,8 @@ class AXLWrapper:
 
     def move_multi_stop(self, axis_list: list[int], decels: list[float]) -> int:
         """Stop multi-axis motion"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         axis_count = len(axis_list)
         if len(decels) != axis_count:
@@ -712,24 +705,24 @@ class AXLWrapper:
     # === Parameter Loading/Saving Functions ===
     def save_para_all(self, file_path: str) -> int:
         """Save all motion parameters to file"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotSaveParaAll(file_path_bytes)  # type: ignore[no-any-return]
 
     def load_para(self, axis_no: int, file_path: str) -> int:
         """Load motion parameters for specific axis from file"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotLoadPara(axis_no, file_path_bytes)  # type: ignore[no-any-return]
 
     def save_para(self, axis_no: int, file_path: str) -> int:
         """Save motion parameters for specific axis to file"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotSavePara(axis_no, file_path_bytes)  # type: ignore[no-any-return]
@@ -737,14 +730,14 @@ class AXLWrapper:
     # === Motion Parameter Get/Set Functions ===
     def set_max_vel(self, axis_no: int, max_vel: float) -> int:
         """Set maximum velocity for axis"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetMaxVel(axis_no, max_vel)  # type: ignore[no-any-return]
 
     def get_max_vel(self, axis_no: int) -> float:
         """Get maximum velocity for axis"""
-        if not self.is_windows or self.dll is None:
-            return 1000.0  # Mock max velocity on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         max_vel = c_double()
         result = self.dll.AxmMotGetMaxVel(axis_no, ctypes.byref(max_vel))
@@ -758,14 +751,14 @@ class AXLWrapper:
 
     def set_min_vel(self, axis_no: int, min_vel: float) -> int:
         """Set minimum velocity for axis"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetMinVel(axis_no, min_vel)  # type: ignore[no-any-return]
 
     def get_min_vel(self, axis_no: int) -> float:
         """Get minimum velocity for axis"""
-        if not self.is_windows or self.dll is None:
-            return 1.0  # Mock min velocity on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         min_vel = c_double()
         result = self.dll.AxmMotGetMinVel(axis_no, ctypes.byref(min_vel))
@@ -779,14 +772,14 @@ class AXLWrapper:
 
     def set_accel_unit(self, axis_no: int, accel_unit: int) -> int:
         """Set acceleration unit for axis"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetAccelUnit(axis_no, accel_unit)  # type: ignore[no-any-return]
 
     def get_accel_unit(self, axis_no: int) -> int:
         """Get acceleration unit for axis"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock accel unit on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         accel_unit = c_long()
         result = self.dll.AxmMotGetAccelUnit(axis_no, ctypes.byref(accel_unit))
@@ -800,14 +793,14 @@ class AXLWrapper:
 
     def set_profile_mode(self, axis_no: int, profile_mode: int) -> int:
         """Set motion profile mode for axis"""
-        if not self.is_windows or self.dll is None:
-            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMotSetProfileMode(axis_no, profile_mode)  # type: ignore[no-any-return]
 
     def get_profile_mode(self, axis_no: int) -> int:
         """Get motion profile mode for axis"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock profile mode on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         profile_mode = c_long()
         result = self.dll.AxmMotGetProfileMode(axis_no, ctypes.byref(profile_mode))
@@ -821,8 +814,8 @@ class AXLWrapper:
 
     def home_get_result(self, axis_no: int) -> int:
         """Get homing result status for axis"""
-        if not self.is_windows or self.dll is None:
-            return 0x01  # Mock HOME_SUCCESS on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         home_result = c_ulong()
         result = self.dll.AxmHomeGetResult(axis_no, ctypes.byref(home_result))
@@ -840,8 +833,8 @@ class AXLWrapper:
         Returns:
             tuple: (main_step_number, step_number) progress percentages
         """
-        if not self.is_windows or self.dll is None:
-            return (0, 100)  # Mock completed homing on non-Windows
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
 
         home_main_step = c_ulong()
         home_step = c_ulong()

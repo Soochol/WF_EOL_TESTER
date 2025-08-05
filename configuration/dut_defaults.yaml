@@ -1,40 +1,15 @@
-# DUT Default Configuration
-# 이 파일은 DUT (Device Under Test) 정보의 기본값을 정의합니다.
-# Serial Number를 제외한 모든 필드가 이 파일에서 자동으로 로드됩니다.
+# DUT Default Values Configuration
+active_profile: default
 
-# 기본 DUT 설정
 default:
-  dut_id: "WF001"
-  model: "WF-2024-A"
-  operator_id: "OPERATOR001"
-  manufacturer: "WF Electronics"
+  dut_id: DEFAULT001
+  model: Default Model
+  operator_id: DEFAULT_OP
+  manufacturer: Default Manufacturer
 
-# 추가 프로필 (필요시 사용)
 profiles:
-  production:
-    dut_id: "PROD001"
-    model: "WF-2024-PROD"
-    operator_id: "PROD_OP"
-    manufacturer: "WF Electronics"
-    
   test:
-    dut_id: "TEST001"
-    model: "WF-2024-TEST"
-    operator_id: "TEST_OP"
-    manufacturer: "WF Electronics"
-    
-  development:
-    dut_id: "DEV001"
-    model: "WF-2024-DEV"
-    operator_id: "DEV_OP"
-    manufacturer: "WF Electronics"
-
-# 활성 프로필 (default, production, test, development 중 선택)
-active_profile: "default"
-
-# 메타데이터
-metadata:
-  version: "1.0"
-  created_by: "System Administrator"
-  description: "DUT default configuration for automated EOL testing"
-  last_updated: "2025-07-30"
+    dut_id: TEST001
+    model: Test Model
+    operator_id: TEST_OP
+    manufacturer: Test Manufacturer

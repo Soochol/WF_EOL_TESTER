@@ -34,11 +34,11 @@ from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes 
     create_hardware_error,
 )
 
-from .ajinextek_input import AjinextekInput
+from .ajinextek_dio import AjinextekDIO
 
 __all__ = [
     # Main service
-    "AjinextekInput",
+    "AjinextekDIO",
     # Constants
     "DEFAULT_BOARD_NUMBER",
     "DEFAULT_MODULE_POSITION",

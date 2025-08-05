@@ -164,8 +164,6 @@ class EOLForceTestUseCase:
         # Phase 1: Initialize test setup
         await self._load_and_validate_configurations()
 
-        # Apply hardware configuration to services
-        await self._apply_hardware_configuration()
 
         try:
             test_entity.prepare_test()
@@ -347,30 +345,6 @@ class EOLForceTestUseCase:
         if self._hardware_config is None:
             raise TestExecutionException(TestExecutionConstants.HARDWARE_CONFIG_REQUIRED_ERROR)
 
-    async def _apply_hardware_configuration(self) -> None:
-        """
-        Apply hardware configuration by replacing Mock services with actual hardware implementations
-
-        This method uses the loaded hardware configuration to replace the default Mock services
-        with actual hardware implementations based on the configuration specifications.
-
-        Raises:
-            TestExecutionException: If hardware configuration is not loaded or service replacement fails
-        """
-        if self._hardware_config is None:
-            raise TestExecutionException("Hardware configuration must be loaded before applying")
-
-        try:
-            logger.info("Replacing Mock services with actual hardware implementations...")
-
-            # Replace Mock services with actual hardware services based on configuration
-            await self._hardware_services.update_services_from_config(self._hardware_config)
-
-            logger.info("Hardware services successfully updated with actual implementations")
-
-        except Exception as e:
-            logger.error("Failed to apply hardware configuration: {}", e)
-            raise TestExecutionException(f"Failed to apply hardware configuration: {str(e)}") from e
 
     async def _execute_hardware_test_phases(
         self,

@@ -102,7 +102,7 @@ class ConfigurationService:
             raise RepositoryAccessError(
                 operation="load_hardware_config",
                 reason=str(e),
-                file_path="hardware.yaml",
+                file_path="hardware_configuration.yaml",
             ) from e
 
     async def list_available_profiles(self) -> List[str]:

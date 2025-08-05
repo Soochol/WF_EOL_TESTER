@@ -81,20 +81,17 @@ class AXLDIOWrapper:
         self.dll: Optional[Any] = None
         self.is_windows = platform.system() == "Windows"
 
-        if self.is_windows:
-            self._load_library()
-            self._setup_functions()
-        else:
-            # Linux/개발환경에서는 경고 메시지만 출력
-            logger.warning(
-                "Running on non-Windows platform. AXL DLL functions will not be available."
+        if not self.is_windows:
+            raise AjinextekHardwareError(
+                "AXL DIO library is only supported on Windows platform. "
+                "For development/testing on other platforms, use MockDIO instead."
             )
+            
+        self._load_library()
+        self._setup_functions()
 
     def _load_library(self) -> None:
-        """Load the AXL DLL (Windows only)"""
-        if not self.is_windows:
-            return
-
+        """Load the AXL DLL"""
         # Try to find AXL library
         library_paths = [
             AXL_64BIT_LIBRARY_NAME if platform.machine().endswith("64") else AXL_LIBRARY_NAME,
@@ -126,9 +123,9 @@ class AXLDIOWrapper:
         raise AjinextekHardwareError(f"AXL DLL not found. Searched paths: {library_paths}")
 
     def _setup_functions(self) -> None:
-        """Setup function signatures for ctypes (Windows only)"""
-        if not self.is_windows or self.dll is None:
-            return
+        """Setup function signatures for ctypes"""
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         # === Board and Module Information Functions ===
         # AxdInfoIsDIOModule
@@ -238,11 +235,48 @@ class AXLDIOWrapper:
         self.dll.AxdiInterruptRead.argtypes = [c_long, POINTER(wintypes.DWORD)]
         self.dll.AxdiInterruptRead.restype = wintypes.DWORD
 
+        # === Core Library Functions ===
+        # AxlOpen
+        self.dll.AxlOpen.argtypes = [c_long]
+        self.dll.AxlOpen.restype = wintypes.DWORD
+
+        # AxlClose
+        self.dll.AxlClose.argtypes = []
+        self.dll.AxlClose.restype = wintypes.DWORD
+
+        # AxlIsOpened
+        self.dll.AxlIsOpened.argtypes = []
+        self.dll.AxlIsOpened.restype = wintypes.DWORD
+
+    # === Core Library Functions ===
+    def axl_open(self, irq_no: int) -> int:
+        """Open AXL library with specified IRQ number"""
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
+            
+        result = self.dll.AxlOpen(irq_no)
+        return result
+
+    def axl_close(self) -> bool:
+        """Close AXL library"""
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
+            
+        result = self.dll.AxlClose()
+        return result == AXT_RT_SUCCESS
+
+    def is_opened(self) -> bool:
+        """Check if AXL library is opened"""
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
+            
+        return self.dll.AxlIsOpened() == 1
+
     # === Board and Module Information Functions ===
     def is_dio_module(self) -> bool:
         """Check if DIO modules exist"""
-        if not self.is_windows or self.dll is None:
-            return True  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         status = wintypes.DWORD()
         result = self.dll.AxdInfoIsDIOModule(ctypes.byref(status))
@@ -252,8 +286,8 @@ class AXLDIOWrapper:
 
     def get_module_count(self) -> int:
         """Get total number of DIO modules"""
-        if not self.is_windows or self.dll is None:
-            return 1  # Mock 1 module on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         count = c_long()
         result = self.dll.AxdInfoGetModuleCount(ctypes.byref(count))
@@ -263,8 +297,8 @@ class AXLDIOWrapper:
 
     def get_module_no(self, board_no: int, module_pos: int) -> int:
         """Get module number from board number and position"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock module number on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         module_no = c_long()
         result = self.dll.AxdInfoGetModuleNo(board_no, module_pos, ctypes.byref(module_no))
@@ -276,8 +310,8 @@ class AXLDIOWrapper:
 
     def get_input_count(self, module_no: int) -> int:
         """Get input channel count for module"""
-        if not self.is_windows or self.dll is None:
-            return 32  # Mock 32 inputs on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         count = c_long()
         result = self.dll.AxdInfoGetInputCount(module_no, ctypes.byref(count))
@@ -287,8 +321,8 @@ class AXLDIOWrapper:
 
     def get_output_count(self, module_no: int) -> int:
         """Get output channel count for module"""
-        if not self.is_windows or self.dll is None:
-            return 32  # Mock 32 outputs on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         count = c_long()
         result = self.dll.AxdInfoGetOutputCount(module_no, ctypes.byref(count))
@@ -300,8 +334,8 @@ class AXLDIOWrapper:
 
     def get_module_info(self, module_no: int) -> Tuple[int, int, int]:
         """Get module information (board_no, module_pos, module_id)"""
-        if not self.is_windows or self.dll is None:
-            return (0, 0, 0x1234)  # Mock module info on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         board_no = c_long()
         module_pos = c_long()
@@ -318,8 +352,8 @@ class AXLDIOWrapper:
 
     def get_module_status(self, module_no: int) -> int:
         """Get module status"""
-        if not self.is_windows or self.dll is None:
-            return 0x0F  # Mock healthy status on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdInfoGetModuleStatus(module_no)
         return result
@@ -327,8 +361,8 @@ class AXLDIOWrapper:
     # === Input Reading Functions ===
     def read_input_bit(self, module_no: int, offset: int) -> bool:
         """Read single input bit"""
-        if not self.is_windows or self.dll is None:
-            return False  # Mock input value on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         value = wintypes.DWORD()
         result = self.dll.AxdiReadInportBit(module_no, offset, ctypes.byref(value))
@@ -340,8 +374,8 @@ class AXLDIOWrapper:
 
     def read_input_byte(self, module_no: int, offset: int) -> int:
         """Read input byte (8 bits)"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock input value on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         value = wintypes.DWORD()
         result = self.dll.AxdiReadInportByte(module_no, offset, ctypes.byref(value))
@@ -353,8 +387,8 @@ class AXLDIOWrapper:
 
     def read_input_word(self, module_no: int, offset: int) -> int:
         """Read input word (16 bits)"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock input value on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         value = wintypes.DWORD()
         result = self.dll.AxdiReadInportWord(module_no, offset, ctypes.byref(value))
@@ -366,8 +400,8 @@ class AXLDIOWrapper:
 
     def read_input_dword(self, module_no: int, offset: int) -> int:
         """Read input dword (32 bits)"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock input value on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         value = wintypes.DWORD()
         result = self.dll.AxdiReadInportDword(module_no, offset, ctypes.byref(value))
@@ -380,8 +414,8 @@ class AXLDIOWrapper:
     # === Output Writing Functions ===
     def write_output_bit(self, module_no: int, offset: int, value: bool) -> None:
         """Write single output bit"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         bit_value = 1 if value else 0
         result = self.dll.AxdoWriteOutportBit(module_no, offset, bit_value)
@@ -392,8 +426,8 @@ class AXLDIOWrapper:
 
     def write_output_byte(self, module_no: int, offset: int, value: int) -> None:
         """Write output byte (8 bits)"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdoWriteOutportByte(module_no, offset, value & 0xFF)
         if result != AXT_RT_SUCCESS:
@@ -403,8 +437,8 @@ class AXLDIOWrapper:
 
     def write_output_word(self, module_no: int, offset: int, value: int) -> None:
         """Write output word (16 bits)"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdoWriteOutportWord(module_no, offset, value & 0xFFFF)
         if result != AXT_RT_SUCCESS:
@@ -414,8 +448,8 @@ class AXLDIOWrapper:
 
     def write_output_dword(self, module_no: int, offset: int, value: int) -> None:
         """Write output dword (32 bits)"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdoWriteOutportDword(module_no, offset, value)
         if result != AXT_RT_SUCCESS:
@@ -426,8 +460,8 @@ class AXLDIOWrapper:
     # === Level Configuration Functions ===
     def set_input_level(self, module_no: int, offset: int, level: int) -> None:
         """Set input signal level (HIGH/LOW active)"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdiLevelSetInportBit(module_no, offset, level)
         if result != AXT_RT_SUCCESS:
@@ -437,8 +471,8 @@ class AXLDIOWrapper:
 
     def get_input_level(self, module_no: int, offset: int) -> int:
         """Get input signal level configuration"""
-        if not self.is_windows or self.dll is None:
-            return LEVEL_HIGH  # Mock level on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         level = wintypes.DWORD()
         result = self.dll.AxdiLevelGetInportBit(module_no, offset, ctypes.byref(level))
@@ -450,8 +484,8 @@ class AXLDIOWrapper:
 
     def set_output_level(self, module_no: int, offset: int, level: int) -> None:
         """Set output signal level (HIGH/LOW active)"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdoLevelSetOutportBit(module_no, offset, level)
         if result != AXT_RT_SUCCESS:
@@ -461,8 +495,8 @@ class AXLDIOWrapper:
 
     def get_output_level(self, module_no: int, offset: int) -> int:
         """Get output signal level configuration"""
-        if not self.is_windows or self.dll is None:
-            return LEVEL_HIGH  # Mock level on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         level = wintypes.DWORD()
         result = self.dll.AxdoLevelGetOutportBit(module_no, offset, ctypes.byref(level))
@@ -475,8 +509,8 @@ class AXLDIOWrapper:
     # === Interrupt Functions ===
     def setup_interrupt_callback(self, module_no: int, callback_func) -> None:
         """Setup interrupt with callback function"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         result = self.dll.AxdiInterruptSetModule(
             module_no,
@@ -493,8 +527,8 @@ class AXLDIOWrapper:
 
     def enable_module_interrupt(self, module_no: int, enable: bool = True) -> None:
         """Enable/disable interrupts for module"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         enable_value = 1 if enable else 0
         result = self.dll.AxdiInterruptSetModuleEnable(module_no, enable_value)
@@ -508,8 +542,8 @@ class AXLDIOWrapper:
         self, module_no: int, offset: int, edge_mode: str, value: int = 1
     ) -> None:
         """Set interrupt edge trigger mode for input bit"""
-        if not self.is_windows or self.dll is None:
-            return  # Mock success on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         edge_mapping = {
             "rising": UP_EDGE,
@@ -527,8 +561,8 @@ class AXLDIOWrapper:
 
     def read_interrupt_status(self, module_no: int) -> int:
         """Read interrupt status for module"""
-        if not self.is_windows or self.dll is None:
-            return 0  # Mock no interrupts on non-Windows
+        if self.dll is None:
+            raise AjinextekHardwareError("AXL DLL not loaded")
 
         status = wintypes.DWORD()
         result = self.dll.AxdiInterruptRead(module_no, ctypes.byref(status))

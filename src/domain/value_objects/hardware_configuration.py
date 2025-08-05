@@ -28,9 +28,6 @@ SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {
 class RobotConfig:
     """Robot motion configuration"""
 
-    # Hardware model
-    model: str = "AJINEXTEK"
-
     # Connection parameters (AJINEXTEK specific)
     irq_no: int = 7
 
@@ -46,9 +43,6 @@ class RobotConfig:
 @dataclass(frozen=True)
 class LoadCellConfig:
     """LoadCell device configuration (BS205)"""
-
-    # Hardware model
-    model: str = "BS205"
 
     # Connection parameters
     port: str = "COM3"
@@ -73,9 +67,6 @@ class LoadCellConfig:
 @dataclass(frozen=True)
 class MCUConfig:
     """MCU device configuration (LMA)"""
-
-    # Hardware model
-    model: str = "LMA"
 
     # Connection parameters
     port: str = "COM4"
@@ -104,9 +95,6 @@ class MCUConfig:
 class PowerConfig:
     """Power supply configuration (ODA)"""
 
-    # Hardware model
-    model: str = "ODA"
-
     # Connection parameters
     host: str = "192.168.1.100"
     port: int = 8080
@@ -133,24 +121,18 @@ class PowerConfig:
 
 
 @dataclass(frozen=True)
-class DigitalInputConfig:
+class DigitalIOConfig:
     """Digital Input configuration (AJINEXTEK)"""
 
-    # Hardware model
-    model: str = "AJINEXTEK"
+    # Digital Input connection parameters
+    operator_start_button_left: int = 1
+    operator_start_button_right: int = 2
 
-    # Connection parameters
-    board_number: int = 0  # Renamed from board_no for consistency
-    board_no: int = 0  # Keep for backward compatibility
-    module_position: int = 0
-    signal_type: int = 2  # 0=TTL, 1=CMOS, 2=24V industrial
-    input_count: int = 8
-
-    # Operational parameters
-    debounce_time: float = 0.01
-    debounce_time_ms: int = 10  # Debounce time in milliseconds
-    retry_count: int = 3
-    auto_initialize: bool = True
+    # Digital Output parameters
+    tower_lamp_red: int = 4
+    tower_lamp_yellow: int = 5
+    tower_lamp_green: int = 6
+    beep: int = 7
 
     # Mock-related parameters
     total_pins: int = 32  # For mock implementation
@@ -173,7 +155,7 @@ class HardwareConfiguration:
     loadcell: LoadCellConfig = field(default_factory=LoadCellConfig)
     mcu: MCUConfig = field(default_factory=MCUConfig)
     power: PowerConfig = field(default_factory=PowerConfig)
-    digital_input: DigitalInputConfig = field(default_factory=DigitalInputConfig)
+    digital_io: DigitalIOConfig = field(default_factory=DigitalIOConfig)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization"""
@@ -183,14 +165,6 @@ class HardwareConfiguration:
 
     def _validate_robot_config(self) -> None:
         """Validate robot configuration parameters"""
-        # Validate model
-        if self.robot.model not in SUPPORTED_ROBOT_MODELS:
-            raise ValidationException(
-                "robot.model",
-                self.robot.model,
-                f"Unsupported robot model. Supported models: {', '.join(SUPPORTED_ROBOT_MODELS)}",
-            )
-
         if self.robot.axis_id < 0:
             raise ValidationException(
                 "robot.axis_id",
@@ -208,13 +182,6 @@ class HardwareConfiguration:
     def _validate_communication_configs(self) -> None:
         """Validate communication configuration parameters"""
         # LoadCell validation
-        if self.loadcell.model not in SUPPORTED_LOADCELL_MODELS:
-            raise ValidationException(
-                "loadcell.model",
-                self.loadcell.model,
-                f"Unsupported loadcell model. Supported models: {', '.join(SUPPORTED_LOADCELL_MODELS)}",
-            )
-
         if not self.loadcell.port:
             raise ValidationException(
                 "loadcell.port",
@@ -315,13 +282,6 @@ class HardwareConfiguration:
             )
 
         # MCU validation
-        if self.mcu.model not in SUPPORTED_MCU_MODELS:
-            raise ValidationException(
-                "mcu.model",
-                self.mcu.model,
-                f"Unsupported MCU model. Supported models: {', '.join(SUPPORTED_MCU_MODELS)}",
-            )
-
         if not self.mcu.port:
             raise ValidationException(
                 "mcu.port",
@@ -425,111 +385,38 @@ class HardwareConfiguration:
                 "MCU parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
             )
 
-        # Digital Input validation
-        if self.digital_input.model not in SUPPORTED_DIGITAL_INPUT_MODELS:
-            raise ValidationException(
-                "digital_input.model",
-                self.digital_input.model,
-                f"Unsupported digital input model. Supported models: {', '.join(SUPPORTED_DIGITAL_INPUT_MODELS)}",
-            )
-
-        # Connection parameters validation
-        if self.digital_input.board_number < 0:
-            raise ValidationException(
-                "digital_input.board_number",
-                self.digital_input.board_number,
-                "Board number cannot be negative",
-            )
-
-        if self.digital_input.board_no < 0:
-            raise ValidationException(
-                "digital_input.board_no",
-                self.digital_input.board_no,
-                "Board number cannot be negative",
-            )
-
-        if self.digital_input.module_position < 0:
-            raise ValidationException(
-                "digital_input.module_position",
-                self.digital_input.module_position,
-                "Module position cannot be negative",
-            )
-
-        if self.digital_input.signal_type not in [0, 1, 2]:
-            raise ValidationException(
-                "digital_input.signal_type",
-                self.digital_input.signal_type,
-                "Signal type must be 0 (TTL), 1 (CMOS), or 2 (24V)",
-            )
-
-        if self.digital_input.input_count <= 0:
-            raise ValidationException(
-                "digital_input.input_count",
-                self.digital_input.input_count,
-                "Input count must be positive",
-            )
-
-        # Operational parameters validation
-        if self.digital_input.debounce_time < 0:
-            raise ValidationException(
-                "digital_input.debounce_time",
-                self.digital_input.debounce_time,
-                "Debounce time cannot be negative",
-            )
-
-        if self.digital_input.debounce_time_ms < 0:
-            raise ValidationException(
-                "digital_input.debounce_time_ms",
-                self.digital_input.debounce_time_ms,
-                "Debounce time (ms) cannot be negative",
-            )
-
-        if self.digital_input.retry_count < 0:
-            raise ValidationException(
-                "digital_input.retry_count",
-                self.digital_input.retry_count,
-                "Retry count cannot be negative",
-            )
-
+        # Digital IO validation
         # Mock-related parameters validation
-        if self.digital_input.total_pins <= 0:
+        if self.digital_io.total_pins <= 0:
             raise ValidationException(
-                "digital_input.total_pins",
-                self.digital_input.total_pins,
+                "digital_io.total_pins",
+                self.digital_io.total_pins,
                 "Total pins must be positive",
             )
 
-        if not (0.0 <= self.digital_input.noise_probability <= 1.0):
+        if not (0.0 <= self.digital_io.noise_probability <= 1.0):
             raise ValidationException(
-                "digital_input.noise_probability",
-                self.digital_input.noise_probability,
+                "digital_io.noise_probability",
+                self.digital_io.noise_probability,
                 "Noise probability must be between 0.0 and 1.0",
             )
 
-        if self.digital_input.response_delay < 0:
+        if self.digital_io.response_delay < 0:
             raise ValidationException(
-                "digital_input.response_delay",
-                self.digital_input.response_delay,
+                "digital_io.response_delay",
+                self.digital_io.response_delay,
                 "Response delay cannot be negative",
             )
 
-        if self.digital_input.connection_delay < 0:
+        if self.digital_io.connection_delay < 0:
             raise ValidationException(
-                "digital_input.connection_delay",
-                self.digital_input.connection_delay,
+                "digital_io.connection_delay",
+                self.digital_io.connection_delay,
                 "Connection delay cannot be negative",
             )
 
     def _validate_power_config(self) -> None:
         """Validate power supply configuration parameters"""
-        # Validate model
-        if self.power.model not in SUPPORTED_POWER_MODELS:
-            raise ValidationException(
-                "power.model",
-                self.power.model,
-                f"Unsupported power supply model. Supported models: {', '.join(SUPPORTED_POWER_MODELS)}",
-            )
-
         if not self.power.host:
             raise ValidationException(
                 "power.host",
@@ -656,7 +543,7 @@ class HardwareConfiguration:
             "loadcell": self.loadcell,
             "mcu": self.mcu,
             "power": self.power,
-            "digital_input": self.digital_input,
+            "digital_io": self.digital_io,
         }
 
         # Apply overrides
@@ -668,7 +555,7 @@ class HardwareConfiguration:
             "loadcell",
             "mcu",
             "power",
-            "digital_input",
+            "digital_io",
         ]:
             if config_name in overrides and isinstance(overrides[config_name], dict):
                 # Get the appropriate config class
@@ -677,7 +564,7 @@ class HardwareConfiguration:
                     "loadcell": LoadCellConfig,
                     "mcu": MCUConfig,
                     "power": PowerConfig,
-                    "digital_input": DigitalInputConfig,
+                    "digital_io": DigitalIOConfig,
                 }[config_name]
 
                 # Create new config instance from dict
@@ -701,9 +588,9 @@ class HardwareConfiguration:
                 PowerConfig,
                 current_values.get("power", self.power),
             ),
-            digital_input=cast(
-                DigitalInputConfig,
-                current_values.get("digital_input", self.digital_input),
+            digital_io=cast(
+                DigitalIOConfig,
+                current_values.get("digital_io", self.digital_io),
             ),
         )
 
@@ -711,7 +598,6 @@ class HardwareConfiguration:
         """Convert configuration to dictionary representation"""
         return {
             "robot": {
-                "model": self.robot.model,
                 "axis_id": self.robot.axis_id,
                 "irq_no": self.robot.irq_no,
                 "velocity": self.robot.velocity,
@@ -719,7 +605,6 @@ class HardwareConfiguration:
                 "deceleration": self.robot.deceleration,
             },
             "loadcell": {
-                "model": self.loadcell.model,
                 "port": self.loadcell.port,
                 "baudrate": self.loadcell.baudrate,
                 "timeout": self.loadcell.timeout,
@@ -735,7 +620,6 @@ class HardwareConfiguration:
                 "zero_tolerance": self.loadcell.zero_tolerance,
             },
             "mcu": {
-                "model": self.mcu.model,
                 "port": self.mcu.port,
                 "baudrate": self.mcu.baudrate,
                 "timeout": self.mcu.timeout,
@@ -752,7 +636,6 @@ class HardwareConfiguration:
                 "max_fan_speed": self.mcu.max_fan_speed,
             },
             "power": {
-                "model": self.power.model,
                 "host": self.power.host,
                 "port": self.power.port,
                 "timeout": self.power.timeout,
@@ -768,22 +651,18 @@ class HardwareConfiguration:
                 "voltage_accuracy": self.power.voltage_accuracy,
                 "current_accuracy": self.power.current_accuracy,
             },
-            "digital_input": {
-                "model": self.digital_input.model,
-                "board_number": self.digital_input.board_number,
-                "board_no": self.digital_input.board_no,
-                "module_position": self.digital_input.module_position,
-                "signal_type": self.digital_input.signal_type,
-                "input_count": self.digital_input.input_count,
-                "debounce_time": self.digital_input.debounce_time,
-                "debounce_time_ms": self.digital_input.debounce_time_ms,
-                "retry_count": self.digital_input.retry_count,
-                "auto_initialize": self.digital_input.auto_initialize,
-                "total_pins": self.digital_input.total_pins,
-                "simulate_noise": self.digital_input.simulate_noise,
-                "noise_probability": self.digital_input.noise_probability,
-                "response_delay": self.digital_input.response_delay,
-                "connection_delay": self.digital_input.connection_delay,
+            "digital_io": {
+                "operator_start_button_left": self.digital_io.operator_start_button_left,
+                "operator_start_button_right": self.digital_io.operator_start_button_right,
+                "tower_lamp_red": self.digital_io.tower_lamp_red,
+                "tower_lamp_yellow": self.digital_io.tower_lamp_yellow,
+                "tower_lamp_green": self.digital_io.tower_lamp_green,
+                "beep": self.digital_io.beep,
+                "total_pins": self.digital_io.total_pins,
+                "simulate_noise": self.digital_io.simulate_noise,
+                "noise_probability": self.digital_io.noise_probability,
+                "response_delay": self.digital_io.response_delay,
+                "connection_delay": self.digital_io.connection_delay,
             },
         }
 
@@ -810,7 +689,7 @@ class HardwareConfiguration:
             "loadcell": LoadCellConfig,
             "mcu": MCUConfig,
             "power": PowerConfig,
-            "digital_input": DigitalInputConfig,
+            "digital_io": DigitalIOConfig,
         }
 
         for (
@@ -837,17 +716,17 @@ class HardwareConfiguration:
                 PowerConfig,
                 data_copy.get("power", PowerConfig()),
             ),
-            digital_input=cast(
-                DigitalInputConfig,
-                data_copy.get("digital_input", DigitalInputConfig()),
+            digital_io=cast(
+                DigitalIOConfig,
+                data_copy.get("digital_io", DigitalIOConfig()),
             ),
         )
 
     def __str__(self) -> str:
-        return f"HardwareConfig({self.robot.model}/{self.loadcell.model}/{self.mcu.model}/{self.power.model}/{self.digital_input.model})"
+        return "HardwareConfig(robot/loadcell/mcu/power/digital_io)"
 
     def __repr__(self) -> str:
         return (
             f"HardwareConfiguration(robot={self.robot}, loadcell={self.loadcell}, "
-            f"mcu={self.mcu}, power={self.power}, digital_input={self.digital_input})"
+            f"mcu={self.mcu}, power={self.power}, digital_io={self.digital_io})"
         )

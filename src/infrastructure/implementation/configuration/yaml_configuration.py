@@ -25,6 +25,7 @@ from domain.exceptions.configuration_exceptions import (
 from domain.value_objects.hardware_configuration import (
     HardwareConfiguration,
 )
+from domain.value_objects.hardware_model import HardwareModel
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
@@ -41,7 +42,8 @@ class YamlConfiguration(Configuration):
     # Configuration constants
     DEFAULT_CONFIG_PATH = "configuration/test_profiles"
     HARDWARE_CONFIG_PATH = "configuration"
-    HARDWARE_CONFIG_FILENAME = "hardware.yaml"
+    HARDWARE_CONFIG_FILENAME = "hardware_configuration.yaml"
+    HARDWARE_MODEL_FILENAME = "hardware_model.yaml"
     YAML_FILE_EXTENSION = ".yaml"
     CONFIGURATION_VERSION = "1.0"
     YAML_INDENT_SIZE = 2
@@ -160,7 +162,7 @@ class YamlConfiguration(Configuration):
         # If file doesn't exist, create it with default hardware configuration
         if not hardware_file.exists():
             logger.info(
-                "Hardware file 'configuration/hardware.yaml' not found, creating with default hardware configuration"
+                "Hardware file 'configuration/hardware_configuration.yaml' not found, creating with default hardware configuration"
             )
             await self._create_default_hardware_profile()
 
@@ -179,7 +181,7 @@ class YamlConfiguration(Configuration):
             # Extract hardware_config section
             if "hardware_config" not in yaml_data:
                 # Return default hardware configuration if section not found
-                logger.warning("No hardware_config section found in hardware.yaml, using defaults")
+                logger.warning("No hardware_config section found in hardware_configuration.yaml, using defaults")
                 return HardwareConfiguration()
 
             hardware_data = yaml_data["hardware_config"]
@@ -187,7 +189,7 @@ class YamlConfiguration(Configuration):
             # Create hardware configuration object
             hardware_config = HardwareConfiguration.from_dict(hardware_data)
 
-            logger.info("Successfully loaded hardware configuration from hardware.yaml")
+            logger.info("Successfully loaded hardware configuration from hardware_configuration.yaml")
             return hardware_config
 
         except yaml.YAMLError as e:
@@ -199,8 +201,65 @@ class YamlConfiguration(Configuration):
             ) from e
         except Exception as e:
             raise ConfigurationException(
-                f"Failed to load hardware configuration from hardware.yaml: {str(e)}",
+                f"Failed to load hardware configuration from hardware_configuration.yaml: {str(e)}",
                 config_source=str(hardware_file),
+            ) from e
+
+    async def load_hardware_model(self) -> HardwareModel:
+        """
+        Load hardware model specification from fixed hardware_model.yaml file.
+
+        This method loads hardware model information (which hardware types to use)
+        from a dedicated hardware_model.yaml file, separate from test profiles.
+        If file does not exist, creates it with default hardware model.
+
+        Returns:
+            HardwareModel object containing hardware type specifications
+
+        Raises:
+            ConfigurationFormatException: If YAML file is malformed
+            InvalidConfigurationException: If hardware model values are invalid
+            ConfigurationException: If file operations fail
+        """
+        hardware_model_file = Path(self.HARDWARE_CONFIG_PATH) / self.HARDWARE_MODEL_FILENAME
+
+        try:
+            # Create with default hardware model if file doesn't exist
+            if not hardware_model_file.exists():
+                logger.info(f"Hardware model file {hardware_model_file} not found, creating with default values")
+                await self._create_default_hardware_model_file()
+                
+                # Return default hardware model
+                return HardwareModel()
+
+            # Load existing hardware model file
+            with open(hardware_model_file, "r", encoding=self.FILE_ENCODING) as f:
+                model_data = yaml.safe_load(f)
+
+            if not model_data:
+                logger.warning(f"Empty hardware model file {hardware_model_file}, using default hardware model")
+                return HardwareModel()
+
+            # Extract hardware model section
+            hardware_model_data = model_data.get("hardware_model", {})
+
+            # Create HardwareModel from data
+            hardware_model = HardwareModel.from_dict(hardware_model_data)
+
+            logger.info(f"Hardware model loaded from hardware_model.yaml: {hardware_model}")
+            return hardware_model
+
+        except yaml.YAMLError as e:
+            raise ConfigurationFormatException(
+                parameter_name="yaml_syntax",
+                invalid_format=str(e),
+                expected_format="Valid YAML syntax",
+                config_source=str(hardware_model_file),
+            ) from e
+        except Exception as e:
+            raise ConfigurationException(
+                f"Failed to load hardware model from hardware_model.yaml: {str(e)}",
+                config_source=str(hardware_model_file),
             ) from e
 
     async def validate_configuration(self, config: TestConfiguration) -> None:
@@ -503,11 +562,9 @@ class YamlConfiguration(Configuration):
         return {
             "hardware_config": {
                 "robot": {
-                    "model": hardware_config.robot.model,
                     "irq_no": hardware_config.robot.irq_no,
                 },
                 "loadcell": {
-                    "model": hardware_config.loadcell.model,
                     "port": hardware_config.loadcell.port,
                     "baudrate": hardware_config.loadcell.baudrate,
                     "timeout": hardware_config.loadcell.timeout,
@@ -517,7 +574,6 @@ class YamlConfiguration(Configuration):
                     "indicator_id": hardware_config.loadcell.indicator_id,
                 },
                 "mcu": {
-                    "model": hardware_config.mcu.model,
                     "port": hardware_config.mcu.port,
                     "baudrate": hardware_config.mcu.baudrate,
                     "timeout": hardware_config.mcu.timeout,
@@ -526,17 +582,22 @@ class YamlConfiguration(Configuration):
                     "parity": hardware_config.mcu.parity,
                 },
                 "power": {
-                    "model": hardware_config.power.model,
                     "host": hardware_config.power.host,
                     "port": hardware_config.power.port,
                     "timeout": hardware_config.power.timeout,
                     "channel": hardware_config.power.channel,
                 },
-                "digital_input": {
-                    "model": hardware_config.digital_input.model,
-                    "board_no": hardware_config.digital_input.board_no,
-                    "input_count": hardware_config.digital_input.input_count,
-                    "debounce_time": hardware_config.digital_input.debounce_time,
+                "digital_io": {
+                    "operator_start_button_left": (
+                        hardware_config.digital_io.operator_start_button_left
+                    ),
+                    "operator_start_button_right": (
+                        hardware_config.digital_io.operator_start_button_right
+                    ),
+                    "tower_lamp_red": hardware_config.digital_io.tower_lamp_red,
+                    "tower_lamp_yellow": hardware_config.digital_io.tower_lamp_yellow,
+                    "tower_lamp_green": hardware_config.digital_io.tower_lamp_green,
+                    "beep": hardware_config.digital_io.beep,
                 },
             }
         }
@@ -671,6 +732,51 @@ class YamlConfiguration(Configuration):
 
         return compatibility
 
+    async def _create_default_hardware_model_file(self) -> None:
+        """
+        Create default hardware_model.yaml file with default hardware model
+        
+        Raises:
+            ConfigurationException: If file creation fails
+        """
+        hardware_model_file = Path(self.HARDWARE_CONFIG_PATH) / self.HARDWARE_MODEL_FILENAME
+        
+        # Ensure configuration directory exists
+        hardware_model_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            # Create default hardware model
+            default_hardware_model = HardwareModel()
+            
+            # Create YAML structure for hardware model file
+            yaml_data = {
+                "hardware_model": default_hardware_model.to_dict(),
+                "metadata": {
+                    "description": "Auto-generated hardware model configuration",
+                    "version": self.CONFIGURATION_VERSION,
+                    "created_by": "YamlConfiguration (auto-generated)",
+                    "created_time": datetime.now().isoformat(),
+                }
+            }
+            
+            # Write to file
+            with open(hardware_model_file, "w", encoding=self.FILE_ENCODING) as yaml_file:
+                yaml.dump(
+                    yaml_data,
+                    yaml_file,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    indent=self.YAML_INDENT_SIZE,
+                )
+            
+            logger.info("Successfully created default hardware_model.yaml")
+            
+        except Exception as e:
+            raise ConfigurationException(
+                f"Failed to create default hardware_model.yaml: {str(e)}",
+                config_source=str(hardware_model_file),
+            ) from e
+
     async def _create_default_hardware_profile(
         self,
     ) -> None:
@@ -710,11 +816,11 @@ class YamlConfiguration(Configuration):
                     indent=self.YAML_INDENT_SIZE,
                 )
 
-            logger.info("Successfully created default hardware.yaml")
+            logger.info("Successfully created default hardware_configuration.yaml")
 
         except Exception as e:
             raise ConfigurationException(
-                f"Failed to create default hardware.yaml: {str(e)}",
+                f"Failed to create default hardware_configuration.yaml: {str(e)}",
                 config_source=str(hardware_file),
             ) from e
 

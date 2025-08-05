@@ -1,0 +1,36 @@
+hardware_config:
+  robot:
+    irq_no: 7
+    axis_id: 0
+  loadcell:
+    port: COM3
+    baudrate: 9600
+    timeout: 1.0
+    bytesize: 8
+    stopbits: 1
+    parity: null
+    indicator_id: 1
+  mcu:
+    port: COM4
+    baudrate: 115200
+    timeout: 2.0
+    bytesize: 8
+    stopbits: 1
+    parity: null
+  power:
+    host: 192.168.1.100
+    port: 8080
+    timeout: 5.0
+    channel: 1
+  digital_io:
+    operator_start_button_left: 1
+    operator_start_button_right: 2
+    tower_lamp_red: 4
+    tower_lamp_yellow: 5
+    tower_lamp_green: 6
+    beep: 7
+metadata:
+  description: Auto-generated hardware configuration
+  version: '1.0'
+  created_by: YamlConfiguration (auto-generated)
+  created_time: '2025-08-05T16:34:12.489693'

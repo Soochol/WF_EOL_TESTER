@@ -16,7 +16,7 @@ Key Features:
 
 # Standard library imports
 import re
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 # Third-party imports
 from loguru import logger
@@ -36,21 +36,16 @@ from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
 
-# Local imports - UI modules
-from .dashboard_integration import create_dashboard_integrator
 from .config_reader import CLIConfigReader
+
+# Local imports - UI modules
 from .enhanced_cli_integration import (
     create_enhanced_cli_integrator,
     create_enhanced_menu_system,
-    create_enhanced_slash_interface,
 )
 from .hardware_controller import HardwareControlManager
 from .rich_formatter import RichFormatter
-from .slash_command_handler import SlashCommandHandler
 from .usecase_manager import UseCaseManager
-
-# Import ServiceFactory for creating CLI hardware services
-from infrastructure.factory import ServiceFactory
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
@@ -331,39 +326,9 @@ class EnhancedEOLTesterCLI:
             )
             # Initialize configuration reader for CLI commands
             self._config_reader = CLIConfigReader()
-            
-            # Create hardware services for CLI based on configuration mode
-            cli_hardware_config = {"model": "mock"} if self._config_reader.is_mock_mode() else None
-            logger.info(f"Creating CLI hardware services in {'mock' if self._config_reader.is_mock_mode() else 'real'} mode")
-            
-            # Create individual hardware services for SlashCommandHandler
-            cli_robot_service = ServiceFactory.create_robot_service(cli_hardware_config)
-            cli_mcu_service = ServiceFactory.create_mcu_service(cli_hardware_config)
-            cli_loadcell_service = ServiceFactory.create_loadcell_service(cli_hardware_config)
-            cli_power_service = ServiceFactory.create_power_service(cli_hardware_config)
-            
-            # Initialize slash command handler with CLI-specific hardware services
-            self._slash_handler: Optional[Any] = SlashCommandHandler(
-                robot_service=cli_robot_service,
-                mcu_service=cli_mcu_service,
-                loadcell_service=cli_loadcell_service,
-                power_service=cli_power_service,
-                console=self._console,
-                config_reader=self._config_reader,
-            )
-            # Initialize enhanced slash command interface
-            self._enhanced_slash_interface: Optional[Any] = create_enhanced_slash_interface(
-                self._input_integrator, self._slash_handler
-            )
-            # Initialize dashboard integrator
-            self._dashboard_integrator: Optional[Any] = create_dashboard_integrator(
-                self._hardware_facade, self._console, self._formatter
-            )
+
         else:
             self._hardware_manager = None
-            self._slash_handler = None
-            self._enhanced_slash_interface = None
-            self._dashboard_integrator = None
 
     async def run_interactive(self) -> None:
         """Run the interactive CLI with Rich UI."""
@@ -415,21 +380,13 @@ class EnhancedEOLTesterCLI:
             elif choice == "3":
                 await self._hardware_control_center()
             elif choice == "4":
-                await self._real_time_monitoring_dashboard()
-            elif choice == "5":
-                await self._check_hardware_status()
-            elif choice == "6":
-                await self._show_test_statistics()
-            elif choice == "7":
-                await self._slash_command_mode()
-            elif choice == "8":
                 self._running = False
                 self._formatter.print_message(
                     "Thank you for using EOL Tester!", message_type="success", title="Goodbye"
                 )
             else:
                 self._formatter.print_message(
-                    f"Invalid option '{choice}'. Please select a number between 1-8.",
+                    f"Invalid option '{choice}'. Please select a number between 1-4.",
                     message_type="warning",
                 )
 
@@ -533,42 +490,6 @@ class EnhancedEOLTesterCLI:
                 )
                 logger.error(f"Hardware control error: {e}")
 
-    async def _slash_command_mode(self) -> None:
-        """Enhanced Slash Command Mode - Interactive interface with advanced features."""
-        if not self._enhanced_slash_interface:
-            self._formatter.print_message(
-                "Enhanced Slash Command Mode is not available. Hardware facade not initialized.",
-                message_type="error",
-                title="Slash Commands Unavailable",
-            )
-            return
-
-        # Use enhanced slash command interface
-        await self._enhanced_slash_interface.run_enhanced_slash_mode()
-
-    async def _real_time_monitoring_dashboard(self) -> None:
-        """Real-time Hardware Monitoring Dashboard - Live hardware status and metrics display."""
-        if not self._dashboard_integrator:
-            self._formatter.print_message(
-                "Real-time Monitoring Dashboard is not available. Hardware facade not initialized.",
-                message_type="error",
-                title="Dashboard Unavailable",
-            )
-            return
-
-        self._formatter.print_header(
-            "Real-time Hardware Monitoring Dashboard",
-            "Live hardware status and metrics monitoring system",
-        )
-
-        try:
-            await self._dashboard_integrator.show_dashboard_menu()
-
-        except (KeyboardInterrupt, EOFError):
-            pass  # User cancelled, return to main menu
-        except Exception as e:
-            self._formatter.print_message(f"Dashboard error: {str(e)}", message_type="error")
-            logger.error(f"Dashboard error: {e}")
 
     async def _get_dut_info(self) -> Optional[Dict[str, str]]:
         """Collect DUT information using enhanced input system with auto-completion.
@@ -679,254 +600,7 @@ class EnhancedEOLTesterCLI:
             )
             self._console.print(summary_panel)
 
-    async def _check_hardware_status(self) -> None:
-        """Check and display hardware status with Rich formatting."""
-        self._formatter.print_header("Hardware Status Check")
 
-        # Check if hardware facade is available for real-time monitoring
-        if self._hardware_facade:
-            try:
-                # Get actual hardware status from facade
-                hardware_status = await self._collect_real_hardware_status()
-            except Exception as e:
-                # Fallback to simulated data if real status collection fails
-                logger.warning("Failed to collect real hardware status: %s", e)
-                hardware_status = self._get_fallback_hardware_status()
-                self._formatter.print_message(
-                    "Unable to collect real-time hardware status. Showing simulated data.",
-                    message_type="warning",
-                )
-        else:
-            # Use simulated hardware status when facade is not available
-            hardware_status = self._get_fallback_hardware_status()
-            self._formatter.print_message(
-                "Hardware facade not initialized. Showing simulated data.", message_type="info"
-            )
-
-        # Display hardware status
-        status_display = self._formatter.create_hardware_status_display(
-            hardware_status, title="Current Hardware Status"
-        )
-        self._console.print(status_display)
-
-        # Wait for user acknowledgment
-        await self._wait_for_user_acknowledgment()
-
-    async def _collect_real_hardware_status(self) -> Dict[str, Dict[str, Any]]:
-        """Collect real hardware status from hardware facade services."""
-        hardware_status = {}
-
-        try:
-            # Get hardware services from facade - we know it's not None here due to the caller check
-            assert self._hardware_facade is not None
-            services = self._hardware_facade.get_hardware_services()
-
-            # Collect Robot status
-            try:
-                robot_service = services["robot"]
-                robot_connected = await robot_service.is_connected()
-                robot_status = {
-                    "connected": robot_connected,
-                    "type": "AJINEXTEK Motion Controller",
-                    "status": "READY" if robot_connected else "DISCONNECTED",
-                }
-
-                if robot_connected:
-                    try:
-                        position = await robot_service.get_position(0)  # type: ignore # Axis 0
-                        robot_status["position"] = f"{position:.2f}mm"
-                        motion_status = await robot_service.get_motion_status()  # type: ignore
-                        robot_status["motion_status"] = (
-                            motion_status.value if motion_status else "UNKNOWN"
-                        )
-                    except Exception as e:
-                        logger.debug("Could not get detailed robot data: %s", e)
-                        robot_status["details_error"] = "Status query failed"
-
-                hardware_status["Robot"] = robot_status
-            except Exception as e:
-                logger.debug("Robot status collection failed: %s", e)
-                hardware_status["Robot"] = {
-                    "connected": False,
-                    "type": "AJINEXTEK Motion Controller",
-                    "status": "ERROR",
-                    "error": str(e),
-                }
-
-            # Collect MCU status
-            try:
-                mcu_service = services["mcu"]
-                mcu_connected = await mcu_service.is_connected()
-                mcu_status = {
-                    "connected": mcu_connected,
-                    "type": "LMA Temperature Controller",
-                    "status": "READY" if mcu_connected else "DISCONNECTED",
-                }
-
-                if mcu_connected:
-                    try:
-                        temperature = await mcu_service.get_temperature()  # type: ignore
-                        mcu_status["temperature"] = f"{temperature:.1f}°C"
-                        test_mode = await mcu_service.get_test_mode()  # type: ignore
-                        mcu_status["test_mode"] = test_mode.value if test_mode else "UNKNOWN"
-                    except Exception as e:
-                        logger.debug("Could not get detailed MCU data: %s", e)
-                        mcu_status["details_error"] = "Status query failed"
-
-                hardware_status["MCU"] = mcu_status
-            except Exception as e:
-                logger.debug("MCU status collection failed: %s", e)
-                hardware_status["MCU"] = {
-                    "connected": False,
-                    "type": "LMA Temperature Controller",
-                    "status": "ERROR",
-                    "error": str(e),
-                }
-
-            # Collect LoadCell status
-            try:
-                loadcell_service = services["loadcell"]
-                loadcell_connected = await loadcell_service.is_connected()
-                loadcell_status = {
-                    "connected": loadcell_connected,
-                    "type": "BS205 Force Sensor",
-                    "status": "READY" if loadcell_connected else "DISCONNECTED",
-                }
-
-                if loadcell_connected:
-                    try:
-                        force = await loadcell_service.read_force()  # type: ignore
-                        loadcell_status["force"] = f"{force.value:.3f} N" if force else "N/A"
-                    except Exception as e:
-                        logger.debug("Could not get detailed LoadCell data: %s", e)
-                        loadcell_status["details_error"] = "Status query failed"
-
-                hardware_status["LoadCell"] = loadcell_status
-            except Exception as e:
-                logger.debug("LoadCell status collection failed: %s", e)
-                hardware_status["LoadCell"] = {
-                    "connected": False,
-                    "type": "BS205 Force Sensor",
-                    "status": "ERROR",
-                    "error": str(e),
-                }
-
-            # Collect Power status
-            try:
-                power_service = services["power"]
-                power_connected = await power_service.is_connected()
-                power_status = {
-                    "connected": power_connected,
-                    "type": "ODA Power Supply",
-                    "status": "OK" if power_connected else "DISCONNECTED",
-                }
-
-                if power_connected:
-                    try:
-                        voltage = await power_service.get_voltage()  # type: ignore
-                        current = await power_service.get_current()  # type: ignore
-                        output_enabled = await power_service.is_output_enabled()  # type: ignore
-                        power_status["voltage"] = f"{voltage:.1f}V"
-                        power_status["current"] = f"{current:.2f}A"
-                        power_status["output"] = "ON" if output_enabled else "OFF"
-                    except Exception as e:
-                        logger.debug("Could not get detailed Power data: %s", e)
-                        power_status["details_error"] = "Status query failed"
-
-                hardware_status["Power"] = power_status
-            except Exception as e:
-                logger.debug("Power status collection failed: %s", e)
-                hardware_status["Power"] = {
-                    "connected": False,
-                    "type": "ODA Power Supply",
-                    "status": "ERROR",
-                    "error": str(e),
-                }
-
-        except Exception as e:
-            logger.error("Hardware status collection failed completely: %s", e)
-            raise
-
-        return hardware_status
-
-    def _get_fallback_hardware_status(self) -> Dict[str, Dict[str, Any]]:
-        """Get fallback simulated hardware status when real status is unavailable."""
-        return {
-            "Robot": {
-                "connected": True,
-                "type": "AJINEXTEK Motion Controller",
-                "axes": "6 DOF",
-                "status": "SIMULATED",
-            },
-            "MCU": {
-                "connected": True,
-                "type": "LMA Temperature Controller",
-                "temperature": "25.3°C",
-                "status": "SIMULATED",
-            },
-            "LoadCell": {
-                "connected": True,
-                "type": "BS205 Force Sensor",
-                "force": "0.234 N",
-                "status": "SIMULATED",
-            },
-            "Power": {
-                "connected": True,
-                "type": "ODA Power Supply",
-                "voltage": "24.1V",
-                "current": "2.3A",
-                "status": "SIMULATED",
-            },
-        }
-
-    async def _show_test_statistics(self) -> None:
-        """Show comprehensive test and system statistics with Rich formatting."""
-        self._formatter.print_header("System Statistics")
-
-        # Simulate test statistics data (in real implementation, this would come from repository)
-        test_statistics = {
-            "overall": {
-                "total_tests": 150,
-                "passed_tests": 135,
-                "failed_tests": 15,
-                "pass_rate": 90.0,
-            },
-            "recent": {
-                "total_tests": 25,
-                "passed_tests": 23,
-                "pass_rate": 92.0,
-            },
-            "by_model": {
-                "WF-2024-A": {
-                    "total": 80,
-                    "passed": 75,
-                    "pass_rate": 93.75,
-                },
-                "WF-2024-B": {
-                    "total": 45,
-                    "passed": 40,
-                    "pass_rate": 88.89,
-                },
-                "WF-2023-X": {
-                    "total": 25,
-                    "passed": 20,
-                    "pass_rate": 80.0,
-                },
-            },
-        }
-
-        # Display test statistics
-        test_stats_display = self._formatter.create_statistics_display(
-            test_statistics, title="Test Performance Statistics"
-        )
-        self._console.print(test_stats_display)
-
-        # Show enhanced input system statistics
-        self._console.print("\n")
-        await self._enhanced_menu.show_statistics_menu()
-
-        # Wait for user acknowledgment
-        await self._wait_for_user_acknowledgment()
 
     async def _shutdown(self) -> None:
         """Perform graceful shutdown with comprehensive cleanup and Rich UI feedback.
