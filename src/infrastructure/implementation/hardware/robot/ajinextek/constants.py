@@ -9,13 +9,7 @@ from pathlib import Path
 
 # Library paths
 BASE_DIR = Path(__file__).parent.parent.parent.parent.parent
-AXL_LIBRARY_DIR = (
-    BASE_DIR
-    / "vendor"
-    / "ajinextek"
-    / "AXL(Library)"
-    / "Library"
-)
+AXL_LIBRARY_DIR = BASE_DIR / "vendor" / "ajinextek" / "AXL(Library)" / "Library"
 
 # Select DLL based on system architecture
 if platform.machine().endswith("64"):

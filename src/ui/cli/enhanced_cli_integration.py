@@ -130,11 +130,15 @@ class EnhancedInputIntegrator:
         if not model:
             model = defaults.get("model", "Unknown")
 
+        serial = input(f"Serial Number [{defaults.get('serial_number', dut_id)}]: ").strip()
+        if not serial:
+            serial = defaults.get("serial_number", dut_id)
+
         operator = input(f"Operator [{defaults.get('operator_id', '')}]: ").strip()
         if not operator:
             operator = defaults.get("operator_id", "Unknown")
 
-        return {"id": dut_id, "model": model, "operator": operator}
+        return {"id": dut_id, "model": model, "serial": serial, "operator": operator}
 
     async def get_slash_command(self) -> Optional[str]:
         """Get slash command using simple input (enhanced functionality removed)"""

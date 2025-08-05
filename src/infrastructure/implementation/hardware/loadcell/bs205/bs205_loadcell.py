@@ -73,7 +73,7 @@ class BS205LoadCell(LoadCellService):
         bytesize: int,
         stopbits: int,
         parity: Optional[str],
-        indicator_id: int
+        indicator_id: int,
     ) -> None:
         """
         하드웨어 연결
@@ -233,7 +233,6 @@ class BS205LoadCell(LoadCellService):
                 error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
             ) from e
 
-
     async def hold(self) -> bool:
         """
         Hold 설정 - 현재 측정값을 고정
@@ -319,9 +318,7 @@ class BS205LoadCell(LoadCellService):
 
         if not await self.is_connected():
             raise HardwareOperationError(
-                "bs205_loadcell",
-                "zero_calibration",
-                "BS205 LoadCell is not connected"
+                "bs205_loadcell", "zero_calibration", "BS205 LoadCell is not connected"
             )
 
         try:

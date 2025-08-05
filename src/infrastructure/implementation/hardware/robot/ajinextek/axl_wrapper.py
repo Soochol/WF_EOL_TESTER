@@ -180,6 +180,14 @@ class AXLWrapper:
         self.dll.AxmMoveStop.argtypes = [c_long, c_double]
         self.dll.AxmMoveStop.restype = c_long
 
+        # AxmMoveEStop - Emergency stop
+        self.dll.AxmMoveEStop.argtypes = [c_long]
+        self.dll.AxmMoveEStop.restype = c_long
+
+        # AxmMoveSStop - Smooth stop with deceleration
+        self.dll.AxmMoveSStop.argtypes = [c_long]
+        self.dll.AxmMoveSStop.restype = c_long
+
         # AxmStatusReadInMotion
         self.dll.AxmStatusReadInMotion.argtypes = [
             c_long,
@@ -524,6 +532,18 @@ class AXLWrapper:
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
         return self.dll.AxmMoveStop(axis_no, decel)  # type: ignore[no-any-return]
+
+    def move_emergency_stop(self, axis_no: int) -> int:
+        """Emergency stop - immediate stop without deceleration"""
+        if not self.is_windows or self.dll is None:
+            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        return self.dll.AxmMoveEStop(axis_no)  # type: ignore[no-any-return]
+
+    def move_smooth_stop(self, axis_no: int) -> int:
+        """Smooth stop - stop with deceleration using axis default deceleration parameters"""
+        if not self.is_windows or self.dll is None:
+            return AXT_RT_SUCCESS  # Mock success on non-Windows
+        return self.dll.AxmMoveSStop(axis_no)  # type: ignore[no-any-return]
 
     def read_in_motion(self, axis_no: int) -> bool:
         """Check if axis is in motion"""

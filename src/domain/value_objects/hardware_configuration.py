@@ -45,13 +45,13 @@ class LoadCellConfig:
     """LoadCell device configuration (BS205)"""
 
     # Connection parameters
-    port: str = "COM3"
+    port: str = "COM8"
     baudrate: int = 9600
     timeout: float = 1.0
     bytesize: int = 8
     stopbits: int = 1
-    parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
-    indicator_id: int = 1
+    parity: Optional[str] = "even"  # None, 'even', 'odd', 'mark', 'space'
+    indicator_id: int = 0
 
     # Mock-related parameters
     base_force: float = 10.0

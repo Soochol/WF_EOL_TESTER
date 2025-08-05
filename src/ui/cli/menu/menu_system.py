@@ -1,0 +1,280 @@
+"""
+Menu System Module
+
+Menu display, navigation, and user choice handling for the CLI interface.
+Provides a professional menu system with enhanced user experience and
+integration with other CLI components.
+
+Key Features:
+- Professional menu display with Rich formatting
+- Enhanced user input handling with validation
+- Menu navigation and choice processing
+- Integration with test execution and hardware control
+- Graceful error handling and user feedback
+"""
+
+# Standard library imports
+from typing import TYPE_CHECKING, Optional
+
+# Third-party imports
+from loguru import logger
+from rich.console import Console
+
+# Local imports
+from ..rich_formatter import RichFormatter
+from ..interfaces.menu_interface import IMenuSystem
+
+# TYPE_CHECKING imports
+if TYPE_CHECKING:
+    from ..interfaces.execution_interface import ITestExecutor
+    from ..interfaces.session_interface import ISessionManager
+    from ..enhanced_cli_integration import EnhancedMenuSystem
+
+
+class MenuSystem(IMenuSystem):
+    """Menu display and navigation system for CLI application.
+
+    Manages menu presentation, user choice collection, and navigation
+    flow with professional Rich UI formatting.
+    """
+
+    def __init__(
+        self,
+        console: Console,
+        formatter: RichFormatter,
+        enhanced_menu: "EnhancedMenuSystem"
+    ):
+        """Initialize menu system.
+
+        Args:
+            console: Rich console instance for output
+            formatter: Rich formatter for professional output
+            enhanced_menu: Enhanced menu system for input handling
+        """
+        self._console = console
+        self._formatter = formatter
+        self._enhanced_menu = enhanced_menu
+        self._session_manager: Optional["ISessionManager"] = None
+        self._test_executor: Optional["ITestExecutor"] = None
+        self._usecase_manager = None
+        self._hardware_manager = None
+
+    def set_session_manager(self, session_manager: "ISessionManager") -> None:
+        """Set session manager for session control.
+
+        Args:
+            session_manager: Session manager instance implementing ISessionManager
+        """
+        self._session_manager = session_manager
+
+    def set_test_executor(self, test_executor: "ITestExecutor") -> None:
+        """Set test executor for test operations.
+
+        Args:
+            test_executor: Test executor instance implementing ITestExecutor
+        """
+        self._test_executor = test_executor
+
+    def set_usecase_manager(self, usecase_manager) -> None:
+        """Set usecase manager for advanced operations.
+
+        Args:
+            usecase_manager: UseCase manager instance
+        """
+        self._usecase_manager = usecase_manager
+
+    def set_hardware_manager(self, hardware_manager) -> None:
+        """Set hardware manager for hardware control.
+
+        Args:
+            hardware_manager: Hardware manager instance
+        """
+        self._hardware_manager = hardware_manager
+
+    async def show_main_menu(self) -> None:
+        """Display the enhanced main menu with advanced input features.
+
+        Shows the main menu and processes user selections with comprehensive
+        error handling and navigation control.
+        """
+        try:
+            # Use enhanced menu system for user input
+            choice = await self._enhanced_menu.show_main_menu_enhanced()
+
+            if not choice:
+                # User cancelled (Ctrl+C) or no input - exit gracefully
+                if self._session_manager:
+                    self._session_manager.stop_session()
+                self._formatter.print_message(
+                    "Exiting EOL Tester... Goodbye!", message_type="info", title="Goodbye"
+                )
+                return
+
+            # Process menu selection
+            await self._process_menu_choice(choice)
+
+        except (KeyboardInterrupt, EOFError):
+            if self._session_manager:
+                self._session_manager.stop_session()
+            self._formatter.print_message(
+                "Exiting EOL Tester... Goodbye!", message_type="info", title="Goodbye"
+            )
+
+    async def _process_menu_choice(self, choice: str) -> None:
+        """Process user menu choice and execute corresponding action.
+
+        Args:
+            choice: User's menu selection
+        """
+        try:
+            if choice == "1":
+                await self._execute_eol_test()
+            elif choice == "2":
+                await self._execute_usecase_menu()
+            elif choice == "3":
+                await self._hardware_control_center()
+            elif choice == "4":
+                if self._session_manager:
+                    self._session_manager.stop_session()
+                self._formatter.print_message(
+                    "Thank you for using EOL Tester!",
+                    message_type="success",
+                    title="Goodbye"
+                )
+            else:
+                self._formatter.print_message(
+                    f"Invalid option '{choice}'. Please select a number between 1-4.",
+                    message_type="warning",
+                )
+        except Exception as e:
+            self._formatter.print_message(
+                f"Error processing menu choice: {str(e)}",
+                message_type="error"
+            )
+            logger.error(f"Menu choice processing error: {e}")
+
+    async def _execute_eol_test(self) -> None:
+        """Execute EOL test through test executor.
+
+        Delegates EOL test execution to the test executor component
+        with proper error handling.
+        """
+        if not self._test_executor:
+            self._formatter.print_message(
+                "Test executor not available. Please check system configuration.",
+                message_type="error",
+                title="Test Executor Unavailable"
+            )
+            return
+
+        try:
+            await self._test_executor.execute_eol_test()
+        except Exception as e:
+            self._formatter.print_message(
+                f"Test execution error: {str(e)}",
+                message_type="error"
+            )
+            logger.error(f"EOL test execution error: {e}")
+
+    async def _execute_usecase_menu(self) -> None:
+        """Display UseCase selection menu and execute selected UseCase.
+
+        Provides access to advanced UseCase execution system with
+        comprehensive menu and selection handling.
+        """
+        if not self._usecase_manager:
+            self._formatter.print_message(
+                "UseCase manager not available. Please check system configuration.",
+                message_type="error",
+                title="UseCase Manager Unavailable"
+            )
+            return
+
+        try:
+            self._formatter.print_header(
+                "UseCase Execution System",
+                "Advanced UseCase selection and execution"
+            )
+
+            # Show available UseCases
+            self._usecase_manager.list_usecases()
+
+            # Get user selection
+            selection = self._usecase_manager.show_usecase_menu()
+            if not selection:
+                return
+
+            # Execute selected UseCase
+            result = await self._usecase_manager.execute_usecase_by_selection(
+                selection, {"EOL Force Test": None}  # Will be populated by caller
+            )
+
+            if result:
+                # Wait for user acknowledgment
+                await self._wait_for_user_acknowledgment()
+
+        except Exception as e:
+            self._formatter.print_message(
+                f"UseCase execution error: {str(e)}",
+                message_type="error"
+            )
+            logger.error(f"UseCase execution error: {e}")
+
+    async def _hardware_control_center(self) -> None:
+        """Hardware Control Center - Individual hardware control interface.
+
+        Provides access to individual hardware component control and monitoring
+        through the hardware control manager.
+        """
+        if not self._hardware_manager:
+            self._formatter.print_message(
+                "Hardware Control Center is not available. Hardware facade not initialized.",
+                message_type="error",
+                title="Hardware Control Unavailable",
+            )
+            return
+
+        try:
+            self._formatter.print_header(
+                "Hardware Control Center",
+                "Individual hardware component control and monitoring"
+            )
+
+            while True:
+                try:
+                    selection = await self._hardware_manager.show_hardware_menu()
+                    if not selection or selection == "b":
+                        break
+
+                    await self._hardware_manager.execute_hardware_control(selection)
+
+                except (KeyboardInterrupt, EOFError):
+                    break
+                except Exception as e:
+                    self._formatter.print_message(
+                        f"Hardware control error: {str(e)}", message_type="error"
+                    )
+                    logger.error(f"Hardware control error: {e}")
+
+        except Exception as e:
+            self._formatter.print_message(
+                f"Hardware control center error: {str(e)}",
+                message_type="error"
+            )
+            logger.error(f"Hardware control center error: {e}")
+
+    async def _wait_for_user_acknowledgment(
+        self, message: str = "Press Enter to continue..."
+    ) -> None:
+        """Wait for user acknowledgment with enhanced input handling.
+
+        Args:
+            message: Message to display while waiting for user input
+        """
+        try:
+            # This would integrate with the enhanced input system
+            # For now, use simple input
+            input(f"\n{message}")
+        except (KeyboardInterrupt, EOFError):
+            # Handle user interruption gracefully with feedback
+            self._console.print("\n[dim]Skipped by user.[/dim]")

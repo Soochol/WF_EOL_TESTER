@@ -132,7 +132,7 @@ class ServiceFactory:
             )
 
             logger.info("Creating Mock Digital Input service")
-            # MockDIO requires config, so pass a default config if none provided
+            # MockInput requires config, so pass a default config if none provided
             mock_config = config if config else {"model": "mock"}
             return MockDIO(mock_config)
 
@@ -160,22 +160,30 @@ class ServiceFactory:
         return AjinextekRobot()
 
 
-def create_hardware_service_facade() -> "HardwareServiceFacade":
+def create_hardware_service_facade(
+    config_path: Optional[str] = None, use_mock: bool = False
+) -> "HardwareServiceFacade":
     """
     Create a complete hardware service facade with all hardware services
+
+    Args:
+        config_path: Optional path to configuration file (currently unused but kept for compatibility)
+        use_mock: If True, create mock hardware services instead of real ones
 
     Returns:
         HardwareServiceFacade instance with all services configured
     """
-    logger.info("Creating hardware service facade")
+    logger.info("Creating hardware service facade (use_mock=%s)", use_mock)
 
     try:
+        # Create configuration for mock or real hardware
+        hardware_config = {"model": "mock"} if use_mock else None
         # Create all hardware services
-        robot_service = ServiceFactory.create_robot_service()
-        mcu_service = ServiceFactory.create_mcu_service()
-        loadcell_service = ServiceFactory.create_loadcell_service()
-        power_service = ServiceFactory.create_power_service()
-        digital_input_service = ServiceFactory.create_digital_input_service()
+        robot_service = ServiceFactory.create_robot_service(hardware_config)
+        mcu_service = ServiceFactory.create_mcu_service(hardware_config)
+        loadcell_service = ServiceFactory.create_loadcell_service(hardware_config)
+        power_service = ServiceFactory.create_power_service(hardware_config)
+        digital_input_service = ServiceFactory.create_digital_input_service(hardware_config)
 
         # Create and return facade
         facade = HardwareServiceFacade(

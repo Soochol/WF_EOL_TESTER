@@ -101,7 +101,7 @@ class LMAMCU(MCUService):
         timeout: float,
         bytesize: int,
         stopbits: int,
-        parity: Optional[str]
+        parity: Optional[str],
     ) -> None:
         """
         하드웨어 연결
@@ -127,7 +127,6 @@ class LMAMCU(MCUService):
             self._bytesize = bytesize
             self._stopbits = stopbits
             self._parity = parity
-
 
             logger.info("Connecting to LMA MCU at %s (baudrate: %s)", port, baudrate)
 
@@ -636,10 +635,14 @@ class LMAMCU(MCUService):
                         f"message='{response['message']}' (waiting for 0x{target_status:02X})"
                     )
                 else:
-                    logger.debug("Received None response (attempt %s/%s)", attempt + 1, max_attempts)
+                    logger.debug(
+                        "Received None response (attempt %s/%s)", attempt + 1, max_attempts
+                    )
 
             except Exception as e:
-                logger.debug("Response receive error (attempt %s/%s): %s", attempt + 1, max_attempts, e)
+                logger.debug(
+                    "Response receive error (attempt %s/%s): %s", attempt + 1, max_attempts, e
+                )
 
         raise LMACommunicationError(
             f"Target response 0x{target_status:02X} not received after {max_attempts} attempts"

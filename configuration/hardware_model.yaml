@@ -2,7 +2,7 @@ hardware_model:
   robot: mock
   mcu: mock
   loadcell: mock
-  power: ODA
+  power: mock
   digital_io: mock
 metadata:
   description: Auto-generated hardware model configuration

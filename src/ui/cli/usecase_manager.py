@@ -95,7 +95,7 @@ class EOLForceTestExecutor(UseCaseExecutor):
         """Collect DUT information for EOL test using simple input (enhanced functionality removed)"""
         try:
             formatter.console.print("[bold cyan]DUT Information Collection[/bold cyan]")
-            
+
             # Load default values from configuration if available
             defaults = {}
             if self.configuration_service:
@@ -104,22 +104,22 @@ class EOLForceTestExecutor(UseCaseExecutor):
                     formatter.console.print(f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]")
                 except Exception as e:
                     formatter.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
-            
+
             # Collect DUT information with default support
             dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
             if not dut_id:
                 dut_id = defaults.get('dut_id', '')
                 if not dut_id:
                     return None
-                    
+
             model = input(f"Model [{defaults.get('model', '')}]: ").strip()
             if not model:
                 model = defaults.get('model', 'Unknown')
-                
+
             serial = input("Serial Number: ").strip()
             if not serial:
                 serial = "Unknown"
-                
+
             operator = input(f"Operator ID [{defaults.get('operator_id', '')}]: ").strip()
             if not operator:
                 operator = defaults.get('operator_id', 'Unknown')
@@ -220,10 +220,10 @@ class UseCaseManager:
 
         # Show menu with simple interface (RichUIManager removed)
         self.formatter.print_header("Select UseCase to Execute")
-        
+
         for key, value in menu_options.items():
             self.console.print(f"[cyan]{key}[/cyan]. {value}")
-            
+
         selected = input("Please select a UseCase: ").strip()
 
         return selected
