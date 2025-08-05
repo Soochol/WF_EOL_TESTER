@@ -125,7 +125,6 @@ class RobotController(HardwareController):
                     # since no total_steps was provided to create_progress_display
                     pass
 
-            self.formatter.print_message("Robot connected successfully", message_type="success")
             return True
 
         except Exception as e:
@@ -337,7 +336,6 @@ class MCUController(HardwareController):
                 if isinstance(progress_display, Status):
                     progress_display.update("MCU connected successfully")
 
-            self.formatter.print_message("MCU connected successfully", message_type="success")
             return True
 
         except Exception as e:
@@ -568,7 +566,6 @@ class LoadCellController(HardwareController):
                 if isinstance(progress_display, Status):
                     progress_display.update("LoadCell connected successfully")
 
-            self.formatter.print_message("LoadCell connected successfully", message_type="success")
             return True
 
         except Exception as e:
@@ -826,14 +823,7 @@ class PowerController(HardwareController):
 
             if device_identity:
                 self.formatter.print_message(
-                    "Power supply connected successfully", message_type="success"
-                )
-                self.formatter.print_message(
                     f"Device Identity: {device_identity}", message_type="info"
-                )
-            else:
-                self.formatter.print_message(
-                    "Power supply connected successfully", message_type="success"
                 )
             return True
 
