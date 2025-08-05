@@ -546,12 +546,12 @@ class LoadCellController(HardwareController):
             if self.config_service:
                 hw_config = await self.config_service.load_hardware_config()
                 loadcell_config = hw_config.loadcell
-                logger.info(f"Loaded LoadCell config from file: {loadcell_config.port}")
+                logger.info(f"Loaded LoadCell config from file: {loadcell_config.port} ({loadcell_config.baudrate} baud, {loadcell_config.timeout}s timeout, {loadcell_config.bytesize}-{loadcell_config.stopbits}-{loadcell_config.parity or 'None'}, ID:{loadcell_config.indicator_id})")
             else:
                 # Fallback to default configuration
                 hw_config = HardwareConfiguration()
                 loadcell_config = hw_config.loadcell
-                logger.info("Using default LoadCell configuration")
+                logger.info(f"Using default LoadCell configuration: {loadcell_config.port} ({loadcell_config.baudrate} baud, {loadcell_config.timeout}s timeout, {loadcell_config.bytesize}-{loadcell_config.stopbits}-{loadcell_config.parity or 'None'}, ID:{loadcell_config.indicator_id})")
 
             with self.formatter.create_progress_display(
                 "Connecting to LoadCell...", show_spinner=True
