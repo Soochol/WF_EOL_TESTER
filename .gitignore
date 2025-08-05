@@ -16,7 +16,7 @@ ResultsLog/
 node_modules/
 
 # configuration folders
-configuration
+configuration/
 # Environment variables
 .env
 
@@ -32,7 +32,7 @@ configuration
 # OS specific
 .DS_Store
 
-# Python
+# Python햣
 __pycache__/
 *.py[cod]
 *$py.class

@@ -98,26 +98,28 @@ class RobotController(HardwareController):
     async def connect(self) -> bool:
         """Connect to robot"""
         try:
-            # Get Robot configuration from config service (required)
-            if not self.config_service:
-                raise RuntimeError("ConfigurationService is required for Robot hardware connection")
-            
-            hw_config = await self.config_service.load_hardware_config()
-            robot_config = hw_config.robot
-            axis_id = robot_config.axis_id
-            irq_no = robot_config.irq_no
-            logger.info(f"Loaded Robot config from file: axis_id={axis_id}, irq_no={irq_no}")
+            # Get Robot configuration from config service
+            if self.config_service:
+                hw_config = await self.config_service.load_hardware_config()
+                robot_config = hw_config.robot
+                axis_id = robot_config.axis_id
+                irq_no = robot_config.irq_no
+                logger.info(f"Loaded Robot config from file: axis_id={axis_id}, irq_no={irq_no}")
+            else:
+                # Fallback to default configuration
+                hw_config = HardwareConfiguration()
+                robot_config = hw_config.robot
+                axis_id = robot_config.axis_id
+                irq_no = robot_config.irq_no
+                logger.info("Using default Robot configuration")
 
             with self.formatter.create_progress_display(
                 "Connecting to robot...", show_spinner=True
             ) as progress_display:
-                # Ensure minimum display time for spinner visibility
-                await asyncio.sleep(0.5)  # Show spinner for at least 500ms
                 await self.robot_service.connect(axis_id=axis_id, irq_no=irq_no)
                 # Handle different types returned by create_progress_display
                 if isinstance(progress_display, Status):
                     progress_display.update("Robot connected successfully")
-                    await asyncio.sleep(0.3)  # Show success message briefly
                 elif isinstance(progress_display, Progress):
                     # Progress objects need task_id, but we don't use this case here
                     # since no total_steps was provided to create_progress_display
@@ -237,14 +239,12 @@ class RobotController(HardwareController):
             ) as progress_display:
                 if isinstance(progress_display, Status):
                     progress_display.update("Initializing robot...")
-                await asyncio.sleep(0.5)  # Show spinner for visibility
                 # Home primary axis using axis_id from configuration
                 connection_params = self.config_reader.get_connection_params("robot")
                 axis_id = connection_params.get("axis_id", 0)
                 await self.robot_service.home_axis(axis_id)
                 if isinstance(progress_display, Status):
                     progress_display.update("Robot initialization complete")
-                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message("Robot initialized successfully", message_type="success")
 
@@ -312,18 +312,20 @@ class MCUController(HardwareController):
     async def connect(self) -> bool:
         """Connect to MCU"""
         try:
-            # Get MCU configuration from config service (required)
-            if not self.config_service:
-                raise RuntimeError("ConfigurationService is required for MCU hardware connection")
-            
-            hw_config = await self.config_service.load_hardware_config()
-            mcu_config = hw_config.mcu
-            logger.info(f"Loaded MCU config from file: {mcu_config.port}")
+            # Get MCU configuration from config service
+            if self.config_service:
+                hw_config = await self.config_service.load_hardware_config()
+                mcu_config = hw_config.mcu
+                logger.info(f"Loaded MCU config from file: {mcu_config.port}")
+            else:
+                # Fallback to default configuration
+                hw_config = HardwareConfiguration()
+                mcu_config = hw_config.mcu
+                logger.info("Using default MCU configuration")
 
             with self.formatter.create_progress_display(
                 "Connecting to MCU...", show_spinner=True
             ) as progress_display:
-                await asyncio.sleep(0.5)  # Show spinner for visibility
                 await self.mcu_service.connect(
                     port=mcu_config.port,
                     baudrate=mcu_config.baudrate,
@@ -334,7 +336,6 @@ class MCUController(HardwareController):
                 )
                 if isinstance(progress_display, Status):
                     progress_display.update("MCU connected successfully")
-                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message("MCU connected successfully", message_type="success")
             return True
@@ -541,18 +542,20 @@ class LoadCellController(HardwareController):
     async def connect(self) -> bool:
         """Connect to LoadCell"""
         try:
-            # Get LoadCell configuration from config service (required)
-            if not self.config_service:
-                raise RuntimeError("ConfigurationService is required for LoadCell hardware connection")
-            
-            hw_config = await self.config_service.load_hardware_config()
-            loadcell_config = hw_config.loadcell
-            logger.info(f"Loaded LoadCell config from file: {loadcell_config.port}")
+            # Get LoadCell configuration from config service
+            if self.config_service:
+                hw_config = await self.config_service.load_hardware_config()
+                loadcell_config = hw_config.loadcell
+                logger.info(f"Loaded LoadCell config from file: {loadcell_config.port}")
+            else:
+                # Fallback to default configuration
+                hw_config = HardwareConfiguration()
+                loadcell_config = hw_config.loadcell
+                logger.info("Using default LoadCell configuration")
 
             with self.formatter.create_progress_display(
                 "Connecting to LoadCell...", show_spinner=True
             ) as progress_display:
-                await asyncio.sleep(0.5)  # Show spinner for visibility
                 await self.loadcell_service.connect(
                     port=loadcell_config.port,
                     baudrate=loadcell_config.baudrate,
@@ -564,7 +567,6 @@ class LoadCellController(HardwareController):
                 )
                 if isinstance(progress_display, Status):
                     progress_display.update("LoadCell connected successfully")
-                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message("LoadCell connected successfully", message_type="success")
             return True
@@ -704,7 +706,6 @@ class LoadCellController(HardwareController):
                 await self.loadcell_service.zero_calibration()
                 if isinstance(progress_display, Status):
                     progress_display.update("Zero calibration complete")
-                    await asyncio.sleep(0.3)  # Show success message briefly
 
             self.formatter.print_message(
                 "Zero calibration completed successfully", message_type="success"
@@ -792,18 +793,20 @@ class PowerController(HardwareController):
     async def connect(self) -> bool:
         """Connect to Power supply"""
         try:
-            # Get Power configuration from config service (required)
-            if not self.config_service:
-                raise RuntimeError("ConfigurationService is required for Power hardware connection")
-            
-            hw_config = await self.config_service.load_hardware_config()
-            power_config = hw_config.power
-            logger.info(f"Loaded Power config from file: {power_config.host}:{power_config.port}")
+            # Get Power configuration from config service
+            if self.config_service:
+                hw_config = await self.config_service.load_hardware_config()
+                power_config = hw_config.power
+                logger.info(f"Loaded Power config from file: {power_config.host}:{power_config.port}")
+            else:
+                # Fallback to default configuration
+                hw_config = HardwareConfiguration()
+                power_config = hw_config.power
+                logger.info("Using default Power configuration")
 
             with self.formatter.create_progress_display(
                 "Connecting to Power supply...", show_spinner=True
             ) as progress_display:
-                await asyncio.sleep(0.5)  # Show spinner for visibility
                 await self.power_service.connect(
                     host=power_config.host,
                     port=power_config.port,
@@ -812,7 +815,6 @@ class PowerController(HardwareController):
                 )
                 if isinstance(progress_display, Status):
                     progress_display.update("Power supply connected successfully")
-                    await asyncio.sleep(0.3)  # Show success message briefly
 
             # Get and display device identity if available
             device_identity = None
