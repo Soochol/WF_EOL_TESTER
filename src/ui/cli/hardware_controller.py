@@ -18,6 +18,7 @@ from application.interfaces.hardware.loadcell import LoadCellService
 from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.power import PowerService
 from application.interfaces.hardware.robot import RobotService
+from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.enums.mcu_enums import TestMode
 from domain.value_objects.hardware_configuration import HardwareConfiguration
@@ -57,11 +58,12 @@ class HardwareController(ABC):
 class RobotController(HardwareController):
     """Controller for Robot hardware"""
 
-    def __init__(self, robot_service: RobotService, formatter: RichFormatter):
+    def __init__(self, robot_service: RobotService, formatter: RichFormatter, config_service: Optional[ConfigurationService] = None):
         super().__init__(formatter)
         self.robot_service = robot_service
+        self.config_service = config_service
         self.name = "Robot Control System"
-        self.config_reader = CLIConfigReader()
+        self.config_reader = CLIConfigReader()  # Keep for backward compatibility
 
     async def show_status(self) -> None:
         """Display robot status"""
@@ -96,10 +98,15 @@ class RobotController(HardwareController):
     async def connect(self) -> bool:
         """Connect to robot"""
         try:
-            # Get connection parameters from configuration
-            connection_params = self.config_reader.get_connection_params("robot")
-            axis_id = connection_params.get("axis_id", 0)
-            irq_no = connection_params.get("irq_no", 7)
+            # Get Robot configuration from config service (required)
+            if not self.config_service:
+                raise RuntimeError("ConfigurationService is required for Robot hardware connection")
+            
+            hw_config = await self.config_service.load_hardware_config()
+            robot_config = hw_config.robot
+            axis_id = robot_config.axis_id
+            irq_no = robot_config.irq_no
+            logger.info(f"Loaded Robot config from file: axis_id={axis_id}, irq_no={irq_no}")
 
             with self.formatter.create_progress_display(
                 "Connecting to robot...", show_spinner=True
@@ -266,9 +273,10 @@ class RobotController(HardwareController):
 class MCUController(HardwareController):
     """Controller for MCU hardware"""
 
-    def __init__(self, mcu_service: MCUService, formatter: RichFormatter):
+    def __init__(self, mcu_service: MCUService, formatter: RichFormatter, config_service: Optional[ConfigurationService] = None):
         super().__init__(formatter)
         self.mcu_service = mcu_service
+        self.config_service = config_service
         self.name = "MCU Control System"
 
     async def show_status(self) -> None:
@@ -304,9 +312,13 @@ class MCUController(HardwareController):
     async def connect(self) -> bool:
         """Connect to MCU"""
         try:
-            # Get MCU configuration
-            hw_config = HardwareConfiguration()
+            # Get MCU configuration from config service (required)
+            if not self.config_service:
+                raise RuntimeError("ConfigurationService is required for MCU hardware connection")
+            
+            hw_config = await self.config_service.load_hardware_config()
             mcu_config = hw_config.mcu
+            logger.info(f"Loaded MCU config from file: {mcu_config.port}")
 
             with self.formatter.create_progress_display(
                 "Connecting to MCU...", show_spinner=True
@@ -490,9 +502,10 @@ class MCUController(HardwareController):
 class LoadCellController(HardwareController):
     """Controller for LoadCell hardware"""
 
-    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter):
+    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter, config_service: Optional[ConfigurationService] = None):
         super().__init__(formatter)
         self.loadcell_service = loadcell_service
+        self.config_service = config_service
         self.name = "LoadCell Control System"
 
     async def show_status(self) -> None:
@@ -528,9 +541,13 @@ class LoadCellController(HardwareController):
     async def connect(self) -> bool:
         """Connect to LoadCell"""
         try:
-            # Get LoadCell configuration
-            hw_config = HardwareConfiguration()
+            # Get LoadCell configuration from config service (required)
+            if not self.config_service:
+                raise RuntimeError("ConfigurationService is required for LoadCell hardware connection")
+            
+            hw_config = await self.config_service.load_hardware_config()
             loadcell_config = hw_config.loadcell
+            logger.info(f"Loaded LoadCell config from file: {loadcell_config.port}")
 
             with self.formatter.create_progress_display(
                 "Connecting to LoadCell...", show_spinner=True
@@ -732,9 +749,10 @@ class LoadCellController(HardwareController):
 class PowerController(HardwareController):
     """Controller for Power hardware"""
 
-    def __init__(self, power_service: PowerService, formatter: RichFormatter):
+    def __init__(self, power_service: PowerService, formatter: RichFormatter, config_service: Optional[ConfigurationService] = None):
         super().__init__(formatter)
         self.power_service = power_service
+        self.config_service = config_service
         self.name = "Power Control System"
 
     async def show_status(self) -> None:
@@ -774,9 +792,13 @@ class PowerController(HardwareController):
     async def connect(self) -> bool:
         """Connect to Power supply"""
         try:
-            # Get Power configuration
-            hw_config = HardwareConfiguration()
+            # Get Power configuration from config service (required)
+            if not self.config_service:
+                raise RuntimeError("ConfigurationService is required for Power hardware connection")
+            
+            hw_config = await self.config_service.load_hardware_config()
             power_config = hw_config.power
+            logger.info(f"Loaded Power config from file: {power_config.host}:{power_config.port}")
 
             with self.formatter.create_progress_display(
                 "Connecting to Power supply...", show_spinner=True
@@ -1181,17 +1203,18 @@ class PowerController(HardwareController):
 class HardwareControlManager:
     """Manages individual hardware control with Rich UI"""
 
-    def __init__(self, hardware_facade: HardwareServiceFacade, console: Optional[Console] = None):
+    def __init__(self, hardware_facade: HardwareServiceFacade, console: Optional[Console] = None, config_service: Optional[ConfigurationService] = None):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
+        self.config_service = config_service
         # self.ui_manager = RichUIManager(self.console)  # Removed
 
         # Initialize hardware controllers
         self.controllers = {
-            "Robot": RobotController(hardware_facade._robot, self.formatter),
-            "MCU": MCUController(hardware_facade._mcu, self.formatter),
-            "LoadCell": LoadCellController(hardware_facade._loadcell, self.formatter),
-            "Power": PowerController(hardware_facade._power, self.formatter),
+            "Robot": RobotController(hardware_facade._robot, self.formatter, config_service),
+            "MCU": MCUController(hardware_facade._mcu, self.formatter, config_service),
+            "LoadCell": LoadCellController(hardware_facade._loadcell, self.formatter, config_service),
+            "Power": PowerController(hardware_facade._power, self.formatter, config_service),
         }
 
         logger.info(f"Initialized {len(self.controllers)} hardware controllers")

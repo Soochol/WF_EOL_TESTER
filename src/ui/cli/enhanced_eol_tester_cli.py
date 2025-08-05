@@ -23,6 +23,7 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports - Application layer
+from application.services.configuration_service import ConfigurationService
 from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
@@ -322,7 +323,7 @@ class EnhancedEOLTesterCLI:
         # Initialize hardware control manager if hardware facade is provided
         if self._hardware_facade:
             self._hardware_manager: Optional[Any] = HardwareControlManager(
-                self._hardware_facade, self._console
+                self._hardware_facade, self._console, self._configuration_service
             )
             # Initialize configuration reader for CLI commands
             self._config_reader = CLIConfigReader()

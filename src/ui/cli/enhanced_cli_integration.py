@@ -108,29 +108,31 @@ class EnhancedInputIntegrator:
     async def get_dut_information(self) -> Optional[Dict[str, str]]:
         """Get DUT information using simple input (enhanced functionality removed)"""
         self.console.print("[bold cyan]DUT Information Collection[/bold cyan]")
-        
+
         # Load default values from configuration if available
         defaults = {}
         if self.configuration_service:
             try:
                 defaults = await self.configuration_service.load_dut_defaults()
-                self.console.print(f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]")
+                self.console.print(
+                    f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]"
+                )
             except Exception as e:
                 self.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
 
         dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
         if not dut_id:
-            dut_id = defaults.get('dut_id', '')
+            dut_id = defaults.get("dut_id", "")
             if not dut_id:
                 return None
 
         model = input(f"Model [{defaults.get('model', '')}]: ").strip()
         if not model:
-            model = defaults.get('model', 'Unknown')
+            model = defaults.get("model", "Unknown")
 
         operator = input(f"Operator [{defaults.get('operator_id', '')}]: ").strip()
         if not operator:
-            operator = defaults.get('operator_id', 'Unknown')
+            operator = defaults.get("operator_id", "Unknown")
 
         return {"id": dut_id, "model": model, "operator": operator}
 
@@ -376,8 +378,6 @@ class EnhancedMenuSystem:
                     )
 
 
-
-
 # Integration factory functions
 def create_enhanced_cli_integrator(
     console: Console, formatter: RichFormatter, configuration_service: Optional[Any] = None
@@ -389,8 +389,6 @@ def create_enhanced_cli_integrator(
 def create_enhanced_menu_system(integrator: EnhancedInputIntegrator) -> EnhancedMenuSystem:
     """Factory function to create enhanced menu system"""
     return EnhancedMenuSystem(integrator)
-
-
 
 
 # Example usage and testing

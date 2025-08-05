@@ -18,8 +18,8 @@ hardware_config:
     stopbits: 1
     parity: null
   power:
-    host: 192.168.1.100
-    port: 8080
+    host: 192.168.11.1
+    port: 5000
     timeout: 5.0
     channel: 1
   digital_io:
@@ -31,6 +31,6 @@ hardware_config:
     beep: 7
 metadata:
   description: Auto-generated hardware configuration
-  version: '1.0'
+  version: "1.0"
   created_by: YamlConfiguration (auto-generated)
-  created_time: '2025-08-05T16:34:12.489693'
+  created_time: "2025-08-05T16:34:12.489693"

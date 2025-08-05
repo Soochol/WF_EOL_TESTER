@@ -19,6 +19,9 @@ from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
 )
+from domain.value_objects.hardware_configuration import (
+    HardwareConfiguration,
+)
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
@@ -85,7 +88,7 @@ class ConfigurationService:
                 file_path=f"{profile_name}.yaml",
             ) from e
 
-    async def load_hardware_config(self):
+    async def load_hardware_config(self) -> HardwareConfiguration:
         """
         Load hardware configuration
         

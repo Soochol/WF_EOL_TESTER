@@ -59,10 +59,7 @@ class OdaPower(PowerService):
             self._tcp_comm = TCPCommunication(host, port, timeout)
 
             logger.info(
-                "Connecting to ODA Power Supply at %s:%s (Channel: %s)",
-                host,
-                port,
-                channel,
+                f"Connecting to ODA Power Supply at {host}:{port} (Channel: {channel})"
             )
 
             await self._tcp_comm.connect()
