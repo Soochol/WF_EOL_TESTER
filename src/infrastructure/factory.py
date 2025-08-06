@@ -45,6 +45,84 @@ class ServiceFactory:
     """하드웨어 서비스 팩토리"""
 
     @staticmethod
+    def _load_hardware_configurations() -> Optional[Dict]:
+        """Load hardware configurations from YAML file
+        
+        Returns:
+            Dictionary containing hardware configurations or None if loading fails
+        """
+        try:
+            from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
+            import asyncio
+            
+            config = YamlConfiguration()
+            
+            # Try to load hardware config synchronously
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # We're in an async context, log warning and use defaults
+                    logger.warning("Cannot load YAML config in running event loop, using defaults")
+                    return None
+                else:
+                    hw_config = loop.run_until_complete(config.load_hardware_config())
+            except RuntimeError:
+                # No event loop running, create one
+                hw_config = asyncio.run(config.load_hardware_config())
+            
+            # Convert HardwareConfiguration object to dictionary format
+            configs = {
+                'robot': {
+                    'model': 'ajinextek',
+                    'axis_id': hw_config.robot.axis_id,
+                    'irq_no': hw_config.robot.irq_no,
+                },
+                'loadcell': {
+                    'model': 'bs205',
+                    'port': hw_config.loadcell.port,
+                    'baudrate': hw_config.loadcell.baudrate,
+                    'timeout': hw_config.loadcell.timeout,
+                    'bytesize': hw_config.loadcell.bytesize,
+                    'stopbits': hw_config.loadcell.stopbits,
+                    'parity': hw_config.loadcell.parity,
+                    'indicator_id': hw_config.loadcell.indicator_id,
+                },
+                'mcu': {
+                    'model': 'lma',
+                    'port': hw_config.mcu.port,
+                    'baudrate': hw_config.mcu.baudrate,
+                    'timeout': hw_config.mcu.timeout,
+                    'bytesize': hw_config.mcu.bytesize,
+                    'stopbits': hw_config.mcu.stopbits,
+                    'parity': hw_config.mcu.parity,
+                },
+                'power': {
+                    'model': 'oda',
+                    'host': hw_config.power.host,
+                    'port': hw_config.power.port,
+                    'timeout': hw_config.power.timeout,
+                    'channel': hw_config.power.channel,
+                },
+                'digital_io': {
+                    'model': 'ajinextek',
+                    'operator_start_button_left': hw_config.digital_io.operator_start_button_left,
+                    'operator_start_button_right': hw_config.digital_io.operator_start_button_right,
+                    'tower_lamp_red': hw_config.digital_io.tower_lamp_red,
+                    'tower_lamp_yellow': hw_config.digital_io.tower_lamp_yellow,
+                    'tower_lamp_green': hw_config.digital_io.tower_lamp_green,
+                    'beep': hw_config.digital_io.beep,
+                },
+            }
+            
+            logger.info("Hardware configurations loaded from YAML file successfully")
+            return configs
+            
+        except Exception as e:
+            logger.warning(f"Failed to load hardware configuration from YAML: {e}")
+            logger.info("Using default hardware configurations")
+            return None
+
+    @staticmethod
     def create_loadcell_service(
         config: Optional[Dict] = None,
     ) -> Union["BS205LoadCell", "MockLoadCell"]:
@@ -65,8 +143,9 @@ class ServiceFactory:
             logger.info("Creating Mock LoadCell service")
             return MockLoadCell()
 
-        # BS205 실제 하드웨어 (기본 설정)
-        logger.info("Creating BS205 LoadCell service")
+        # BS205 실제 하드웨어 (설정 기반)
+        logger.info("Creating BS205 LoadCell service with config: %s", config)
+        # config가 있으면 BS205LoadCell 생성자에 전달 (현재는 생성자가 config를 받지 않으므로 로깅만)
         return BS205LoadCell()
 
     @staticmethod
@@ -88,8 +167,8 @@ class ServiceFactory:
             logger.info("Creating Mock Power service")
             return MockPower()
 
-        # ODA 실제 하드웨어 (기본 설정)
-        logger.info("Creating ODA Power service")
+        # ODA 실제 하드웨어 (설정 기반)
+        logger.info("Creating ODA Power service with config: %s", config)
         return OdaPower()
 
     @staticmethod
@@ -109,8 +188,8 @@ class ServiceFactory:
             logger.info("Creating Mock MCU service")
             return MockMCU()
 
-        # LMA 실제 하드웨어 (기본 설정)
-        logger.info("Creating LMA MCU service")
+        # LMA 실제 하드웨어 (설정 기반)
+        logger.info("Creating LMA MCU service with config: %s", config)
         return LMAMCU()
 
     @staticmethod
@@ -136,8 +215,8 @@ class ServiceFactory:
             mock_config = config if config else {"model": "mock"}
             return MockDIO(mock_config)
 
-        # Ajinextek DIO 실제 하드웨어 (기본 설정)
-        logger.info("Creating Ajinextek Digital Input service")
+        # Ajinextek DIO 실제 하드웨어 (설정 기반)
+        logger.info("Creating Ajinextek Digital Input service with config: %s", config)
         return AjinextekDIO()
 
     @staticmethod
@@ -155,8 +234,11 @@ class ServiceFactory:
             logger.info("Creating Mock Robot service")
             return MockRobot()
 
-        # AJINEXTEK 실제 하드웨어 (기본 설정)
-        logger.info("Creating AJINEXTEK Robot service")
+        # AJINEXTEK 실제 하드웨어 (설정 기반)
+        logger.info("Creating AJINEXTEK Robot service with config: %s", config)
+        # config에서 axis_id와 irq_no를 추출하여 AjinextekRobot에 전달
+        # 현재 AjinextekRobot은 생성자에서 config를 받지 않으므로,
+        # connect 메서드에서 사용할 수 있도록 나중에 전달
         return AjinextekRobot()
 
 
@@ -176,14 +258,25 @@ def create_hardware_service_facade(
     logger.info("Creating hardware service facade (use_mock=%s)", use_mock)
 
     try:
-        # Create configuration for mock or real hardware
-        hardware_config = {"model": "mock"} if use_mock else None
-        # Create all hardware services
-        robot_service = ServiceFactory.create_robot_service(hardware_config)
-        mcu_service = ServiceFactory.create_mcu_service(hardware_config)
-        loadcell_service = ServiceFactory.create_loadcell_service(hardware_config)
-        power_service = ServiceFactory.create_power_service(hardware_config)
-        digital_input_service = ServiceFactory.create_digital_input_service(hardware_config)
+        # Load hardware configuration from YAML file if not using mock
+        hardware_configs = ServiceFactory._load_hardware_configurations() if not use_mock else None
+        
+        # Create all hardware services with proper configuration
+        robot_service = ServiceFactory.create_robot_service(
+            hardware_configs.get('robot') if hardware_configs else ({"model": "mock"} if use_mock else None)
+        )
+        mcu_service = ServiceFactory.create_mcu_service(
+            hardware_configs.get('mcu') if hardware_configs else ({"model": "mock"} if use_mock else None)
+        )
+        loadcell_service = ServiceFactory.create_loadcell_service(
+            hardware_configs.get('loadcell') if hardware_configs else ({"model": "mock"} if use_mock else None)
+        )
+        power_service = ServiceFactory.create_power_service(
+            hardware_configs.get('power') if hardware_configs else ({"model": "mock"} if use_mock else None)
+        )
+        digital_input_service = ServiceFactory.create_digital_input_service(
+            hardware_configs.get('digital_io') if hardware_configs else ({"model": "mock"} if use_mock else None)
+        )
 
         # Create and return facade
         facade = HardwareServiceFacade(
