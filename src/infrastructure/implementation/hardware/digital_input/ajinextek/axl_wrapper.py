@@ -101,6 +101,7 @@ class AXLDIOWrapper:
             ),
             os.path.join(
                 os.getcwd(),
+                "src",
                 "driver",
                 "ajinextek",
                 "AXL(Library)",
