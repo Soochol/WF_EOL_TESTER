@@ -112,11 +112,11 @@ class AjinextekRobot(RobotService):
             result = await self._initialize_axl_library_with_diagnostics(irq_no)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to initialize AXL library: %s (Error Code: %s)", error_msg, result)
+                logger.error(f"Failed to initialize AXL library: {error_msg} (Error Code: {result})")
                 
                 # Provide detailed error analysis
                 error_analysis = self._analyze_connection_error(result, irq_no)
-                logger.error("Connection error analysis: %s", error_analysis)
+                logger.error(f"Connection error analysis: {error_analysis}")
                 
                 raise RobotConnectionError(
                     f"Failed to initialize AXL library: {error_msg}",
@@ -127,23 +127,23 @@ class AjinextekRobot(RobotService):
             # Get board count for verification (with error handling)
             try:
                 board_count = await self._get_board_count_safely()
-                logger.info("Board count detected: %s", board_count)
+                logger.info(f"Board count detected: {board_count}")
             except Exception as e:
-                logger.warning("Could not get board count: %s (continuing anyway)", e)
+                logger.warning(f"Could not get board count: {e} (continuing anyway)")
                 board_count = 0  # Default value
 
             # Get axis count from hardware (with error handling)
             try:
                 self._axis_count = await self._get_axis_count_safely()
-                logger.info("Detected axis count: %s", self._axis_count)
+                logger.info(f"Detected axis count: {self._axis_count}")
             except Exception as e:
-                logger.warning("Could not get axis count: %s (using default: 1)", e)
+                logger.warning(f"Could not get axis count: {e} (using default: 1)")
                 self._axis_count = 1  # Default to single axis
 
             # Get library version for info
             try:
                 self.version = self._axl.get_lib_version()
-                logger.info("AXL Library version: %s", self.version)
+                logger.info(f"AXL Library version: {self.version}")
             except Exception:
                 pass  # Library version is not critical
 
@@ -172,7 +172,7 @@ class AjinextekRobot(RobotService):
                 # Re-raise RobotConnectionError as-is to preserve error context
                 raise
             else:
-                logger.error("Failed to connect to AJINEXTEK robot: %s", e)
+                logger.error(f"Failed to connect to AJINEXTEK robot: {e}")
                 raise RobotConnectionError(
                     f"Robot controller initialization failed: {e}",
                     "AJINEXTEK",
@@ -193,9 +193,9 @@ class AjinextekRobot(RobotService):
                     result = self._axl.close()
                     if result != AXT_RT_SUCCESS:
                         error_msg = get_error_message(result)
-                        logger.warning("AXL library close warning: %s", error_msg)
+                        logger.warning(f"AXL library close warning: {error_msg}")
                 except Exception as e:
-                    logger.warning("Error closing AXL library: %s", e)
+                    logger.warning(f"Error closing AXL library: {e}")
 
                 self._is_connected = False
                 self._servo_state = False
@@ -204,7 +204,7 @@ class AjinextekRobot(RobotService):
                 logger.info("AJINEXTEK robot controller disconnected")
 
         except Exception as e:
-            logger.error("Error disconnecting AJINEXTEK robot: %s", e)
+            logger.error(f"Error disconnecting AJINEXTEK robot: {e}")
             raise HardwareException(
                 "ajinextek_robot",
                 "disconnect",
@@ -243,20 +243,20 @@ class AjinextekRobot(RobotService):
         self._ensure_servo_enabled()
 
         try:
-            logger.info("Starting homing for axis %s using robot_motion_settings.mot parameters", axis)
+            logger.info(f"Starting homing for axis {axis} using robot_motion_settings.mot parameters")
             self._motion_status = MotionStatus.HOMING
 
             # Start homing using parameters already loaded from robot_motion_settings.mot file
             result = self._axl.home_set_start(axis)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to start homing for axis %s: %s", axis, error_msg)
+                logger.error(f"Failed to start homing for axis {axis}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to start homing for axis {axis}: {error_msg}",
                     "AJINEXTEK",
                 )
 
-            logger.debug("Started homing for axis %s using robot_motion_settings.mot parameters", axis)
+            logger.debug(f"Started homing for axis {axis} using robot_motion_settings.mot parameters")
 
             # Monitor homing status using AJINEXTEK standard pattern
             while True:
@@ -264,14 +264,14 @@ class AjinextekRobot(RobotService):
                     home_result = self._axl.home_get_result(axis)
 
                     if home_result == HOME_SUCCESS:
-                        logger.info("Homing completed successfully for axis %s", axis)
+                        logger.info(f"Homing completed successfully for axis {axis}")
                         break
 
                     elif home_result == HOME_SEARCHING:
                         # Get progress information for logging
                         try:
                             _, step = self._axl.home_get_rate(axis)
-                            logger.debug("Homing axis %s: %d%% complete", axis, step)
+                            logger.debug(f"Homing axis {axis}: {step}%% complete")
                         except Exception:
                             pass  # Progress info is optional
 
@@ -319,14 +319,14 @@ class AjinextekRobot(RobotService):
             # Update position to zero after successful homing
             self._current_position = 0.0
             self._motion_status = MotionStatus.IDLE
-            logger.info("Axis %s homing completed successfully", axis)
+            logger.info(f"Axis {axis} homing completed successfully")
 
         except RobotMotionError:
             # Re-raise motion errors to preserve error context
             self._motion_status = MotionStatus.ERROR
             raise
         except Exception as e:
-            logger.error("Homing failed on axis %s: %s", axis, e)
+            logger.error(f"Homing failed on axis {axis}: {e}")
             self._motion_status = MotionStatus.ERROR
             raise RobotMotionError(
                 f"Homing failed on axis {axis}: {e}",
@@ -386,7 +386,7 @@ class AjinextekRobot(RobotService):
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
                 self._motion_status = MotionStatus.ERROR
-                logger.error("Failed to start movement on axis %s: %s", axis_id, error_msg)
+                logger.error(f"Failed to start movement on axis {axis_id}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to start movement on axis {axis_id}: {error_msg}",
                     "AJINEXTEK",
@@ -399,13 +399,13 @@ class AjinextekRobot(RobotService):
             self._current_position = position
 
             self._motion_status = MotionStatus.IDLE
-            logger.info("Axis %s absolute move completed successfully", axis_id)
+            logger.info(f"Axis {axis_id} absolute move completed successfully")
 
         except RobotMotionError:
             # Re-raise motion errors to preserve error context
             raise
         except Exception as e:
-            logger.error("Absolute move failed on axis %s: %s", axis_id, e)
+            logger.error(f"Absolute move failed on axis {axis_id}: {e}")
             self._motion_status = MotionStatus.ERROR
             raise RobotMotionError(
                 f"Absolute move failed on axis {axis_id}: {e}",
@@ -462,7 +462,7 @@ class AjinextekRobot(RobotService):
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
                 self._motion_status = MotionStatus.ERROR
-                logger.error("Failed to start relative movement on axis %s: %s", axis_id, error_msg)
+                logger.error(f"Failed to start relative movement on axis {axis_id}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to start relative movement on axis {axis_id}: {error_msg}",
                     "AJINEXTEK",
@@ -476,13 +476,13 @@ class AjinextekRobot(RobotService):
             self._current_position = new_position
 
             self._motion_status = MotionStatus.IDLE
-            logger.info("Axis %s relative move completed successfully", axis_id)
+            logger.info(f"Axis {axis_id} relative move completed successfully")
 
         except RobotMotionError:
             # Re-raise motion errors to preserve error context
             raise
         except Exception as e:
-            logger.error("Relative move failed on axis %s: %s", axis_id, e)
+            logger.error(f"Relative move failed on axis {axis_id}: {e}")
             self._motion_status = MotionStatus.ERROR
             raise RobotMotionError(
                 f"Relative move failed on axis {axis_id}: {e}",
@@ -515,7 +515,7 @@ class AjinextekRobot(RobotService):
             return position
 
         except Exception as e:
-            logger.warning("Failed to get position for axis %s: %s", axis, e)
+            logger.warning(f"Failed to get position for axis {axis}: {e}")
             # Use cached position as fallback
             return self._current_position
 
@@ -557,7 +557,7 @@ class AjinextekRobot(RobotService):
             result = self._axl.move_stop(axis_id, deceleration)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to stop axis %s: %s", axis_id, error_msg)
+                logger.error(f"Failed to stop axis {axis_id}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to stop axis {axis_id}: {error_msg}",
                     "AJINEXTEK",
@@ -565,13 +565,13 @@ class AjinextekRobot(RobotService):
 
             # Update motion status - only set to IDLE if all axes are stopped
             # For now, we'll assume this axis is stopped
-            logger.info("Axis %s motion stopped successfully", axis_id)
+            logger.info(f"Axis {axis_id} motion stopped successfully")
 
         except RobotMotionError:
             # Re-raise motion errors to preserve error context
             raise
         except Exception as e:
-            logger.error("Unexpected error stopping axis %s: %s", axis_id, e)
+            logger.error(f"Unexpected error stopping axis {axis_id}: {e}")
             raise RobotMotionError(
                 f"Unexpected error stopping axis {axis_id}: {e}",
                 "AJINEXTEK",
@@ -600,7 +600,7 @@ class AjinextekRobot(RobotService):
             result = self._axl.move_emergency_stop(axis)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to emergency stop axis %d: %s", axis, error_msg)
+                logger.error(f"Failed to emergency stop axis {axis}: {error_msg}")
                 raise HardwareException(
                     "ajinextek_robot",
                     "emergency_stop",
@@ -612,12 +612,12 @@ class AjinextekRobot(RobotService):
                 self._set_servo_off()
                 self._servo_state = False
             except Exception as e:
-                logger.warning("Failed to turn off servo %d during emergency stop: %s", axis, e)
+                logger.warning(f"Failed to turn off servo {axis} during emergency stop: {e}")
 
             logger.warning("Emergency stop completed for axis %d", axis)
 
         except Exception as e:
-            logger.error("Emergency stop failed for axis %d: %s", axis, e)
+            logger.error(f"Emergency stop failed for axis {axis}: {e}")
             raise HardwareException(
                 "ajinextek_robot",
                 "emergency_stop",
@@ -685,7 +685,7 @@ class AjinextekRobot(RobotService):
         try:
             return self._axl.read_servo_alarm(axis)
         except Exception as e:
-            logger.warning("Failed to read servo alarm for axis %s: %s", axis, e)
+            logger.warning(f"Failed to read servo alarm for axis {axis}: {e}")
             return False  # Default to no alarm if read fails
 
     async def check_limit_sensors(self, axis: int) -> Dict[str, bool]:
@@ -711,7 +711,7 @@ class AjinextekRobot(RobotService):
                 "negative_limit": neg_limit,
             }
         except Exception as e:
-            logger.warning("Failed to read limit sensors for axis %s: %s", axis, e)
+            logger.warning(f"Failed to read limit sensors for axis {axis}: {e}")
             return {"positive_limit": False, "negative_limit": False}
 
     async def get_status(self) -> Dict[str, Any]:
@@ -994,14 +994,14 @@ class AjinextekRobot(RobotService):
             result = self._axl.set_abs_rel_mode(axis, POS_ABS)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to set absolute mode for axis %s: %s", axis, error_msg)
+                logger.error(f"Failed to set absolute mode for axis {axis}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to set absolute mode for axis {axis}: {error_msg}",
                     "AJINEXTEK",
                 )
-            logger.debug("Set axis %s to absolute positioning mode", axis)
+            logger.debug(f"Set axis {axis} to absolute positioning mode")
         except Exception as e:
-            logger.error("Error setting absolute mode for axis %s: %s", axis, e)
+            logger.error(f"Error setting absolute mode for axis {axis}: {e}")
             raise RobotMotionError(
                 f"Error setting absolute mode for axis {axis}: {e}",
                 "AJINEXTEK",
@@ -1020,14 +1020,14 @@ class AjinextekRobot(RobotService):
             result = self._axl.set_abs_rel_mode(axis, POS_REL)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to set relative mode for axis %s: %s", axis, error_msg)
+                logger.error(f"Failed to set relative mode for axis {axis}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to set relative mode for axis {axis}: {error_msg}",
                     "AJINEXTEK",
                 )
-            logger.debug("Set axis %s to relative positioning mode", axis)
+            logger.debug(f"Set axis {axis} to relative positioning mode")
         except Exception as e:
-            logger.error("Error setting relative mode for axis %s: %s", axis, e)
+            logger.error(f"Error setting relative mode for axis {axis}: {e}")
             raise RobotMotionError(
                 f"Error setting relative mode for axis {axis}: {e}",
                 "AJINEXTEK",
@@ -1043,10 +1043,10 @@ class AjinextekRobot(RobotService):
             result = self._axl.servo_on(primary_axis, SERVO_ON)
             if result == AXT_RT_SUCCESS:
                 self._servo_state = True
-                logger.debug("Servo %s turned ON", primary_axis)
+                logger.debug(f"Servo {primary_axis} turned ON")
             else:
                 error_msg = get_error_message(result)
-                logger.error("Failed to turn on servo %s: %s", primary_axis, error_msg)
+                logger.error(f"Failed to turn on servo {primary_axis}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to turn on servo {primary_axis}: {error_msg}",
                     "AJINEXTEK",
@@ -1055,7 +1055,7 @@ class AjinextekRobot(RobotService):
         except RobotMotionError:
             raise
         except Exception as e:
-            logger.error("Failed to turn on servo %s: %s", primary_axis, e)
+            logger.error(f"Failed to turn on servo {primary_axis}: {e}")
             raise RobotMotionError(
                 f"Failed to turn on servo {primary_axis}: {e}",
                 "AJINEXTEK",
@@ -1071,10 +1071,10 @@ class AjinextekRobot(RobotService):
             result = self._axl.servo_on(primary_axis, SERVO_OFF)
             if result == AXT_RT_SUCCESS:
                 self._servo_state = False
-                logger.debug("Servo %s turned OFF", primary_axis)
+                logger.debug(f"Servo {primary_axis} turned OFF")
             else:
                 error_msg = get_error_message(result)
-                logger.error("Failed to turn off servo %s: %s", primary_axis, error_msg)
+                logger.error(f"Failed to turn off servo {primary_axis}: {error_msg}")
                 raise RobotMotionError(
                     f"Failed to turn off servo {primary_axis}: {error_msg}",
                     "AJINEXTEK",
@@ -1083,7 +1083,7 @@ class AjinextekRobot(RobotService):
         except RobotMotionError:
             raise
         except Exception as e:
-            logger.error("Failed to turn off servo %s: %s", primary_axis, e)
+            logger.error(f"Failed to turn off servo {primary_axis}: {e}")
             raise RobotMotionError(
                 f"Failed to turn off servo {primary_axis}: {e}",
                 "AJINEXTEK",
@@ -1107,16 +1107,16 @@ class AjinextekRobot(RobotService):
         self._ensure_connected()
 
         try:
-            logger.info("Enabling servo for axis %s", axis)
+            logger.info(f"Enabling servo for axis {axis}")
 
             if not self._servo_state:
                 self._set_servo_on()
-                logger.debug("Servo enabled for axis %s", axis)
+                logger.debug(f"Servo enabled for axis {axis}")
             else:
-                logger.debug("Servo already enabled for axis %s", axis)
+                logger.debug(f"Servo already enabled for axis {axis}")
 
         except Exception as e:
-            logger.error("Failed to enable servo for axis %s: %s", axis, e)
+            logger.error(f"Failed to enable servo for axis {axis}: {e}")
             raise RobotMotionError(
                 f"Failed to enable servo for axis {axis}: {e}",
                 "AJINEXTEK",
@@ -1140,18 +1140,18 @@ class AjinextekRobot(RobotService):
         self._ensure_connected()
 
         try:
-            logger.info("Disabling servo for axis %s", axis)
+            logger.info(f"Disabling servo for axis {axis}")
 
             if self._servo_state:
                 self._set_servo_off()
-                logger.debug("Servo disabled for axis %s", axis)
+                logger.debug(f"Servo disabled for axis {axis}")
             else:
-                logger.debug("Servo already disabled for axis %s", axis)
+                logger.debug(f"Servo already disabled for axis {axis}")
 
         except Exception as e:
-            logger.error("Failed to disable servo for axis %s: %s", axis, e)
+            logger.error(f"Failed to disable servo for axis {axis}: {e}")
             # Don't raise exception for disable failures during shutdown
-            logger.warning("Servo disable failed for axis %s, continuing...", axis)
+            logger.warning(f"Servo disable failed for axis {axis}, continuing...")
 
     async def _wait_for_motion_complete(self, axis: int, timeout: float = 30.0) -> None:
         """
@@ -1171,10 +1171,10 @@ class AjinextekRobot(RobotService):
             try:
                 is_moving = self._axl.read_in_motion(axis)
                 if not is_moving:
-                    logger.debug("Axis %s stopped successfully", axis)
+                    logger.debug(f"Axis {axis} stopped successfully")
                     return
             except Exception as e:
-                logger.error("Failed to check motion status for axis %s: %s", axis, e)
+                logger.error(f"Failed to check motion status for axis {axis}: {e}")
                 raise RobotMotionError(
                     f"Failed to check motion status for axis {axis}: {e}",
                     "AJINEXTEK",
@@ -1182,7 +1182,7 @@ class AjinextekRobot(RobotService):
 
             await asyncio.sleep(0.01)  # Check every 10ms
 
-        logger.warning("Timeout waiting for axis %s to stop", axis)
+        logger.warning(f"Timeout waiting for axis {axis} to stop")
         raise RobotMotionError(
             f"Timeout waiting for axis {axis} to stop after {timeout} seconds",
             "AJINEXTEK",
@@ -1204,7 +1204,7 @@ class AjinextekRobot(RobotService):
             robot_motion_settings_file = project_root / "configuration" / "robot_motion_settings.mot"
 
             if not robot_motion_settings_file.exists():
-                logger.error("Robot motion settings file not found: %s", robot_motion_settings_file)
+                logger.error(f"Robot motion settings file not found: {robot_motion_settings_file}")
                 raise RobotConnectionError(
                     f"Required robot motion settings file not found: {robot_motion_settings_file}",
                     "AJINEXTEK",
@@ -1222,7 +1222,7 @@ class AjinextekRobot(RobotService):
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to load motion settings from %s: %s", robot_motion_settings_file, error_msg)
+                logger.error(f"Failed to load motion settings from {robot_motion_settings_file}: {error_msg}")
                 raise RobotConnectionError(
                     f"AxmMotLoadPara failed for axis {axis_id}: {error_msg}",
                     "AJINEXTEK",
@@ -1239,7 +1239,7 @@ class AjinextekRobot(RobotService):
             # Re-raise connection errors to preserve error context
             raise
         except Exception as e:
-            logger.error("Failed to load robot parameters: %s", e)
+            logger.error(f"Failed to load robot parameters: {e}")
             raise RobotConnectionError(
                 f"Robot parameters loading failed: {e}",
                 "AJINEXTEK",
