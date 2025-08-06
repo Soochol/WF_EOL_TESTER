@@ -8,7 +8,7 @@ import platform
 from pathlib import Path
 
 # Library paths
-BASE_DIR = Path(__file__).parent.parent.parent.parent.parent
+BASE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent.parent
 AXL_LIBRARY_DIR = BASE_DIR / "driver" / "ajinextek" / "AXL(Library)" / "Library"
 
 # Select DLL based on system architecture
