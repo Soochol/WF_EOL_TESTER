@@ -138,6 +138,8 @@ class MCUController(HardwareController):
             "4": f"🧪 Enter Test Mode     [{mode_info}]",
             "5": f"🎛️ Set Operating Temp  [{temp_info}]",
             "6": "⏳ Wait Boot Complete",
+            "7": "🔥 Start Standby Heating",
+            "8": "❄️ Start Standby Cooling",
             "b": "⬅️  Back to Hardware Menu",
         }
 
@@ -145,7 +147,7 @@ class MCUController(HardwareController):
         enhanced_title = (
             f"⚙️ MCU Control System\n"
             f"📡 Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]💡 Use numbers 1-6 to select options, or 'b' to go back[/dim]"
+            f"[dim]💡 Use numbers 1-8 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -173,6 +175,10 @@ class MCUController(HardwareController):
                 await self._set_operating_temperature()
             elif cmd == "6" or cmd == "boot":
                 await self._wait_boot_complete()
+            elif cmd == "7" or cmd == "heat":
+                await self._start_standby_heating()
+            elif cmd == "8" or cmd == "cool":
+                await self._start_standby_cooling()
             else:
                 return False
             return True
@@ -265,4 +271,67 @@ class MCUController(HardwareController):
         except Exception as e:
             self.formatter.print_message(
                 f"Boot complete wait failed: {str(e)}", message_type="error"
+            )
+
+    async def _start_standby_heating(self) -> None:
+        """Start standby heating"""
+        try:
+            # Check if MCU is connected
+            if not await self.mcu_service.is_connected():
+                self.formatter.print_message("MCU is not connected", message_type="error")
+                return
+
+            # Get operating temperature
+            operating_temp = self.formatter.get_float_input(
+                "Enter operating temperature (°C)", min_value=30, max_value=60, default=60
+            )
+            
+            # Get standby temperature
+            standby_temp = self.formatter.get_float_input(
+                "Enter standby temperature (°C)", min_value=30, max_value=60, default=40
+            )
+            
+            # Get hold time
+            hold_time = self.formatter.get_integer_input(
+                "Enter hold time (ms)", min_value=1000, max_value=60000, default=10000
+            )
+
+            async def heating_operation():
+                await self.mcu_service.start_standby_heating(operating_temp, standby_temp, hold_time)
+                return True
+
+            await self._show_progress_with_message(
+                f"Starting standby heating (op:{operating_temp}°C, standby:{standby_temp}°C, hold:{hold_time}ms)...",
+                heating_operation,
+                "Standby heating started successfully",
+                "Failed to start standby heating",
+            )
+
+        except Exception as e:
+            self.formatter.print_message(
+                f"Failed to start standby heating: {str(e)}", message_type="error"
+            )
+
+    async def _start_standby_cooling(self) -> None:
+        """Start standby cooling"""
+        try:
+            # Check if MCU is connected
+            if not await self.mcu_service.is_connected():
+                self.formatter.print_message("MCU is not connected", message_type="error")
+                return
+
+            async def cooling_operation():
+                await self.mcu_service.start_standby_cooling()
+                return True
+
+            await self._show_progress_with_message(
+                "Starting standby cooling...",
+                cooling_operation,
+                "Standby cooling started successfully",
+                "Failed to start standby cooling",
+            )
+
+        except Exception as e:
+            self.formatter.print_message(
+                f"Failed to start standby cooling: {str(e)}", message_type="error"
             )
