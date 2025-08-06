@@ -92,14 +92,14 @@ class AjinextekRobot(RobotService):
             logger.info(
                 "Connecting to AJINEXTEK robot controller (IRQ: %s, Axis: %s)", irq_no, axis_id
             )
-            
+
             # Print comprehensive system diagnostics before attempting connection
             logger.info("Performing pre-connection system diagnostics...")
             self._print_system_diagnostics()
-            
+
             # Verify DLL installation before attempting to load
             dll_info = verify_dll_installation()
-            if not dll_info['dll_exists']:
+            if not dll_info["dll_exists"]:
                 logger.error("AXL DLL not found - printing diagnostic information")
                 print_dll_diagnostic_info()
                 raise RobotConnectionError(
@@ -112,12 +112,14 @@ class AjinextekRobot(RobotService):
             result = await self._initialize_axl_library_with_diagnostics(irq_no)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error(f"Failed to initialize AXL library: {error_msg} (Error Code: {result})")
-                
+                logger.error(
+                    f"Failed to initialize AXL library: {error_msg} (Error Code: {result})"
+                )
+
                 # Provide detailed error analysis
                 error_analysis = self._analyze_connection_error(result, irq_no)
                 logger.error(f"Connection error analysis: {error_analysis}")
-                
+
                 raise RobotConnectionError(
                     f"Failed to initialize AXL library: {error_msg}",
                     "AJINEXTEK",
@@ -243,7 +245,9 @@ class AjinextekRobot(RobotService):
         self._ensure_servo_enabled()
 
         try:
-            logger.info(f"Starting homing for axis {axis} using robot_motion_settings.mot parameters")
+            logger.info(
+                f"Starting homing for axis {axis} using robot_motion_settings.mot parameters"
+            )
             self._motion_status = MotionStatus.HOMING
 
             # Start homing using parameters already loaded from robot_motion_settings.mot file
@@ -256,7 +260,9 @@ class AjinextekRobot(RobotService):
                     "AJINEXTEK",
                 )
 
-            logger.debug(f"Started homing for axis {axis} using robot_motion_settings.mot parameters")
+            logger.debug(
+                f"Started homing for axis {axis} using robot_motion_settings.mot parameters"
+            )
 
             # Monitor homing status using AJINEXTEK standard pattern
             while True:
@@ -745,75 +751,81 @@ class AjinextekRobot(RobotService):
                 "Robot controller not connected",
                 "AJINEXTEK",
             )
-    
+
     def _print_system_diagnostics(self) -> None:
         """Print comprehensive system diagnostics for troubleshooting"""
         try:
             import platform
             import os
-            
+
             logger.info("=== AJINEXTEK Robot Connection Diagnostics ===")
             logger.info(f"Operating System: {platform.system()} {platform.version()}")
             logger.info(f"Architecture: {platform.machine()} ({platform.architecture()[0]})")
             logger.info(f"Python Version: {platform.python_version()}")
             logger.info(f"Python Executable: {platform.python_implementation()}")
-            
+
             # Check if running as administrator (Windows) with enhanced detection
             if platform.system() == "Windows":
                 try:
                     import ctypes
                     import ctypes.wintypes
-                    
+
                     # Multiple methods to check admin privileges
                     is_admin_shell = ctypes.windll.shell32.IsUserAnAdmin()
-                    
+
                     # Alternative method: Check if we can write to system directory
                     can_write_system = False
                     try:
                         import tempfile
-                        with tempfile.NamedTemporaryFile(dir='C:\\Windows\\System32', delete=True):
+
+                        with tempfile.NamedTemporaryFile(dir="C:\\Windows\\System32", delete=True):
                             can_write_system = True
                     except (OSError, PermissionError):
                         can_write_system = False
-                    
+
                     # Check token elevation
                     is_elevated = False
                     try:
                         import ctypes.wintypes as wintypes
-                        
+
                         # Get current process token
                         TOKEN_QUERY = 0x0008
                         TokenElevation = 20
-                        
+
                         process_handle = ctypes.windll.kernel32.GetCurrentProcess()
                         token_handle = wintypes.HANDLE()
-                        
+
                         if ctypes.windll.advapi32.OpenProcessToken(
                             process_handle, TOKEN_QUERY, ctypes.byref(token_handle)
                         ):
                             elevation = wintypes.DWORD()
                             size = wintypes.DWORD(ctypes.sizeof(wintypes.DWORD))
-                            
+
                             if ctypes.windll.advapi32.GetTokenInformation(
-                                token_handle, TokenElevation, ctypes.byref(elevation),
-                                ctypes.sizeof(elevation), ctypes.byref(size)
+                                token_handle,
+                                TokenElevation,
+                                ctypes.byref(elevation),
+                                ctypes.sizeof(elevation),
+                                ctypes.byref(size),
                             ):
                                 is_elevated = bool(elevation.value)
-                                
+
                             ctypes.windll.kernel32.CloseHandle(token_handle)
                     except Exception:
                         pass
-                    
+
                     logger.info(f"Administrator Privileges Check:")
                     logger.info(f"  - Shell IsUserAnAdmin(): {is_admin_shell}")
                     logger.info(f"  - Can write to System32: {can_write_system}")
                     logger.info(f"  - Token is elevated: {is_elevated}")
                     logger.info(f"  - Overall admin status: {is_admin_shell or is_elevated}")
-                    
+
                     # If we're not running as admin, provide clear guidance
                     if not (is_admin_shell or is_elevated):
                         logger.warning("⚠️ NOT running with Administrator privileges!")
-                        logger.warning("AJINEXTEK AXL library typically requires administrator access for:")
+                        logger.warning(
+                            "AJINEXTEK AXL library typically requires administrator access for:"
+                        )
                         logger.warning("  - Hardware device driver access")
                         logger.warning("  - IRQ (Interrupt Request) allocation")
                         logger.warning("  - System-level hardware control")
@@ -822,87 +834,89 @@ class AjinextekRobot(RobotService):
                         logger.warning("  1. Right-click on Command Prompt")
                         logger.warning("  2. Select 'Run as administrator'")
                         logger.warning("  3. Navigate to project directory and run again")
-                        
+
                 except Exception as e:
                     logger.info(f"Unable to check administrator privileges: {e}")
                     logger.info("Proceeding anyway - some operations may fail")
-            
+
             # Print DLL diagnostics
             print_dll_diagnostic_info()
-            
+
             logger.info("=== End Diagnostics ===")
-            
+
         except Exception as e:
             logger.warning(f"Failed to print system diagnostics: {e}")
-    
+
     def _analyze_connection_error(self, error_code: int, irq_no: int) -> dict:
         """Analyze connection error and provide specific troubleshooting guidance"""
         analysis = {
-            'error_code': error_code,
-            'error_name': get_error_message(error_code),
-            'likely_causes': [],
-            'troubleshooting_steps': [],
-            'system_checks': [],
+            "error_code": error_code,
+            "error_name": get_error_message(error_code),
+            "likely_causes": [],
+            "troubleshooting_steps": [],
+            "system_checks": [],
         }
-        
+
         # Error-specific analysis
         if error_code == 1053:  # Library not opened/not loaded
-            analysis['likely_causes'] = [
-                'AXL DLL failed to load',
-                'Missing system dependencies (Visual C++ Redistributables)',
-                'Architecture mismatch (32-bit vs 64-bit)',
-                'Missing AJINEXTEK hardware drivers',
-                'Insufficient permissions'
+            analysis["likely_causes"] = [
+                "AXL DLL failed to load",
+                "Missing system dependencies (Visual C++ Redistributables)",
+                "Architecture mismatch (32-bit vs 64-bit)",
+                "Missing AJINEXTEK hardware drivers",
+                "Insufficient permissions",
             ]
-            analysis['troubleshooting_steps'] = [
-                'Run application as Administrator',
-                'Install Visual C++ Redistributables 2015-2022',
-                'Install AJINEXTEK device drivers',
-                'Verify DLL architecture matches Python architecture',
-                'Check Windows Event Viewer for detailed error messages'
+            analysis["troubleshooting_steps"] = [
+                "Run application as Administrator",
+                "Install Visual C++ Redistributables 2015-2022",
+                "Install AJINEXTEK device drivers",
+                "Verify DLL architecture matches Python architecture",
+                "Check Windows Event Viewer for detailed error messages",
             ]
-            analysis['system_checks'] = [
-                'Check if AJINEXTEK hardware is connected',
-                'Verify USB/PCI device recognition in Device Manager',
-                f'Confirm IRQ {irq_no} is available and not in use',
-                'Check for driver conflicts'
+            analysis["system_checks"] = [
+                "Check if AJINEXTEK hardware is connected",
+                "Verify USB/PCI device recognition in Device Manager",
+                f"Confirm IRQ {irq_no} is available and not in use",
+                "Check for driver conflicts",
             ]
-        
+
         elif error_code == 1001:  # IRQ already in use
-            analysis['likely_causes'] = [
-                f'IRQ {irq_no} is already in use by another process',
-                'Previous connection was not properly closed',
-                'Multiple instances of the application running'
+            analysis["likely_causes"] = [
+                f"IRQ {irq_no} is already in use by another process",
+                "Previous connection was not properly closed",
+                "Multiple instances of the application running",
             ]
-            analysis['troubleshooting_steps'] = [
-                'Close all other AJINEXTEK applications',
-                'Restart the application',
-                'Try a different IRQ number (if available)',
-                'Reboot the system if necessary'
+            analysis["troubleshooting_steps"] = [
+                "Close all other AJINEXTEK applications",
+                "Restart the application",
+                "Try a different IRQ number (if available)",
+                "Reboot the system if necessary",
             ]
-        
+
         elif error_code == 1002:  # Hardware not found
-            analysis['likely_causes'] = [
-                'AJINEXTEK hardware not connected or not detected',
-                'Hardware drivers not installed',
-                'Hardware malfunction or power issues'
+            analysis["likely_causes"] = [
+                "AJINEXTEK hardware not connected or not detected",
+                "Hardware drivers not installed",
+                "Hardware malfunction or power issues",
             ]
-            analysis['troubleshooting_steps'] = [
-                'Check physical hardware connections',
-                'Verify hardware power status',
-                'Install or update AJINEXTEK drivers',
-                'Check Device Manager for hardware recognition'
+            analysis["troubleshooting_steps"] = [
+                "Check physical hardware connections",
+                "Verify hardware power status",
+                "Install or update AJINEXTEK drivers",
+                "Check Device Manager for hardware recognition",
             ]
-        
+
         return analysis
-    
-    async def _initialize_axl_library_with_diagnostics(self, irq_no: int, max_retries: int = 3) -> int:
+
+    async def _initialize_axl_library_with_diagnostics(
+        self, irq_no: int, max_retries: int = 3
+    ) -> int:
         """Initialize AXL library with enhanced diagnostics and retry logic"""
         logger.info(f"Attempting to initialize AXL library with IRQ {irq_no}")
         logger.info(f"Maximum retry attempts: {max_retries}")
-        
+
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 logger.info(f"AXL library initialization attempt {attempt + 1}/{max_retries}")
@@ -912,7 +926,7 @@ class AjinextekRobot(RobotService):
                     logger.info("AXL library is already open, closing first")
                     try:
                         self._axl.close()
-                        await asyncio.sleep(0.5)  # Wait for clean shutdown
+                        await asyncio.sleep(0.1)  # Wait for clean shutdown
                     except Exception as e:
                         logger.warning(f"Error closing existing library: {e}")
 
@@ -923,7 +937,7 @@ class AjinextekRobot(RobotService):
                 if result == AXT_RT_SUCCESS:
                     logger.info(f"✓ AXL library opened successfully on attempt {attempt + 1}")
                     # Small delay to let library fully initialize
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.1)
                     return result
                 else:
                     error_msg = get_error_message(result)
@@ -936,7 +950,7 @@ class AjinextekRobot(RobotService):
                     elif attempt == 1 and result == 1001:
                         logger.info("IRQ may be busy - waiting longer before retry...")
                         await asyncio.sleep(1.0)  # Longer wait for IRQ issues
-                    
+
                     if attempt < max_retries - 1:
                         wait_time = (attempt + 1) * 0.5  # Progressive backoff
                         logger.info(f"Retrying in {wait_time}s...")
@@ -947,21 +961,21 @@ class AjinextekRobot(RobotService):
                 last_error = 1053  # Generic "not loaded" error
                 if attempt < max_retries - 1:
                     await asyncio.sleep((attempt + 1) * 0.5)
-                    
+
         # All attempts failed
         final_error = last_error if last_error is not None else 1053
         logger.error(f"All {max_retries} initialization attempts failed")
         logger.error(f"Final error code: {final_error} ({get_error_message(final_error)})")
-        
+
         # Provide final troubleshooting guidance
         error_analysis = self._analyze_connection_error(final_error, irq_no)
         logger.error("Final troubleshooting analysis:")
-        for cause in error_analysis['likely_causes']:
+        for cause in error_analysis["likely_causes"]:
             logger.error(f"  - {cause}")
         logger.error("Recommended actions:")
-        for step in error_analysis['troubleshooting_steps']:
+        for step in error_analysis["troubleshooting_steps"]:
             logger.error(f"  1. {step}")
-            
+
         return final_error
 
     # Legacy method kept for compatibility - now calls the enhanced version
@@ -1261,7 +1275,9 @@ class AjinextekRobot(RobotService):
         try:
             # Use absolute path to ensure file is found regardless of working directory
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            robot_motion_settings_file = project_root / "configuration" / "robot_motion_settings.mot"
+            robot_motion_settings_file = (
+                project_root / "configuration" / "robot_motion_settings.mot"
+            )
 
             if not robot_motion_settings_file.exists():
                 logger.error(f"Robot motion settings file not found: {robot_motion_settings_file}")
@@ -1282,7 +1298,9 @@ class AjinextekRobot(RobotService):
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error(f"Failed to load motion settings from {robot_motion_settings_file}: {error_msg}")
+                logger.error(
+                    f"Failed to load motion settings from {robot_motion_settings_file}: {error_msg}"
+                )
                 raise RobotConnectionError(
                     f"AxmMotLoadPara failed for axis {axis_id}: {error_msg}",
                     "AJINEXTEK",

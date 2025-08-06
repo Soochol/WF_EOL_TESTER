@@ -87,11 +87,7 @@ class AXLWrapper:
         self._setup_functions()
         print("[DEBUG] _setup_functions() completed successfully")
         
-        # Initialize board count and version after setup
-        print("[DEBUG] Getting board count and version...")
-        self.board_count = self._get_board_count_internal()
-        self.version = self._get_lib_version_internal()
-        print(f"[DEBUG] AXLWrapper initialization complete - boards: {self.board_count}, version: {self.version}")
+        print(f"[DEBUG] AXLWrapper initialization complete - DLL loaded successfully")
 
     def _load_library(self) -> None:
         """Load the AXL DLL with enhanced diagnostics"""
