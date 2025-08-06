@@ -1274,7 +1274,7 @@ class AjinextekRobot(RobotService):
         """
         try:
             # Use absolute path to ensure file is found regardless of working directory
-            project_root = Path(__file__).parent.parent.parent.parent.parent
+            project_root = Path(__file__).parent.parent.parent.parent.parent.parent
             robot_motion_settings_file = (
                 project_root / "configuration" / "robot_motion_settings.mot"
             )
