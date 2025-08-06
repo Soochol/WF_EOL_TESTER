@@ -288,8 +288,8 @@ class LMAMCU(MCUService):
             if lma_mode is None:
                 raise ValueError(f"Invalid test mode: {mode}")
 
-            # Send test mode command and wait for confirmation
-            mode_data = struct.pack("<I", lma_mode)
+            # Send test mode command and wait for confirmation (use big-endian for MCU protocol)
+            mode_data = struct.pack(">I", lma_mode)
             await self._send_and_wait_for(
                 CMD_ENTER_TEST_MODE,
                 mode_data,
@@ -471,9 +471,9 @@ class LMAMCU(MCUService):
             op_temp_int = int(operating_temp * TEMP_SCALE_FACTOR)
             standby_temp_int = int(standby_temp * TEMP_SCALE_FACTOR)
 
-            # 12바이트 데이터 패킹: 동작온도(4B) + 대기온도(4B) + 유지시간(4B)
+            # 12바이트 데이터 패킹: 동작온도(4B) + 대기온도(4B) + 유지시간(4B) (big-endian)
             data = struct.pack(
-                "<III",
+                ">III",
                 op_temp_int,
                 standby_temp_int,
                 hold_time_ms,
@@ -936,11 +936,11 @@ class LMAMCU(MCUService):
     def _encode_temperature(self, temperature: float) -> bytes:
         """Encode temperature for LMA protocol"""
         temp_int = int(temperature * TEMP_SCALE_FACTOR)
-        return struct.pack("<h", temp_int)  # signed short, little endian
+        return struct.pack(">h", temp_int)  # signed short, big endian
 
     def _decode_temperature(self, data: bytes) -> float:
         """Decode temperature from LMA protocol"""
         if len(data) >= 2:
-            temp_int = struct.unpack("<h", data[:2])[0]
+            temp_int = struct.unpack(">h", data[:2])[0]
             return float(temp_int) / TEMP_SCALE_FACTOR
         return 0.0
