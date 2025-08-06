@@ -151,7 +151,12 @@ class HardwareServiceFacade:
             await self._power.set_current_limit(config.upper_current)
             await asyncio.sleep(config.power_stabilization)
 
-            # Initialize robot position using parameters from hardware config
+            # Initialize robot - enable servo first, then move to initial position
+            logger.info(f"Enabling servo for axis {hardware_config.robot.axis_id}...")
+            await self._robot.enable_servo(hardware_config.robot.axis_id)
+            logger.info("Robot servo enabled successfully")
+            
+            logger.info(f"Moving robot to initial position: {config.initial_position}mm")
             await self._robot.move_absolute(
                 position=config.initial_position,
                 axis_id=hardware_config.robot.axis_id,
@@ -160,6 +165,7 @@ class HardwareServiceFacade:
                 deceleration=hardware_config.robot.deceleration,
             )
             await asyncio.sleep(config.stabilization_delay)
+            logger.info("Robot initialized at initial position successfully")
 
             # Zero the load cell
             # await self._loadcell.zero_calibration()
@@ -402,16 +408,22 @@ class HardwareServiceFacade:
         logger.info("Tearing down test...")
 
         try:
-            # Return robot to safe standby position
+            # Return robot to safe standby position - ensure servo is enabled
             logger.info(f"Returning robot to safe position: {config.initial_position}mm")
-            await self._robot.move_absolute(
-                position=config.initial_position,
-                axis_id=hardware_config.robot.axis_id,
-                velocity=hardware_config.robot.velocity,
-                acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration,
-            )
-            logger.info("Robot returned to safe position")
+            try:
+                # Ensure servo is enabled for safe return movement
+                await self._robot.enable_servo(hardware_config.robot.axis_id)
+                await self._robot.move_absolute(
+                    position=config.initial_position,
+                    axis_id=hardware_config.robot.axis_id,
+                    velocity=hardware_config.robot.velocity,
+                    acceleration=hardware_config.robot.acceleration,
+                    deceleration=hardware_config.robot.deceleration,
+                )
+                logger.info("Robot returned to safe position")
+            except Exception as robot_error:
+                logger.error(f"Failed to return robot to safe position: {robot_error}")
+                # Continue with other teardown steps even if robot positioning fails
 
             # Reset MCU temperature to default
             await self._mcu.set_upper_temperature(config.upper_temperature)
