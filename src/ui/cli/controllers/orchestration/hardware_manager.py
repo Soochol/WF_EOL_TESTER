@@ -39,18 +39,54 @@ class HardwareControlManager:
         self.formatter = RichFormatter(self.console)
         self.configuration_service = configuration_service
 
-        # Load hardware configuration to get axis_id
-        self.axis_id = self._load_robot_axis_id()
+        # Load hardware configuration for all hardware
+        self.hardware_config = self._load_hardware_configurations()
+        
+        # Extract axis_id for backward compatibility
+        self.axis_id = self.hardware_config.robot.axis_id if self.hardware_config else 0
 
-        # Initialize hardware controllers
+        # Initialize hardware controllers with configuration
         self.controllers = {
             "Robot": RobotController(hardware_facade._robot, self.formatter, self.axis_id),
-            "MCU": MCUController(hardware_facade._mcu, self.formatter),
-            "LoadCell": LoadCellController(hardware_facade._loadcell, self.formatter),
-            "Power": PowerController(hardware_facade._power, self.formatter),
+            "MCU": MCUController(hardware_facade._mcu, self.formatter, self.hardware_config.mcu if self.hardware_config else None),
+            "LoadCell": LoadCellController(hardware_facade._loadcell, self.formatter, self.hardware_config.loadcell if self.hardware_config else None),
+            "Power": PowerController(hardware_facade._power, self.formatter, self.hardware_config.power if self.hardware_config else None),
         }
 
         logger.info(f"Initialized {len(self.controllers)} hardware controllers")
+        
+    def _load_hardware_configurations(self):
+        """Load all hardware configurations from YAML file"""
+        try:
+            if self.configuration_service:
+                # Get the current event loop or create a new one
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # We're in an async context but need to run sync
+                        # This is a limitation - we'll use defaults and log a warning
+                        logger.warning(
+                            "Cannot load hardware config in running event loop, using defaults"
+                        )
+                        return None
+                    else:
+                        hw_config = loop.run_until_complete(
+                            self.configuration_service.load_hardware_config()
+                        )
+                        logger.info("Successfully loaded hardware configurations from YAML")
+                        return hw_config
+                except RuntimeError:
+                    # No event loop running, create one
+                    hw_config = asyncio.run(self.configuration_service.load_hardware_config())
+                    logger.info("Successfully loaded hardware configurations from YAML")
+                    return hw_config
+            else:
+                logger.warning("No configuration service available, using defaults")
+                return None
+        except Exception as e:
+            logger.error(f"Failed to load hardware configurations: {e}")
+            logger.info("Using default hardware configurations")
+            return None
 
     def _load_robot_axis_id(self) -> int:
         """Load robot axis_id from hardware configuration"""

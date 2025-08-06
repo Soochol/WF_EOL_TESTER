@@ -8,7 +8,7 @@ Implements the RobotService interface using AXL library.
 import asyncio
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from loguru import logger
 
@@ -57,6 +57,7 @@ class AjinextekRobot(RobotService):
         """
         초기화
         """
+
         # Library information
         self.version: str = "Unknown"
 
@@ -725,18 +726,18 @@ class AjinextekRobot(RobotService):
 
     async def _initialize_axl_library(self, irq_no: int, max_retries: int = 3) -> int:
         """Initialize AXL library with retry logic
-        
+
         Args:
             irq_no: IRQ number for initialization
             max_retries: Maximum number of retry attempts
-            
+
         Returns:
             int: AXL result code
         """
         for attempt in range(max_retries):
             try:
                 logger.info(f"AXL library initialization attempt {attempt + 1}/{max_retries}")
-                
+
                 # Check if library is already open
                 if self._axl.is_opened():
                     logger.info("AXL library is already open, closing first")
@@ -745,10 +746,10 @@ class AjinextekRobot(RobotService):
                         await asyncio.sleep(0.5)  # Wait for clean shutdown
                     except Exception as e:
                         logger.warning(f"Error closing existing library: {e}")
-                
+
                 # Open library
                 result = self._axl.open(irq_no)
-                
+
                 if result == AXT_RT_SUCCESS:
                     logger.info(f"AXL library opened successfully on attempt {attempt + 1}")
                     # Small delay to let library fully initialize
@@ -757,83 +758,83 @@ class AjinextekRobot(RobotService):
                 else:
                     error_msg = get_error_message(result)
                     logger.warning(f"Attempt {attempt + 1} failed: {error_msg} (code: {result})")
-                    
+
                     if attempt < max_retries - 1:
                         wait_time = (attempt + 1) * 0.5  # Progressive backoff
                         logger.info(f"Retrying in {wait_time}s...")
                         await asyncio.sleep(wait_time)
-                    
+
             except Exception as e:
                 logger.error(f"Exception during initialization attempt {attempt + 1}: {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep((attempt + 1) * 0.5)
                 else:
                     return 1053  # Return NOT_OPEN error
-        
+
         return result if 'result' in locals() else 1053
 
     async def _get_board_count_safely(self, max_retries: int = 2) -> int:
         """Get board count with error handling and retries
-        
+
         Args:
             max_retries: Maximum number of retry attempts
-            
+
         Returns:
             int: Number of boards detected
-            
+
         Raises:
             Exception: If all attempts fail
         """
         last_exception = None
-        
+
         for attempt in range(max_retries):
             try:
                 # Small delay before attempting to read board count
                 if attempt > 0:
                     await asyncio.sleep(0.1)
-                
+
                 board_count = self._axl.get_board_count()
                 return board_count
-                
+
             except Exception as e:
                 last_exception = e
                 logger.debug(f"Board count attempt {attempt + 1} failed: {e}")
-                
+
                 if attempt < max_retries - 1:
                     await asyncio.sleep(0.2)
-        
+
         raise last_exception if last_exception else Exception("Board count retrieval failed")
 
     async def _get_axis_count_safely(self, max_retries: int = 2) -> int:
         """Get axis count with error handling and retries
-        
+
         Args:
             max_retries: Maximum number of retry attempts
-            
+
         Returns:
             int: Number of axes detected
-            
+
         Raises:
             Exception: If all attempts fail
         """
         last_exception = None
-        
+
         for attempt in range(max_retries):
             try:
                 # Small delay before attempting to read axis count
                 if attempt > 0:
                     await asyncio.sleep(0.1)
-                
+
                 axis_count = self._axl.get_axis_count()
                 return axis_count
-                
+
             except Exception as e:
                 last_exception = e
                 logger.debug(f"Axis count attempt {attempt + 1} failed: {e}")
-                
+
                 if attempt < max_retries - 1:
                     await asyncio.sleep(0.2)
-        
+
         raise last_exception if last_exception else Exception("Axis count retrieval failed")
 
     def _ensure_servo_enabled(self) -> None:

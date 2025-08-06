@@ -9,6 +9,7 @@ from typing import Optional
 
 from application.interfaces.hardware.mcu import MCUService
 from domain.enums.mcu_enums import TestMode
+from domain.value_objects.hardware_configuration import MCUConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
@@ -17,9 +18,10 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class MCUController(HardwareController):
     """Controller for MCU hardware"""
 
-    def __init__(self, mcu_service: MCUService, formatter: RichFormatter):
+    def __init__(self, mcu_service: MCUService, formatter: RichFormatter, mcu_config: Optional[MCUConfig] = None):
         super().__init__(formatter)
         self.mcu_service = mcu_service
+        self.mcu_config = mcu_config
         self.name = "MCU Control System"
 
     async def show_status(self) -> None:
@@ -56,14 +58,26 @@ class MCUController(HardwareController):
         """Connect to MCU"""
 
         async def connect_operation():
-            await self.mcu_service.connect(
-                port="/dev/ttyUSB1",
-                baudrate=115200,
-                timeout=2.0,
-                bytesize=8,
-                stopbits=1,
-                parity=None,
-            )
+            if self.mcu_config:
+                # Use YAML configuration
+                await self.mcu_service.connect(
+                    port=self.mcu_config.port,
+                    baudrate=self.mcu_config.baudrate,
+                    timeout=self.mcu_config.timeout,
+                    bytesize=self.mcu_config.bytesize,
+                    stopbits=self.mcu_config.stopbits,
+                    parity=self.mcu_config.parity,
+                )
+            else:
+                # Fallback to defaults if no config available
+                await self.mcu_service.connect(
+                    port="/dev/ttyUSB1",
+                    baudrate=115200,
+                    timeout=2.0,
+                    bytesize=8,
+                    stopbits=1,
+                    parity=None,
+                )
             return True
 
         return await self._show_progress_with_message(

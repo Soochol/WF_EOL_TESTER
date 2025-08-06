@@ -45,7 +45,7 @@ class ServiceFactory:
     """하드웨어 서비스 팩토리"""
 
     @staticmethod
-    def _load_hardware_configurations() -> Optional[Dict]:
+    def load_hardware_configurations() -> Optional[Dict]:
         """Load hardware configurations from YAML file
         
         Returns:
@@ -143,9 +143,9 @@ class ServiceFactory:
             logger.info("Creating Mock LoadCell service")
             return MockLoadCell()
 
-        # BS205 실제 하드웨어 (설정 기반)
-        logger.info("Creating BS205 LoadCell service with config: %s", config)
-        return BS205LoadCell(config)
+        # BS205 실제 하드웨어
+        logger.info("Creating BS205 LoadCell service")
+        return BS205LoadCell()
 
     @staticmethod
     def create_power_service(config: Optional[Dict] = None) -> Union["OdaPower", "MockPower"]:
@@ -166,8 +166,8 @@ class ServiceFactory:
             logger.info("Creating Mock Power service")
             return MockPower()
 
-        # ODA 실제 하드웨어 (설정 기반)
-        logger.info("Creating ODA Power service with config: %s", config)
+        # ODA 실제 하드웨어
+        logger.info("Creating ODA Power service")
         return OdaPower()
 
     @staticmethod
@@ -187,8 +187,8 @@ class ServiceFactory:
             logger.info("Creating Mock MCU service")
             return MockMCU()
 
-        # LMA 실제 하드웨어 (설정 기반)
-        logger.info("Creating LMA MCU service with config: %s", config)
+        # LMA 실제 하드웨어
+        logger.info("Creating LMA MCU service")
         return LMAMCU()
 
     @staticmethod
@@ -214,8 +214,8 @@ class ServiceFactory:
             mock_config = config if config else {"model": "mock"}
             return MockDIO(mock_config)
 
-        # Ajinextek DIO 실제 하드웨어 (설정 기반)
-        logger.info("Creating Ajinextek Digital Input service with config: %s", config)
+        # Ajinextek DIO 실제 하드웨어
+        logger.info("Creating Ajinextek Digital Input service")
         return AjinextekDIO()
 
     @staticmethod
@@ -233,11 +233,8 @@ class ServiceFactory:
             logger.info("Creating Mock Robot service")
             return MockRobot()
 
-        # AJINEXTEK 실제 하드웨어 (설정 기반)
-        logger.info("Creating AJINEXTEK Robot service with config: %s", config)
-        # config에서 axis_id와 irq_no를 추출하여 AjinextekRobot에 전달
-        # 현재 AjinextekRobot은 생성자에서 config를 받지 않으므로,
-        # connect 메서드에서 사용할 수 있도록 나중에 전달
+        # AJINEXTEK 실제 하드웨어
+        logger.info("Creating AJINEXTEK Robot service")
         return AjinextekRobot()
 
 
@@ -258,8 +255,7 @@ def create_hardware_service_facade(
 
     try:
         # Load hardware configuration from YAML file if not using mock
-        hardware_configs = ServiceFactory._load_hardware_configurations() if not use_mock else None
-        
+        hardware_configs = ServiceFactory.load_hardware_configurations() if not use_mock else None
         # Create all hardware services with proper configuration
         robot_service = ServiceFactory.create_robot_service(
             hardware_configs.get('robot') if hardware_configs else ({"model": "mock"} if use_mock else None)

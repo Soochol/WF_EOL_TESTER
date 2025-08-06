@@ -9,6 +9,7 @@ import asyncio
 from typing import Optional
 
 from application.interfaces.hardware.loadcell import LoadCellService
+from domain.value_objects.hardware_configuration import LoadCellConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
@@ -17,9 +18,10 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class LoadCellController(HardwareController):
     """Controller for LoadCell hardware"""
 
-    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter):
+    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter, loadcell_config: Optional[LoadCellConfig] = None):
         super().__init__(formatter)
         self.loadcell_service = loadcell_service
+        self.loadcell_config = loadcell_config
         self.name = "LoadCell Control System"
 
     async def show_status(self) -> None:
@@ -56,15 +58,28 @@ class LoadCellController(HardwareController):
         """Connect to LoadCell"""
 
         async def connect_operation():
-            await self.loadcell_service.connect(
-                port="/dev/ttyUSB0",
-                baudrate=9600,
-                timeout=1.0,
-                bytesize=8,
-                stopbits=1,
-                parity=None,
-                indicator_id=1,
-            )
+            if self.loadcell_config:
+                # Use YAML configuration
+                await self.loadcell_service.connect(
+                    port=self.loadcell_config.port,
+                    baudrate=self.loadcell_config.baudrate,
+                    timeout=self.loadcell_config.timeout,
+                    bytesize=self.loadcell_config.bytesize,
+                    stopbits=self.loadcell_config.stopbits,
+                    parity=self.loadcell_config.parity,
+                    indicator_id=self.loadcell_config.indicator_id,
+                )
+            else:
+                # Fallback to defaults if no config available
+                await self.loadcell_service.connect(
+                    port="/dev/ttyUSB0",
+                    baudrate=9600,
+                    timeout=1.0,
+                    bytesize=8,
+                    stopbits=1,
+                    parity=None,
+                    indicator_id=1,
+                )
             return True
 
         return await self._show_progress_with_message(

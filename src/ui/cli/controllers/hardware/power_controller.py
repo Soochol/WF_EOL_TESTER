@@ -8,6 +8,7 @@ output management, and safety features for ODA power supplies.
 from typing import Optional
 
 from application.interfaces.hardware.power import PowerService
+from domain.value_objects.hardware_configuration import PowerConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
@@ -16,9 +17,10 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class PowerController(HardwareController):
     """Controller for Power hardware"""
 
-    def __init__(self, power_service: PowerService, formatter: RichFormatter):
+    def __init__(self, power_service: PowerService, formatter: RichFormatter, power_config: Optional[PowerConfig] = None):
         super().__init__(formatter)
         self.power_service = power_service
+        self.power_config = power_config
         self.name = "Power Control System"
 
     async def show_status(self) -> None:
@@ -59,9 +61,19 @@ class PowerController(HardwareController):
         """Connect to Power supply"""
 
         async def connect_operation():
-            await self.power_service.connect(
-                host="192.168.1.100", port=5025, timeout=5.0, channel=1
-            )
+            if self.power_config:
+                # Use YAML configuration
+                await self.power_service.connect(
+                    host=self.power_config.host,
+                    port=self.power_config.port,
+                    timeout=self.power_config.timeout,
+                    channel=self.power_config.channel,
+                )
+            else:
+                # Fallback to defaults if no config available
+                await self.power_service.connect(
+                    host="192.168.1.100", port=5025, timeout=5.0, channel=1
+                )
 
             # Get and display device identity if available
             device_identity = None
