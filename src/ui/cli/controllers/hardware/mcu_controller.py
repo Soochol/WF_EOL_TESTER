@@ -113,38 +113,33 @@ class MCUController(HardwareController):
 
             if is_connected:
                 try:
-                    # Get MCU status information
-                    temperature = await self.mcu_service.get_temperature()
-                    temp_info = f"🌡️ {temperature:.1f}°C"
-
-                    # Get test mode status (if available)
+                    # Get test mode status (if available) - skip auto temperature reading to avoid immediate communication
                     status = await self.mcu_service.get_status()
                     test_mode = status.get("test_mode", "Normal")
                     mode_info = f"🧪 {test_mode} Mode"
+                    temp_info = "🌡️ Click to read"  # Static placeholder instead of auto-reading temperature
                 except Exception:
-                    temp_info = "🌡️ --.-°C"
+                    temp_info = "🌡️ Click to read"
                     mode_info = "🧪 Unknown Mode"
             else:
-                temp_info = "🌡️ --.-°C"
+                temp_info = "🌡️ Disconnected"
                 mode_info = "🧪 Unknown Mode"
 
         except Exception:
             connection_status = "❓ Unknown"
-            temp_info = "🌡️ --.-°C"
+            temp_info = "🌡️ Unknown"
             mode_info = "🧪 Unknown Mode"
 
         # Enhanced menu options with icons and status
         menu_options = {
-            "1": "📊 Show Status",
-            "2": "🔌 Connect",
-            "3": "❌ Disconnect",
-            "4": f"🌡️ Get Temperature     [{temp_info}]",
-            "5": f"🧪 Enter Test Mode     [{mode_info}]",
-            "6": f"🎛️ Set Operating Temp  [{temp_info}]",
-            "7": "⏳ Wait Boot Complete",
+            "1": "🔌 Connect",
+            "2": "❌ Disconnect",
+            "3": f"🌡️ Get Temperature     [{temp_info}]",
+            "4": f"🧪 Enter Test Mode     [{mode_info}]",
+            "5": f"🎛️ Set Operating Temp  [{temp_info}]",
+            "6": "⏳ Wait Boot Complete",
             "b": "⬅️  Back to Hardware Menu",
             # Shortcuts
-            "s": "📊 Show Status (shortcut)",
             "c": "🔌 Connect (shortcut)",
             "d": "❌ Disconnect (shortcut)",
             "temp": "🌡️ Get Temperature (shortcut)",
@@ -157,7 +152,7 @@ class MCUController(HardwareController):
         enhanced_title = (
             f"⚙️ MCU Control System\n"
             f"📡 Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, temp=temperature, test=testmode, boot=wait[/dim]"
+            f"[dim]💡 Shortcuts: c=connect, d=disconnect, temp=temperature, test=test_mode, boot=wait[/dim]"
         )
 
         return simple_interactive_menu(
@@ -173,19 +168,17 @@ class MCUController(HardwareController):
             # Normalize command input
             cmd = command.strip().lower()
 
-            if cmd == "1" or cmd == "s":
-                await self.show_status()
-            elif cmd == "2" or cmd == "c":
+            if cmd == "1" or cmd == "c":
                 return await self.connect()
-            elif cmd == "3" or cmd == "d":
+            elif cmd == "2" or cmd == "d":
                 return await self.disconnect()
-            elif cmd == "4" or cmd == "temp":
+            elif cmd == "3" or cmd == "temp":
                 await self._get_temperature()
-            elif cmd == "5" or cmd == "test":
+            elif cmd == "4" or cmd == "test":
                 await self._enter_test_mode()
-            elif cmd == "6" or cmd == "set":
+            elif cmd == "5" or cmd == "set":
                 await self._set_operating_temperature()
-            elif cmd == "7" or cmd == "boot":
+            elif cmd == "6" or cmd == "boot":
                 await self._wait_boot_complete()
             else:
                 return False

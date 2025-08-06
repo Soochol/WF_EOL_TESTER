@@ -126,17 +126,16 @@ class RobotController(HardwareController):
 
         # Enhanced menu options with icons, status, and shortcuts in descriptions
         menu_options = {
-            "1": "📊 Show Status (s)",
-            "2": "🔌 Connect (c)",
-            "3": "❌ Disconnect (d)",
-            "4": "✅ Servo On (servo-on)       ⚡ [Enable Motor]",
-            "5": "❌ Servo Off (servo-off)     ⚠️  [Disable Motor]",
-            "6": "🚨 Emergency Stop (stop)      ⚠️  [Safety Critical]",
-            "7": "🏠 Home Axis (home)",
-            "8": "📍 Move Absolute (abs)",
-            "9": "↔️ Move Relative (rel)",
-            "10": "⏹️ Stop Motion (stop-motion)",
-            "11": "📍 Get Position (pos)",
+            "1": "🔌 Connect (c)",
+            "2": "❌ Disconnect (d)",
+            "3": "✅ Servo On (servo-on)       ⚡ [Enable Motor]",
+            "4": "❌ Servo Off (servo-off)     ⚠️  [Disable Motor]",
+            "5": "🚨 Emergency Stop (stop)      ⚠️  [Safety Critical]",
+            "6": "🏠 Home Axis (home)",
+            "7": "📍 Move Absolute (abs)",
+            "8": "↔️ Move Relative (rel)",
+            "9": "⏹️ Stop Motion (stop-motion)",
+            "10": "📍 Get Position (pos)",
             "b": "⬅️  Back to Hardware Menu",
         }
 
@@ -144,7 +143,7 @@ class RobotController(HardwareController):
         enhanced_title = (
             f"🤖 Robot Control System\n"
             f"📡 Status: {connection_status}  |  ⚙️ Init: {init_status}  |  {position_info}\n"
-            f"[dim]💡 Shortcuts: s, c, d, servo-on, servo-off, stop, home, abs, rel, stop-motion, pos[/dim]"
+            f"[dim]💡 Shortcuts: c, d, servo-on, servo-off, stop, home, abs, rel, stop-motion, pos[/dim]"
         )
 
         # Get user input with custom validation that includes shortcuts
@@ -162,7 +161,6 @@ class RobotController(HardwareController):
 
             # Check if it's a valid choice or shortcut
             valid_shortcuts = [
-                "s",
                 "c",
                 "d",
                 "servo-on",
@@ -186,27 +184,25 @@ class RobotController(HardwareController):
             # Normalize command input
             cmd = command.strip().lower()
 
-            if cmd == "1" or cmd == "s":
-                await self.show_status()
-            elif cmd == "2" or cmd == "c":
+            if cmd == "1" or cmd == "c":
                 return await self.connect()
-            elif cmd == "3" or cmd == "d":
+            elif cmd == "2" or cmd == "d":
                 return await self.disconnect()
-            elif cmd == "4" or cmd == "servo-on":
+            elif cmd == "3" or cmd == "servo-on":
                 await self._servo_on()
-            elif cmd == "5" or cmd == "servo-off":
+            elif cmd == "4" or cmd == "servo-off":
                 await self._servo_off()
-            elif cmd == "6" or cmd == "stop":
+            elif cmd == "5" or cmd == "stop":
                 await self._emergency_stop()
-            elif cmd == "7" or cmd == "home":
+            elif cmd == "6" or cmd == "home":
                 await self._home_axis()
-            elif cmd == "8" or cmd == "abs":
+            elif cmd == "7" or cmd == "abs":
                 await self._move_absolute()
-            elif cmd == "9" or cmd == "rel":
+            elif cmd == "8" or cmd == "rel":
                 await self._move_relative()
-            elif cmd == "10" or cmd == "stop-motion":
+            elif cmd == "9" or cmd == "stop-motion":
                 await self._stop_motion()
-            elif cmd == "11" or cmd == "pos":
+            elif cmd == "10" or cmd == "pos":
                 await self._get_position()
             else:
                 return False

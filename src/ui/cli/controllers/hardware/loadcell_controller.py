@@ -137,15 +137,13 @@ class LoadCellController(HardwareController):
 
         # Enhanced menu options with icons and status
         menu_options = {
-            "1": "📊 Show Status",
-            "2": "🔌 Connect",
-            "3": "❌ Disconnect",
-            "4": f"⚖️ Read Force          [{force_info}]",
-            "5": "🎌 Zero Calibration    [Reset to 0.000]",
-            "6": f"📊 Monitor Force (Live) [{force_info}]",
+            "1": "🔌 Connect",
+            "2": "❌ Disconnect",
+            "3": f"⚖️ Read Force          [{force_info}]",
+            "4": "🎌 Zero Calibration    [Reset to 0.000]",
+            "5": f"📊 Monitor Force (Live) [{force_info}]",
             "b": "⬅️  Back to Hardware Menu",
             # Shortcuts
-            "s": "📊 Show Status (shortcut)",
             "c": "🔌 Connect (shortcut)",
             "d": "❌ Disconnect (shortcut)",
             "read": "⚖️ Read Force (shortcut)",
@@ -157,7 +155,7 @@ class LoadCellController(HardwareController):
         enhanced_title = (
             f"⚖️ LoadCell Control System\n"
             f"📡 Status: {connection_status}  |  {force_info}  |  {device_info}\n"
-            f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, read=force, zero=calibrate, live=monitor[/dim]"
+            f"[dim]💡 Shortcuts: c=connect, d=disconnect, read=force, zero=calibrate, live=monitor[/dim]"
         )
 
         return simple_interactive_menu(
@@ -173,17 +171,15 @@ class LoadCellController(HardwareController):
             # Normalize command input
             cmd = command.strip().lower()
 
-            if cmd == "1" or cmd == "s":
-                await self.show_status()
-            elif cmd == "2" or cmd == "c":
+            if cmd == "1" or cmd == "c":
                 return await self.connect()
-            elif cmd == "3" or cmd == "d":
+            elif cmd == "2" or cmd == "d":
                 return await self.disconnect()
-            elif cmd == "4" or cmd == "read":
+            elif cmd == "3" or cmd == "read":
                 await self._read_force()
-            elif cmd == "5" or cmd == "zero":
+            elif cmd == "4" or cmd == "zero":
                 await self._zero_calibration()
-            elif cmd == "6" or cmd == "live":
+            elif cmd == "5" or cmd == "live":
                 await self._monitor_force()
             else:
                 return False

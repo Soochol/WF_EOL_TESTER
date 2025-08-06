@@ -146,17 +146,15 @@ class PowerController(HardwareController):
 
         # Enhanced menu options with icons and grouping
         menu_options = {
-            "1": "📊 Show Status",
-            "2": "🔌 Connect",
-            "3": "❌ Disconnect",
-            "4": f"✅ Enable Output      ⚠️  [Current: {output_status}]",
-            "5": f"🛑 Disable Output     [Current: {output_status}]",
-            "6": f"⚡ Set Voltage        [{voltage_info}]",
-            "7": f"🔋 Set Current        [{current_info}]",
-            "8": f"🔌 Set Current Limit  [{current_info}]",
+            "1": "🔌 Connect",
+            "2": "❌ Disconnect",
+            "3": f"✅ Enable Output      ⚠️  [Current: {output_status}]",
+            "4": f"🛑 Disable Output     [Current: {output_status}]",
+            "5": f"⚡ Set Voltage        [{voltage_info}]",
+            "6": f"🔋 Set Current        [{current_info}]",
+            "7": f"🔌 Set Current Limit  [{current_info}]",
             "b": "⬅️  Back to Hardware Menu",
             # Additional shortcuts
-            "s": "📊 Show Status (shortcut)",
             "c": "🔌 Connect (shortcut)",
             "d": "❌ Disconnect (shortcut)",
             "on": "✅ Enable Output (shortcut)",
@@ -170,7 +168,7 @@ class PowerController(HardwareController):
         enhanced_title = (
             f"🔋 ODA Power Supply Control\n"
             f"📡 Status: {connection_status}  |  🔌 Output: {output_status}  |  ⚡ {voltage_info}  |  🔌 {current_info}\n"
-            f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, on=enable, off=disable, v=voltage, curr=current, i=current-limit[/dim]"
+            f"[dim]💡 Shortcuts: c=connect, d=disconnect, on=enable, off=disable, v=voltage, curr=current, i=current-limit[/dim]"
         )
 
         return simple_interactive_menu(
@@ -187,21 +185,19 @@ class PowerController(HardwareController):
             cmd = command.strip().lower()
 
             # Number-based commands (original)
-            if cmd == "1" or cmd == "s":
-                await self.show_status()
-            elif cmd == "2" or cmd == "c":
+            if cmd == "1" or cmd == "c":
                 return await self.connect()
-            elif cmd == "3" or cmd == "d":
+            elif cmd == "2" or cmd == "d":
                 return await self.disconnect()
-            elif cmd == "4" or cmd == "on":
+            elif cmd == "3" or cmd == "on":
                 await self._enable_output()
-            elif cmd == "5" or cmd == "off":
+            elif cmd == "4" or cmd == "off":
                 await self._disable_output()
-            elif cmd == "6" or cmd == "v":
+            elif cmd == "5" or cmd == "v":
                 await self._set_voltage()
-            elif cmd == "7" or cmd == "curr":
+            elif cmd == "6" or cmd == "curr":
                 await self._set_current()
-            elif cmd == "8" or cmd == "i":
+            elif cmd == "7" or cmd == "i":
                 await self._set_current_limit()
             else:
                 return False
