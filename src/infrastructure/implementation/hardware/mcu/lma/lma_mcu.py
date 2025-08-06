@@ -128,7 +128,7 @@ class LMAMCU(MCUService):
             self._stopbits = stopbits
             self._parity = parity
 
-            logger.info("Connecting to LMA MCU at %s (baudrate: %s)", port, baudrate)
+            logger.info(f"Connecting to LMA MCU at {port} (baudrate: {baudrate})")
 
             self._connection = await SerialManager.create_connection(
                 port=port,
@@ -139,6 +139,8 @@ class LMAMCU(MCUService):
                 parity=parity,
             )
 
+            # Clear any noise or leftover data from previous connections
+            await self._clear_serial_buffer()
 
             self._is_connected = True
             logger.info("LMA MCU connected successfully")
@@ -227,7 +229,7 @@ class LMAMCU(MCUService):
             )
             self._target_temperature = effective_temp
 
-            logger.info("LMA target temperature set to %s°C", effective_temp)
+            logger.info(f"LMA target temperature set to {effective_temp}°C")
 
         except LMAError as e:
             error_msg = f"Failed to set LMA temperature: {e}"
@@ -255,7 +257,7 @@ class LMAMCU(MCUService):
             return self._current_temperature
 
         except LMAError as e:
-            logger.error("Failed to get LMA temperature: %s", e)
+            logger.error(f"Failed to get LMA temperature: {e}")
             raise RuntimeError(f"Temperature measurement failed: {e}") from e
 
     async def set_test_mode(self, mode: TestMode) -> None:
@@ -290,7 +292,7 @@ class LMAMCU(MCUService):
             )
 
             self._current_test_mode = mode
-            logger.info("LMA test mode set to %s", mode)
+            logger.info(f"LMA test mode set to {mode}")
 
         except (LMAError, ValueError) as e:
             error_msg = f"Failed to set LMA test mode: {e}"
@@ -335,7 +337,7 @@ class LMAMCU(MCUService):
             logger.error("MCU boot complete wait timed out")
             raise RuntimeError("MCU boot complete timeout") from e
         except Exception as e:
-            logger.error("MCU boot complete wait failed: %s", e)
+            logger.error(f"MCU boot complete wait failed: {e}")
             raise RuntimeError(f"MCU boot complete timeout: {e}") from e
 
     async def set_fan_speed(self, speed_percent: Optional[float] = None) -> None:
@@ -379,7 +381,7 @@ class LMAMCU(MCUService):
             )
 
             self._current_fan_speed = effective_speed
-            logger.info("LMA fan speed set to %s%% (level %s)", effective_speed, fan_level)
+            logger.info(f"LMA fan speed set to {effective_speed}% (level {fan_level})")
 
         except (LMAError, ValueError) as e:
             error_msg = f"Failed to set LMA fan speed: {e}"
@@ -424,7 +426,7 @@ class LMAMCU(MCUService):
                 STATUS_UPPER_TEMP_OK,
             )
 
-            logger.info("LMA upper temperature set to %s°C", upper_temp)
+            logger.info(f"LMA upper temperature set to {upper_temp}°C")
 
         except LMAError as e:
             error_msg = f"Failed to set LMA upper temperature: {e}"
@@ -557,26 +559,127 @@ class LMAMCU(MCUService):
 
     # Private helper methods
 
+    async def _clear_serial_buffer(self) -> None:
+        """Clear serial buffer to remove noise and sync issues"""
+        if not self._connection:
+            return
+            
+        try:
+            # Read and discard any remaining data in the buffer
+            discarded_bytes = 0
+            while True:
+                try:
+                    data = await self._connection.read(1, 0.1)  # Short timeout
+                    if not data:
+                        break
+                    discarded_bytes += len(data)
+                except asyncio.TimeoutError:
+                    break
+            
+            if discarded_bytes > 0:
+                logger.debug(f"Cleared {discarded_bytes} bytes from serial buffer")
+                
+        except Exception as e:
+            logger.debug(f"Error clearing serial buffer: {e}")
+
+    async def _find_stx_sync(self, max_search_bytes: int = 1024, timeout: float = 2.0) -> bool:
+        """
+        Search for STX pattern in incoming data stream to handle noise
+        
+        Args:
+            max_search_bytes: Maximum number of bytes to search through
+            timeout: Total timeout for STX search
+            
+        Returns:
+            True if STX found and positioned, False if timeout or max bytes reached
+        """
+        if not self._connection:
+            raise LMACommunicationError("No connection available")
+        
+        logger.debug("Searching for STX pattern to sync with MCU...")
+        start_time = asyncio.get_event_loop().time()
+        bytes_searched = 0
+        noise_bytes = bytearray()
+        
+        try:
+            while (asyncio.get_event_loop().time() - start_time) < timeout and bytes_searched < max_search_bytes:
+                # Read one byte at a time
+                try:
+                    byte_data = await self._connection.read(1, 0.1)
+                    if not byte_data:
+                        continue
+                        
+                    bytes_searched += 1
+                    noise_bytes.extend(byte_data)
+                    
+                    # Check if we have potential STX pattern
+                    if len(noise_bytes) >= 2:
+                        # Check last 2 bytes for STX pattern
+                        if noise_bytes[-2:] == STX:
+                            # Found STX! Log noise data if any
+                            if len(noise_bytes) > 2:
+                                noise_data = noise_bytes[:-2]
+                                logger.debug(f"Found STX after {len(noise_data)} noise bytes: {noise_data.hex()}")
+                            else:
+                                logger.debug("Found STX at start of stream")
+                            return True
+                        
+                        # Keep only last byte to check for split STX
+                        if len(noise_bytes) > 2:
+                            noise_bytes = noise_bytes[-1:]
+                            
+                except asyncio.TimeoutError:
+                    continue
+                    
+            # Timeout or max bytes reached
+            if noise_bytes:
+                logger.warning(f"STX sync failed after searching {bytes_searched} bytes. Noise data: {noise_bytes.hex()}")
+            else:
+                logger.warning(f"STX sync failed - no data received in {timeout}s")
+                
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error during STX sync search: {e}")
+            return False
+
     async def _wait_for_boot_complete(self) -> None:
         """Wait for MCU boot complete message"""
         try:
-            # Wait for boot complete status
+            logger.info("Waiting for MCU boot complete signal...")
+            
+            # Wait for boot complete status with improved error handling
             start_time = asyncio.get_event_loop().time()
             while (asyncio.get_event_loop().time() - start_time) < BOOT_COMPLETE_TIMEOUT:
                 try:
                     response = await self._receive_response(timeout=1.0)
                     if response and response.get("status") == STATUS_BOOT_COMPLETE:
-                        logger.info("LMA MCU boot complete")
+                        logger.info("LMA MCU boot complete signal received")
                         return
+                    elif response:
+                        # Log received response for debugging
+                        logger.debug(f"Received non-boot response: status=0x{response.get('status', 0):02X}")
                 except asyncio.TimeoutError:
+                    # This is expected while waiting, just continue
+                    logger.debug("Timeout waiting for boot complete, continuing...")
+                    continue
+                except Exception as e:
+                    # Log but don't fail on individual response errors
+                    logger.debug(f"Response error while waiting for boot complete: {e}")
                     continue
 
+            # Timeout reached
+            logger.warning(f"Boot complete timeout after {BOOT_COMPLETE_TIMEOUT} seconds")
             raise LMAHardwareError(
-                "Boot complete timeout",
+                "Boot complete timeout - MCU may not be sending boot complete signal",
                 error_code=int(LMAErrorCode.HARDWARE_INITIALIZATION_FAILED),
             )
 
+        except LMAHardwareError:
+            # Re-raise LMA specific errors
+            raise
         except Exception as e:
+            logger.error(f"Unexpected error during boot complete wait: {e}")
             raise LMAHardwareError(f"Boot wait failed: {e}") from e
 
     async def _send_command(self, command: int, data: bytes = b"") -> None:
@@ -631,12 +734,12 @@ class LMAMCU(MCUService):
                     )
                 else:
                     logger.debug(
-                        "Received None response (attempt %s/%s)", attempt + 1, max_attempts
+                        f"Received None response (attempt {attempt + 1}/{max_attempts})"
                     )
 
             except Exception as e:
                 logger.debug(
-                    "Response receive error (attempt %s/%s): %s", attempt + 1, max_attempts, e
+                    f"Response receive error (attempt {attempt + 1}/{max_attempts}): {e}"
                 )
 
         raise LMACommunicationError(
@@ -669,53 +772,115 @@ class LMAMCU(MCUService):
                 timeout=self._timeout * 2,  # Allow extra time for complex operations
             )
         except asyncio.TimeoutError as e:
-            logger.error("Timeout waiting for response 0x%02X", target_status)
+            logger.error(f"Timeout waiting for response 0x{target_status:02X}")
             raise TimeoutError(
                 f"Operation timed out waiting for response 0x{target_status:02X}"
             ) from e
 
-    async def _receive_response(self, timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
-        """Receive response from LMA MCU"""
+    async def _receive_response(self, timeout: Optional[float] = None, enable_sync: bool = True) -> Optional[Dict[str, Any]]:
+        """
+        Receive response from LMA MCU with noise-resistant protocol handling
+        
+        Args:
+            timeout: Response timeout in seconds
+            enable_sync: Whether to attempt STX synchronization on failure
+            
+        Returns:
+            Dictionary containing status, data, and message, or None if failed
+        """
         if not self._connection:
             raise LMACommunicationError("No connection available")
 
-        try:
-            response_timeout = timeout or self._timeout
+        response_timeout = timeout or self._timeout
+        sync_attempted = False
 
-            # Read STX
-            stx_data = await self._connection.read(FRAME_STX_SIZE, response_timeout)
-            if stx_data != STX:
-                raise LMACommunicationError("Invalid STX")
+        while True:
+            try:
+                # Try direct STX read first (normal case)
+                stx_data = await self._connection.read(FRAME_STX_SIZE, response_timeout)
+                if not stx_data:
+                    raise LMACommunicationError("No data received (empty response)")
+                
+                # Check for valid STX
+                if stx_data == STX:
+                    logger.debug("Valid STX received directly")
+                else:
+                    # Invalid STX - handle noise
+                    logger.debug(f"Invalid STX received: {stx_data.hex()} (expected: {STX.hex()})")
+                    
+                    if enable_sync and not sync_attempted:
+                        logger.debug("Attempting STX synchronization due to noise...")
+                        sync_attempted = True
+                        
+                        # Clear buffer and search for STX
+                        await self._clear_serial_buffer()
+                        
+                        # Search for STX pattern
+                        if await self._find_stx_sync():
+                            logger.debug("STX synchronization successful, continuing with packet reception")
+                            # STX already found, continue to read rest of packet
+                        else:
+                            raise LMACommunicationError("STX synchronization failed - no valid STX found")
+                    else:
+                        raise LMACommunicationError(f"Invalid STX: received {stx_data.hex()}, expected {STX.hex()}")
 
-            # Read status and length
-            header = await self._connection.read(
-                FRAME_CMD_SIZE + FRAME_LEN_SIZE,
-                response_timeout,
-            )
-            status = header[0]
-            data_len = header[1]
+                # Read status and length (header)
+                header = await self._connection.read(
+                    FRAME_CMD_SIZE + FRAME_LEN_SIZE,
+                    response_timeout,
+                )
+                if len(header) < 2:
+                    raise LMACommunicationError(f"Incomplete header: received {len(header)} bytes, expected 2")
+                    
+                status = header[0]
+                data_len = header[1]
 
-            # Read data if present
-            data = b""
-            if data_len > 0:
-                data = await self._connection.read(data_len, response_timeout)
+                # Validate data length
+                if data_len > 255:  # Reasonable maximum for LMA protocol
+                    raise LMACommunicationError(f"Invalid data length: {data_len}")
 
-            # Read ETX
-            etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
-            if etx_data != ETX:
-                raise LMACommunicationError("Invalid ETX")
+                # Read data payload if present
+                data = b""
+                if data_len > 0:
+                    data = await self._connection.read(data_len, response_timeout)
+                    if len(data) != data_len:
+                        raise LMACommunicationError(f"Incomplete data: received {len(data)} bytes, expected {data_len}")
 
-            return {
-                "status": status,
-                "data": data,
-                "message": STATUS_MESSAGES.get(
-                    status,
-                    f"Unknown status: 0x{status:02X}",
-                ),
-            }
+                # Read ETX (end of frame)
+                etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
+                if not etx_data:
+                    raise LMACommunicationError("No ETX received")
+                    
+                if etx_data != ETX:
+                    logger.debug(f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})")
+                    raise LMACommunicationError(f"Invalid ETX: received {etx_data.hex()}, expected {ETX.hex()}")
 
-        except Exception as e:
-            raise LMACommunicationError(f"Response receive failed: {e}") from e
+                # Successful packet reception
+                logger.debug(f"Valid packet received: status=0x{status:02X}, data_len={data_len}")
+                
+                return {
+                    "status": status,
+                    "data": data,
+                    "message": STATUS_MESSAGES.get(
+                        status,
+                        f"Unknown status: 0x{status:02X}",
+                    ),
+                }
+
+            except LMACommunicationError as e:
+                # If sync was already attempted or sync is disabled, re-raise
+                if sync_attempted or not enable_sync:
+                    raise e
+                    
+                # Otherwise, try sync once
+                logger.debug(f"Communication error, will attempt sync: {e}")
+                sync_attempted = True
+                continue
+                
+            except asyncio.TimeoutError as e:
+                raise LMACommunicationError(f"Response receive timeout after {response_timeout}s") from e
+            except Exception as e:
+                raise LMACommunicationError(f"Response receive failed: {e}") from e
 
     def _encode_temperature(self, temperature: float) -> bytes:
         """Encode temperature for LMA protocol"""
