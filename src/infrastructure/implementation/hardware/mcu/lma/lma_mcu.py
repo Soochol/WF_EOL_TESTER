@@ -551,13 +551,9 @@ class LMAMCU(MCUService):
         }
 
         if await self.is_connected():
-            try:
-                # Get current temperature
-                current_temp = await self.get_temperature()
-                status["current_temperature"] = current_temp
-                status["last_error"] = None
-            except Exception as e:
-                status["last_error"] = str(e)
+            # Use cached temperature value instead of reading from hardware
+            # Temperature can be explicitly updated via get_temperature() when needed
+            status["last_error"] = None
 
         return status
 
