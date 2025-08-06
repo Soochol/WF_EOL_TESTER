@@ -200,11 +200,11 @@ class AjinextekRobot(RobotService):
 
     async def home_axis(self, axis: int) -> None:
         """
-        Home specified axis using parameters from robot_params.mot file
+        Home specified axis using parameters from robot_motion_settings.mot file
 
         All homing parameters (ORIGINMODE, ORIGINDIR, ORIGINLEVEL, ORIGINOFFSET,
         ORIGINVEL1, ORIGINVEL2) are already configured in the robot controller
-        via AxmMotLoadParaAll from the .mot parameter file.
+        via AxmMotLoadParaAll from the robot_motion_settings.mot parameter file.
 
         Args:
             axis: Axis number (0-based)
@@ -221,10 +221,10 @@ class AjinextekRobot(RobotService):
         self._ensure_servo_enabled()
 
         try:
-            logger.info("Starting homing for axis %s using .mot file parameters", axis)
+            logger.info("Starting homing for axis %s using robot_motion_settings.mot parameters", axis)
             self._motion_status = MotionStatus.HOMING
 
-            # Start homing using parameters already loaded from .mot file
+            # Start homing using parameters already loaded from robot_motion_settings.mot file
             result = self._axl.home_set_start(axis)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
@@ -234,7 +234,7 @@ class AjinextekRobot(RobotService):
                     "AJINEXTEK",
                 )
 
-            logger.debug("Started homing for axis %s using .mot file parameters", axis)
+            logger.debug("Started homing for axis %s using robot_motion_settings.mot parameters", axis)
 
             # Monitor homing status using AJINEXTEK standard pattern
             while True:
@@ -1065,37 +1065,37 @@ class AjinextekRobot(RobotService):
         try:
             # Use absolute path to ensure file is found regardless of working directory
             project_root = Path(__file__).parent.parent.parent.parent.parent
-            robot_params_file = project_root / "configuration" / "robot_params.mot"
+            robot_motion_settings_file = project_root / "configuration" / "robot_motion_settings.mot"
 
-            if not robot_params_file.exists():
-                logger.error("Robot parameter file not found: %s", robot_params_file)
+            if not robot_motion_settings_file.exists():
+                logger.error("Robot motion settings file not found: %s", robot_motion_settings_file)
                 raise RobotConnectionError(
-                    f"Required robot parameter file not found: {robot_params_file}",
+                    f"Required robot motion settings file not found: {robot_motion_settings_file}",
                     "AJINEXTEK",
-                    details=f"Parameter file path: {robot_params_file}",
+                    details=f"Motion settings file path: {robot_motion_settings_file}",
                 )
 
             logger.info(
-                "Loading robot parameters from %s using AxmMotLoadPara for axis %d",
-                robot_params_file,
+                "Loading robot motion settings from %s using AxmMotLoadPara for axis %d",
+                robot_motion_settings_file,
                 axis_id,
             )
 
             # Load parameters for specific axis using AJINEXTEK standard function
-            result = self._axl.load_para(axis_id, str(robot_params_file))
+            result = self._axl.load_para(axis_id, str(robot_motion_settings_file))
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error("Failed to load parameters from %s: %s", robot_params_file, error_msg)
+                logger.error("Failed to load motion settings from %s: %s", robot_motion_settings_file, error_msg)
                 raise RobotConnectionError(
                     f"AxmMotLoadPara failed for axis {axis_id}: {error_msg}",
                     "AJINEXTEK",
-                    details=f"File: {robot_params_file}, Axis: {axis_id}, Error: {result}",
+                    details=f"File: {robot_motion_settings_file}, Axis: {axis_id}, Error: {result}",
                 )
 
             logger.info(
-                "Robot parameters loaded successfully from %s for axis %d",
-                robot_params_file,
+                "Robot motion settings loaded successfully from %s for axis %d",
+                robot_motion_settings_file,
                 axis_id,
             )
 

@@ -221,7 +221,7 @@ class RobotController(HardwareController):
         """Enable servo (motor power on)"""
         try:
             primary_axis = self.axis_id
-            
+
             async def servo_on_operation():
                 await self.robot_service.enable_servo(primary_axis)
                 return True
@@ -240,7 +240,7 @@ class RobotController(HardwareController):
         """Disable servo (motor power off)"""
         try:
             primary_axis = self.axis_id
-            
+
             async def servo_off_operation():
                 await self.robot_service.disable_servo(primary_axis)
                 return True
