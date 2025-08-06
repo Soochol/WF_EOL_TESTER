@@ -70,9 +70,10 @@ class PowerController(HardwareController):
                     channel=self.power_config.channel,
                 )
             else:
-                # Fallback to defaults if no config available
+                # Fallback to YAML-compatible defaults if no config available
+                # TODO: Fix configuration loading issue - this fallback should not be used
                 await self.power_service.connect(
-                    host="192.168.1.100", port=5025, timeout=5.0, channel=1
+                    host="192.168.11.1", port=5000, timeout=5.0, channel=1  # Match YAML config
                 )
 
             # Get and display device identity if available

@@ -40,52 +40,121 @@ class HardwareControlManager:
         self.configuration_service = configuration_service
 
         # Load hardware configuration for all hardware
+        logger.info("Loading hardware configurations for CLI controllers...")
         self.hardware_config = self._load_hardware_configurations()
+        
+        # Debug logging for configuration status
+        if self.hardware_config:
+            logger.info(f"✓ Hardware configuration loaded successfully")
+            logger.info(f"  - LoadCell port: {self.hardware_config.loadcell.port}")
+            logger.info(f"  - MCU port: {self.hardware_config.mcu.port}")
+            logger.info(f"  - Power host: {self.hardware_config.power.host}:{self.hardware_config.power.port}")
+            logger.info(f"  - Robot axis_id: {self.hardware_config.robot.axis_id}")
+        else:
+            logger.warning("❌ Hardware configuration is None - CLI will use fallback defaults!")
+            logger.warning("This may cause connection issues with hardware devices.")
         
         # Extract axis_id for backward compatibility
         self.axis_id = self.hardware_config.robot.axis_id if self.hardware_config else 0
+        logger.info(f"Robot axis_id set to: {self.axis_id}")
 
         # Initialize hardware controllers with configuration
+        logger.info("Initializing CLI controllers with hardware configuration...")
         self.controllers = {
             "Robot": RobotController(hardware_facade._robot, self.formatter, self.hardware_config.robot if self.hardware_config else None),
             "MCU": MCUController(hardware_facade._mcu, self.formatter, self.hardware_config.mcu if self.hardware_config else None),
             "LoadCell": LoadCellController(hardware_facade._loadcell, self.formatter, self.hardware_config.loadcell if self.hardware_config else None),
             "Power": PowerController(hardware_facade._power, self.formatter, self.hardware_config.power if self.hardware_config else None),
         }
+        
+        # Debug: Check if controllers received configuration
+        for name, controller in self.controllers.items():
+            config_attr = f'{name.lower()}_config'
+            if name == 'Robot':
+                has_config = hasattr(controller, 'robot_config') and controller.robot_config is not None
+                logger.info(f"  {name} Controller: {'✓ has config' if has_config else '❌ config is None'}")
+            else:
+                has_config = hasattr(controller, config_attr) and getattr(controller, config_attr) is not None
+                logger.info(f"  {name} Controller: {'✓ has config' if has_config else '❌ config is None'}")
 
         logger.info(f"Initialized {len(self.controllers)} hardware controllers")
         
     def _load_hardware_configurations(self):
-        """Load all hardware configurations from YAML file"""
+        """Load all hardware configurations from YAML file with enhanced debugging"""
+        logger.debug("Starting hardware configuration loading process")
+        
         try:
-            if self.configuration_service:
-                # Get the current event loop or create a new one
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # We're in an async context but need to run sync
-                        # This is a limitation - we'll use defaults and log a warning
-                        logger.warning(
-                            "Cannot load hardware config in running event loop, using defaults"
-                        )
-                        return None
-                    else:
-                        hw_config = loop.run_until_complete(
-                            self.configuration_service.load_hardware_config()
-                        )
-                        logger.info("Successfully loaded hardware configurations from YAML")
-                        return hw_config
-                except RuntimeError:
-                    # No event loop running, create one
-                    hw_config = asyncio.run(self.configuration_service.load_hardware_config())
-                    logger.info("Successfully loaded hardware configurations from YAML")
-                    return hw_config
-            else:
-                logger.warning("No configuration service available, using defaults")
+            if not self.configuration_service:
+                logger.error("❌ Configuration service is None - cannot load hardware config!")
+                logger.error("This indicates a CLI initialization problem.")
                 return None
+                
+            logger.debug(f"Configuration service available: {type(self.configuration_service).__name__}")
+            
+            # Get the current event loop or create a new one
+            try:
+                loop = asyncio.get_event_loop()
+                if loop:
+                    logger.debug(f"Event loop status: exists=True, running={loop.is_running()}")
+                else:
+                    logger.debug("Event loop status: exists=False")
+                
+                if loop.is_running():
+                    # We're in an async context but need to run sync
+                    # Try to use asyncio.create_task or run in thread to avoid blocking
+                    logger.warning("⚠️ Running event loop detected - attempting alternative config loading")
+                    try:
+                        # Try using run_in_executor to run async code in thread
+                        import concurrent.futures
+                        import threading
+                        
+                        def load_config_sync():
+                            # Create new event loop in thread
+                            new_loop = asyncio.new_event_loop()
+                            try:
+                                asyncio.set_event_loop(new_loop)
+                                return new_loop.run_until_complete(
+                                    self.configuration_service.load_hardware_config()
+                                )
+                            finally:
+                                new_loop.close()
+                                
+                        # Run in thread to avoid event loop conflict
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(load_config_sync)
+                            hw_config = future.result(timeout=10)  # 10 second timeout
+                            
+                        if hw_config:
+                            logger.info("✓ Successfully loaded hardware config using thread executor")
+                            return hw_config
+                        else:
+                            logger.error("❌ Thread executor returned None config")
+                            return None
+                            
+                    except Exception as thread_e:
+                        logger.error(f"❌ Thread executor failed: {thread_e}")
+                        logger.error("Falling back to default configurations")
+                        return None
+                else:
+                    logger.debug("Loading hardware config using existing event loop")
+                    hw_config = loop.run_until_complete(
+                        self.configuration_service.load_hardware_config()
+                    )
+                    logger.info("✓ Successfully loaded hardware configurations from YAML using existing loop")
+                    return hw_config
+                    
+            except RuntimeError as e:
+                logger.debug(f"RuntimeError in event loop: {e} - creating new loop")
+                # No event loop running, create one
+                hw_config = asyncio.run(self.configuration_service.load_hardware_config())
+                logger.info("✓ Successfully loaded hardware configurations from YAML using new loop")
+                return hw_config
+                
         except Exception as e:
-            logger.error(f"Failed to load hardware configurations: {e}")
-            logger.info("Using default hardware configurations")
+            logger.error(f"❌ Exception in hardware configuration loading: {type(e).__name__}: {e}")
+            logger.error("Using default hardware configurations as fallback")
+            import traceback
+            logger.debug(f"Full traceback: {traceback.format_exc()}")
             return None
 
     def _load_robot_axis_id(self) -> int:

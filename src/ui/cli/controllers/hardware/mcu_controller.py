@@ -69,9 +69,10 @@ class MCUController(HardwareController):
                     parity=self.mcu_config.parity,
                 )
             else:
-                # Fallback to defaults if no config available
+                # Fallback to Windows-compatible defaults if no config available
+                # TODO: Fix configuration loading issue - this fallback should not be used
                 await self.mcu_service.connect(
-                    port="/dev/ttyUSB1",
+                    port="COM4",  # Changed from /dev/ttyUSB1 to match YAML config
                     baudrate=115200,
                     timeout=2.0,
                     bytesize=8,

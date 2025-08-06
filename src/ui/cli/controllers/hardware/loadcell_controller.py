@@ -70,9 +70,10 @@ class LoadCellController(HardwareController):
                     indicator_id=self.loadcell_config.indicator_id,
                 )
             else:
-                # Fallback to defaults if no config available
+                # Fallback to Windows-compatible defaults if no config available
+                # TODO: Fix configuration loading issue - this fallback should not be used
                 await self.loadcell_service.connect(
-                    port="/dev/ttyUSB0",
+                    port="COM8",  # Changed from /dev/ttyUSB0 to match YAML config
                     baudrate=9600,
                     timeout=1.0,
                     bytesize=8,
