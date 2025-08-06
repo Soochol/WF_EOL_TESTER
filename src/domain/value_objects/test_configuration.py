@@ -453,10 +453,24 @@ class TestConfiguration:
                 {
                     "voltage": hardware.get("voltage", 18.0),
                     "current": hardware.get("current", 20.0),
+                    "upper_current": hardware.get("upper_current", 30.0),
                     "upper_temperature": hardware.get("upper_temperature", 80.0),
+                    "activation_temperature": hardware.get("activation_temperature", 60.0),
+                    "standby_temperature": hardware.get("standby_temperature", 40.0),
                     "fan_speed": hardware.get("fan_speed", 10),
                     "max_stroke": hardware.get("max_stroke", 240.0),
                     "initial_position": hardware.get("initial_position", 10.0),
+                }
+            )
+
+        # Motion control section
+        if "motion_control" in structured_data:
+            motion = structured_data["motion_control"]
+            flattened.update(
+                {
+                    "velocity": motion.get("velocity", 100.0),
+                    "acceleration": motion.get("acceleration", 100.0),
+                    "deceleration": motion.get("deceleration", 100.0),
                 }
             )
 
@@ -468,12 +482,18 @@ class TestConfiguration:
                     "temperature_list": test_params.get(
                         "temperature_list",
                         [
-                            25.0,
-                            30.0,
-                            35.0,
+                            38.0,
                             40.0,
-                            45.0,
+                            42.0,
+                            44.0,
+                            46.0,
+                            48.0,
                             50.0,
+                            52.0,
+                            54.0,
+                            56.0,
+                            58.0,
+                            60.0,
                         ],
                     ),
                     "stroke_positions": test_params.get(
@@ -496,8 +516,9 @@ class TestConfiguration:
             timing = structured_data["timing"]
             flattened.update(
                 {
-                    "stabilization_delay": timing.get("stabilization_delay", 0.5),
-                    "temperature_stabilization": timing.get("temperature_stabilization", 1.0),
+                    "stabilization_delay": timing.get("stabilization_delay", 0.1),
+                    "temperature_stabilization": timing.get("temperature_stabilization", 0.1),
+                    "standby_stabilization": timing.get("standby_stabilization", 1.0),
                     "power_stabilization": timing.get("power_stabilization", 0.5),
                     "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
                 }
@@ -520,7 +541,7 @@ class TestConfiguration:
             flattened.update(
                 {
                     "retry_attempts": execution.get("retry_attempts", 3),
-                    "timeout_seconds": execution.get("timeout_seconds", 300.0),
+                    "timeout_seconds": execution.get("timeout_seconds", 60.0),
                 }
             )
 
@@ -530,7 +551,10 @@ class TestConfiguration:
             flattened.update(
                 {
                     "max_voltage": safety.get("max_voltage", 30.0),
-                    "max_current": safety.get("max_current", 50.0),
+                    "max_current": safety.get("max_current", 30.0),
+                    "max_velocity": safety.get("max_velocity", 500.0),
+                    "max_acceleration": safety.get("max_acceleration", 1000.0),
+                    "max_deceleration": safety.get("max_deceleration", 1000.0),
                 }
             )
 
@@ -568,6 +592,7 @@ class TestConfiguration:
         for key, value in structured_data.items():
             if key not in [
                 "hardware",
+                "motion_control",
                 "test_parameters",
                 "timing",
                 "tolerances",

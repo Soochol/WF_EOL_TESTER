@@ -32,17 +32,15 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     CMD_SET_UPPER_TEMP,
     COMMAND_MESSAGES,
     ETX,
-    FAN_SPEED_MAX,
-    FAN_SPEED_MIN,
     FRAME_CMD_SIZE,
     FRAME_ETX_SIZE,
     FRAME_LEN_SIZE,
     FRAME_STX_SIZE,
     STATUS_BOOT_COMPLETE,
     STATUS_FAN_SPEED_OK,
+    STATUS_LMA_INIT_OK,
     STATUS_MESSAGES,
     STATUS_OPERATING_TEMP_OK,
-    STATUS_LMA_INIT_OK,
     STATUS_STROKE_INIT_OK,
     STATUS_TEMP_RESPONSE,
     STATUS_TEST_MODE_COMPLETE,
@@ -58,8 +56,6 @@ from infrastructure.implementation.hardware.mcu.lma.error_codes import (
     LMAError,
     LMAErrorCode,
     LMAHardwareError,
-    validate_fan_speed,
-    validate_temperature,
 )
 
 
@@ -79,20 +75,15 @@ class LMAMCU(MCUService):
         self._stopbits = 0
         self._parity: Optional[str] = None
 
-        # Default operational parameters
-        self._temperature = 25.0
-        self._fan_speed = 50.0
-        self._max_temperature = 150.0
-        self._min_temperature = -40.0
-        self._max_fan_speed = 100.0
+        # No default operational parameters - all values must be provided explicitly
 
         # State initialization
         self._connection: Optional[SerialConnection] = None
         self._is_connected = False
-        self._current_temperature: float = self._temperature
-        self._target_temperature: float = self._temperature
+        self._current_temperature: float = 0.0
+        self._target_temperature: float = 0.0
         self._current_test_mode: TestMode = TestMode.MODE_1
-        self._current_fan_speed: float = self._fan_speed
+        self._current_fan_speed: float = 0.0
         self._mcu_status: MCUStatus = MCUStatus.IDLE
 
     async def connect(
@@ -208,33 +199,28 @@ class LMAMCU(MCUService):
         if not await self.is_connected():
             raise HardwareConnectionError("lma_mcu", "LMA MCU is not connected")
 
-    async def set_temperature(self, target_temp: Optional[float] = None) -> None:
+    async def set_temperature(self, target_temp: float) -> None:
         """
         목표 온도 설정
 
         Args:
-            target_temp: 목표 온도 (°C). None인 경우 기본값 사용
+            target_temp: 목표 온도 (°C)
 
         Raises:
             HardwareOperationError: If temperature setting fails
         """
         await self._ensure_connected()
 
-        # Apply default + override pattern
-        effective_temp = target_temp if target_temp is not None else self._temperature
-
-        validate_temperature(effective_temp, self._min_temperature, self._max_temperature)
-
         try:
             # Send operating temperature command and wait for confirmation
             await self._send_and_wait_for(
                 CMD_SET_OPERATING_TEMP,
-                self._encode_temperature(effective_temp),
+                self._encode_temperature(target_temp),
                 STATUS_OPERATING_TEMP_OK,
             )
-            self._target_temperature = effective_temp
+            self._target_temperature = target_temp
 
-            logger.info(f"LMA target temperature set to {effective_temp}°C")
+            logger.info(f"LMA target temperature set to {target_temp}°C")
 
         except LMAError as e:
             error_msg = f"Failed to set LMA temperature: {e}"
@@ -259,10 +245,10 @@ class LMAMCU(MCUService):
             response = await self._send_and_wait_for(CMD_REQUEST_TEMP, b"", STATUS_TEMP_RESPONSE)
             temp_data_bytes = response.get("data", b"\x00\x00\x00\x00\x00\x00\x00\x00")
             max_temp, min_temp = self._decode_temperature(temp_data_bytes)
-            
+
             # Store max temperature as current temperature
             self._current_temperature = max_temp
-            
+
             return self._current_temperature
 
         except LMAError as e:
@@ -320,8 +306,6 @@ class LMAMCU(MCUService):
         Returns:
             현재 테스트 모드
         """
-        await self._ensure_connected()
-
         return self._current_test_mode
 
     async def wait_boot_complete(self) -> None:
@@ -349,48 +333,29 @@ class LMAMCU(MCUService):
             logger.error(f"MCU boot complete wait failed: {e}")
             raise RuntimeError(f"MCU boot complete timeout: {e}") from e
 
-    async def set_fan_speed(self, speed_percent: Optional[float] = None) -> None:
+    async def set_fan_speed(self, fan_level: int) -> None:
         """
         팬 속도 설정
 
         Args:
-            speed_percent: 팬 속도 (0-100%). None인 경우 기본값 사용
+            fan_level: 팬 레벨 (1-10)
 
         Raises:
             HardwareOperationError: If fan speed setting fails
         """
         await self._ensure_connected()
 
-        # Apply default + override pattern
-        effective_speed = speed_percent if speed_percent is not None else self._fan_speed
-
-        if not 0 <= effective_speed <= self._max_fan_speed:
-
-            raise HardwareOperationError(
-                "lma_mcu",
-                "set_fan_speed",
-                f"Fan speed must be 0-{self._max_fan_speed}%, got {effective_speed}%",
-            )
-
         try:
-            # Convert percentage to LMA fan speed level (1-10)
-            # 0% -> level 1, 100% -> level 10
-            if effective_speed == 0:
-                fan_level = 1
-            else:
-                fan_level = max(1, min(10, int((effective_speed / 100.0) * 9) + 1))
-            validate_fan_speed(fan_level, FAN_SPEED_MIN, FAN_SPEED_MAX)
-
             # Send fan speed command and wait for confirmation
-            fan_data = struct.pack("<B", fan_level)
+            fan_data = struct.pack(">I", fan_level)
             await self._send_and_wait_for(
                 CMD_SET_FAN_SPEED,
                 fan_data,
                 STATUS_FAN_SPEED_OK,
             )
 
-            self._current_fan_speed = effective_speed
-            logger.info(f"LMA fan speed set to {effective_speed}% (level {fan_level})")
+            self._current_fan_speed = float(fan_level)
+            logger.info(f"LMA fan speed set to level {fan_level}")
 
         except (LMAError, ValueError) as e:
             error_msg = f"Failed to set LMA fan speed: {e}"
@@ -402,16 +367,14 @@ class LMAMCU(MCUService):
                 error_msg,
             ) from e
 
-    async def get_fan_speed(self) -> float:
+    async def get_fan_speed(self) -> int:
         """
         현재 팬 속도 조회
 
         Returns:
-            현재 팬 속도 (0-100%)
+            현재 팬 레벨 (1-10)
         """
-        await self._ensure_connected()
-
-        return self._current_fan_speed
+        return int(self._current_fan_speed)
 
     async def set_upper_temperature(self, upper_temp: float) -> None:
         """
@@ -424,8 +387,6 @@ class LMAMCU(MCUService):
             HardwareOperationError: If upper temperature setting fails
         """
         await self._ensure_connected()
-
-        validate_temperature(upper_temp, self._min_temperature, self._max_temperature)
 
         try:
             # Send upper temperature command and wait for confirmation
@@ -465,10 +426,6 @@ class LMAMCU(MCUService):
             HardwareOperationError: If heating start fails
         """
         await self._ensure_connected()
-
-        # 온도 범위 검증
-        validate_temperature(operating_temp, self._min_temperature, self._max_temperature)
-        validate_temperature(standby_temp, self._min_temperature, self._max_temperature)
 
         try:
             # 온도 스케일링 (프로토콜에 맞게 정수로 변환)
@@ -566,13 +523,13 @@ class LMAMCU(MCUService):
 
     async def _clear_serial_buffer(self, fast_mode: bool = True) -> None:
         """Clear serial buffer to remove noise and sync issues
-        
+
         Args:
             fast_mode: If True, prefer native flush for speed. If False, use thorough read method.
         """
         if not self._connection:
             return
-            
+
         try:
             # Step 1: Try native flush first (fastest method)
             if fast_mode and hasattr(self._connection, 'flush_input_buffer'):
@@ -581,13 +538,13 @@ class LMAMCU(MCUService):
                     return
                 else:
                     logger.debug("Native flush failed, falling back to read method")
-            
+
             # Step 2: Fallback to read-and-discard method
             discarded_bytes = 0
             timeout = 0.01 if fast_mode else 0.1  # Much shorter timeout for fast mode
             max_attempts = 5 if fast_mode else 20  # Fewer attempts for fast mode
             attempts = 0
-            
+
             while attempts < max_attempts:
                 try:
                     data = await self._connection.read(1, timeout)
@@ -597,35 +554,35 @@ class LMAMCU(MCUService):
                     attempts += 1
                 except asyncio.TimeoutError:
                     break
-            
+
             if discarded_bytes > 0:
                 mode_str = "fast" if fast_mode else "thorough"
                 logger.debug(f"Cleared {discarded_bytes} bytes from serial buffer ({mode_str} mode)")
             elif not fast_mode:
                 logger.debug("No data found in serial buffer during thorough clear")
-                
+
         except Exception as e:
             logger.debug(f"Error clearing serial buffer: {e}")
 
     async def _find_stx_sync(self, max_search_bytes: int = 1024, timeout: float = 2.0) -> bool:
         """
         Search for STX pattern in incoming data stream to handle noise
-        
+
         Args:
             max_search_bytes: Maximum number of bytes to search through
             timeout: Total timeout for STX search
-            
+
         Returns:
             True if STX found and positioned, False if timeout or max bytes reached
         """
         if not self._connection:
             raise LMACommunicationError("No connection available")
-        
+
         logger.debug("Searching for STX pattern to sync with MCU...")
         start_time = asyncio.get_event_loop().time()
         bytes_searched = 0
         noise_bytes = bytearray()
-        
+
         try:
             while (asyncio.get_event_loop().time() - start_time) < timeout and bytes_searched < max_search_bytes:
                 # Read one byte at a time
@@ -633,10 +590,10 @@ class LMAMCU(MCUService):
                     byte_data = await self._connection.read(1, 0.1)
                     if not byte_data:
                         continue
-                        
+
                     bytes_searched += 1
                     noise_bytes.extend(byte_data)
-                    
+
                     # Check if we have potential STX pattern
                     if len(noise_bytes) >= 2:
                         # Check last 2 bytes for STX pattern
@@ -648,22 +605,22 @@ class LMAMCU(MCUService):
                             else:
                                 logger.debug("Found STX at start of stream")
                             return True
-                        
+
                         # Keep only last byte to check for split STX
                         if len(noise_bytes) > 2:
                             noise_bytes = noise_bytes[-1:]
-                            
+
                 except asyncio.TimeoutError:
                     continue
-                    
+
             # Timeout or max bytes reached - use debug level to avoid noise spam
             if noise_bytes:
                 logger.debug(f"STX sync failed after searching {bytes_searched} bytes")
             else:
                 logger.debug(f"STX sync failed - no data received in {timeout}s")
-                
+
             return False
-            
+
         except Exception as e:
             logger.error(f"Error during STX sync search: {e}")
             return False
@@ -672,7 +629,7 @@ class LMAMCU(MCUService):
         """Wait for MCU boot complete message"""
         try:
             logger.info("Waiting for MCU boot complete signal...")
-            
+
             # Wait for boot complete status with improved error handling
             start_time = asyncio.get_event_loop().time()
             while (asyncio.get_event_loop().time() - start_time) < BOOT_COMPLETE_TIMEOUT:
@@ -725,7 +682,7 @@ class LMAMCU(MCUService):
 
             # Get command description
             cmd_name = COMMAND_MESSAGES.get(command, f"Unknown CMD 0x{command:02X}")
-            
+
             # Send frame
             await self._connection.write(frame)
 
@@ -815,11 +772,11 @@ class LMAMCU(MCUService):
     async def _receive_response(self, timeout: Optional[float] = None, enable_sync: bool = True) -> Optional[Dict[str, Any]]:
         """
         Receive response from LMA MCU with noise-resistant protocol handling
-        
+
         Args:
             timeout: Response timeout in seconds
             enable_sync: Whether to attempt STX synchronization on failure
-            
+
         Returns:
             Dictionary containing status, data, and message, or None if failed
         """
@@ -835,21 +792,21 @@ class LMAMCU(MCUService):
                 stx_data = await self._connection.read(FRAME_STX_SIZE, response_timeout)
                 if not stx_data:
                     raise LMACommunicationError("No data received (empty response)")
-                
+
                 # Check for valid STX
                 if stx_data == STX:
                     logger.debug("Valid STX received directly")
                 else:
                     # Invalid STX - handle noise
                     logger.debug(f"Invalid STX received: {stx_data.hex()} (expected: {STX.hex()})")
-                    
+
                     if enable_sync and not sync_attempted:
                         logger.debug("Attempting STX synchronization due to noise...")
                         sync_attempted = True
-                        
+
                         # Clear buffer thoroughly for noise recovery
                         await self._clear_serial_buffer(fast_mode=False)
-                        
+
                         # Search for STX pattern
                         if await self._find_stx_sync():
                             logger.debug("STX synchronization successful, continuing with packet reception")
@@ -867,7 +824,7 @@ class LMAMCU(MCUService):
                 )
                 if len(header) < 2:
                     raise LMACommunicationError(f"Incomplete header: received {len(header)} bytes, expected 2")
-                    
+
                 status = header[0]
                 data_len = header[1]
 
@@ -886,7 +843,7 @@ class LMAMCU(MCUService):
                 etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
                 if not etx_data:
                     raise LMACommunicationError("No ETX received")
-                    
+
                 if etx_data != ETX:
                     logger.debug(f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})")
                     raise LMACommunicationError(f"Invalid ETX: received {etx_data.hex()}, expected {ETX.hex()}")
@@ -901,7 +858,7 @@ class LMAMCU(MCUService):
                 # Get status description and parse data
                 status_name = STATUS_MESSAGES.get(status, f"Unknown STATUS 0x{status:02X}")
                 parsed_info = ""
-                
+
                 # Parse data based on status type
                 if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
                     max_temp, min_temp = self._decode_temperature(data)
@@ -915,7 +872,7 @@ class LMAMCU(MCUService):
                     parsed_info = ""
 
                 logger.info(f"MCU -> PC: {packet_hex} ({status_name}{parsed_info})")
-                
+
                 return {
                     "status": status,
                     "data": data,
@@ -929,12 +886,12 @@ class LMAMCU(MCUService):
                 # If sync was already attempted or sync is disabled, re-raise
                 if sync_attempted or not enable_sync:
                     raise e
-                    
+
                 # Otherwise, try sync once
                 logger.debug(f"Communication error, will attempt sync: {e}")
                 sync_attempted = True
                 continue
-                
+
             except asyncio.TimeoutError as e:
                 raise LMACommunicationError(f"Response receive timeout after {response_timeout}s") from e
             except Exception as e:
@@ -943,30 +900,30 @@ class LMAMCU(MCUService):
     def _encode_temperature(self, temperature: float) -> bytes:
         """Encode temperature for LMA protocol"""
         temp_int = int(temperature * TEMP_SCALE_FACTOR)
-        return struct.pack(">h", temp_int)  # signed short, big endian
+        return struct.pack(">I", temp_int)  # 4-byte unsigned int, big endian
 
     def _decode_temperature(self, data: bytes) -> tuple[float, float]:
         """Decode temperature from LMA array sensor protocol
-        
+
         Args:
             data: 8-byte data containing max temperature (4 bytes) + min temperature (4 bytes)
-            
+
         Returns:
             Tuple of (max_temp, min_temp) from array sensor pixels
         """
         if len(data) >= 8:
             # Unpack two 4-byte big-endian integers
             max_raw, min_raw = struct.unpack(">II", data[:8])
-            
+
             # Convert to temperature values (divide by scale factor)
             max_temp = float(max_raw) / TEMP_SCALE_FACTOR
             min_temp = float(min_raw) / TEMP_SCALE_FACTOR
-            
+
             return (max_temp, min_temp)
-        elif len(data) >= 2:
-            # Fallback for legacy 2-byte format (for compatibility)
-            temp_int = struct.unpack(">h", data[:2])[0]
+        elif len(data) >= 4:
+            # Fallback for single 4-byte temperature
+            temp_int = struct.unpack(">I", data[:4])[0]
             temp = float(temp_int) / TEMP_SCALE_FACTOR
             return (temp, temp)  # Same value for both max and min
-        
+
         return (0.0, 0.0)

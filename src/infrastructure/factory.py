@@ -288,3 +288,36 @@ def create_hardware_service_facade(
     except Exception as e:
         logger.error("Failed to create hardware service facade: %s", e)
         raise
+
+    @staticmethod
+    def create_hardware_services_typed(use_mock: bool = False):
+        """
+        IDE 개발용: 구체 타입을 반환하는 팩토리 메서드
+        
+        Returns:
+            실제 구현체 타입의 tuple (IDE 네비게이션용)
+        """
+        try:
+            hardware_configs = ServiceFactory.load_hardware_configurations() if not use_mock else None
+            
+            robot_service = ServiceFactory.create_robot_service(
+                hardware_configs.get('robot') if hardware_configs else ({"model": "mock"} if use_mock else None)
+            )
+            mcu_service = ServiceFactory.create_mcu_service(
+                hardware_configs.get('mcu') if hardware_configs else ({"model": "mock"} if use_mock else None)
+            )
+            loadcell_service = ServiceFactory.create_loadcell_service(
+                hardware_configs.get('loadcell') if hardware_configs else ({"model": "mock"} if use_mock else None)
+            )
+            power_service = ServiceFactory.create_power_service(
+                hardware_configs.get('power') if hardware_configs else ({"model": "mock"} if use_mock else None)
+            )
+            digital_input_service = ServiceFactory.create_digital_input_service(
+                hardware_configs.get('digital_io') if hardware_configs else ({"model": "mock"} if use_mock else None)
+            )
+
+            return robot_service, mcu_service, loadcell_service, power_service, digital_input_service
+            
+        except Exception as e:
+            logger.error("Failed to create typed hardware services: %s", e)
+            raise

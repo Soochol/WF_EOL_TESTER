@@ -92,6 +92,26 @@ class LoadCellService(ABC):
         ...
 
     @abstractmethod
+    async def hold(self) -> bool:
+        """
+        Hold the current force measurement
+        
+        Returns:
+            True if hold operation was successful, False otherwise
+        """
+        ...
+
+    @abstractmethod
+    async def hold_release(self) -> bool:
+        """
+        Release the held force measurement
+        
+        Returns:
+            True if release operation was successful, False otherwise
+        """
+        ...
+
+    @abstractmethod
     async def get_status(self) -> Dict[str, Any]:
         """
         Get load cell hardware status

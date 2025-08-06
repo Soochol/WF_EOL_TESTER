@@ -263,6 +263,34 @@ class MockLoadCell(LoadCellService):
         )
         return raw_value
 
+    async def hold(self) -> bool:
+        """
+        Hold the current force measurement (Mock implementation)
+        
+        Returns:
+            True if hold operation was successful, False otherwise
+        """
+        if not self._is_connected:
+            return False
+            
+        logger.debug("Mock LoadCell: Hold operation")
+        await asyncio.sleep(0.01)  # Simulate operation delay
+        return True
+
+    async def hold_release(self) -> bool:
+        """
+        Release the held force measurement (Mock implementation)
+        
+        Returns:
+            True if release operation was successful, False otherwise
+        """
+        if not self._is_connected:
+            return False
+            
+        logger.debug("Mock LoadCell: Hold release operation")
+        await asyncio.sleep(0.01)  # Simulate operation delay
+        return True
+
     async def get_status(self) -> Dict[str, Any]:
         """
         하드웨어 상태 조회

@@ -18,7 +18,12 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class MCUController(HardwareController):
     """Controller for MCU hardware"""
 
-    def __init__(self, mcu_service: MCUService, formatter: RichFormatter, mcu_config: Optional[MCUConfig] = None):
+    def __init__(
+        self,
+        mcu_service: MCUService,
+        formatter: RichFormatter,
+        mcu_config: Optional[MCUConfig] = None,
+    ):
         super().__init__(formatter)
         self.mcu_service = mcu_service
         self.mcu_config = mcu_config
@@ -117,7 +122,9 @@ class MCUController(HardwareController):
                     status = await self.mcu_service.get_status()
                     test_mode = status.get("test_mode", "Normal")
                     mode_info = f"🧪 {test_mode} Mode"
-                    temp_info = "🌡️ Click to read"  # Static placeholder instead of auto-reading temperature
+                    temp_info = (
+                        "🌡️ Click to read"  # Static placeholder instead of auto-reading temperature
+                    )
                 except Exception:
                     temp_info = "🌡️ Click to read"
                     mode_info = "🧪 Unknown Mode"
@@ -253,11 +260,12 @@ class MCUController(HardwareController):
 
             async def boot_wait_operation():
                 # Check if MCU service has wait_boot_complete method
-                if hasattr(self.mcu_service, 'wait_boot_complete'):
+                if hasattr(self.mcu_service, "wait_boot_complete"):
                     await self.mcu_service.wait_boot_complete()
                 else:
                     # Fallback: just show that we're waiting
                     import asyncio
+
                     await asyncio.sleep(2.0)
                 return True
 
@@ -282,22 +290,42 @@ class MCUController(HardwareController):
                 return
 
             # Get operating temperature
-            operating_temp = self.formatter.get_float_input(
-                "Enter operating temperature (°C)", min_value=30, max_value=60, default=60
+            operating_temp_input = self._get_user_input_with_validation(
+                "Enter operating temperature (°C) [30-60, default: 60]:",
+                input_type=float,
+                validator=lambda x: 30 <= x <= 60
             )
-            
+            if operating_temp_input is None:
+                self.formatter.print_message("Operation cancelled", message_type="warning")
+                return
+            operating_temp = float(operating_temp_input)
+
             # Get standby temperature
-            standby_temp = self.formatter.get_float_input(
-                "Enter standby temperature (°C)", min_value=30, max_value=60, default=40
+            standby_temp_input = self._get_user_input_with_validation(
+                "Enter standby temperature (°C) [30-60, default: 40]:",
+                input_type=float,
+                validator=lambda x: 30 <= x <= 60
             )
-            
+            if standby_temp_input is None:
+                self.formatter.print_message("Operation cancelled", message_type="warning")
+                return
+            standby_temp = float(standby_temp_input)
+
             # Get hold time
-            hold_time = self.formatter.get_integer_input(
-                "Enter hold time (ms)", min_value=1000, max_value=60000, default=10000
+            hold_time_input = self._get_user_input_with_validation(
+                "Enter hold time (ms) [1000-60000, default: 10000]:",
+                input_type=int,
+                validator=lambda x: 1000 <= x <= 60000
             )
+            if hold_time_input is None:
+                self.formatter.print_message("Operation cancelled", message_type="warning")
+                return
+            hold_time = int(hold_time_input)
 
             async def heating_operation():
-                await self.mcu_service.start_standby_heating(operating_temp, standby_temp, hold_time)
+                await self.mcu_service.start_standby_heating(
+                    operating_temp, standby_temp, hold_time
+                )
                 return True
 
             await self._show_progress_with_message(

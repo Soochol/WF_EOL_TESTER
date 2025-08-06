@@ -228,7 +228,7 @@ class YamlConfiguration(Configuration):
             if not hardware_model_file.exists():
                 logger.info(f"Hardware model file {hardware_model_file} not found, creating with default values")
                 await self._create_default_hardware_model_file()
-                
+
                 # Return default hardware model
                 return HardwareModel()
 
@@ -517,10 +517,18 @@ class YamlConfiguration(Configuration):
             "hardware": {
                 "voltage": config.voltage,
                 "current": config.current,
+                "upper_current": config.upper_current,
                 "upper_temperature": config.upper_temperature,
+                "activation_temperature": config.activation_temperature,
+                "standby_temperature": config.standby_temperature,
                 "fan_speed": config.fan_speed,
                 "max_stroke": config.max_stroke,
                 "initial_position": config.initial_position,
+            },
+            "motion_control": {
+                "velocity": config.velocity,
+                "acceleration": config.acceleration,
+                "deceleration": config.deceleration,
             },
             "test_parameters": {
                 "temperature_list": config.temperature_list,
@@ -529,6 +537,7 @@ class YamlConfiguration(Configuration):
             "timing": {
                 "stabilization_delay": config.stabilization_delay,
                 "temperature_stabilization": config.temperature_stabilization,
+                "standby_stabilization": config.standby_stabilization,
                 "power_stabilization": config.power_stabilization,
                 "loadcell_zero_delay": config.loadcell_zero_delay,
             },
@@ -544,7 +553,11 @@ class YamlConfiguration(Configuration):
             "safety": {
                 "max_voltage": config.max_voltage,
                 "max_current": config.max_current,
+                "max_velocity": config.max_velocity,
+                "max_acceleration": config.max_acceleration,
+                "max_deceleration": config.max_deceleration,
             },
+            "pass_criteria": config.pass_criteria.to_dict(),
         }
 
     def _hardware_config_to_yaml_structure(
@@ -563,6 +576,10 @@ class YamlConfiguration(Configuration):
             "hardware_config": {
                 "robot": {
                     "irq_no": hardware_config.robot.irq_no,
+                    "axis_id": hardware_config.robot.axis_id,
+                    "velocity": hardware_config.robot.velocity,
+                    "acceleration": hardware_config.robot.acceleration,
+                    "deceleration": hardware_config.robot.deceleration,
                 },
                 "loadcell": {
                     "port": hardware_config.loadcell.port,
@@ -732,22 +749,158 @@ class YamlConfiguration(Configuration):
 
         return compatibility
 
+    async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
+        """
+        Load DUT default values from configuration file
+
+        Args:
+            profile_name: Specific profile to load, defaults to active profile from config
+
+        Returns:
+            Dictionary containing DUT default values (dut_id, model, operator_id, manufacturer)
+
+        Raises:
+            ConfigurationNotFoundError: If DUT defaults file is not found
+            RepositoryAccessError: If DUT defaults cannot be loaded
+        """
+        from domain.exceptions import RepositoryAccessError
+
+        try:
+            # Define the path to DUT defaults file
+            dut_defaults_path = Path("configuration") / "dut_defaults.yaml"
+
+            # Check if file exists, create with defaults if not found
+            if not dut_defaults_path.exists():
+                logger.info(f"DUT defaults file not found, creating with default values: {dut_defaults_path}")
+                await self._create_default_dut_defaults_file()
+
+            # Read and parse YAML file
+            with open(dut_defaults_path, "r", encoding=self.FILE_ENCODING) as file:
+                dut_config = yaml.safe_load(file)
+
+            if not dut_config:
+                raise RepositoryAccessError(
+                    operation="load_dut_defaults", reason="DUT defaults file is empty or invalid"
+                )
+
+            # Determine which profile to use
+            target_profile = profile_name
+            if not target_profile:
+                # Use active_profile from config or default to "default"
+                target_profile = dut_config.get("active_profile", "default")
+
+            # Get the profile data
+            if target_profile == "default":
+                profile_data = dut_config.get("default", {})
+            else:
+                # Look in profiles section
+                profiles = dut_config.get("profiles", {})
+                profile_data = profiles.get(target_profile, {})
+
+                # Fallback to default if profile not found
+                if not profile_data:
+                    logger.warning(f"Profile '{target_profile}' not found, using default")
+                    profile_data = dut_config.get("default", {})
+
+            # Validate required fields exist
+            required_fields = ["dut_id", "model", "operator_id", "manufacturer"]
+            defaults = {}
+
+            for field in required_fields:
+                if field in profile_data:
+                    defaults[field] = str(profile_data[field])
+                else:
+                    logger.warning(f"Missing required field '{field}' in DUT defaults")
+                    # Provide fallback values
+                    fallback_values = {
+                        "dut_id": "DEFAULT001",
+                        "model": "Default Model",
+                        "operator_id": "DEFAULT_OP",
+                        "manufacturer": "Default Manufacturer",
+                    }
+                    defaults[field] = fallback_values[field]
+
+            logger.info(
+                f"Loaded DUT defaults for profile '{target_profile}': {defaults['dut_id']}, {defaults['model']}"
+            )
+            return defaults
+
+        except yaml.YAMLError as e:
+            logger.error(f"YAML parsing error in DUT defaults: {e}")
+            raise RepositoryAccessError(
+                operation="load_dut_defaults", reason=f"Invalid YAML format: {str(e)}"
+            ) from e
+
+        except Exception as e:
+            logger.error(f"Unexpected error loading DUT defaults: {e}")
+            raise RepositoryAccessError(
+                operation="load_dut_defaults", reason=f"Failed to load DUT defaults: {str(e)}"
+            ) from e
+
+    async def _create_default_dut_defaults_file(self) -> None:
+        """
+        Create default dut_defaults.yaml file with default DUT configuration
+
+        Raises:
+            ConfigurationException: If file creation fails
+        """
+        dut_defaults_path = Path("configuration") / "dut_defaults.yaml"
+
+        # Ensure configuration directory exists
+        dut_defaults_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # Create default DUT configuration structure
+            yaml_data = {
+                "active_profile": "default",
+                "default": {
+                    "dut_id": "DEFAULT001",
+                    "model": "Default Model",
+                    "operator_id": "DEFAULT_OP",
+                    "manufacturer": "Default Manufacturer",
+                },
+                "metadata": {
+                    "description": "Auto-generated DUT defaults configuration",
+                    "version": self.CONFIGURATION_VERSION,
+                    "created_by": "YamlConfiguration (auto-generated)",
+                    "created_time": datetime.now().isoformat(),
+                }
+            }
+
+            # Write to file
+            with open(dut_defaults_path, "w", encoding=self.FILE_ENCODING) as yaml_file:
+                yaml.dump(
+                    yaml_data,
+                    yaml_file,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    indent=self.YAML_INDENT_SIZE,
+                )
+
+            logger.info(f"Successfully created default DUT defaults file: {dut_defaults_path}")
+
+        except Exception as e:
+            raise ConfigurationException(
+                f"Failed to create default DUT defaults file: {str(e)}",
+                config_source=str(dut_defaults_path),
+            ) from e
+
     async def _create_default_hardware_model_file(self) -> None:
         """
         Create default hardware_model.yaml file with default hardware model
-        
+
         Raises:
             ConfigurationException: If file creation fails
         """
         hardware_model_file = Path(self.HARDWARE_CONFIG_PATH) / self.HARDWARE_MODEL_FILENAME
-        
+
         # Ensure configuration directory exists
         hardware_model_file.parent.mkdir(parents=True, exist_ok=True)
-        
+
         try:
             # Create default hardware model
             default_hardware_model = HardwareModel()
-            
+
             # Create YAML structure for hardware model file
             yaml_data = {
                 "hardware_model": default_hardware_model.to_dict(),
@@ -758,7 +911,7 @@ class YamlConfiguration(Configuration):
                     "created_time": datetime.now().isoformat(),
                 }
             }
-            
+
             # Write to file
             with open(hardware_model_file, "w", encoding=self.FILE_ENCODING) as yaml_file:
                 yaml.dump(
@@ -768,9 +921,9 @@ class YamlConfiguration(Configuration):
                     sort_keys=False,
                     indent=self.YAML_INDENT_SIZE,
                 )
-            
+
             logger.info("Successfully created default hardware_model.yaml")
-            
+
         except Exception as e:
             raise ConfigurationException(
                 f"Failed to create default hardware_model.yaml: {str(e)}",

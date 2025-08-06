@@ -1,15 +1,11 @@
-# DUT Default Values Configuration
 active_profile: default
-
 default:
   dut_id: DEFAULT001
   model: Default Model
   operator_id: DEFAULT_OP
   manufacturer: Default Manufacturer
-
-profiles:
-  test:
-    dut_id: TEST001
-    model: Test Model
-    operator_id: TEST_OP
-    manufacturer: Test Manufacturer
+metadata:
+  description: Auto-generated DUT defaults configuration
+  version: '1.0'
+  created_by: YamlConfiguration (auto-generated)
+  created_time: '2025-08-07T01:16:11.421242'

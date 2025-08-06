@@ -402,7 +402,9 @@ class BS205LoadCell(LoadCellService):
                 command_bytes = bytes([id_byte, cmd_byte])
 
                 logger.debug(f"Sending BS205 command: {command} (ID={self._indicator_id})")
-                logger.debug(f"Command bytes: {command_bytes.hex().upper()} (ID=0x{id_byte:02X}, CMD=0x{cmd_byte:02X})")
+                logger.debug(
+                    f"Command bytes: {command_bytes.hex().upper()} (ID=0x{id_byte:02X}, CMD=0x{cmd_byte:02X})"
+                )
 
                 # 바이너리 명령어 전송
                 await self._connection.write(command_bytes)
@@ -492,14 +494,16 @@ class BS205LoadCell(LoadCellService):
         """
         try:
             logger.debug(f"BS205 raw response: {response_bytes.hex().upper()}")
-            
+
             if len(response_bytes) < 10:  # BS205 고정 길이
                 logger.warning(f"BS205 response too short: {len(response_bytes)} bytes")
                 return ""
 
             data_bytes = self._extract_frame_data(response_bytes)
             if not data_bytes or len(data_bytes) < 8:  # ID + Sign + Value (최소 8바이트)
-                logger.warning(f"BS205 frame data too short: {len(data_bytes) if data_bytes else 0} bytes")
+                logger.warning(
+                    f"BS205 frame data too short: {len(data_bytes) if data_bytes else 0} bytes"
+                )
                 return ""
 
             # ASCII로 변환 (공백을 _로 표시)
@@ -511,7 +515,7 @@ class BS205LoadCell(LoadCellService):
                     else:
                         ascii_data += chr(byte_val)
                 else:
-                    # ID 바이트 처리 (예: 0x35 → '5', 0x3F → '?'(ID=15))  
+                    # ID 바이트 처리 (예: 0x35 → '5', 0x3F → '?'(ID=15))
                     if 0x30 <= byte_val <= 0x39:
                         ascii_data += chr(byte_val)  # 0-9
                     elif byte_val == 0x3A:

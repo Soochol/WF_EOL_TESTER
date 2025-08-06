@@ -121,6 +121,23 @@ class Configuration(ABC):
         ...
 
     @abstractmethod
+    async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
+        """
+        Load DUT default values from configuration file
+
+        Args:
+            profile_name: Specific profile to load, defaults to active profile from config
+
+        Returns:
+            Dictionary containing DUT default values (dut_id, model, operator_id, manufacturer)
+
+        Raises:
+            ConfigurationNotFoundError: If DUT defaults file is not found
+            RepositoryAccessError: If DUT defaults cannot be loaded
+        """
+        ...
+
+    @abstractmethod
     async def save_profile(self, profile_name: str, config: TestConfiguration) -> None:
         """
         Save a configuration as a named profile

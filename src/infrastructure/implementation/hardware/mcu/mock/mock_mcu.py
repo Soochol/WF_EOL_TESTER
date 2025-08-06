@@ -144,12 +144,12 @@ class MockMCU(MCUService):
         """
         return self._is_connected
 
-    async def set_temperature(self, target_temp: Optional[float] = None) -> None:
+    async def set_temperature(self, target_temp: float) -> None:
         """
         Set target temperature for the MCU (시뮬레이션)
 
         Args:
-            target_temp: Target temperature in Celsius. None인 경우 기본값 사용
+            target_temp: Target temperature in Celsius
 
         Raises:
             HardwareConnectionError: If not connected
@@ -159,19 +159,8 @@ class MockMCU(MCUService):
             raise HardwareConnectionError("mock_mcu", "MCU is not connected")
 
         try:
-            # Apply default + override pattern
-            if target_temp is None:
-                target_temp = self._temperature
-
             # Simulate response delay
             await asyncio.sleep(self._response_delay)
-
-            if not self._min_temperature <= target_temp <= self._max_temperature:
-                raise HardwareOperationError(
-                    "mock_mcu",
-                    "set_temperature",
-                    f"Temperature must be {self._min_temperature}°C to {self._max_temperature}°C, got {target_temp}°C",
-                )
 
             self._target_temperature = target_temp
 
@@ -340,7 +329,7 @@ class MockMCU(MCUService):
             self._current_temperature = self._initial_temperature
             self._target_temperature = self._initial_temperature
             self._current_test_mode = TestMode.MODE_1
-            self._current_fan_speed = 50.0
+            self._current_fan_speed = 5.0  # Reset to level 5 (middle range)
             self._mcu_status = MCUStatus.IDLE
             self._heating_enabled = False
             self._cooling_enabled = False
@@ -402,12 +391,12 @@ class MockMCU(MCUService):
             logger.error(f"Mock MCU command failed: {e}")
             raise HardwareOperationError("mock_mcu", "send_command", str(e)) from e
 
-    async def set_fan_speed(self, speed_percent: Optional[float] = None) -> None:
+    async def set_fan_speed(self, fan_level: int) -> None:
         """
         팬 속도 설정 (시뮬레이션)
 
         Args:
-            speed_percent: 팬 속도 (0-100%). None인 경우 기본값 사용
+            fan_level: 팬 레벨 (1-10)
 
         Raises:
             HardwareConnectionError: If not connected
@@ -416,38 +405,28 @@ class MockMCU(MCUService):
         if not await self.is_connected():
             raise HardwareConnectionError("mock_mcu", "MCU is not connected")
 
-        # Apply default + override pattern
-        target_speed: float = speed_percent if speed_percent is not None else self._fan_speed
-
-        if not 0 <= target_speed <= self._max_fan_speed:
-            raise HardwareOperationError(
-                "mock_mcu",
-                "set_fan_speed",
-                f"Fan speed must be 0-{self._max_fan_speed}%, got {target_speed}%",
-            )
-
         try:
             # Simulate response delay
             await asyncio.sleep(self._response_delay)
 
-            self._current_fan_speed = target_speed
-            logger.info(f"Mock MCU fan speed set to {target_speed}%")
+            self._current_fan_speed = float(fan_level)
+            logger.info(f"Mock MCU fan speed set to level {fan_level}")
 
         except Exception as e:
             logger.error(f"Failed to set Mock MCU fan speed: {e}")
             raise HardwareOperationError("mock_mcu", "set_fan_speed", str(e)) from e
 
-    async def get_fan_speed(self) -> float:
+    async def get_fan_speed(self) -> int:
         """
         현재 팬 속도 조회
 
         Returns:
-            현재 팬 속도 (0-100%)
+            현재 팬 레벨 (1-10)
         """
         if not await self.is_connected():
             raise HardwareConnectionError("mock_mcu", "MCU is not connected")
 
-        return self._current_fan_speed
+        return int(self._current_fan_speed)
 
     async def start_heating(self) -> None:
         """

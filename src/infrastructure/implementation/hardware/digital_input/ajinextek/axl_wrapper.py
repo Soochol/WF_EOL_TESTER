@@ -28,8 +28,8 @@ from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes 
 if platform.system() == "Windows":
     try:
         from ctypes import (  # pylint: disable=ungrouped-imports  # type: ignore[attr-defined]
-            WinDLL,  # pylint: disable=ungrouped-imports  # type: ignore[attr-defined]
             WINFUNCTYPE,  # pylint: disable=ungrouped-imports  # type: ignore[attr-defined]
+            WinDLL,  # pylint: disable=ungrouped-imports  # type: ignore[attr-defined]
         )
         FuncType = WINFUNCTYPE
     except ImportError:
@@ -86,7 +86,7 @@ class AXLDIOWrapper:
                 "AXL DIO library is only supported on Windows platform. "
                 "For development/testing on other platforms, use MockDIO instead."
             )
-            
+
         self._load_library()
         self._setup_functions()
 
@@ -254,7 +254,7 @@ class AXLDIOWrapper:
         """Open AXL library with specified IRQ number"""
         if self.dll is None:
             raise AjinextekHardwareError("AXL DLL not loaded")
-            
+
         result = self.dll.AxlOpen(irq_no)
         return result
 
@@ -262,7 +262,7 @@ class AXLDIOWrapper:
         """Close AXL library"""
         if self.dll is None:
             raise AjinextekHardwareError("AXL DLL not loaded")
-            
+
         result = self.dll.AxlClose()
         return result == AXT_RT_SUCCESS
 
@@ -270,7 +270,7 @@ class AXLDIOWrapper:
         """Check if AXL library is opened"""
         if self.dll is None:
             raise AjinextekHardwareError("AXL DLL not loaded")
-            
+
         return self.dll.AxlIsOpened() == 1
 
     # === Board and Module Information Functions ===

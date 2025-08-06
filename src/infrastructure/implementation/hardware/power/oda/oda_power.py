@@ -28,10 +28,18 @@ class OdaPower(PowerService):
         """
         초기화
         """
+
+        # Connection parameters (will be set during connect)
+        self._host = ""
+        self._port = 0
+        self._timeout = 0.0
+        self._channel = 0
+
         # State initialization
         self._is_connected = False
         self._output_enabled = False
         self._device_identity: Optional[str] = None  # Store device identification response
+        self._tcp_comm: Optional[TCPCommunication] = None
 
     async def connect(self, host: str, port: int, timeout: float, channel: int) -> None:
         """
@@ -48,8 +56,7 @@ class OdaPower(PowerService):
         """
 
         try:
-
-            # Store actual values being used
+            # Store connection parameters
             self._host = host
             self._port = port
             self._timeout = timeout
@@ -58,9 +65,7 @@ class OdaPower(PowerService):
             # Create TCP connection with config values
             self._tcp_comm = TCPCommunication(host, port, timeout)
 
-            logger.info(
-                f"Connecting to ODA Power Supply at {host}:{port} (Channel: {channel})"
-            )
+            logger.info(f"Connecting to ODA Power Supply at {host}:{port} (Channel: {channel})")
 
             await self._tcp_comm.connect()
 
@@ -77,11 +82,6 @@ class OdaPower(PowerService):
                 # Small delay before next command
                 await asyncio.sleep(0.2)
 
-                # 안전을 위해 출력 비활성화
-                await self.disable_output()
-
-                # small delay to ensure device is ready
-                await asyncio.sleep(0.1)
 
                 logger.info("ODA Power Supply connected successfully: %s", response)
             else:
@@ -108,11 +108,10 @@ class OdaPower(PowerService):
             HardwareOperationError: If disconnection fails
         """
         try:
-            # 안전을 위해 출력 비활성화
-            if self._is_connected:
-                await self.disable_output()
+            if self._tcp_comm:
+                await self._tcp_comm.disconnect()
 
-            await self._tcp_comm.disconnect()
+            self._tcp_comm = None
             self._is_connected = False
             self._output_enabled = False
 
@@ -129,7 +128,7 @@ class OdaPower(PowerService):
         Returns:
             연결 상태
         """
-        return self._is_connected and self._tcp_comm.is_connected
+        return self._is_connected and self._tcp_comm is not None and self._tcp_comm.is_connected
 
     async def set_voltage(self, voltage: float) -> None:
         """
@@ -337,6 +336,7 @@ class OdaPower(PowerService):
             "connected": await self.is_connected(),
             "host": self._host,
             "port": self._port,
+            "timeout": self._timeout,
             "channel": self._channel,
             "output_enabled": self._output_enabled,
             "hardware_type": "ODA",
@@ -371,8 +371,11 @@ class OdaPower(PowerService):
         Raises:
             TCPError: 통신 오류
         """
-        if not self._tcp_comm.is_connected:
-            raise TCPError("No connection available")
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+
+        # MyPy type narrowing: assert that _tcp_comm is not None after connection check
+        assert self._tcp_comm is not None, "TCP communication should be available after connection check"
 
         try:
             # 명령 전송 및 응답 수신 (SCPI 형식)

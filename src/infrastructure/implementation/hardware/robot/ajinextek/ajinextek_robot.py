@@ -8,7 +8,7 @@ Implements the RobotService interface using AXL library.
 import asyncio
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from loguru import logger
 
@@ -93,10 +93,6 @@ class AjinextekRobot(RobotService):
                 "Connecting to AJINEXTEK robot controller (IRQ: %s, Axis: %s)", irq_no, axis_id
             )
 
-            # Print comprehensive system diagnostics before attempting connection
-            logger.info("Performing pre-connection system diagnostics...")
-            self._print_system_diagnostics()
-
             # Verify DLL installation before attempting to load
             dll_info = verify_dll_installation()
             if not dll_info["dll_exists"]:
@@ -108,27 +104,29 @@ class AjinextekRobot(RobotService):
                     details=f"DLL path: {dll_info['dll_path']}, Available DLLs: {dll_info['available_dlls']}",
                 )
 
-            # Open AXL library with robust initialization and enhanced error reporting
-            result = await self._initialize_axl_library_with_diagnostics(irq_no)
-            if result != AXT_RT_SUCCESS:
-                error_msg = get_error_message(result)
-                logger.error(
-                    f"Failed to initialize AXL library: {error_msg} (Error Code: {result})"
-                )
+            # Open AXL library if not already open
+            if self._axl.is_opened():
+                logger.debug("AXL library is already open")
+                result = AXT_RT_SUCCESS
+            else:
+                result = self._axl.open(irq_no)
+                if result != AXT_RT_SUCCESS:
+                    error_msg = get_error_message(result)
+                    logger.error(
+                        f"Failed to initialize AXL library: {error_msg} (Error Code: {result})"
+                    )
 
-                # Provide detailed error analysis
-                error_analysis = self._analyze_connection_error(result, irq_no)
-                logger.error(f"Connection error analysis: {error_analysis}")
-
-                raise RobotConnectionError(
-                    f"Failed to initialize AXL library: {error_msg}",
-                    "AJINEXTEK",
-                    details=f"IRQ: {irq_no}, Error: {result}, Analysis: {error_analysis}",
-                )
+                    raise RobotConnectionError(
+                        f"Failed to initialize AXL library: {error_msg}",
+                        "AJINEXTEK",
+                        details=f"IRQ: {irq_no}, Error: {result}",
+                    )
+                else:
+                    logger.info("AXL library opened successfully")
 
             # Get board count for verification (with error handling)
             try:
-                board_count = await self._get_board_count_safely()
+                board_count = self._axl.get_board_count()
                 logger.info(f"Board count detected: {board_count}")
             except Exception as e:
                 logger.warning(f"Could not get board count: {e} (continuing anyway)")
@@ -136,7 +134,7 @@ class AjinextekRobot(RobotService):
 
             # Get axis count from hardware (with error handling)
             try:
-                self._axis_count = await self._get_axis_count_safely()
+                self._axis_count = self._axl.get_axis_count()
                 logger.info(f"Detected axis count: {self._axis_count}")
             except Exception as e:
                 logger.warning(f"Could not get axis count: {e} (using default: 1)")
@@ -190,12 +188,15 @@ class AjinextekRobot(RobotService):
         """
         try:
             if self._is_connected:
-                # Close AXL library connection
+                # Close AXL library connection if open
                 try:
-                    result = self._axl.close()
-                    if result != AXT_RT_SUCCESS:
-                        error_msg = get_error_message(result)
-                        logger.warning(f"AXL library close warning: {error_msg}")
+                    if self._axl.is_opened():
+                        result = self._axl.close()
+                        if result != AXT_RT_SUCCESS:
+                            error_msg = get_error_message(result)
+                            logger.warning(f"AXL library close warning: {error_msg}")
+                    else:
+                        logger.debug("AXL library was already closed")
                 except Exception as e:
                     logger.warning(f"Error closing AXL library: {e}")
 
@@ -752,300 +753,12 @@ class AjinextekRobot(RobotService):
                 "AJINEXTEK",
             )
 
-    def _print_system_diagnostics(self) -> None:
-        """Print comprehensive system diagnostics for troubleshooting"""
-        try:
-            import platform
-            import os
-
-            logger.info("=== AJINEXTEK Robot Connection Diagnostics ===")
-            logger.info(f"Operating System: {platform.system()} {platform.version()}")
-            logger.info(f"Architecture: {platform.machine()} ({platform.architecture()[0]})")
-            logger.info(f"Python Version: {platform.python_version()}")
-            logger.info(f"Python Executable: {platform.python_implementation()}")
-
-            # Check if running as administrator (Windows) with enhanced detection
-            if platform.system() == "Windows":
-                try:
-                    import ctypes
-                    import ctypes.wintypes
-
-                    # Multiple methods to check admin privileges
-                    is_admin_shell = ctypes.windll.shell32.IsUserAnAdmin()
-
-                    # Alternative method: Check if we can write to system directory
-                    can_write_system = False
-                    try:
-                        import tempfile
-
-                        with tempfile.NamedTemporaryFile(dir="C:\\Windows\\System32", delete=True):
-                            can_write_system = True
-                    except (OSError, PermissionError):
-                        can_write_system = False
-
-                    # Check token elevation
-                    is_elevated = False
-                    try:
-                        import ctypes.wintypes as wintypes
-
-                        # Get current process token
-                        TOKEN_QUERY = 0x0008
-                        TokenElevation = 20
-
-                        process_handle = ctypes.windll.kernel32.GetCurrentProcess()
-                        token_handle = wintypes.HANDLE()
-
-                        if ctypes.windll.advapi32.OpenProcessToken(
-                            process_handle, TOKEN_QUERY, ctypes.byref(token_handle)
-                        ):
-                            elevation = wintypes.DWORD()
-                            size = wintypes.DWORD(ctypes.sizeof(wintypes.DWORD))
-
-                            if ctypes.windll.advapi32.GetTokenInformation(
-                                token_handle,
-                                TokenElevation,
-                                ctypes.byref(elevation),
-                                ctypes.sizeof(elevation),
-                                ctypes.byref(size),
-                            ):
-                                is_elevated = bool(elevation.value)
-
-                            ctypes.windll.kernel32.CloseHandle(token_handle)
-                    except Exception:
-                        pass
-
-                    logger.info(f"Administrator Privileges Check:")
-                    logger.info(f"  - Shell IsUserAnAdmin(): {is_admin_shell}")
-                    logger.info(f"  - Can write to System32: {can_write_system}")
-                    logger.info(f"  - Token is elevated: {is_elevated}")
-                    logger.info(f"  - Overall admin status: {is_admin_shell or is_elevated}")
-
-                    # If we're not running as admin, provide clear guidance
-                    if not (is_admin_shell or is_elevated):
-                        logger.warning("⚠️ NOT running with Administrator privileges!")
-                        logger.warning(
-                            "AJINEXTEK AXL library typically requires administrator access for:"
-                        )
-                        logger.warning("  - Hardware device driver access")
-                        logger.warning("  - IRQ (Interrupt Request) allocation")
-                        logger.warning("  - System-level hardware control")
-                        logger.warning("")
-                        logger.warning("Please run this application as Administrator:")
-                        logger.warning("  1. Right-click on Command Prompt")
-                        logger.warning("  2. Select 'Run as administrator'")
-                        logger.warning("  3. Navigate to project directory and run again")
-
-                except Exception as e:
-                    logger.info(f"Unable to check administrator privileges: {e}")
-                    logger.info("Proceeding anyway - some operations may fail")
-
-            # Print DLL diagnostics
-            print_dll_diagnostic_info()
-
-            logger.info("=== End Diagnostics ===")
-
-        except Exception as e:
-            logger.warning(f"Failed to print system diagnostics: {e}")
-
-    def _analyze_connection_error(self, error_code: int, irq_no: int) -> dict:
-        """Analyze connection error and provide specific troubleshooting guidance"""
-        analysis = {
-            "error_code": error_code,
-            "error_name": get_error_message(error_code),
-            "likely_causes": [],
-            "troubleshooting_steps": [],
-            "system_checks": [],
-        }
-
-        # Error-specific analysis
-        if error_code == 1053:  # Library not opened/not loaded
-            analysis["likely_causes"] = [
-                "AXL DLL failed to load",
-                "Missing system dependencies (Visual C++ Redistributables)",
-                "Architecture mismatch (32-bit vs 64-bit)",
-                "Missing AJINEXTEK hardware drivers",
-                "Insufficient permissions",
-            ]
-            analysis["troubleshooting_steps"] = [
-                "Run application as Administrator",
-                "Install Visual C++ Redistributables 2015-2022",
-                "Install AJINEXTEK device drivers",
-                "Verify DLL architecture matches Python architecture",
-                "Check Windows Event Viewer for detailed error messages",
-            ]
-            analysis["system_checks"] = [
-                "Check if AJINEXTEK hardware is connected",
-                "Verify USB/PCI device recognition in Device Manager",
-                f"Confirm IRQ {irq_no} is available and not in use",
-                "Check for driver conflicts",
-            ]
-
-        elif error_code == 1001:  # IRQ already in use
-            analysis["likely_causes"] = [
-                f"IRQ {irq_no} is already in use by another process",
-                "Previous connection was not properly closed",
-                "Multiple instances of the application running",
-            ]
-            analysis["troubleshooting_steps"] = [
-                "Close all other AJINEXTEK applications",
-                "Restart the application",
-                "Try a different IRQ number (if available)",
-                "Reboot the system if necessary",
-            ]
-
-        elif error_code == 1002:  # Hardware not found
-            analysis["likely_causes"] = [
-                "AJINEXTEK hardware not connected or not detected",
-                "Hardware drivers not installed",
-                "Hardware malfunction or power issues",
-            ]
-            analysis["troubleshooting_steps"] = [
-                "Check physical hardware connections",
-                "Verify hardware power status",
-                "Install or update AJINEXTEK drivers",
-                "Check Device Manager for hardware recognition",
-            ]
-
-        return analysis
-
-    async def _initialize_axl_library_with_diagnostics(
-        self, irq_no: int, max_retries: int = 3
-    ) -> int:
-        """Initialize AXL library with enhanced diagnostics and retry logic"""
-        logger.info(f"Attempting to initialize AXL library with IRQ {irq_no}")
-        logger.info(f"Maximum retry attempts: {max_retries}")
-
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                logger.info(f"AXL library initialization attempt {attempt + 1}/{max_retries}")
-
-                # Check if library is already open
-                if self._axl.is_opened():
-                    logger.info("AXL library is already open, closing first")
-                    try:
-                        self._axl.close()
-                        await asyncio.sleep(0.1)  # Wait for clean shutdown
-                    except Exception as e:
-                        logger.warning(f"Error closing existing library: {e}")
-
-                # Attempt to open library
-                logger.debug(f"Opening AXL library with IRQ {irq_no}")
-                result = self._axl.open(irq_no)
-
-                if result == AXT_RT_SUCCESS:
-                    logger.info(f"✓ AXL library opened successfully on attempt {attempt + 1}")
-                    # Small delay to let library fully initialize
-                    await asyncio.sleep(0.1)
-                    return result
-                else:
-                    error_msg = get_error_message(result)
-                    logger.warning(f"Attempt {attempt + 1} failed: {error_msg} (code: {result})")
-                    last_error = result
-
-                    # Provide attempt-specific guidance
-                    if attempt == 0 and result == 1053:
-                        logger.info("First attempt failed - this may be normal. Retrying...")
-                    elif attempt == 1 and result == 1001:
-                        logger.info("IRQ may be busy - waiting longer before retry...")
-                        await asyncio.sleep(1.0)  # Longer wait for IRQ issues
-
-                    if attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 0.5  # Progressive backoff
-                        logger.info(f"Retrying in {wait_time}s...")
-                        await asyncio.sleep(wait_time)
-
-            except Exception as e:
-                logger.error(f"Exception during initialization attempt {attempt + 1}: {e}")
-                last_error = 1053  # Generic "not loaded" error
-                if attempt < max_retries - 1:
-                    await asyncio.sleep((attempt + 1) * 0.5)
-
-        # All attempts failed
-        final_error = last_error if last_error is not None else 1053
-        logger.error(f"All {max_retries} initialization attempts failed")
-        logger.error(f"Final error code: {final_error} ({get_error_message(final_error)})")
-
-        # Provide final troubleshooting guidance
-        error_analysis = self._analyze_connection_error(final_error, irq_no)
-        logger.error("Final troubleshooting analysis:")
-        for cause in error_analysis["likely_causes"]:
-            logger.error(f"  - {cause}")
-        logger.error("Recommended actions:")
-        for step in error_analysis["troubleshooting_steps"]:
-            logger.error(f"  1. {step}")
-
-        return final_error
-
-    # Legacy method kept for compatibility - now calls the enhanced version
+    # Legacy method kept for compatibility
     async def _initialize_axl_library(self, irq_no: int, max_retries: int = 3) -> int:
         """Initialize AXL library with retry logic (legacy compatibility method)"""
-        return await self._initialize_axl_library_with_diagnostics(irq_no, max_retries)
-
-    async def _get_board_count_safely(self, max_retries: int = 2) -> int:
-        """Get board count with error handling and retries
-
-        Args:
-            max_retries: Maximum number of retry attempts
-
-        Returns:
-            int: Number of boards detected
-
-        Raises:
-            Exception: If all attempts fail
-        """
-        last_exception = None
-
-        for attempt in range(max_retries):
-            try:
-                # Small delay before attempting to read board count
-                if attempt > 0:
-                    await asyncio.sleep(0.1)
-
-                board_count = self._axl.get_board_count()
-                return board_count
-
-            except Exception as e:
-                last_exception = e
-                logger.debug(f"Board count attempt {attempt + 1} failed: {e}")
-
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(0.2)
-
-        raise last_exception if last_exception else Exception("Board count retrieval failed")
-
-    async def _get_axis_count_safely(self, max_retries: int = 2) -> int:
-        """Get axis count with error handling and retries
-
-        Args:
-            max_retries: Maximum number of retry attempts
-
-        Returns:
-            int: Number of axes detected
-
-        Raises:
-            Exception: If all attempts fail
-        """
-        last_exception = None
-
-        for attempt in range(max_retries):
-            try:
-                # Small delay before attempting to read axis count
-                if attempt > 0:
-                    await asyncio.sleep(0.1)
-
-                axis_count = self._axl.get_axis_count()
-                return axis_count
-
-            except Exception as e:
-                last_exception = e
-                logger.debug(f"Axis count attempt {attempt + 1} failed: {e}")
-
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(0.2)
-
-        raise last_exception if last_exception else Exception("Axis count retrieval failed")
+        if self._axl.is_opened():
+            return AXT_RT_SUCCESS
+        return self._axl.open(irq_no)
 
     def _ensure_servo_enabled(self) -> None:
         """Ensure servo is enabled before motion operations"""

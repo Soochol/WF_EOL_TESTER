@@ -20,7 +20,12 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class RobotController(HardwareController):
     """Controller for Robot hardware"""
 
-    def __init__(self, robot_service: RobotService, formatter: RichFormatter, robot_config: Optional[RobotConfig] = None):
+    def __init__(
+        self,
+        robot_service: RobotService,
+        formatter: RichFormatter,
+        robot_config: Optional[RobotConfig] = None,
+    ):
         super().__init__(formatter)
         self.robot_service = robot_service
         self.robot_config = robot_config
@@ -65,8 +70,7 @@ class RobotController(HardwareController):
             if self.robot_config:
                 # Use YAML configuration
                 await self.robot_service.connect(
-                    axis_id=self.robot_config.axis_id,
-                    irq_no=self.robot_config.irq_no
+                    axis_id=self.robot_config.axis_id, irq_no=self.robot_config.irq_no
                 )
             else:
                 # Fallback to defaults if no config available
@@ -302,51 +306,54 @@ class RobotController(HardwareController):
 
             # Get user input for position and motion parameters
             self.formatter.print_message("🎯 Absolute Position Move Setup", message_type="info")
-            
+
             # Get target position from user
-            position = self._get_user_input_with_validation(
+            position_input = self._get_user_input_with_validation(
                 "Enter target position (mm):",
                 input_type=float,
                 validator=lambda x: -1000.0 <= x <= 1000.0,  # Reasonable position range
             )
-            if position is None:
+            if position_input is None:
                 self.formatter.print_message("❌ Move cancelled", message_type="info")
                 return
-            
+            position = float(position_input)
+
             # Get default values from config or use fallbacks
             default_velocity = self.robot_config.velocity if self.robot_config else 200.0
             default_acceleration = self.robot_config.acceleration if self.robot_config else 1000.0
             default_deceleration = self.robot_config.deceleration if self.robot_config else 1000.0
-            
+
             # Get velocity from user (with default)
-            velocity = self._get_user_input_with_validation(
+            velocity_input = self._get_user_input_with_validation(
                 f"Enter velocity (mm/s) [default: {default_velocity:.1f}]:",
                 input_type=float,
                 validator=lambda x: 1.0 <= x <= 1000.0,  # Reasonable velocity range
-                default_value=default_velocity,
             )
-            if velocity is None:
-                velocity = default_velocity
-            
+            velocity = float(velocity_input) if velocity_input is not None else default_velocity
+
             # Get acceleration from user (with default)
-            acceleration = self._get_user_input_with_validation(
+            acceleration_input = self._get_user_input_with_validation(
                 f"Enter acceleration (mm/s²) [default: {default_acceleration:.1f}]:",
                 input_type=float,
                 validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable acceleration range
-                default_value=default_acceleration,
             )
-            if acceleration is None:
-                acceleration = default_acceleration
-            
+            acceleration = (
+                float(acceleration_input)
+                if acceleration_input is not None
+                else default_acceleration
+            )
+
             # Get deceleration from user (with default)
-            deceleration = self._get_user_input_with_validation(
+            deceleration_input = self._get_user_input_with_validation(
                 f"Enter deceleration (mm/s²) [default: {default_deceleration:.1f}]:",
                 input_type=float,
                 validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable deceleration range
-                default_value=default_deceleration,
             )
-            if deceleration is None:
-                deceleration = default_deceleration
+            deceleration = (
+                float(deceleration_input)
+                if deceleration_input is not None
+                else default_deceleration
+            )
 
             async def move_operation():
                 await self.robot_service.move_absolute(
@@ -365,9 +372,9 @@ class RobotController(HardwareController):
                 f"   Velocity: {velocity:.1f} mm/s\n"
                 f"   Acceleration: {acceleration:.1f} mm/s²\n"
                 f"   Deceleration: {deceleration:.1f} mm/s²",
-                message_type="info"
+                message_type="info",
             )
-            
+
             await self._show_progress_with_message(
                 f"Moving axis {primary_axis} to position {position:.2f}mm...",
                 move_operation,
@@ -390,51 +397,54 @@ class RobotController(HardwareController):
 
             # Get user input for distance and motion parameters
             self.formatter.print_message("🎯 Relative Position Move Setup", message_type="info")
-            
+
             # Get relative distance from user
-            distance = self._get_user_input_with_validation(
+            distance_input = self._get_user_input_with_validation(
                 "Enter relative distance (mm):",
                 input_type=float,
                 validator=lambda x: -500.0 <= x <= 500.0,  # Reasonable relative distance range
             )
-            if distance is None:
+            if distance_input is None:
                 self.formatter.print_message("❌ Move cancelled", message_type="info")
                 return
-            
+            distance = float(distance_input)
+
             # Get default values from config or use fallbacks
             default_velocity = self.robot_config.velocity if self.robot_config else 200.0
             default_acceleration = self.robot_config.acceleration if self.robot_config else 1000.0
             default_deceleration = self.robot_config.deceleration if self.robot_config else 1000.0
-            
+
             # Get velocity from user (with default)
-            velocity = self._get_user_input_with_validation(
+            velocity_input = self._get_user_input_with_validation(
                 f"Enter velocity (mm/s) [default: {default_velocity:.1f}]:",
                 input_type=float,
                 validator=lambda x: 1.0 <= x <= 1000.0,  # Reasonable velocity range
-                default_value=default_velocity,
             )
-            if velocity is None:
-                velocity = default_velocity
-            
+            velocity = float(velocity_input) if velocity_input is not None else default_velocity
+
             # Get acceleration from user (with default)
-            acceleration = self._get_user_input_with_validation(
+            acceleration_input = self._get_user_input_with_validation(
                 f"Enter acceleration (mm/s²) [default: {default_acceleration:.1f}]:",
                 input_type=float,
                 validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable acceleration range
-                default_value=default_acceleration,
             )
-            if acceleration is None:
-                acceleration = default_acceleration
-            
+            acceleration = (
+                float(acceleration_input)
+                if acceleration_input is not None
+                else default_acceleration
+            )
+
             # Get deceleration from user (with default)
-            deceleration = self._get_user_input_with_validation(
+            deceleration_input = self._get_user_input_with_validation(
                 f"Enter deceleration (mm/s²) [default: {default_deceleration:.1f}]:",
                 input_type=float,
                 validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable deceleration range
-                default_value=default_deceleration,
             )
-            if deceleration is None:
-                deceleration = default_deceleration
+            deceleration = (
+                float(deceleration_input)
+                if deceleration_input is not None
+                else default_deceleration
+            )
 
             async def move_operation():
                 await self.robot_service.move_relative(
@@ -453,7 +463,7 @@ class RobotController(HardwareController):
                 f"   Velocity: {velocity:.1f} mm/s\\n"
                 f"   Acceleration: {acceleration:.1f} mm/s²\\n"
                 f"   Deceleration: {deceleration:.1f} mm/s²",
-                message_type="info"
+                message_type="info",
             )
 
             await self._show_progress_with_message(

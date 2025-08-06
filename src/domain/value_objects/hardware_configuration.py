@@ -53,15 +53,7 @@ class LoadCellConfig:
     parity: Optional[str] = "even"  # None, 'even', 'odd', 'mark', 'space'
     indicator_id: int = 0
 
-    # Mock-related parameters
-    base_force: float = 10.0
-    noise_level: float = 0.1
-    connection_delay: float = 0.1
 
-    # Additional operational parameters
-    max_force_range: float = 1000.0
-    sampling_interval_ms: int = 100
-    zero_tolerance: float = 0.01
 
 
 @dataclass(frozen=True)
@@ -76,19 +68,6 @@ class MCUConfig:
     stopbits: int = 1
     parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
 
-    # Default temperature/fan speed parameters
-    default_temperature: float = 25.0
-    default_fan_speed: float = 50.0
-
-    # Mock-related parameters
-    temperature_drift_rate: float = 0.1
-    response_delay: float = 0.1
-    connection_delay: float = 0.1
-
-    # Operational parameters
-    max_temperature: float = 150.0
-    min_temperature: float = -40.0
-    max_fan_speed: float = 100.0
 
 
 @dataclass(frozen=True)
@@ -104,20 +83,8 @@ class PowerConfig:
     # Communication parameters
     delimiter: Optional[str] = "\n"  # Command terminator (None = TCP driver handles)
 
-    # Default voltage/current parameters
-    default_voltage: float = 0.0
-    default_current_limit: float = 5.0
 
-    # Mock-related parameters
-    connection_delay: float = 0.2
-    response_delay: float = 0.05
-    voltage_noise: float = 0.01
 
-    # Operational parameters
-    max_voltage: float = 30.0
-    max_current: float = 50.0
-    voltage_accuracy: float = 0.01
-    current_accuracy: float = 0.001
 
 
 @dataclass(frozen=True)
@@ -134,12 +101,6 @@ class DigitalIOConfig:
     tower_lamp_green: int = 6
     beep: int = 7
 
-    # Mock-related parameters
-    total_pins: int = 32  # For mock implementation
-    simulate_noise: bool = False
-    noise_probability: float = 0.01
-    response_delay: float = 0.005  # Response delay in seconds
-    connection_delay: float = 0.1  # Connection delay in seconds
 
 
 @dataclass(frozen=True)
@@ -210,48 +171,7 @@ class HardwareConfiguration:
                 "LoadCell indicator ID cannot be negative",
             )
 
-        # Validate mock-related parameters
-        if self.loadcell.base_force < 0:
-            raise ValidationException(
-                "loadcell.base_force",
-                self.loadcell.base_force,
-                "LoadCell base force cannot be negative",
-            )
 
-        if self.loadcell.noise_level < 0:
-            raise ValidationException(
-                "loadcell.noise_level",
-                self.loadcell.noise_level,
-                "LoadCell noise level cannot be negative",
-            )
-
-        if self.loadcell.connection_delay < 0:
-            raise ValidationException(
-                "loadcell.connection_delay",
-                self.loadcell.connection_delay,
-                "LoadCell connection delay cannot be negative",
-            )
-
-        if self.loadcell.max_force_range <= 0:
-            raise ValidationException(
-                "loadcell.max_force_range",
-                self.loadcell.max_force_range,
-                "LoadCell max force range must be positive",
-            )
-
-        if self.loadcell.sampling_interval_ms <= 0:
-            raise ValidationException(
-                "loadcell.sampling_interval_ms",
-                self.loadcell.sampling_interval_ms,
-                "LoadCell sampling interval must be positive",
-            )
-
-        if self.loadcell.zero_tolerance < 0:
-            raise ValidationException(
-                "loadcell.zero_tolerance",
-                self.loadcell.zero_tolerance,
-                "LoadCell zero tolerance cannot be negative",
-            )
 
         # Validate LoadCell serial parameters
         if self.loadcell.bytesize not in [5, 6, 7, 8]:
@@ -303,59 +223,6 @@ class HardwareConfiguration:
                 "MCU timeout must be positive",
             )
 
-        # Validate default parameters
-        if not (
-            self.mcu.min_temperature <= self.mcu.default_temperature <= self.mcu.max_temperature
-        ):
-            raise ValidationException(
-                "mcu.default_temperature",
-                self.mcu.default_temperature,
-                f"MCU default temperature must be between {self.mcu.min_temperature}°C and {self.mcu.max_temperature}°C",
-            )
-
-        if not (0.0 <= self.mcu.default_fan_speed <= self.mcu.max_fan_speed):
-            raise ValidationException(
-                "mcu.default_fan_speed",
-                self.mcu.default_fan_speed,
-                f"MCU default fan speed must be between 0% and {self.mcu.max_fan_speed}%",
-            )
-
-        # Validate mock-related parameters
-        if self.mcu.temperature_drift_rate < 0:
-            raise ValidationException(
-                "mcu.temperature_drift_rate",
-                self.mcu.temperature_drift_rate,
-                "MCU temperature drift rate cannot be negative",
-            )
-
-        if self.mcu.response_delay < 0:
-            raise ValidationException(
-                "mcu.response_delay",
-                self.mcu.response_delay,
-                "MCU response delay cannot be negative",
-            )
-
-        if self.mcu.connection_delay < 0:
-            raise ValidationException(
-                "mcu.connection_delay",
-                self.mcu.connection_delay,
-                "MCU connection delay cannot be negative",
-            )
-
-        # Validate operational parameters
-        if self.mcu.max_temperature <= self.mcu.min_temperature:
-            raise ValidationException(
-                "mcu.max_temperature",
-                self.mcu.max_temperature,
-                f"MCU max temperature must be greater than min temperature ({self.mcu.min_temperature}°C)",
-            )
-
-        if self.mcu.max_fan_speed <= 0:
-            raise ValidationException(
-                "mcu.max_fan_speed",
-                self.mcu.max_fan_speed,
-                "MCU max fan speed must be positive",
-            )
 
         # Validate MCU serial parameters
         if self.mcu.bytesize not in [5, 6, 7, 8]:
@@ -385,35 +252,7 @@ class HardwareConfiguration:
                 "MCU parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
             )
 
-        # Digital IO validation
-        # Mock-related parameters validation
-        if self.digital_io.total_pins <= 0:
-            raise ValidationException(
-                "digital_io.total_pins",
-                self.digital_io.total_pins,
-                "Total pins must be positive",
-            )
-
-        if not (0.0 <= self.digital_io.noise_probability <= 1.0):
-            raise ValidationException(
-                "digital_io.noise_probability",
-                self.digital_io.noise_probability,
-                "Noise probability must be between 0.0 and 1.0",
-            )
-
-        if self.digital_io.response_delay < 0:
-            raise ValidationException(
-                "digital_io.response_delay",
-                self.digital_io.response_delay,
-                "Response delay cannot be negative",
-            )
-
-        if self.digital_io.connection_delay < 0:
-            raise ValidationException(
-                "digital_io.connection_delay",
-                self.digital_io.connection_delay,
-                "Connection delay cannot be negative",
-            )
+        # Digital IO validation - no additional validation needed for pin assignments
 
     def _validate_power_config(self) -> None:
         """Validate power supply configuration parameters"""
@@ -445,71 +284,8 @@ class HardwareConfiguration:
                 "Power channel must be positive",
             )
 
-        # Validate default parameters
-        if self.power.default_voltage < 0:
-            raise ValidationException(
-                "power.default_voltage",
-                self.power.default_voltage,
-                "Power default voltage cannot be negative",
-            )
 
-        if self.power.default_current_limit <= 0:
-            raise ValidationException(
-                "power.default_current_limit",
-                self.power.default_current_limit,
-                "Power default current limit must be positive",
-            )
 
-        # Validate mock-related parameters
-        if self.power.connection_delay < 0:
-            raise ValidationException(
-                "power.connection_delay",
-                self.power.connection_delay,
-                "Power connection delay cannot be negative",
-            )
-
-        if self.power.response_delay < 0:
-            raise ValidationException(
-                "power.response_delay",
-                self.power.response_delay,
-                "Power response delay cannot be negative",
-            )
-
-        if self.power.voltage_noise < 0:
-            raise ValidationException(
-                "power.voltage_noise",
-                self.power.voltage_noise,
-                "Power voltage noise cannot be negative",
-            )
-
-        # Validate operational parameters
-        if self.power.max_voltage <= 0:
-            raise ValidationException(
-                "power.max_voltage",
-                self.power.max_voltage,
-                "Power max voltage must be positive",
-            )
-
-        if self.power.max_current <= 0:
-            raise ValidationException(
-                "power.max_current",
-                self.power.max_current,
-                "Power max current must be positive",
-            )
-
-        if self.power.voltage_accuracy < 0:
-            raise ValidationException(
-                "power.voltage_accuracy",
-                self.power.voltage_accuracy,
-                "Power voltage accuracy cannot be negative",
-            )
-
-        if self.power.current_accuracy < 0:
-            raise ValidationException(
-                "power.current_accuracy",
-                self.power.current_accuracy,
-                "Power current accuracy cannot be negative",
-            )
 
     def is_valid(self) -> bool:
         """
@@ -612,12 +388,6 @@ class HardwareConfiguration:
                 "stopbits": self.loadcell.stopbits,
                 "parity": self.loadcell.parity,
                 "indicator_id": self.loadcell.indicator_id,
-                "base_force": self.loadcell.base_force,
-                "noise_level": self.loadcell.noise_level,
-                "connection_delay": self.loadcell.connection_delay,
-                "max_force_range": self.loadcell.max_force_range,
-                "sampling_interval_ms": self.loadcell.sampling_interval_ms,
-                "zero_tolerance": self.loadcell.zero_tolerance,
             },
             "mcu": {
                 "port": self.mcu.port,
@@ -626,14 +396,6 @@ class HardwareConfiguration:
                 "bytesize": self.mcu.bytesize,
                 "stopbits": self.mcu.stopbits,
                 "parity": self.mcu.parity,
-                "default_temperature": self.mcu.default_temperature,
-                "default_fan_speed": self.mcu.default_fan_speed,
-                "temperature_drift_rate": self.mcu.temperature_drift_rate,
-                "response_delay": self.mcu.response_delay,
-                "connection_delay": self.mcu.connection_delay,
-                "max_temperature": self.mcu.max_temperature,
-                "min_temperature": self.mcu.min_temperature,
-                "max_fan_speed": self.mcu.max_fan_speed,
             },
             "power": {
                 "host": self.power.host,
@@ -641,15 +403,6 @@ class HardwareConfiguration:
                 "timeout": self.power.timeout,
                 "channel": self.power.channel,
                 "delimiter": self.power.delimiter,
-                "default_voltage": self.power.default_voltage,
-                "default_current_limit": self.power.default_current_limit,
-                "connection_delay": self.power.connection_delay,
-                "response_delay": self.power.response_delay,
-                "voltage_noise": self.power.voltage_noise,
-                "max_voltage": self.power.max_voltage,
-                "max_current": self.power.max_current,
-                "voltage_accuracy": self.power.voltage_accuracy,
-                "current_accuracy": self.power.current_accuracy,
             },
             "digital_io": {
                 "operator_start_button_left": self.digital_io.operator_start_button_left,
@@ -658,11 +411,6 @@ class HardwareConfiguration:
                 "tower_lamp_yellow": self.digital_io.tower_lamp_yellow,
                 "tower_lamp_green": self.digital_io.tower_lamp_green,
                 "beep": self.digital_io.beep,
-                "total_pins": self.digital_io.total_pins,
-                "simulate_noise": self.digital_io.simulate_noise,
-                "noise_probability": self.digital_io.noise_probability,
-                "response_delay": self.digital_io.response_delay,
-                "connection_delay": self.digital_io.connection_delay,
             },
         }
 

@@ -48,12 +48,12 @@ class MockDIO(DigitalInputService):
         self._retry_count = config.get("retry_count", 3)
         self._auto_initialize = config.get("auto_initialize", True)
 
-        # Mock-specific defaults
-        self._total_pins = config.get("total_pins", 32)
-        self._simulate_noise = config.get("simulate_noise", False)
-        self._noise_probability = max(0.0, min(1.0, config.get("noise_probability", 0.01)))
-        self._response_delay = config.get("response_delay", 0.005)
-        self._connection_delay = config.get("connection_delay", 0.1)
+        # Mock-specific defaults (hardcoded)
+        self._total_pins = 32
+        self._simulate_noise = False
+        self._noise_probability = 0.01
+        self._response_delay = 0.005
+        self._connection_delay = 0.1
 
         # State initialization
         # Config values are already stored directly above

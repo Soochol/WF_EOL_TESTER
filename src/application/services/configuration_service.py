@@ -270,24 +270,6 @@ class ConfigurationService:
         if any(char in profile_name for char in dangerous_chars):
             return False
 
-        if len(profile_name) > 100 or len(profile_name.strip()) == 0:
-            return False
-
-        # No path traversal or dangerous characters
-        dangerous_chars = [
-            "/",
-            "\\",
-            "..",
-            "<",
-            ">",
-            "|",
-            "*",
-            "?",
-            '"',
-        ]
-        if any(char in profile_name for char in dangerous_chars):
-            return False
-
         return True
 
     async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
@@ -305,75 +287,8 @@ class ConfigurationService:
             RepositoryAccessError: If DUT defaults cannot be loaded
         """
         try:
-            # Import here to avoid circular imports
-            import os
-
-            import yaml
-
-            # Define the path to DUT defaults file
-            dut_defaults_path = os.path.join("configuration", "dut_defaults.yaml")
-
-            # Check if file exists
-            if not os.path.exists(dut_defaults_path):
-                logger.warning(f"DUT defaults file not found: {dut_defaults_path}")
-                raise ConfigurationNotFoundError(profile_name="dut_defaults")
-
-            # Read and parse YAML file
-            with open(dut_defaults_path, "r", encoding="utf-8") as file:
-                dut_config = yaml.safe_load(file)
-
-            if not dut_config:
-                raise RepositoryAccessError(
-                    operation="load_dut_defaults", reason="DUT defaults file is empty or invalid"
-                )
-
-            # Determine which profile to use
-            target_profile = profile_name
-            if not target_profile:
-                # Use active_profile from config or default to "default"
-                target_profile = dut_config.get("active_profile", "default")
-
-            # Get the profile data
-            if target_profile == "default":
-                profile_data = dut_config.get("default", {})
-            else:
-                # Look in profiles section
-                profiles = dut_config.get("profiles", {})
-                profile_data = profiles.get(target_profile, {})
-
-                # Fallback to default if profile not found
-                if not profile_data:
-                    logger.warning(f"Profile '{target_profile}' not found, using default")
-                    profile_data = dut_config.get("default", {})
-
-            # Validate required fields exist
-            required_fields = ["dut_id", "model", "operator_id", "manufacturer"]
-            defaults = {}
-
-            for field in required_fields:
-                if field in profile_data:
-                    defaults[field] = str(profile_data[field])
-                else:
-                    logger.warning(f"Missing required field '{field}' in DUT defaults")
-                    # Provide fallback values
-                    fallback_values = {
-                        "dut_id": "DEFAULT001",
-                        "model": "Default Model",
-                        "operator_id": "DEFAULT_OP",
-                        "manufacturer": "Default Manufacturer",
-                    }
-                    defaults[field] = fallback_values[field]
-
-            logger.info(
-                f"Loaded DUT defaults for profile '{target_profile}': {defaults['dut_id']}, {defaults['model']}"
-            )
-            return defaults
-
-        except yaml.YAMLError as e:
-            logger.error(f"YAML parsing error in DUT defaults: {e}")
-            raise RepositoryAccessError(
-                operation="load_dut_defaults", reason=f"Invalid YAML format: {str(e)}"
-            ) from e
+            # Delegate to Configuration repository for file operations
+            return await self._configuration.load_dut_defaults(profile_name)
 
         except Exception as e:
             logger.error(f"Unexpected error loading DUT defaults: {e}")

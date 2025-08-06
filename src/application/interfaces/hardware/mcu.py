@@ -79,12 +79,12 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_temperature(self, target_temp: Optional[float] = None) -> None:
+    async def set_temperature(self, target_temp: float) -> None:
         """
         Set target temperature for the MCU
 
         Args:
-            target_temp: Target temperature in Celsius. None to use default
+            target_temp: Target temperature in Celsius
 
         Raises:
             HardwareOperationError: If temperature setting fails
@@ -138,12 +138,12 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_fan_speed(self, speed_percent: Optional[float] = None) -> None:
+    async def set_fan_speed(self, fan_level: int) -> None:
         """
-        Set fan speed percentage
+        Set fan speed level
 
         Args:
-            speed_percent: Fan speed (0-100%). None to use default
+            fan_level: Fan speed level (1-10)
 
         Raises:
             HardwareOperationError: If fan speed setting fails
@@ -151,12 +151,12 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def get_fan_speed(self) -> float:
+    async def get_fan_speed(self) -> int:
         """
         Get current fan speed
 
         Returns:
-            Current fan speed percentage (0-100%)
+            Current fan speed level (1-10)
         """
         ...
 

@@ -34,24 +34,20 @@ if platform.system() == "Windows":
     except ImportError:
         # Fallback for Windows environments without WinDLL
         class WinDLL:  # type: ignore[no-redef]
-            def __init__(self, path: str) -> None:
-                ...
+            def __init__(self, path: str) -> None: ...
 
 else:
     # Mock WinDLL class for non-Windows systems
     class WinDLL:  # type: ignore[no-redef]
-        def __init__(self, path: str) -> None:
-            ...
+        def __init__(self, path: str) -> None: ...
 
 
 class AXLWrapper:
     """Wrapper class for AXL library functions"""
 
     def __init__(self) -> None:
-        print("[DEBUG] AXLWrapper.__init__ started")
         self.dll: Optional[Any] = None
         self.is_windows = platform.system() == "Windows"
-        print(f"[DEBUG] Platform detected: {platform.system()}, is_windows: {self.is_windows}")
 
         # Initialize instance variables
         self.board_count: int = 0
@@ -60,121 +56,38 @@ class AXLWrapper:
         if not self.is_windows:
             # For development/testing, we can create a mock wrapper that simulates the DLL loading
             import os
-            if os.getenv('AXL_MOCK_MODE', '').lower() == 'true':
-                print("[DEBUG] AXL_MOCK_MODE detected - entering mock mode")
+
+            if os.getenv("AXL_MOCK_MODE", "").lower() == "true":
                 print("Warning: Running in AXL mock mode (no actual hardware control)")
                 self.dll = None  # Mock mode - no DLL
                 self.board_count = 1
                 self.version = "Mock AXL v1.0.0"
                 return  # Skip DLL loading and function setup
             else:
-                print("[DEBUG] Non-Windows platform without mock mode - raising error")
                 raise AXLError(
                     "AXL Motion library is only supported on Windows platform. "
                     "For development/testing on other platforms, use MockRobot instead."
                 )
 
         # On Windows platform, proceed with DLL loading
-        print("[DEBUG] Windows platform detected - proceeding with DLL loading")
-        print("[DEBUG] Calling _load_library()...")
         self._load_library()
-        print("[DEBUG] _load_library() completed successfully")
-
-        print("[DEBUG] Calling _setup_functions()...")
         self._setup_functions()
-        print("[DEBUG] _setup_functions() completed successfully")
-
-        print("[DEBUG] AXLWrapper initialization complete - DLL loaded successfully")
 
     def _load_library(self) -> None:
-        """Load the AXL DLL with enhanced diagnostics"""
-        print("[DEBUG] Starting AXL DLL loading process...")
-
-        # Enhanced DLL path verification
-        print("[DEBUG] Verifying DLL path...")
+        """Load the AXL DLL with enhanced diagnostics"""  # Enhanced DLL path verification
         dll_path_info = self._verify_dll_path()
-        print(f"[DEBUG] DLL path verification result: {dll_path_info}")
 
-        if not dll_path_info['exists']:
-            print("[DEBUG] DLL not found - raising FileNotFoundError")
+        if not dll_path_info["exists"]:
             raise FileNotFoundError(
-                f"AXL DLL not found at {DLL_PATH}\n"
-                f"Path details: {dll_path_info}"
+                f"AXL DLL not found at {DLL_PATH}\n" f"Path details: {dll_path_info}"
             )
-
-        # Check system architecture compatibility
-        print("[DEBUG] Checking system architecture compatibility...")
-        arch_info = self._check_architecture_compatibility()
-        print(f"[DEBUG] System architecture info: {arch_info}")
 
         try:
-            print("[DEBUG] Checking DLL dependencies...")
-            # Check DLL dependencies before loading
-            dep_info = self._check_dll_dependencies()
-            print(f"[DEBUG] DLL dependency check result: {dep_info}")
-
-            print("[DEBUG] Running deep dependency analysis...")
-            deep_dep_analysis = self._analyze_dll_dependencies_deep()
-            print(f"[DEBUG] Deep dependency analysis result: {deep_dep_analysis}")
-
-            # Get Windows error code before attempting DLL load
-            if platform.system() == "Windows":
-                print("[DEBUG] Clearing Windows error state before DLL load...")
-                try:
-                    import ctypes.wintypes
-                    # Clear any previous error
-                    ctypes.windll.kernel32.SetLastError(0)
-                    print("[DEBUG] Windows error state cleared successfully")
-                except Exception as e:
-                    print(f"[DEBUG] Failed to clear Windows error state: {e}")
-
             # Load DLL with Windows calling convention
-            print(f"[DEBUG] Attempting to load AXL DLL from: {DLL_PATH}")
-            print(f"[DEBUG] Using WinDLL to load: {str(DLL_PATH)}")
             self.dll = WinDLL(str(DLL_PATH))
-            print("[DEBUG] ✓ AXL DLL loaded successfully")
 
         except OSError as e:
-            print(f"[DEBUG] OSError caught during DLL loading: {e}")
-            print(f"[DEBUG] OSError type: {type(e)}")
-            print(f"[DEBUG] OSError args: {e.args}")
-
-            # Get detailed Windows error information immediately after failure
-            print("[DEBUG] Getting Windows error details...")
-            windows_error_info = self._get_windows_error_details()
-            print(f"[DEBUG] Windows error details retrieved: {windows_error_info}")
-
-            print("[DEBUG] Getting detailed DLL error analysis...")
-            error_details = self._get_detailed_dll_error(e)
-            print(f"[DEBUG] DLL error details retrieved: {error_details}")
-
-            # Combine all error information
-            comprehensive_error = (
-                f"Failed to load AXL DLL: {e}\n"
-                f"System info: {arch_info}\n"
-                f"Dependencies: {dep_info}\n"
-                f"Deep dependency analysis: {deep_dep_analysis}\n"
-                f"Windows error details: {windows_error_info}\n"
-                f"Error analysis: {error_details}"
-            )
-
-            print("[DEBUG] Comprehensive error message prepared")
-            print(f"\n=== DLL Loading Failure Analysis ===\n{comprehensive_error}\n====================================")
-            raise RuntimeError(comprehensive_error) from e
-
-        except Exception as e:
-            print(f"[DEBUG] Unexpected exception during DLL loading: {type(e).__name__}: {e}")
-            print("[DEBUG] This exception type was not expected - investigating...")
-
-            # Also get Windows error details for unexpected exceptions
-            if platform.system() == "Windows":
-                try:
-                    windows_error_info = self._get_windows_error_details()
-                    print(f"[DEBUG] Windows error details for unexpected exception: {windows_error_info}")
-                except Exception as win_err:
-                    print(f"[DEBUG] Failed to get Windows error details: {win_err}")
-
-            raise
+            raise RuntimeError(f"Failed to load AXL DLL: {e}") from e
 
     def _setup_functions(self) -> None:
         """Setup function signatures for ctypes"""
@@ -907,7 +820,7 @@ class AXLWrapper:
             raise AXLError("AXL DLL not loaded")
 
         # Check if function is available
-        if not hasattr(self.dll, 'AxmMoveStartVel'):
+        if not hasattr(self.dll, "AxmMoveStartVel"):
             print("Warning: AxmMoveStartVel function not available, returning success")
             return 0  # Return success code
 
@@ -1093,11 +1006,11 @@ class AXLWrapper:
         """Verify DLL path and provide detailed information"""
         dll_path = Path(DLL_PATH)
         info = {
-            'path': str(dll_path),
-            'exists': dll_path.exists(),
-            'is_file': dll_path.is_file() if dll_path.exists() else False,
-            'size': dll_path.stat().st_size if dll_path.exists() else 0,
-            'parent_exists': dll_path.parent.exists(),
+            "path": str(dll_path),
+            "exists": dll_path.exists(),
+            "is_file": dll_path.is_file() if dll_path.exists() else False,
+            "size": dll_path.stat().st_size if dll_path.exists() else 0,
+            "parent_exists": dll_path.parent.exists(),
         }
 
         if dll_path.exists():
@@ -1105,230 +1018,14 @@ class AXLWrapper:
                 # Try to get file version info on Windows
                 if platform.system() == "Windows":
                     import win32api
-                    info['version'] = win32api.GetFileVersionInfo(
-                        str(dll_path), '\\StringFileInfo\\040904B0\\FileVersion'
+
+                    info["version"] = win32api.GetFileVersionInfo(
+                        str(dll_path), "\\StringFileInfo\\040904B0\\FileVersion"
                     )
             except (ImportError, Exception):
-                info['version'] = 'Unable to determine'
+                info["version"] = "Unable to determine"
 
         return info
-
-    def _check_architecture_compatibility(self) -> dict:
-        """Check system architecture and DLL compatibility"""
-        system_arch = platform.machine().lower()
-        python_arch = platform.architecture()[0]
-        dll_path = Path(DLL_PATH)
-
-        # Determine expected DLL architecture from path
-        dll_arch = '64-bit' if '64Bit' in str(dll_path) else '32-bit'
-
-        info = {
-            'system_architecture': system_arch,
-            'python_architecture': python_arch,
-            'dll_architecture': dll_arch,
-            'compatible': (python_arch == '64bit' and dll_arch == '64-bit') or
-                         (python_arch == '32bit' and dll_arch == '32-bit'),
-            'platform': platform.system(),
-            'platform_version': platform.version(),
-        }
-
-        return info
-
-    def _check_dll_dependencies(self) -> dict:
-        """Check DLL dependencies and system libraries"""
-        info = {
-            'vcredist_installed': False,
-            'required_libraries': [],
-            'missing_dependencies': [],
-        }
-
-        if platform.system() == "Windows":
-            try:
-                # Check for Visual C++ Redistributables
-                import winreg
-
-                # Check for VC++ 2015-2022 redistributables (common versions)
-                vc_versions = [
-                    r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64",
-                    r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X86",
-                    r"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\X64",
-                    r"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\X86",
-                ]
-
-                for version_path in vc_versions:
-                    try:
-                        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, version_path)
-                        winreg.CloseKey(key)
-                        info['vcredist_installed'] = True
-                        break
-                    except FileNotFoundError:
-                        continue
-
-            except ImportError:
-                info['vcredist_check'] = 'Unable to check (winreg not available)'
-
-            # Check for common system DLLs that AXL might depend on
-            common_dlls = ['kernel32.dll', 'user32.dll', 'advapi32.dll', 'ole32.dll']
-            for dll in common_dlls:
-                try:
-                    ctypes.windll.LoadLibrary(dll)
-                    info['required_libraries'].append(f'{dll}: Available')
-                except OSError:
-                    info['missing_dependencies'].append(dll)
-
-        return info
-
-    def _get_detailed_dll_error(self, error: OSError) -> dict:
-        """Get detailed error information for DLL loading failure"""
-        error_info = {
-            'error_code': getattr(error, 'winerror', None),
-            'error_message': str(error),
-            'suggestions': [],
-        }
-
-        # Add specific suggestions based on error code
-        if hasattr(error, 'winerror'):
-            if error.winerror == 126:  # ERROR_MOD_NOT_FOUND
-                error_info['suggestions'].extend([
-                    'DLL or its dependencies not found',
-                    'Check if Visual C++ Redistributables are installed',
-                    'Verify AJINEXTEK drivers are installed',
-                    'Run application as Administrator if needed'
-                ])
-            elif error.winerror == 193:  # ERROR_BAD_EXE_FORMAT
-                error_info['suggestions'].extend([
-                    'Architecture mismatch (32-bit vs 64-bit)',
-                    'Use matching Python and DLL architectures',
-                ])
-            elif error.winerror == 5:  # ERROR_ACCESS_DENIED
-                error_info['suggestions'].extend([
-                    'Access denied - run as Administrator',
-                    'Check file permissions on DLL',
-                ])
-
-        return error_info
-
-    def _get_windows_error_details(self) -> dict:
-        """Get detailed Windows error information using Windows API"""
-        error_info = {
-            'last_error': None,
-            'error_message': 'Unknown',
-            'system_error_code': None,
-            'detailed_analysis': [],
-        }
-
-        if platform.system() == "Windows":
-            try:
-                import ctypes.wintypes
-
-                # Get the last Windows error code
-                last_error = ctypes.windll.kernel32.GetLastError()
-                error_info['last_error'] = last_error
-                error_info['system_error_code'] = last_error
-
-                # Get the error message from Windows
-                if last_error != 0:
-                    # Use FormatMessage to get readable error description
-                    message_buffer = ctypes.create_unicode_buffer(1024)
-
-                    result = ctypes.windll.kernel32.FormatMessageW(
-                        0x00001000,  # FORMAT_MESSAGE_FROM_SYSTEM
-                        None,        # lpSource
-                        last_error,  # dwMessageId
-                        0,           # dwLanguageId
-                        message_buffer,  # lpBuffer
-                        1024,        # nSize
-                        None         # Arguments
-                    )
-
-                    if result > 0:
-                        error_info['error_message'] = message_buffer.value.strip()
-
-                    # Provide specific analysis based on common error codes
-                    if last_error == 126:  # ERROR_MOD_NOT_FOUND
-                        error_info['detailed_analysis'] = [
-                            'DLL or its dependencies not found',
-                            'Missing Visual C++ Redistributables likely cause',
-                            'Check if all required system DLLs are present',
-                            'Verify AJINEXTEK drivers are properly installed'
-                        ]
-                    elif last_error == 193:  # ERROR_BAD_EXE_FORMAT
-                        error_info['detailed_analysis'] = [
-                            'Invalid DLL format - architecture mismatch',
-                            'Ensure 64-bit Python with 64-bit DLL',
-                            'DLL may be corrupted or incompatible'
-                        ]
-                    elif last_error == 5:  # ERROR_ACCESS_DENIED
-                        error_info['detailed_analysis'] = [
-                            'Access denied - insufficient permissions',
-                            'Even with admin rights, some resources may be restricted',
-                            'Check file permissions on DLL and directory'
-                        ]
-                    elif last_error == 1114:  # ERROR_DLL_INIT_FAILED
-                        error_info['detailed_analysis'] = [
-                            'DLL initialization failed',
-                            'DLL loaded but its DllMain function failed',
-                            'Hardware drivers may not be properly installed',
-                            'AJINEXTEK hardware may not be connected or recognized'
-                        ]
-                    elif last_error == 0:
-                        error_info['detailed_analysis'] = [
-                            'No specific Windows error reported',
-                            'Error may be from Python/ctypes layer',
-                            'Check Python compatibility with DLL'
-                        ]
-                    else:
-                        error_info['detailed_analysis'] = [
-                            f'Uncommon error code: {last_error}',
-                            'Check Windows Event Viewer for more details',
-                            'This may indicate hardware or driver specific issues'
-                        ]
-
-            except Exception as e:
-                error_info['error_message'] = f'Failed to get Windows error details: {e}'
-
-        return error_info
-
-    def _analyze_dll_dependencies_deep(self) -> dict:
-        """Deep analysis of DLL dependencies using Windows tools"""
-        analysis = {
-            'missing_dependencies': [],
-            'available_dependencies': [],
-            'recommendations': [],
-        }
-
-        if platform.system() == "Windows":
-            try:
-                # Check for common Visual C++ runtime dependencies
-                common_deps = [
-                    'msvcr120.dll',  # Visual C++ 2013
-                    'msvcr140.dll',  # Visual C++ 2015-2022
-                    'msvcp120.dll',  # Visual C++ 2013 C++
-                    'msvcp140.dll',  # Visual C++ 2015-2022 C++
-                    'vcruntime140.dll',  # Visual C++ 2015-2022 Runtime
-                    'api-ms-win-crt-runtime-l1-1-0.dll',  # Universal CRT
-                ]
-
-                for dep in common_deps:
-                    try:
-                        # Try to load each dependency
-                        test_dll = ctypes.windll.LoadLibrary(dep)
-                        analysis['available_dependencies'].append(dep)
-                    except OSError:
-                        analysis['missing_dependencies'].append(dep)
-
-                # Provide recommendations based on missing dependencies
-                if any('120' in dep for dep in analysis['missing_dependencies']):
-                    analysis['recommendations'].append('Install Visual C++ Redistributable 2013')
-                if any('140' in dep for dep in analysis['missing_dependencies']):
-                    analysis['recommendations'].append('Install Visual C++ Redistributable 2015-2022')
-                if 'api-ms-win-crt' in str(analysis['missing_dependencies']):
-                    analysis['recommendations'].append('Install Universal C Runtime')
-
-            except Exception as e:
-                analysis['error'] = f'Dependency analysis failed: {e}'
-
-        return analysis
 
     def home_get_result(self, axis_no: int) -> int:
         """Get homing result status for axis"""

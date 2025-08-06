@@ -2,14 +2,17 @@ hardware_config:
   robot:
     irq_no: 7
     axis_id: 0
+    velocity: 200.0
+    acceleration: 1000.0
+    deceleration: 1000.0
   loadcell:
     port: COM8
     baudrate: 9600
     timeout: 1.0
     bytesize: 8
     stopbits: 1
-    parity: null
-    indicator_id: 1
+    parity: even
+    indicator_id: 0
   mcu:
     port: COM4
     baudrate: 115200
@@ -18,8 +21,8 @@ hardware_config:
     stopbits: 1
     parity: null
   power:
-    host: 192.168.11.1
-    port: 5000
+    host: 192.168.1.100
+    port: 8080
     timeout: 5.0
     channel: 1
   digital_io:
@@ -31,6 +34,6 @@ hardware_config:
     beep: 7
 metadata:
   description: Auto-generated hardware configuration
-  version: "1.0"
+  version: '1.0'
   created_by: YamlConfiguration (auto-generated)
-  created_time: "2025-08-05T16:34:12.489693"
+  created_time: '2025-08-07T01:29:01.902084'
