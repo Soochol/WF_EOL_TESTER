@@ -139,8 +139,12 @@ class LMAMCU(MCUService):
                 parity=parity,
             )
 
-            # Clear any noise or leftover data from previous connections
-            await self._clear_serial_buffer()
+            # Clear any noise or leftover data from previous connections (direct flush for fastest startup)
+            if hasattr(self._connection, 'flush_input_buffer'):
+                flushed = await self._connection.flush_input_buffer()
+                logger.debug(f"Connection buffer flush: {'success' if flushed else 'not available'}")
+            else:
+                logger.debug("Native flush not available, skipping buffer clear on connection")
 
             self._is_connected = True
             logger.info("LMA MCU connected successfully")
@@ -559,25 +563,45 @@ class LMAMCU(MCUService):
 
     # Private helper methods
 
-    async def _clear_serial_buffer(self) -> None:
-        """Clear serial buffer to remove noise and sync issues"""
+    async def _clear_serial_buffer(self, fast_mode: bool = True) -> None:
+        """Clear serial buffer to remove noise and sync issues
+        
+        Args:
+            fast_mode: If True, prefer native flush for speed. If False, use thorough read method.
+        """
         if not self._connection:
             return
             
         try:
-            # Read and discard any remaining data in the buffer
+            # Step 1: Try native flush first (fastest method)
+            if fast_mode and hasattr(self._connection, 'flush_input_buffer'):
+                if await self._connection.flush_input_buffer():
+                    logger.debug("Buffer cleared using native flush (fast mode)")
+                    return
+                else:
+                    logger.debug("Native flush failed, falling back to read method")
+            
+            # Step 2: Fallback to read-and-discard method
             discarded_bytes = 0
-            while True:
+            timeout = 0.01 if fast_mode else 0.1  # Much shorter timeout for fast mode
+            max_attempts = 5 if fast_mode else 20  # Fewer attempts for fast mode
+            attempts = 0
+            
+            while attempts < max_attempts:
                 try:
-                    data = await self._connection.read(1, 0.1)  # Short timeout
+                    data = await self._connection.read(1, timeout)
                     if not data:
                         break
                     discarded_bytes += len(data)
+                    attempts += 1
                 except asyncio.TimeoutError:
                     break
             
             if discarded_bytes > 0:
-                logger.debug(f"Cleared {discarded_bytes} bytes from serial buffer")
+                mode_str = "fast" if fast_mode else "thorough"
+                logger.debug(f"Cleared {discarded_bytes} bytes from serial buffer ({mode_str} mode)")
+            elif not fast_mode:
+                logger.debug("No data found in serial buffer during thorough clear")
                 
         except Exception as e:
             logger.debug(f"Error clearing serial buffer: {e}")
@@ -812,13 +836,14 @@ class LMAMCU(MCUService):
                         logger.debug("Attempting STX synchronization due to noise...")
                         sync_attempted = True
                         
-                        # Clear buffer and search for STX
-                        await self._clear_serial_buffer()
+                        # Clear buffer thoroughly for noise recovery
+                        await self._clear_serial_buffer(fast_mode=False)
                         
                         # Search for STX pattern
                         if await self._find_stx_sync():
                             logger.debug("STX synchronization successful, continuing with packet reception")
-                            # STX already found, continue to read rest of packet
+                            # STX already found, break to read rest of packet
+                            break
                         else:
                             raise LMACommunicationError("STX synchronization failed - no valid STX found")
                     else:

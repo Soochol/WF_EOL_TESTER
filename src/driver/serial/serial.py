@@ -141,6 +141,56 @@ class SerialConnection:
         """Check if connection is active"""
         return self._is_connected and not self._writer.is_closing()
 
+    async def flush_input_buffer(self) -> bool:
+        """
+        Clear input buffer using pyserial's native flush method
+        
+        Returns:
+            True if native flush succeeded, False if fallback needed
+        """
+        try:
+            # Access the underlying pyserial instance through transport
+            if hasattr(self._writer, 'transport') and self._writer.transport:
+                serial_instance = self._writer.transport.serial
+                if hasattr(serial_instance, 'reset_input_buffer'):
+                    serial_instance.reset_input_buffer()
+                    logger.debug("Input buffer flushed using native pyserial method")
+                    return True
+                elif hasattr(serial_instance, 'flushInput'):
+                    # Older pyserial versions
+                    serial_instance.flushInput()
+                    logger.debug("Input buffer flushed using legacy pyserial method")
+                    return True
+        except Exception as e:
+            logger.debug(f"Native buffer flush failed: {e}")
+        
+        return False
+
+    async def flush_output_buffer(self) -> bool:
+        """
+        Clear output buffer using pyserial's native flush method
+        
+        Returns:
+            True if native flush succeeded, False if fallback needed
+        """
+        try:
+            # Access the underlying pyserial instance through transport
+            if hasattr(self._writer, 'transport') and self._writer.transport:
+                serial_instance = self._writer.transport.serial
+                if hasattr(serial_instance, 'reset_output_buffer'):
+                    serial_instance.reset_output_buffer()
+                    logger.debug("Output buffer flushed using native pyserial method")
+                    return True
+                elif hasattr(serial_instance, 'flushOutput'):
+                    # Older pyserial versions
+                    serial_instance.flushOutput()
+                    logger.debug("Output buffer flushed using legacy pyserial method")
+                    return True
+        except Exception as e:
+            logger.debug(f"Native output flush failed: {e}")
+        
+        return False
+
     async def write(self, data: bytes) -> None:
         """
         Write data to serial port
