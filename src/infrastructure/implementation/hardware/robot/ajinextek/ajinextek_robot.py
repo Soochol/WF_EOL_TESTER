@@ -1274,7 +1274,7 @@ class AjinextekRobot(RobotService):
         """
         try:
             # Use absolute path to ensure file is found regardless of working directory
-            project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+            project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
             robot_motion_settings_file = (
                 project_root / "configuration" / "robot_motion_settings.mot"
             )
@@ -1288,13 +1288,12 @@ class AjinextekRobot(RobotService):
                 )
 
             logger.info(
-                "Loading robot motion settings from %s using AxmMotLoadPara for axis %d",
+                "Loading robot motion settings from %s using AxmMotLoadParaAll",
                 robot_motion_settings_file,
-                axis_id,
             )
 
-            # Load parameters for specific axis using AJINEXTEK standard function
-            result = self._axl.load_para(axis_id, str(robot_motion_settings_file))
+            # Load parameters for all axes using AJINEXTEK standard function
+            result = self._axl.load_para_all(str(robot_motion_settings_file))
 
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
@@ -1302,15 +1301,14 @@ class AjinextekRobot(RobotService):
                     f"Failed to load motion settings from {robot_motion_settings_file}: {error_msg}"
                 )
                 raise RobotConnectionError(
-                    f"AxmMotLoadPara failed for axis {axis_id}: {error_msg}",
+                    f"AxmMotLoadParaAll failed: {error_msg}",
                     "AJINEXTEK",
-                    details=f"File: {robot_motion_settings_file}, Axis: {axis_id}, Error: {result}",
+                    details=f"File: {robot_motion_settings_file}, Error: {result}",
                 )
 
             logger.info(
-                "Robot motion settings loaded successfully from %s for axis %d",
+                "Robot motion settings loaded successfully from %s for all axes",
                 robot_motion_settings_file,
-                axis_id,
             )
 
         except RobotConnectionError:

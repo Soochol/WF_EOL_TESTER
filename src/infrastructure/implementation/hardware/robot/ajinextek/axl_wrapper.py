@@ -972,6 +972,14 @@ class AXLWrapper:
         return self.dll.AxmMoveMultiStop(axis_array, decel_array, axis_count)  # type: ignore[no-any-return]
 
     # === Parameter Loading/Saving Functions ===
+    def load_para_all(self, file_path: str) -> int:
+        """Load all motion parameters from file"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        file_path_bytes = file_path.encode("ascii")
+        return self.dll.AxmMotLoadParaAll(file_path_bytes)  # type: ignore[no-any-return]
+
     def save_para_all(self, file_path: str) -> int:
         """Save all motion parameters to file"""
         if self.dll is None:
