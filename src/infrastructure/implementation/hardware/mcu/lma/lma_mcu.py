@@ -30,6 +30,7 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     CMD_SET_FAN_SPEED,
     CMD_SET_OPERATING_TEMP,
     CMD_SET_UPPER_TEMP,
+    COMMAND_MESSAGES,
     ETX,
     FAN_SPEED_MAX,
     FAN_SPEED_MIN,
@@ -651,11 +652,11 @@ class LMAMCU(MCUService):
                 except asyncio.TimeoutError:
                     continue
                     
-            # Timeout or max bytes reached
+            # Timeout or max bytes reached - use debug level to avoid noise spam
             if noise_bytes:
-                logger.warning(f"STX sync failed after searching {bytes_searched} bytes. Noise data: {noise_bytes.hex()}")
+                logger.debug(f"STX sync failed after searching {bytes_searched} bytes")
             else:
-                logger.warning(f"STX sync failed - no data received in {timeout}s")
+                logger.debug(f"STX sync failed - no data received in {timeout}s")
                 
             return False
             
@@ -711,10 +712,20 @@ class LMAMCU(MCUService):
             # Build frame: STX + CMD + LEN + DATA + ETX
             frame = STX + struct.pack("B", command) + struct.pack("B", len(data)) + data + ETX
 
+            # Format hex display with spaces: STX CMD LEN DATA ETX
+            hex_parts = [STX.hex().upper(), f"{command:02X}", f"{len(data):02X}"]
+            if data:
+                hex_parts.append(data.hex().upper())
+            hex_parts.append(ETX.hex().upper())
+            packet_hex = " ".join(hex_parts)
+
+            # Get command description
+            cmd_name = COMMAND_MESSAGES.get(command, f"Unknown CMD 0x{command:02X}")
+            
             # Send frame
             await self._connection.write(frame)
 
-            logger.debug("LMA command 0x%02X sent", command)
+            logger.info(f"PC -> MCU: {packet_hex} ({cmd_name})")
 
         except Exception as e:
             raise LMACommunicationError(f"Command send failed: {e}") from e
@@ -876,8 +887,27 @@ class LMAMCU(MCUService):
                     logger.debug(f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})")
                     raise LMACommunicationError(f"Invalid ETX: received {etx_data.hex()}, expected {ETX.hex()}")
 
-                # Successful packet reception
-                logger.debug(f"Valid packet received: status=0x{status:02X}, data_len={data_len}")
+                # Successful packet reception - format hex display with spaces: STX STATUS LEN DATA ETX
+                hex_parts = [STX.hex().upper(), f"{status:02X}", f"{data_len:02X}"]
+                if data:
+                    hex_parts.append(data.hex().upper())
+                hex_parts.append(ETX.hex().upper())
+                packet_hex = " ".join(hex_parts)
+
+                # Get status description and parse data
+                status_name = STATUS_MESSAGES.get(status, f"Unknown STATUS 0x{status:02X}")
+                parsed_info = ""
+                
+                # Parse data based on status type
+                if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
+                    temp = self._decode_temperature(data)
+                    parsed_info = f": {temp:.1f}°C"
+                elif status == STATUS_BOOT_COMPLETE:
+                    parsed_info = ""
+                elif status in [STATUS_TEST_MODE_COMPLETE, STATUS_OPERATING_TEMP_OK, STATUS_FAN_SPEED_OK]:
+                    parsed_info = ""
+
+                logger.info(f"MCU -> PC: {packet_hex} ({status_name}{parsed_info})")
                 
                 return {
                     "status": status,
