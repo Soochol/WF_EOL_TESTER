@@ -51,8 +51,10 @@ class AXLWrapper:
     """Wrapper class for AXL library functions"""
 
     def __init__(self) -> None:
+        print("[DEBUG] AXLWrapper.__init__ started")
         self.dll: Optional[Any] = None
         self.is_windows = platform.system() == "Windows"
+        print(f"[DEBUG] Platform detected: {platform.system()}, is_windows: {self.is_windows}")
 
         # Initialize instance variables
         self.board_count: int = 0
@@ -62,65 +64,96 @@ class AXLWrapper:
             # For development/testing, we can create a mock wrapper that simulates the DLL loading
             import os
             if os.getenv('AXL_MOCK_MODE', '').lower() == 'true':
+                print("[DEBUG] AXL_MOCK_MODE detected - entering mock mode")
                 print("Warning: Running in AXL mock mode (no actual hardware control)")
                 self.dll = None  # Mock mode - no DLL
+                self.board_count = 1
+                self.version = "Mock AXL v1.0.0"
                 return  # Skip DLL loading and function setup
             else:
+                print("[DEBUG] Non-Windows platform without mock mode - raising error")
                 raise AXLError(
                     "AXL Motion library is only supported on Windows platform. "
                     "For development/testing on other platforms, use MockRobot instead."
                 )
-            
-        if self.dll is not None:  # Only proceed if not in mock mode
-            self._load_library()
-            self._setup_functions()
-            # Initialize board count and version after setup
-            self.board_count = self._get_board_count_internal()
-            self.version = self._get_lib_version_internal()
-        else:
-            # Mock mode - set default values
-            self.board_count = 1
-            self.version = "Mock AXL v1.0.0"
+        
+        # On Windows platform, proceed with DLL loading
+        print("[DEBUG] Windows platform detected - proceeding with DLL loading")
+        print("[DEBUG] Calling _load_library()...")
+        self._load_library()
+        print("[DEBUG] _load_library() completed successfully")
+        
+        print("[DEBUG] Calling _setup_functions()...")
+        self._setup_functions()
+        print("[DEBUG] _setup_functions() completed successfully")
+        
+        # Initialize board count and version after setup
+        print("[DEBUG] Getting board count and version...")
+        self.board_count = self._get_board_count_internal()
+        self.version = self._get_lib_version_internal()
+        print(f"[DEBUG] AXLWrapper initialization complete - boards: {self.board_count}, version: {self.version}")
 
     def _load_library(self) -> None:
         """Load the AXL DLL with enhanced diagnostics"""
+        print("[DEBUG] Starting AXL DLL loading process...")
+        
         # Enhanced DLL path verification
+        print("[DEBUG] Verifying DLL path...")
         dll_path_info = self._verify_dll_path()
+        print(f"[DEBUG] DLL path verification result: {dll_path_info}")
+        
         if not dll_path_info['exists']:
+            print(f"[DEBUG] DLL not found - raising FileNotFoundError")
             raise FileNotFoundError(
                 f"AXL DLL not found at {DLL_PATH}\n"
                 f"Path details: {dll_path_info}"
             )
         
         # Check system architecture compatibility
+        print("[DEBUG] Checking system architecture compatibility...")
         arch_info = self._check_architecture_compatibility()
-        print(f"System architecture info: {arch_info}")
+        print(f"[DEBUG] System architecture info: {arch_info}")
         
         try:
+            print("[DEBUG] Checking DLL dependencies...")
             # Check DLL dependencies before loading
             dep_info = self._check_dll_dependencies()
+            print(f"[DEBUG] DLL dependency check result: {dep_info}")
+            
+            print("[DEBUG] Running deep dependency analysis...")
             deep_dep_analysis = self._analyze_dll_dependencies_deep()
-            print(f"DLL dependency check: {dep_info}")
-            print(f"Deep dependency analysis: {deep_dep_analysis}")
+            print(f"[DEBUG] Deep dependency analysis result: {deep_dep_analysis}")
             
             # Get Windows error code before attempting DLL load
             if platform.system() == "Windows":
+                print("[DEBUG] Clearing Windows error state before DLL load...")
                 try:
                     import ctypes.wintypes
                     # Clear any previous error
                     ctypes.windll.kernel32.SetLastError(0)
-                except Exception:
-                    pass
+                    print("[DEBUG] Windows error state cleared successfully")
+                except Exception as e:
+                    print(f"[DEBUG] Failed to clear Windows error state: {e}")
             
             # Load DLL with Windows calling convention
-            print(f"Attempting to load AXL DLL from: {DLL_PATH}")
+            print(f"[DEBUG] Attempting to load AXL DLL from: {DLL_PATH}")
+            print(f"[DEBUG] Using WinDLL to load: {str(DLL_PATH)}")
             self.dll = WinDLL(str(DLL_PATH))
-            print("✓ AXL DLL loaded successfully")
+            print("[DEBUG] ✓ AXL DLL loaded successfully")
             
         except OSError as e:
+            print(f"[DEBUG] OSError caught during DLL loading: {e}")
+            print(f"[DEBUG] OSError type: {type(e)}")
+            print(f"[DEBUG] OSError args: {e.args}")
+            
             # Get detailed Windows error information immediately after failure
+            print("[DEBUG] Getting Windows error details...")
             windows_error_info = self._get_windows_error_details()
+            print(f"[DEBUG] Windows error details retrieved: {windows_error_info}")
+            
+            print("[DEBUG] Getting detailed DLL error analysis...")
             error_details = self._get_detailed_dll_error(e)
+            print(f"[DEBUG] DLL error details retrieved: {error_details}")
             
             # Combine all error information
             comprehensive_error = (
@@ -132,8 +165,23 @@ class AXLWrapper:
                 f"Error analysis: {error_details}"
             )
             
+            print(f"[DEBUG] Comprehensive error message prepared")
             print(f"\n=== DLL Loading Failure Analysis ===\n{comprehensive_error}\n====================================")
             raise RuntimeError(comprehensive_error) from e
+        
+        except Exception as e:
+            print(f"[DEBUG] Unexpected exception during DLL loading: {type(e).__name__}: {e}")
+            print(f"[DEBUG] This exception type was not expected - investigating...")
+            
+            # Also get Windows error details for unexpected exceptions
+            if platform.system() == "Windows":
+                try:
+                    windows_error_info = self._get_windows_error_details()
+                    print(f"[DEBUG] Windows error details for unexpected exception: {windows_error_info}")
+                except Exception as win_err:
+                    print(f"[DEBUG] Failed to get Windows error details: {win_err}")
+            
+            raise
 
     def _setup_functions(self) -> None:
         """Setup function signatures for ctypes"""
