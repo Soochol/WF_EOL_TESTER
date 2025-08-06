@@ -3,7 +3,7 @@ hardware_config:
     irq_no: 7
     axis_id: 0
   loadcell:
-    port: COM3
+    port: COM8
     baudrate: 9600
     timeout: 1.0
     bytesize: 8

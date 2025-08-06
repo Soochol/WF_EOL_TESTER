@@ -145,8 +145,7 @@ class ServiceFactory:
 
         # BS205 실제 하드웨어 (설정 기반)
         logger.info("Creating BS205 LoadCell service with config: %s", config)
-        # config가 있으면 BS205LoadCell 생성자에 전달 (현재는 생성자가 config를 받지 않으므로 로깅만)
-        return BS205LoadCell()
+        return BS205LoadCell(config)
 
     @staticmethod
     def create_power_service(config: Optional[Dict] = None) -> Union["OdaPower", "MockPower"]:
