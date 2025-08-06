@@ -56,16 +56,28 @@ class AXLWrapper:
         self.version: str = "Unknown"
 
         if not self.is_windows:
-            raise AXLError(
-                "AXL Motion library is only supported on Windows platform. "
-                "For development/testing on other platforms, use MockRobot instead."
-            )
+            # For development/testing, we can create a mock wrapper that simulates the DLL loading
+            import os
+            if os.getenv('AXL_MOCK_MODE', '').lower() == 'true':
+                print("Warning: Running in AXL mock mode (no actual hardware control)")
+                self.dll = None  # Mock mode - no DLL
+                return  # Skip DLL loading and function setup
+            else:
+                raise AXLError(
+                    "AXL Motion library is only supported on Windows platform. "
+                    "For development/testing on other platforms, use MockRobot instead."
+                )
             
-        self._load_library()
-        self._setup_functions()
-        # Initialize board count and version after setup
-        self.board_count = self._get_board_count_internal()
-        self.version = self._get_lib_version_internal()
+        if self.dll is not None:  # Only proceed if not in mock mode
+            self._load_library()
+            self._setup_functions()
+            # Initialize board count and version after setup
+            self.board_count = self._get_board_count_internal()
+            self.version = self._get_lib_version_internal()
+        else:
+            # Mock mode - set default values
+            self.board_count = 1
+            self.version = "Mock AXL v1.0.0"
 
     def _load_library(self) -> None:
         """Load the AXL DLL"""
