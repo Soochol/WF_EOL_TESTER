@@ -129,13 +129,14 @@ class RobotController(HardwareController):
             "1": "📊 Show Status (s)",
             "2": "🔌 Connect (c)",
             "3": "❌ Disconnect (d)",
-            "4": f"⚙️ Initialize Robot (init)    [Status: {init_status}]",
-            "5": "🚨 Emergency Stop (stop)      ⚠️  [Safety Critical]",
-            "6": "🏠 Home Axis (home)",
-            "7": "📍 Move Absolute (abs)",
-            "8": "↔️ Move Relative (rel)",
-            "9": "⏹️ Stop Motion (stop-motion)",
-            "10": "📍 Get Position (pos)",
+            "4": "✅ Servo On (servo-on)       ⚡ [Enable Motor]",
+            "5": "❌ Servo Off (servo-off)     ⚠️  [Disable Motor]",
+            "6": "🚨 Emergency Stop (stop)      ⚠️  [Safety Critical]",
+            "7": "🏠 Home Axis (home)",
+            "8": "📍 Move Absolute (abs)",
+            "9": "↔️ Move Relative (rel)",
+            "10": "⏹️ Stop Motion (stop-motion)",
+            "11": "📍 Get Position (pos)",
             "b": "⬅️  Back to Hardware Menu",
         }
 
@@ -143,7 +144,7 @@ class RobotController(HardwareController):
         enhanced_title = (
             f"🤖 Robot Control System\n"
             f"📡 Status: {connection_status}  |  ⚙️ Init: {init_status}  |  {position_info}\n"
-            f"[dim]💡 Shortcuts: s, c, d, init, stop, home, abs, rel, stop-motion, pos[/dim]"
+            f"[dim]💡 Shortcuts: s, c, d, servo-on, servo-off, stop, home, abs, rel, stop-motion, pos[/dim]"
         )
 
         # Get user input with custom validation that includes shortcuts
@@ -164,7 +165,8 @@ class RobotController(HardwareController):
                 "s",
                 "c",
                 "d",
-                "init",
+                "servo-on",
+                "servo-off",
                 "stop",
                 "home",
                 "abs",
@@ -190,19 +192,21 @@ class RobotController(HardwareController):
                 return await self.connect()
             elif cmd == "3" or cmd == "d":
                 return await self.disconnect()
-            elif cmd == "4" or cmd == "init":
-                await self._initialize_robot()
-            elif cmd == "5" or cmd == "stop":
+            elif cmd == "4" or cmd == "servo-on":
+                await self._servo_on()
+            elif cmd == "5" or cmd == "servo-off":
+                await self._servo_off()
+            elif cmd == "6" or cmd == "stop":
                 await self._emergency_stop()
-            elif cmd == "6" or cmd == "home":
+            elif cmd == "7" or cmd == "home":
                 await self._home_axis()
-            elif cmd == "7" or cmd == "abs":
+            elif cmd == "8" or cmd == "abs":
                 await self._move_absolute()
-            elif cmd == "8" or cmd == "rel":
+            elif cmd == "9" or cmd == "rel":
                 await self._move_relative()
-            elif cmd == "9" or cmd == "stop-motion":
+            elif cmd == "10" or cmd == "stop-motion":
                 await self._stop_motion()
-            elif cmd == "10" or cmd == "pos":
+            elif cmd == "11" or cmd == "pos":
                 await self._get_position()
             else:
                 return False
@@ -213,21 +217,43 @@ class RobotController(HardwareController):
             return False
 
     # Private robot-specific operations
-    async def _initialize_robot(self) -> None:
-        """Initialize robot system"""
-
-        async def init_operation():
-            # Home primary axis using parameters from configuration
+    async def _servo_on(self) -> None:
+        """Enable servo (motor power on)"""
+        try:
             primary_axis = self.axis_id
-            await self.robot_service.home_axis(primary_axis)
-            return True
+            
+            async def servo_on_operation():
+                await self.robot_service.enable_servo(primary_axis)
+                return True
 
-        await self._show_progress_with_message(
-            "Initializing robot system...",
-            init_operation,
-            "Robot initialized successfully",
-            "Robot initialization failed",
-        )
+            await self._show_progress_with_message(
+                f"Enabling servo for axis {primary_axis}...",
+                servo_on_operation,
+                f"Servo enabled successfully for axis {primary_axis}",
+                "Servo enable failed",
+            )
+
+        except Exception as e:
+            self.formatter.print_message(f"Servo enable failed: {str(e)}", message_type="error")
+
+    async def _servo_off(self) -> None:
+        """Disable servo (motor power off)"""
+        try:
+            primary_axis = self.axis_id
+            
+            async def servo_off_operation():
+                await self.robot_service.disable_servo(primary_axis)
+                return True
+
+            await self._show_progress_with_message(
+                f"Disabling servo for axis {primary_axis}...",
+                servo_off_operation,
+                f"Servo disabled successfully for axis {primary_axis}",
+                "Servo disable failed",
+            )
+
+        except Exception as e:
+            self.formatter.print_message(f"Servo disable failed: {str(e)}", message_type="error")
 
     async def _emergency_stop(self) -> None:
         """Execute emergency stop"""
