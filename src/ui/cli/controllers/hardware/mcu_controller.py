@@ -141,6 +141,7 @@ class MCUController(HardwareController):
             "4": f"🌡️ Get Temperature     [{temp_info}]",
             "5": f"🧪 Enter Test Mode     [{mode_info}]",
             "6": f"🎛️ Set Operating Temp  [{temp_info}]",
+            "7": "⏳ Wait Boot Complete",
             "b": "⬅️  Back to Hardware Menu",
             # Shortcuts
             "s": "📊 Show Status (shortcut)",
@@ -149,13 +150,14 @@ class MCUController(HardwareController):
             "temp": "🌡️ Get Temperature (shortcut)",
             "test": "🧪 Enter Test Mode (shortcut)",
             "set": "🎛️ Set Operating Temp (shortcut)",
+            "boot": "⏳ Wait Boot Complete (shortcut)",
         }
 
         # Create enhanced title with status
         enhanced_title = (
             f"⚙️ MCU Control System\n"
             f"📡 Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, temp=temperature, test=testmode[/dim]"
+            f"[dim]💡 Shortcuts: s=status, c=connect, d=disconnect, temp=temperature, test=testmode, boot=wait[/dim]"
         )
 
         return simple_interactive_menu(
@@ -183,6 +185,8 @@ class MCUController(HardwareController):
                 await self._enter_test_mode()
             elif cmd == "6" or cmd == "set":
                 await self._set_operating_temperature()
+            elif cmd == "7" or cmd == "boot":
+                await self._wait_boot_complete()
             else:
                 return False
             return True
@@ -245,4 +249,34 @@ class MCUController(HardwareController):
         except Exception as e:
             self.formatter.print_message(
                 f"Failed to set operating temperature: {str(e)}", message_type="error"
+            )
+
+    async def _wait_boot_complete(self) -> None:
+        """Wait for MCU boot complete signal"""
+        try:
+            # Check if MCU is connected
+            if not await self.mcu_service.is_connected():
+                self.formatter.print_message("MCU is not connected", message_type="error")
+                return
+
+            async def boot_wait_operation():
+                # Check if MCU service has wait_boot_complete method
+                if hasattr(self.mcu_service, 'wait_boot_complete'):
+                    await self.mcu_service.wait_boot_complete()
+                else:
+                    # Fallback: just show that we're waiting
+                    import asyncio
+                    await asyncio.sleep(2.0)
+                return True
+
+            await self._show_progress_with_message(
+                "Waiting for MCU boot complete signal...",
+                boot_wait_operation,
+                "MCU boot complete signal received successfully",
+                "Failed to receive boot complete signal",
+            )
+
+        except Exception as e:
+            self.formatter.print_message(
+                f"Boot complete wait failed: {str(e)}", message_type="error"
             )

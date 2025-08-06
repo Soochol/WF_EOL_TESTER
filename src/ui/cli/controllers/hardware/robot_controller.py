@@ -304,20 +304,53 @@ class RobotController(HardwareController):
 
             primary_axis = self.axis_id
 
-            # Get user input for position
-            self.formatter.print_message("Enter absolute position parameters:", message_type="info")
-
-            # Use configuration values or defaults
-            position = 100.0  # mm - TODO: Could be made configurable
-            if self.robot_config:
-                velocity = self.robot_config.velocity
-                acceleration = self.robot_config.acceleration
-                deceleration = self.robot_config.deceleration
-            else:
-                # Fallback to defaults
-                velocity = 200.0  # mm/s
-                acceleration = 1000.0  # mm/s²
-                deceleration = 1000.0  # mm/s²
+            # Get user input for position and motion parameters
+            self.formatter.print_message("🎯 Absolute Position Move Setup", message_type="info")
+            
+            # Get target position from user
+            position = self._get_user_input_with_validation(
+                "Enter target position (mm):",
+                input_type=float,
+                validator=lambda x: -1000.0 <= x <= 1000.0,  # Reasonable position range
+            )
+            if position is None:
+                self.formatter.print_message("❌ Move cancelled", message_type="info")
+                return
+            
+            # Get default values from config or use fallbacks
+            default_velocity = self.robot_config.velocity if self.robot_config else 200.0
+            default_acceleration = self.robot_config.acceleration if self.robot_config else 1000.0
+            default_deceleration = self.robot_config.deceleration if self.robot_config else 1000.0
+            
+            # Get velocity from user (with default)
+            velocity = self._get_user_input_with_validation(
+                f"Enter velocity (mm/s) [default: {default_velocity:.1f}]:",
+                input_type=float,
+                validator=lambda x: 1.0 <= x <= 1000.0,  # Reasonable velocity range
+                default_value=default_velocity,
+            )
+            if velocity is None:
+                velocity = default_velocity
+            
+            # Get acceleration from user (with default)
+            acceleration = self._get_user_input_with_validation(
+                f"Enter acceleration (mm/s²) [default: {default_acceleration:.1f}]:",
+                input_type=float,
+                validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable acceleration range
+                default_value=default_acceleration,
+            )
+            if acceleration is None:
+                acceleration = default_acceleration
+            
+            # Get deceleration from user (with default)
+            deceleration = self._get_user_input_with_validation(
+                f"Enter deceleration (mm/s²) [default: {default_deceleration:.1f}]:",
+                input_type=float,
+                validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable deceleration range
+                default_value=default_deceleration,
+            )
+            if deceleration is None:
+                deceleration = default_deceleration
 
             async def move_operation():
                 await self.robot_service.move_absolute(
@@ -329,10 +362,20 @@ class RobotController(HardwareController):
                 )
                 return True
 
+            # Show motion parameters summary
+            self.formatter.print_message(
+                f"📊 Motion Parameters:\n"
+                f"   Target Position: {position:.2f} mm\n"
+                f"   Velocity: {velocity:.1f} mm/s\n"
+                f"   Acceleration: {acceleration:.1f} mm/s²\n"
+                f"   Deceleration: {deceleration:.1f} mm/s²",
+                message_type="info"
+            )
+            
             await self._show_progress_with_message(
-                f"Moving axis {primary_axis} to position {position}mm...",
+                f"Moving axis {primary_axis} to position {position:.2f}mm...",
                 move_operation,
-                f"Axis {primary_axis} moved to {position}mm successfully",
+                f"Axis {primary_axis} moved to {position:.2f}mm successfully",
                 "Absolute move failed",
             )
 
@@ -349,20 +392,53 @@ class RobotController(HardwareController):
 
             primary_axis = self.axis_id
 
-            # Get user input for distance
-            self.formatter.print_message("Enter relative movement parameters:", message_type="info")
-
-            # Use configuration values or defaults
-            distance = 10.0  # mm - TODO: Could be made configurable
-            if self.robot_config:
-                velocity = self.robot_config.velocity
-                acceleration = self.robot_config.acceleration
-                deceleration = self.robot_config.deceleration
-            else:
-                # Fallback to defaults
-                velocity = 200.0  # mm/s
-                acceleration = 1000.0  # mm/s²
-                deceleration = 1000.0  # mm/s²
+            # Get user input for distance and motion parameters
+            self.formatter.print_message("🎯 Relative Position Move Setup", message_type="info")
+            
+            # Get relative distance from user
+            distance = self._get_user_input_with_validation(
+                "Enter relative distance (mm):",
+                input_type=float,
+                validator=lambda x: -500.0 <= x <= 500.0,  # Reasonable relative distance range
+            )
+            if distance is None:
+                self.formatter.print_message("❌ Move cancelled", message_type="info")
+                return
+            
+            # Get default values from config or use fallbacks
+            default_velocity = self.robot_config.velocity if self.robot_config else 200.0
+            default_acceleration = self.robot_config.acceleration if self.robot_config else 1000.0
+            default_deceleration = self.robot_config.deceleration if self.robot_config else 1000.0
+            
+            # Get velocity from user (with default)
+            velocity = self._get_user_input_with_validation(
+                f"Enter velocity (mm/s) [default: {default_velocity:.1f}]:",
+                input_type=float,
+                validator=lambda x: 1.0 <= x <= 1000.0,  # Reasonable velocity range
+                default_value=default_velocity,
+            )
+            if velocity is None:
+                velocity = default_velocity
+            
+            # Get acceleration from user (with default)
+            acceleration = self._get_user_input_with_validation(
+                f"Enter acceleration (mm/s²) [default: {default_acceleration:.1f}]:",
+                input_type=float,
+                validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable acceleration range
+                default_value=default_acceleration,
+            )
+            if acceleration is None:
+                acceleration = default_acceleration
+            
+            # Get deceleration from user (with default)
+            deceleration = self._get_user_input_with_validation(
+                f"Enter deceleration (mm/s²) [default: {default_deceleration:.1f}]:",
+                input_type=float,
+                validator=lambda x: 100.0 <= x <= 10000.0,  # Reasonable deceleration range
+                default_value=default_deceleration,
+            )
+            if deceleration is None:
+                deceleration = default_deceleration
 
             async def move_operation():
                 await self.robot_service.move_relative(
@@ -374,10 +450,20 @@ class RobotController(HardwareController):
                 )
                 return True
 
+            # Show motion parameters summary
+            self.formatter.print_message(
+                f"📊 Motion Parameters:\\n"
+                f"   Relative Distance: {distance:.2f} mm\\n"
+                f"   Velocity: {velocity:.1f} mm/s\\n"
+                f"   Acceleration: {acceleration:.1f} mm/s²\\n"
+                f"   Deceleration: {deceleration:.1f} mm/s²",
+                message_type="info"
+            )
+
             await self._show_progress_with_message(
-                f"Moving axis {primary_axis} by {distance}mm...",
+                f"Moving axis {primary_axis} by {distance:.2f}mm...",
                 move_operation,
-                f"Axis {primary_axis} moved by {distance}mm successfully",
+                f"Axis {primary_axis} moved by {distance:.2f}mm successfully",
                 "Relative move failed",
             )
 

@@ -139,11 +139,6 @@ class LMAMCU(MCUService):
                 parity=parity,
             )
 
-            # Wait for boot complete message with timeout protection
-            await asyncio.wait_for(
-                self._wait_for_boot_complete(),
-                timeout=BOOT_COMPLETE_TIMEOUT + 2.0,  # Extra time for connection setup
-            )
 
             self._is_connected = True
             logger.info("LMA MCU connected successfully")
