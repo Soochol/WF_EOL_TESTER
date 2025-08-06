@@ -99,7 +99,18 @@ class AXLWrapper:
         try:
             # Check DLL dependencies before loading
             dep_info = self._check_dll_dependencies()
+            deep_dep_analysis = self._analyze_dll_dependencies_deep()
             print(f"DLL dependency check: {dep_info}")
+            print(f"Deep dependency analysis: {deep_dep_analysis}")
+            
+            # Get Windows error code before attempting DLL load
+            if platform.system() == "Windows":
+                try:
+                    import ctypes.wintypes
+                    # Clear any previous error
+                    ctypes.windll.kernel32.SetLastError(0)
+                except Exception:
+                    pass
             
             # Load DLL with Windows calling convention
             print(f"Attempting to load AXL DLL from: {DLL_PATH}")
@@ -107,14 +118,22 @@ class AXLWrapper:
             print("✓ AXL DLL loaded successfully")
             
         except OSError as e:
-            # Enhanced error reporting with Windows error details
+            # Get detailed Windows error information immediately after failure
+            windows_error_info = self._get_windows_error_details()
             error_details = self._get_detailed_dll_error(e)
-            raise RuntimeError(
+            
+            # Combine all error information
+            comprehensive_error = (
                 f"Failed to load AXL DLL: {e}\n"
                 f"System info: {arch_info}\n"
                 f"Dependencies: {dep_info}\n"
-                f"Error details: {error_details}"
-            ) from e
+                f"Deep dependency analysis: {deep_dep_analysis}\n"
+                f"Windows error details: {windows_error_info}\n"
+                f"Error analysis: {error_details}"
+            )
+            
+            print(f"\n=== DLL Loading Failure Analysis ===\n{comprehensive_error}\n====================================")
+            raise RuntimeError(comprehensive_error) from e
 
     def _setup_functions(self) -> None:
         """Setup function signatures for ctypes"""
@@ -1139,6 +1158,128 @@ class AXLWrapper:
                 ])
         
         return error_info
+    
+    def _get_windows_error_details(self) -> dict:
+        """Get detailed Windows error information using Windows API"""
+        error_info = {
+            'last_error': None,
+            'error_message': 'Unknown',
+            'system_error_code': None,
+            'detailed_analysis': [],
+        }
+        
+        if platform.system() == "Windows":
+            try:
+                import ctypes.wintypes
+                
+                # Get the last Windows error code
+                last_error = ctypes.windll.kernel32.GetLastError()
+                error_info['last_error'] = last_error
+                error_info['system_error_code'] = last_error
+                
+                # Get the error message from Windows
+                if last_error != 0:
+                    # Use FormatMessage to get readable error description
+                    message_buffer = ctypes.create_unicode_buffer(1024)
+                    
+                    result = ctypes.windll.kernel32.FormatMessageW(
+                        0x00001000,  # FORMAT_MESSAGE_FROM_SYSTEM
+                        None,        # lpSource
+                        last_error,  # dwMessageId
+                        0,           # dwLanguageId
+                        message_buffer,  # lpBuffer
+                        1024,        # nSize
+                        None         # Arguments
+                    )
+                    
+                    if result > 0:
+                        error_info['error_message'] = message_buffer.value.strip()
+                    
+                    # Provide specific analysis based on common error codes
+                    if last_error == 126:  # ERROR_MOD_NOT_FOUND
+                        error_info['detailed_analysis'] = [
+                            'DLL or its dependencies not found',
+                            'Missing Visual C++ Redistributables likely cause',
+                            'Check if all required system DLLs are present',
+                            'Verify AJINEXTEK drivers are properly installed'
+                        ]
+                    elif last_error == 193:  # ERROR_BAD_EXE_FORMAT
+                        error_info['detailed_analysis'] = [
+                            'Invalid DLL format - architecture mismatch',
+                            'Ensure 64-bit Python with 64-bit DLL',
+                            'DLL may be corrupted or incompatible'
+                        ]
+                    elif last_error == 5:  # ERROR_ACCESS_DENIED
+                        error_info['detailed_analysis'] = [
+                            'Access denied - insufficient permissions',
+                            'Even with admin rights, some resources may be restricted',
+                            'Check file permissions on DLL and directory'
+                        ]
+                    elif last_error == 1114:  # ERROR_DLL_INIT_FAILED
+                        error_info['detailed_analysis'] = [
+                            'DLL initialization failed',
+                            'DLL loaded but its DllMain function failed',
+                            'Hardware drivers may not be properly installed',
+                            'AJINEXTEK hardware may not be connected or recognized'
+                        ]
+                    elif last_error == 0:
+                        error_info['detailed_analysis'] = [
+                            'No specific Windows error reported',
+                            'Error may be from Python/ctypes layer',
+                            'Check Python compatibility with DLL'
+                        ]
+                    else:
+                        error_info['detailed_analysis'] = [
+                            f'Uncommon error code: {last_error}',
+                            'Check Windows Event Viewer for more details',
+                            'This may indicate hardware or driver specific issues'
+                        ]
+                        
+            except Exception as e:
+                error_info['error_message'] = f'Failed to get Windows error details: {e}'
+                
+        return error_info
+    
+    def _analyze_dll_dependencies_deep(self) -> dict:
+        """Deep analysis of DLL dependencies using Windows tools"""
+        analysis = {
+            'missing_dependencies': [],
+            'available_dependencies': [],
+            'recommendations': [],
+        }
+        
+        if platform.system() == "Windows":
+            try:
+                # Check for common Visual C++ runtime dependencies
+                common_deps = [
+                    'msvcr120.dll',  # Visual C++ 2013
+                    'msvcr140.dll',  # Visual C++ 2015-2022
+                    'msvcp120.dll',  # Visual C++ 2013 C++
+                    'msvcp140.dll',  # Visual C++ 2015-2022 C++
+                    'vcruntime140.dll',  # Visual C++ 2015-2022 Runtime
+                    'api-ms-win-crt-runtime-l1-1-0.dll',  # Universal CRT
+                ]
+                
+                for dep in common_deps:
+                    try:
+                        # Try to load each dependency
+                        test_dll = ctypes.windll.LoadLibrary(dep)
+                        analysis['available_dependencies'].append(dep)
+                    except OSError:
+                        analysis['missing_dependencies'].append(dep)
+                
+                # Provide recommendations based on missing dependencies
+                if any('120' in dep for dep in analysis['missing_dependencies']):
+                    analysis['recommendations'].append('Install Visual C++ Redistributable 2013')
+                if any('140' in dep for dep in analysis['missing_dependencies']):
+                    analysis['recommendations'].append('Install Visual C++ Redistributable 2015-2022')
+                if 'api-ms-win-crt' in str(analysis['missing_dependencies']):
+                    analysis['recommendations'].append('Install Universal C Runtime')
+                    
+            except Exception as e:
+                analysis['error'] = f'Dependency analysis failed: {e}'
+                
+        return analysis
 
     def home_get_result(self, axis_no: int) -> int:
         """Get homing result status for axis"""

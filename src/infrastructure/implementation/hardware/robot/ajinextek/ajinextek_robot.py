@@ -758,14 +758,74 @@ class AjinextekRobot(RobotService):
             logger.info(f"Python Version: {platform.python_version()}")
             logger.info(f"Python Executable: {platform.python_implementation()}")
             
-            # Check if running as administrator (Windows)
+            # Check if running as administrator (Windows) with enhanced detection
             if platform.system() == "Windows":
                 try:
                     import ctypes
-                    is_admin = ctypes.windll.shell32.IsUserAnAdmin()
-                    logger.info(f"Running as Administrator: {is_admin}")
-                except Exception:
-                    logger.info("Unable to check administrator privileges")
+                    import ctypes.wintypes
+                    
+                    # Multiple methods to check admin privileges
+                    is_admin_shell = ctypes.windll.shell32.IsUserAnAdmin()
+                    
+                    # Alternative method: Check if we can write to system directory
+                    can_write_system = False
+                    try:
+                        import tempfile
+                        with tempfile.NamedTemporaryFile(dir='C:\\Windows\\System32', delete=True):
+                            can_write_system = True
+                    except (OSError, PermissionError):
+                        can_write_system = False
+                    
+                    # Check token elevation
+                    is_elevated = False
+                    try:
+                        import ctypes.wintypes as wintypes
+                        
+                        # Get current process token
+                        TOKEN_QUERY = 0x0008
+                        TokenElevation = 20
+                        
+                        process_handle = ctypes.windll.kernel32.GetCurrentProcess()
+                        token_handle = wintypes.HANDLE()
+                        
+                        if ctypes.windll.advapi32.OpenProcessToken(
+                            process_handle, TOKEN_QUERY, ctypes.byref(token_handle)
+                        ):
+                            elevation = wintypes.DWORD()
+                            size = wintypes.DWORD(ctypes.sizeof(wintypes.DWORD))
+                            
+                            if ctypes.windll.advapi32.GetTokenInformation(
+                                token_handle, TokenElevation, ctypes.byref(elevation),
+                                ctypes.sizeof(elevation), ctypes.byref(size)
+                            ):
+                                is_elevated = bool(elevation.value)
+                                
+                            ctypes.windll.kernel32.CloseHandle(token_handle)
+                    except Exception:
+                        pass
+                    
+                    logger.info(f"Administrator Privileges Check:")
+                    logger.info(f"  - Shell IsUserAnAdmin(): {is_admin_shell}")
+                    logger.info(f"  - Can write to System32: {can_write_system}")
+                    logger.info(f"  - Token is elevated: {is_elevated}")
+                    logger.info(f"  - Overall admin status: {is_admin_shell or is_elevated}")
+                    
+                    # If we're not running as admin, provide clear guidance
+                    if not (is_admin_shell or is_elevated):
+                        logger.warning("⚠️ NOT running with Administrator privileges!")
+                        logger.warning("AJINEXTEK AXL library typically requires administrator access for:")
+                        logger.warning("  - Hardware device driver access")
+                        logger.warning("  - IRQ (Interrupt Request) allocation")
+                        logger.warning("  - System-level hardware control")
+                        logger.warning("")
+                        logger.warning("Please run this application as Administrator:")
+                        logger.warning("  1. Right-click on Command Prompt")
+                        logger.warning("  2. Select 'Run as administrator'")
+                        logger.warning("  3. Navigate to project directory and run again")
+                        
+                except Exception as e:
+                    logger.info(f"Unable to check administrator privileges: {e}")
+                    logger.info("Proceeding anyway - some operations may fail")
             
             # Print DLL diagnostics
             print_dll_diagnostic_info()
