@@ -38,7 +38,7 @@ if platform.system() == "Windows":
         FuncType = CFUNCTYPE
         class WinDLL:  # type: ignore[no-redef]
             def __init__(self, path: str) -> None:
-                pass
+                ...
 
 else:
     # Use CFUNCTYPE for non-Windows systems
@@ -47,7 +47,7 @@ else:
     # Mock WinDLL class for non-Windows systems
     class WinDLL:  # type: ignore[no-redef]
         def __init__(self, path: str) -> None:
-            pass
+            ...
 
 
 # AXL Return Codes
@@ -101,7 +101,7 @@ class AXLDIOWrapper:
             ),
             os.path.join(
                 os.getcwd(),
-                "vendor",
+                "driver",
                 "ajinextek",
                 "AXL(Library)",
                 "Library",
