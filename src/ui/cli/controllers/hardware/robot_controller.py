@@ -11,6 +11,7 @@ from typing import Optional
 from rich.status import Status
 
 from application.interfaces.hardware.robot import RobotService
+from domain.value_objects.hardware_configuration import RobotConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
@@ -19,10 +20,12 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class RobotController(HardwareController):
     """Controller for Robot hardware"""
 
-    def __init__(self, robot_service: RobotService, formatter: RichFormatter, axis_id: int = 0):
+    def __init__(self, robot_service: RobotService, formatter: RichFormatter, robot_config: Optional[RobotConfig] = None):
         super().__init__(formatter)
         self.robot_service = robot_service
-        self.axis_id = axis_id
+        self.robot_config = robot_config
+        # Extract axis_id for backward compatibility
+        self.axis_id = robot_config.axis_id if robot_config else 0
         self.name = "Robot Control System"
 
     async def show_status(self) -> None:
@@ -59,7 +62,15 @@ class RobotController(HardwareController):
         """Connect to robot"""
 
         async def connect_operation():
-            await self.robot_service.connect(axis_id=0, irq_no=7)
+            if self.robot_config:
+                # Use YAML configuration
+                await self.robot_service.connect(
+                    axis_id=self.robot_config.axis_id,
+                    irq_no=self.robot_config.irq_no
+                )
+            else:
+                # Fallback to defaults if no config available
+                await self.robot_service.connect(axis_id=0, irq_no=7)
             return True
 
         return await self._show_progress_with_message(
@@ -270,11 +281,17 @@ class RobotController(HardwareController):
             # Get user input for position
             self.formatter.print_message("Enter absolute position parameters:", message_type="info")
 
-            # For simplicity, use default values. In a real application, you'd prompt for input
-            position = 100.0  # mm
-            velocity = 200.0  # mm/s
-            acceleration = 1000.0  # mm/s²
-            deceleration = 1000.0  # mm/s²
+            # Use configuration values or defaults
+            position = 100.0  # mm - TODO: Could be made configurable
+            if self.robot_config:
+                velocity = self.robot_config.velocity
+                acceleration = self.robot_config.acceleration
+                deceleration = self.robot_config.deceleration
+            else:
+                # Fallback to defaults
+                velocity = 200.0  # mm/s
+                acceleration = 1000.0  # mm/s²
+                deceleration = 1000.0  # mm/s²
 
             async def move_operation():
                 await self.robot_service.move_absolute(
@@ -309,11 +326,17 @@ class RobotController(HardwareController):
             # Get user input for distance
             self.formatter.print_message("Enter relative movement parameters:", message_type="info")
 
-            # For simplicity, use default values. In a real application, you'd prompt for input
-            distance = 10.0  # mm
-            velocity = 200.0  # mm/s
-            acceleration = 1000.0  # mm/s²
-            deceleration = 1000.0  # mm/s²
+            # Use configuration values or defaults
+            distance = 10.0  # mm - TODO: Could be made configurable
+            if self.robot_config:
+                velocity = self.robot_config.velocity
+                acceleration = self.robot_config.acceleration
+                deceleration = self.robot_config.deceleration
+            else:
+                # Fallback to defaults
+                velocity = 200.0  # mm/s
+                acceleration = 1000.0  # mm/s²
+                deceleration = 1000.0  # mm/s²
 
             async def move_operation():
                 await self.robot_service.move_relative(
@@ -346,8 +369,11 @@ class RobotController(HardwareController):
             primary_axis = self.axis_id
 
             async def stop_operation():
-                # Use default deceleration from robot config
-                deceleration = 1000.0  # mm/s²
+                # Use deceleration from config or default
+                if self.robot_config:
+                    deceleration = self.robot_config.deceleration
+                else:
+                    deceleration = 1000.0  # mm/s²
                 await self.robot_service.stop_motion(primary_axis, deceleration)
                 return True
 

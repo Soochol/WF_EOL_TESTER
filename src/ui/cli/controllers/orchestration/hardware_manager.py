@@ -47,7 +47,7 @@ class HardwareControlManager:
 
         # Initialize hardware controllers with configuration
         self.controllers = {
-            "Robot": RobotController(hardware_facade._robot, self.formatter, self.axis_id),
+            "Robot": RobotController(hardware_facade._robot, self.formatter, self.hardware_config.robot if self.hardware_config else None),
             "MCU": MCUController(hardware_facade._mcu, self.formatter, self.hardware_config.mcu if self.hardware_config else None),
             "LoadCell": LoadCellController(hardware_facade._loadcell, self.formatter, self.hardware_config.loadcell if self.hardware_config else None),
             "Power": PowerController(hardware_facade._power, self.formatter, self.hardware_config.power if self.hardware_config else None),
