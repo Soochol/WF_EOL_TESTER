@@ -401,8 +401,8 @@ class BS205LoadCell(LoadCellService):
                 cmd_byte = ord(command)  # 'R' → 0x52
                 command_bytes = bytes([id_byte, cmd_byte])
 
-                logger.info(f"Sending BS205 command: {command} (ID={self._indicator_id})")
-                logger.info(f"Command bytes: {command_bytes.hex().upper()} (ID=0x{id_byte:02X}, CMD=0x{cmd_byte:02X})")
+                logger.debug(f"Sending BS205 command: {command} (ID={self._indicator_id})")
+                logger.debug(f"Command bytes: {command_bytes.hex().upper()} (ID=0x{id_byte:02X}, CMD=0x{cmd_byte:02X})")
 
                 # 바이너리 명령어 전송
                 await self._connection.write(command_bytes)
@@ -452,21 +452,12 @@ class BS205LoadCell(LoadCellService):
             if not self._connection:
                 raise BS205CommunicationError("No connection available")
             # BS205 응답은 STX(1) + ID + Sign + Value(7) + ETX(1) = 10바이트 고정
-            logger.info(f"Reading BS205 response with timeout {timeout}s")
             response = await self._connection.read(size=10, timeout=timeout)
-            logger.info(f"First read got {len(response)} bytes: {response.hex().upper() if response else 'NO DATA'}")
-            
             # If first read is incomplete, try one more time
             if response and len(response) < 10:  # BS205 fixed frame size
-                logger.info(f"Reading additional {10 - len(response)} bytes")
                 additional = await self._connection.read(size=10 - len(response), timeout=0.5)
                 if additional:
-                    logger.info(f"Additional read got {len(additional)} bytes: {additional.hex().upper()}")
                     response += additional
-                else:
-                    logger.info("Additional read got no data")
-
-            logger.info(f"Total response: {len(response)} bytes: {response.hex().upper() if response else 'NO DATA'}")
             return response
 
         except Exception as e:
@@ -500,7 +491,7 @@ class BS205LoadCell(LoadCellService):
         매뉴얼 기준: STX(02H) + ID + Sign + Value(7바이트) + ETX(03H)
         """
         try:
-            logger.info(f"BS205 raw response: {response_bytes.hex().upper()}")
+            logger.debug(f"BS205 raw response: {response_bytes.hex().upper()}")
             
             if len(response_bytes) < 10:  # BS205 고정 길이
                 logger.warning(f"BS205 response too short: {len(response_bytes)} bytes")
@@ -530,7 +521,7 @@ class BS205LoadCell(LoadCellService):
                     else:
                         ascii_data += f"[{byte_val:02X}]"
 
-            logger.info(f"BS205 parsed ASCII: '{ascii_data}'")
+            logger.debug(f"BS205 parsed ASCII: '{ascii_data}'")
             return ascii_data
 
         except Exception as e:

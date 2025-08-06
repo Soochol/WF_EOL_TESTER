@@ -19,6 +19,7 @@ from domain.value_objects.dut_command_info import DUTCommandInfo
 
 # from .enhanced_input_manager import EnhancedInputManager  # Removed
 from .rich_formatter import RichFormatter
+
 # from .rich_utils import RichUIManager  # Removed
 
 
@@ -79,6 +80,9 @@ class EOLForceTestExecutor(UseCaseExecutor):
             },
         )
 
+        # Store command for use in result display
+        self._current_command = command
+
         # Execute test without additional spinner (managed by enhanced_eol_tester_cli)
         try:
             result = await use_case_instance.execute(command)
@@ -101,20 +105,22 @@ class EOLForceTestExecutor(UseCaseExecutor):
             if self.configuration_service:
                 try:
                     defaults = await self.configuration_service.load_dut_defaults()
-                    formatter.console.print(f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]")
+                    formatter.console.print(
+                        f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]"
+                    )
                 except Exception as e:
                     formatter.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
 
             # Collect DUT information with default support
             dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
             if not dut_id:
-                dut_id = defaults.get('dut_id', '')
+                dut_id = defaults.get("dut_id", "")
                 if not dut_id:
                     return None
 
             model = input(f"Model [{defaults.get('model', '')}]: ").strip()
             if not model:
-                model = defaults.get('model', 'Unknown')
+                model = defaults.get("model", "Unknown")
 
             serial = input("Serial Number: ").strip()
             if not serial:
@@ -122,14 +128,14 @@ class EOLForceTestExecutor(UseCaseExecutor):
 
             operator = input(f"Operator ID [{defaults.get('operator_id', '')}]: ").strip()
             if not operator:
-                operator = defaults.get('operator_id', 'Unknown')
+                operator = defaults.get("operator_id", "Unknown")
 
             # Create DUT command info
             dut_command_info = DUTCommandInfo(
                 dut_id=dut_id,
                 model_number=model,
                 serial_number=serial,
-                manufacturer=defaults.get('manufacturer', 'Unknown'),
+                manufacturer=defaults.get("manufacturer", "Unknown"),
             )
 
             # Create and return command
@@ -162,9 +168,16 @@ class EOLForceTestExecutor(UseCaseExecutor):
 
         formatter.print_status("Test Execution Result", status_text, details=status_details)
 
-        # Create test results table
+        # Create test results table with DUT info
+        dut_info = None
+        if hasattr(self, '_current_command') and self._current_command:
+            dut_info = {
+                'id': self._current_command.dut_info.dut_id,
+                'model': self._current_command.dut_info.model_number
+            }
+        
         results_table = formatter.create_test_results_table(
-            [result], title="Detailed Test Results", show_details=True
+            [result], title="Detailed Test Results", show_details=True, dut_info=dut_info
         )
         formatter.print_table(results_table)
 
@@ -172,7 +185,9 @@ class EOLForceTestExecutor(UseCaseExecutor):
 class UseCaseManager:
     """Manages UseCase discovery and execution with Rich UI"""
 
-    def __init__(self, console: Optional[Console] = None, configuration_service: Optional[Any] = None):
+    def __init__(
+        self, console: Optional[Console] = None, configuration_service: Optional[Any] = None
+    ):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
         # self.ui_manager = RichUIManager(self.console)  # Removed

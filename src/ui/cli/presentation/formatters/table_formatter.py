@@ -9,12 +9,13 @@ This formatter handles both EOLTestResult objects and dictionary-based results
 with flexible formatting options for different display contexts.
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from rich.table import Table
 from rich.text import Text
 
 from domain.value_objects.eol_test_result import EOLTestResult
+
 from .base_formatter import BaseFormatter
 
 
@@ -39,6 +40,7 @@ class TableFormatter(BaseFormatter):
         test_results: List[Union[EOLTestResult, Dict[str, Any]]],
         title: str = "Test Results",
         show_details: bool = True,
+        dut_info: Optional[Dict[str, str]] = None,
     ) -> Table:
         """Create a rich table for displaying test results with flexible formatting.
 
@@ -50,6 +52,7 @@ class TableFormatter(BaseFormatter):
             test_results: List of test results to display (mixed types supported)
             title: Table title displayed at the top of the table
             show_details: Whether to include detailed columns (model, duration, measurements)
+            dut_info: Optional DUT information dict with 'id' and 'model' keys
 
         Returns:
             Rich Table with formatted test results and appropriate column styling
@@ -59,7 +62,7 @@ class TableFormatter(BaseFormatter):
         # Add rows
         for result in test_results:
             if isinstance(result, EOLTestResult):
-                row_data = self._format_eol_result_row(result, show_details)
+                row_data = self._format_eol_result_row(result, show_details, dut_info)
             else:  # Dict format from repository
                 row_data = self._format_dict_result_row(result, show_details)
 
@@ -136,7 +139,9 @@ class TableFormatter(BaseFormatter):
 
         # Timestamp column always appears last for chronological context
         table.add_column(
-            "Timestamp", style=self.colors.get_color("muted"), width=self.layout.TIMESTAMP_COLUMN_WIDTH
+            "Timestamp",
+            style=self.colors.get_color("muted"),
+            width=self.layout.TIMESTAMP_COLUMN_WIDTH,
         )
         return table
 
@@ -152,7 +157,9 @@ class TableFormatter(BaseFormatter):
         table.add_column(
             "Test ID", style=self.colors.get_color("text"), width=self.layout.TEST_ID_COLUMN_WIDTH
         )
-        table.add_column("DUT ID", style=self.colors.get_color("text"), width=self.layout.DUT_ID_COLUMN_WIDTH)
+        table.add_column(
+            "DUT ID", style=self.colors.get_color("text"), width=self.layout.DUT_ID_COLUMN_WIDTH
+        )
 
     def _add_detail_table_columns(self, table: Table) -> None:
         """Add detailed table columns for comprehensive test result display.
@@ -160,7 +167,9 @@ class TableFormatter(BaseFormatter):
         Args:
             table: Rich Table object to add detailed columns to
         """
-        table.add_column("Model", style=self.colors.get_color("muted"), width=self.layout.MODEL_COLUMN_WIDTH)
+        table.add_column(
+            "Model", style=self.colors.get_color("muted"), width=self.layout.MODEL_COLUMN_WIDTH
+        )
         table.add_column(
             "Duration",
             justify="right",
@@ -174,7 +183,7 @@ class TableFormatter(BaseFormatter):
             width=self.layout.MEASUREMENTS_COLUMN_WIDTH,
         )
 
-    def _format_eol_result_row(self, result: EOLTestResult, show_details: bool) -> List[Any]:
+    def _format_eol_result_row(self, result: EOLTestResult, show_details: bool, dut_info: Optional[Dict[str, str]] = None) -> List[Any]:
         """Format EOLTestResult into table row data with consistent styling.
 
         Transforms an EOLTestResult object into properly formatted table row data
@@ -183,6 +192,7 @@ class TableFormatter(BaseFormatter):
         Args:
             result: EOL test result object containing test execution data
             show_details: Whether to include detailed columns in the row
+            dut_info: Optional DUT information dict with 'id' and 'model' keys
 
         Returns:
             List of formatted row data elements ready for table display
@@ -191,17 +201,20 @@ class TableFormatter(BaseFormatter):
         status_icon = self._get_result_status_icon(result)
         status_color = self._get_result_status_color(result)
 
+        # Get DUT ID from provided DUT info or default to N/A
+        dut_id = dut_info.get('id', 'N/A') if dut_info else 'N/A'
+
         # Build core row data with essential information
         row_data = self._build_core_row_data(
             status_icon=status_icon,
             status_color=status_color,
             test_id=str(result.test_id),
-            dut_id="N/A",  # Not directly available in EOLTestResult
+            dut_id=dut_id,
         )
 
         # Add detailed columns if comprehensive view is requested
         if show_details:
-            detail_data = self._build_eol_detail_data(result)
+            detail_data = self._build_eol_detail_data(result, dut_info)
             row_data.extend(detail_data)
 
         # Add timestamp (current time since EOLTestResult doesn't store creation time)
@@ -226,7 +239,9 @@ class TableFormatter(BaseFormatter):
         # Determine status styling based on test outcome
         is_passed = result.get("passed", False)
         status_icon = self.icons.get_icon("check") if is_passed else self.icons.get_icon("cross")
-        status_color = self.colors.get_color("success") if is_passed else self.colors.get_color("error")
+        status_color = (
+            self.colors.get_color("success") if is_passed else self.colors.get_color("error")
+        )
 
         # Extract DUT information from nested dictionary
         dut_info = result.get("dut", {})
@@ -316,17 +331,21 @@ class TableFormatter(BaseFormatter):
             self._truncate_text(dut_id),
         ]
 
-    def _build_eol_detail_data(self, result: EOLTestResult) -> List[str]:
+    def _build_eol_detail_data(self, result: EOLTestResult, dut_info: Optional[Dict[str, str]] = None) -> List[str]:
         """Build detail data specific to EOLTestResult objects.
 
         Args:
             result: EOLTestResult object containing test execution data
+            dut_info: Optional DUT information dict with 'id' and 'model' keys
 
         Returns:
             List of formatted detail data elements
         """
+        # Get model from provided DUT info or default to N/A
+        model = dut_info.get('model', 'N/A') if dut_info else 'N/A'
+        
         return [
-            "N/A",  # Model not directly available in EOLTestResult
+            model,
             result.format_duration(),
             str(result.measurement_count),
         ]

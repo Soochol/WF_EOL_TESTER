@@ -30,13 +30,14 @@ from src.application.use_cases.eol_force_test import (
 from src.domain.value_objects.dut_command_info import DUTCommandInfo
 from src.domain.value_objects.eol_test_result import EOLTestResult
 
+from ..interfaces.execution_interface import ITestExecutor
+
 # Local imports - UI modules
 from ..rich_formatter import RichFormatter
-from ..interfaces.execution_interface import ITestExecutor
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
-    from ..enhanced_cli_integration import EnhancedCLIIntegrator
+    from ..enhanced_cli_integration import EnhancedInputIntegrator
 
 
 class TestExecutor(ITestExecutor):
@@ -51,7 +52,7 @@ class TestExecutor(ITestExecutor):
         console: Console,
         formatter: RichFormatter,
         use_case: EOLForceTestUseCase,
-        input_integrator: "EnhancedCLIIntegrator"
+        input_integrator: "EnhancedInputIntegrator",
     ):
         """Initialize test executor.
 
@@ -104,6 +105,9 @@ class TestExecutor(ITestExecutor):
             },
         )
 
+        # Store DUT info for use in result display
+        self._current_dut_info = dut_info
+        
         await self._execute_test_with_progress(command)
 
     async def _get_dut_info(self) -> Optional[Dict[str, str]]:
@@ -180,9 +184,9 @@ class TestExecutor(ITestExecutor):
 
         self._formatter.print_status("Test Execution Result", status_text, details=status_details)
 
-        # Create test results table (single result)
+        # Create test results table (single result) with DUT info
         results_table = self._formatter.create_test_results_table(
-            [result], title="Detailed Test Results", show_details=True
+            [result], title="Detailed Test Results", show_details=True, dut_info=getattr(self, '_current_dut_info', None)
         )
         self._formatter.print_table(results_table)
 

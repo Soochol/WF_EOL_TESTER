@@ -19,14 +19,15 @@ from rich.table import Table
 
 from src.domain.enums.test_status import TestStatus
 from src.domain.value_objects.eol_test_result import EOLTestResult
+
+from .interfaces.formatter_interface import IFormatter
 from .presentation.formatters import (
     BaseFormatter,
+    LayoutFormatter,
+    ProgressFormatter,
     StatusFormatter,
     TableFormatter,
-    ProgressFormatter,
-    LayoutFormatter,
 )
-from .interfaces.formatter_interface import IFormatter
 
 
 class RichFormatter(IFormatter):
@@ -137,31 +138,26 @@ class RichFormatter(IFormatter):
     # Table methods (delegated to TableFormatter)
     def create_test_results_table(
         self,
-        test_results: List[Union[EOLTestResult, Dict[str, Any]]],
+        results: List[Union[EOLTestResult, Dict[str, Any]]],
         title: str = "Test Results",
         show_details: bool = True,
+        dut_info: Optional[Dict[str, str]] = None,
     ) -> Table:
         """Create a rich table for displaying test results with flexible formatting.
 
         Delegates to TableFormatter for specialized table creation and formatting.
         """
-        return self._table_formatter.create_test_results_table(test_results, title, show_details)
+        return self._table_formatter.create_test_results_table(results, title, show_details, dut_info)
 
     # Progress methods (delegated to ProgressFormatter)
     def create_progress_display(
-        self,
-        task_name: str,
-        total_steps: Optional[int] = None,
-        current_step: Optional[int] = None,
-        show_spinner: bool = True,
+        self, description: str, show_spinner: bool = True
     ) -> Union[Progress, Status]:
         """Create a progress display for long-running operations.
 
         Delegates to ProgressFormatter for specialized progress handling.
         """
-        return self._progress_formatter.create_progress_display(
-            task_name, total_steps, current_step, show_spinner
-        )
+        return self._progress_formatter.create_progress_display(description, show_spinner)
 
     # Layout methods (delegated to LayoutFormatter)
     def create_statistics_display(
@@ -239,14 +235,16 @@ class RichFormatter(IFormatter):
 
         Delegates to BaseFormatter for consistent text handling.
         """
-        return self._base_formatter._truncate_text(text, max_length)
+        return self._base_formatter._truncate_text(  # pylint: disable=protected-access
+            text, max_length
+        )
 
     def _get_status_icon(self, status: TestStatus) -> str:
         """Get appropriate icon for test status.
 
         Delegates to BaseFormatter for consistent icon handling.
         """
-        return self._base_formatter._get_status_icon(status)
+        return self._base_formatter._get_status_icon(status)  # pylint: disable=protected-access
 
     # Backward compatibility aliases
     def _truncate_text(self, text: str, max_length: Optional[int] = None) -> str:
