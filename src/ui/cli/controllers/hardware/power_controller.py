@@ -235,18 +235,7 @@ class PowerController(HardwareController):
                     message_type="warning",
                 )
 
-            # Ask for confirmation
-            confirm = (
-                input("\n🔴 Are you sure you want to enable output? (yes/no): ").strip().lower()
-            )
-
-            if confirm not in ["yes", "y"]:
-                self.formatter.print_message(
-                    "❌ Output enable cancelled by user", message_type="info"
-                )
-                return
-
-            # Proceed with enabling output
+            # Proceed with enabling output (confirmation removed for faster operation)
             await self.power_service.enable_output()
             self.formatter.print_message(
                 "✅ Power output enabled successfully", message_type="success"
