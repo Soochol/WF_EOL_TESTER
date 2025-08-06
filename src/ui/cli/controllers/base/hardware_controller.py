@@ -9,7 +9,6 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from rich.progress import Progress
 from rich.status import Status
 
 from ...rich_formatter import RichFormatter
@@ -77,7 +76,7 @@ class HardwareController(ABC):
         operation,
         success_message: str,
         error_message: str,
-        show_time: float = 0.5
+        show_time: float = 0.5,
     ) -> bool:
         """Show progress display while executing operation
 
@@ -99,7 +98,7 @@ class HardwareController(ABC):
                     progress_display.update(message)
                 await asyncio.sleep(show_time)  # Show spinner for visibility
 
-                result = await operation()
+                await operation()
 
                 if isinstance(progress_display, Status):
                     progress_display.update(success_message)
@@ -109,24 +108,16 @@ class HardwareController(ABC):
             return True
 
         except Exception as e:
-            self.formatter.print_message(
-                f"{error_message}: {str(e)}", message_type="error"
-            )
+            self.formatter.print_message(f"{error_message}: {str(e)}", message_type="error")
             return False
 
     def _create_enhanced_menu(
-        self,
-        base_options: dict,
-        status_info: dict,
-        title: str,
-        shortcuts: dict = None
+        self, base_options: dict, shortcuts: Optional[dict] = None
     ) -> dict:
-        """Create enhanced menu with status information and shortcuts
+        """Create enhanced menu with shortcuts
 
         Args:
             base_options: Base menu options
-            status_info: Status information to display
-            title: Menu title
             shortcuts: Optional shortcut mappings
 
         Returns:
@@ -148,11 +139,7 @@ class HardwareController(ABC):
         return "🟢 Connected" if is_connected else "🔴 Disconnected"
 
     def _get_user_input_with_validation(
-        self,
-        prompt: str,
-        input_type: type = str,
-        allow_cancel: bool = True,
-        validator = None
+        self, prompt: str, input_type: type = str, allow_cancel: bool = True, validator=None
     ):
         """Get user input with type validation and cancellation support
 
@@ -179,24 +166,21 @@ class HardwareController(ABC):
                     return None
 
                 # Type conversion
-                if input_type != str:
+                if input_type is not str:
                     converted_value = input_type(user_input)
                 else:
                     converted_value = user_input
 
                 # Custom validation
                 if validator and not validator(converted_value):
-                    self.formatter.print_message(
-                        "Invalid input value", message_type="error"
-                    )
+                    self.formatter.print_message("Invalid input value", message_type="error")
                     continue
 
                 return converted_value
 
             except ValueError:
                 self.formatter.print_message(
-                    f"Invalid {input_type.__name__} value - please try again",
-                    message_type="error"
+                    f"Invalid {input_type.__name__} value - please try again", message_type="error"
                 )
             except (KeyboardInterrupt, EOFError):
                 return None

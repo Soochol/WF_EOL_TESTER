@@ -5,14 +5,15 @@ management, and improved validation capabilities.
 """
 
 from abc import ABC
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
-    ICommand,
-    ICommandExecutionContext,
     CommandMetadata,
     CommandResult,
+    ICommand,
+    ICommandExecutionContext,
 )
 
 
@@ -148,9 +149,7 @@ class BaseCommand(ICommand, ABC):
                 subcommand = args[1].lower()
                 help_text = self.get_help_for_subcommand(subcommand)
                 if help_text:
-                    return CommandResult.info(
-                        f"/{self.metadata.name} {subcommand} - {help_text}"
-                    )
+                    return CommandResult.info(f"/{self.metadata.name} {subcommand} - {help_text}")
                 else:
                     return CommandResult.error(f"No help available for subcommand: {subcommand}")
             else:

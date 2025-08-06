@@ -86,11 +86,6 @@ class ComponentConfig:
     def _setup_production_config(self) -> None:
         """Setup production configuration with full implementations."""
         # Import interfaces
-        from ..interfaces.application_interface import ICLIApplication
-        from ..interfaces.execution_interface import ITestExecutor
-        from ..interfaces.formatter_interface import IFormatter
-        from ..interfaces.menu_interface import IMenuSystem
-        from ..interfaces.session_interface import ISessionManager
         from ..interfaces.validation_interface import IInputValidator
 
         # Import concrete implementations

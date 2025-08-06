@@ -7,6 +7,7 @@ consistent visual indicators and improve user experience.
 """
 
 from typing import Dict
+
 from domain.enums.test_status import TestStatus
 
 

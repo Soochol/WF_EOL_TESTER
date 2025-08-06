@@ -5,6 +5,7 @@ integration with the new command system architecture.
 """
 
 from typing import Dict, List, Optional, Tuple, cast
+
 from loguru import logger
 
 from application.use_cases.eol_force_test import (
@@ -12,15 +13,14 @@ from application.use_cases.eol_force_test import (
     EOLForceTestUseCase,
 )
 from domain.value_objects.dut_command_info import DUTCommandInfo
+from ui.cli.commands.core.base_command import BaseCommand
 from ui.cli.commands.interfaces.command_interface import (
-    ICommand,
-    ICommandExecutionContext,
     CommandMetadata,
     CommandResult,
+    ICommandExecutionContext,
 )
-from ui.cli.commands.core.base_command import BaseCommand
-from ui.cli.interfaces.validation_interface import IInputValidator
 from ui.cli.interfaces.formatter_interface import IFormatter
+from ui.cli.interfaces.validation_interface import IInputValidator
 
 
 class TestCommandHandler(BaseCommand):
@@ -55,8 +55,8 @@ class TestCommandHandler(BaseCommand):
                 "/test help - Show detailed help",
             ],
             help_text="Execute End-of-Line (EOL) tests for device validation. "
-                     "Supports interactive mode for step-by-step testing and "
-                     "automated modes for batch processing.",
+            "Supports interactive mode for step-by-step testing and "
+            "automated modes for batch processing.",
             version="2.0.0",
             author="WF Test System",
         )
@@ -131,7 +131,7 @@ class TestCommandHandler(BaseCommand):
                 f"Unknown test subcommand: {subcommand}",
                 error_details={
                     "valid_subcommands": list(self.get_subcommands().keys()),
-                    "suggestion": f"Use '/test help' for available options",
+                    "suggestion": "Use '/test help' for available options",
                 },
             )
 
@@ -167,12 +167,18 @@ class TestCommandHandler(BaseCommand):
             valid_subcommands = ["quick", "profile", "help"]
 
             if subcommand not in valid_subcommands:
-                return False, f"Invalid subcommand '{subcommand}'. Valid options: {', '.join(valid_subcommands)}"
+                return (
+                    False,
+                    f"Invalid subcommand '{subcommand}'. Valid options: {', '.join(valid_subcommands)}",
+                )
 
             # Profile subcommand requires profile name
             if subcommand == "profile":
                 if len(args) < 2:
-                    return False, "Profile subcommand requires a profile name. Usage: /test profile <name>"
+                    return (
+                        False,
+                        "Profile subcommand requires a profile name. Usage: /test profile <name>",
+                    )
 
         return True, None
 
@@ -189,8 +195,7 @@ class TestCommandHandler(BaseCommand):
             # Display header
             if self._formatter:
                 self._formatter.print_header(
-                    "EOL Test - Interactive Mode",
-                    "Step-by-step device testing with guided input"
+                    "EOL Test - Interactive Mode", "Step-by-step device testing with guided input"
                 )
             else:
                 print("\n" + "=" * 60)
@@ -256,12 +261,9 @@ class TestCommandHandler(BaseCommand):
                     f"Serial: {serial_number}\n"
                     f"Operator: {operator_id}",
                     "info",
-                    "Test Configuration"
+                    "Test Configuration",
                 )
-                self._formatter.print_message(
-                    "Press Ctrl+C to cancel test execution",
-                    "warning"
-                )
+                self._formatter.print_message("Press Ctrl+C to cancel test execution", "warning")
             else:
                 print(f"\nStarting EOL test for DUT: {dut_id}")
                 print(f"Model: {model_number}, Serial: {serial_number}, Operator: {operator_id}")
@@ -289,7 +291,9 @@ class TestCommandHandler(BaseCommand):
                 },
             )
 
-    async def _quick_test(self, args: List[str], context: ICommandExecutionContext) -> CommandResult:
+    async def _quick_test(
+        self, args: List[str], context: ICommandExecutionContext
+    ) -> CommandResult:
         """Run quick test with auto-generated data.
 
         Args:
@@ -320,9 +324,7 @@ class TestCommandHandler(BaseCommand):
             # Display quick test info
             if self._formatter:
                 self._formatter.print_message(
-                    f"Running quick test for DUT: {dut_info.dut_id}",
-                    "info",
-                    "Quick Test Mode"
+                    f"Running quick test for DUT: {dut_info.dut_id}", "info", "Quick Test Mode"
                 )
             else:
                 print(f"Running quick test for DUT: {dut_info.dut_id}")
@@ -343,7 +345,9 @@ class TestCommandHandler(BaseCommand):
                 },
             )
 
-    async def _profile_test(self, args: List[str], context: ICommandExecutionContext) -> CommandResult:
+    async def _profile_test(
+        self, args: List[str], context: ICommandExecutionContext
+    ) -> CommandResult:
         """Run test with specific profile.
 
         Args:
@@ -356,7 +360,9 @@ class TestCommandHandler(BaseCommand):
         if not args:
             return CommandResult.error(
                 "Profile name is required. Usage: /test profile <name>",
-                error_details={"suggestion": "Specify a profile name, e.g., '/test profile production'"},
+                error_details={
+                    "suggestion": "Specify a profile name, e.g., '/test profile production'"
+                },
             )
 
         profile_name = args[0]
@@ -446,7 +452,7 @@ Total Measurements: {result.measurement_count}
             self._formatter.print_message(
                 message.strip(),
                 "success" if result.is_passed else "error",
-                f"Test Result - {status_text}"
+                f"Test Result - {status_text}",
             )
 
         if result.is_passed:

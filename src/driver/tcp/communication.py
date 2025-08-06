@@ -246,7 +246,7 @@ class TCPCommunication:
                     break
 
         except Exception:
-            pass
+            ...
 
     async def test_connection(self) -> bool:
         """

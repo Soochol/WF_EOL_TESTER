@@ -63,9 +63,7 @@ class ProgressFormatter(BaseFormatter):
             for indeterminate operations
         """
         if total_steps is not None:
-            return self._create_progress_bar(
-                task_name, total_steps, current_step, show_spinner
-            )
+            return self._create_progress_bar(task_name, total_steps, current_step, show_spinner)
         else:
             return self._create_spinner_status(task_name)
 
@@ -125,15 +123,17 @@ class ProgressFormatter(BaseFormatter):
             columns.append(TextColumn("[progress.description]{task.description}"))
 
         # Add core progress bar components
-        columns.extend([
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(
-                style=self.colors.get_color("primary"),
-                complete_style=self.colors.get_color("success"),
-            ),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeElapsedColumn(),
-        ])
+        columns.extend(
+            [
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(
+                    style=self.colors.get_color("primary"),
+                    complete_style=self.colors.get_color("success"),
+                ),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TimeElapsedColumn(),
+            ]
+        )
 
         progress = Progress(*columns, console=self.console)
 
@@ -179,6 +179,7 @@ class ProgressFormatter(BaseFormatter):
         # Use simpler spinner for Windows/basic terminals for better compatibility
         try:
             import os
+
             if os.name == "nt":  # Windows
                 selected_spinner = "line"
         except ImportError:
@@ -219,7 +220,9 @@ class ProgressFormatter(BaseFormatter):
         if update_kwargs:
             progress.update(task_id, **update_kwargs)
 
-    def finish_progress(self, progress: Progress, task_id, final_message: Optional[str] = None) -> None:
+    def finish_progress(
+        self, progress: Progress, task_id, final_message: Optional[str] = None
+    ) -> None:
         """Complete a progress bar with optional final message.
 
         Marks a progress task as complete and optionally updates the description
@@ -249,9 +252,7 @@ class ProgressFormatter(BaseFormatter):
             Simple progress bar without spinner animation
         """
         return self.create_progress_display(
-            task_name=task_name,
-            total_steps=total_steps,
-            show_spinner=False
+            task_name=task_name, total_steps=total_steps, show_spinner=False
         )
 
     def create_animated_progress(self, task_name: str, total_steps: int):
@@ -265,7 +266,5 @@ class ProgressFormatter(BaseFormatter):
             Animated progress bar with spinner
         """
         return self.create_progress_display(
-            task_name=task_name,
-            total_steps=total_steps,
-            show_spinner=True
+            task_name=task_name, total_steps=total_steps, show_spinner=True
         )

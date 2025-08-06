@@ -6,12 +6,13 @@ input security and validation.
 """
 
 from typing import List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
+    CommandResult,
     ICommand,
     ICommandExecutionContext,
-    CommandResult,
     MiddlewareResult,
 )
 from ui.cli.commands.middleware.base_middleware import BaseMiddleware
@@ -58,9 +59,7 @@ class ValidationMiddleware(BaseMiddleware):
         # Validate arguments using command's validation method
         is_valid, error_message = command.validate_args(args)
         if not is_valid:
-            self.log_middleware_action(
-                "validation failed", command, error_message
-            )
+            self.log_middleware_action("validation failed", command, error_message)
             return MiddlewareResult.STOP, CommandResult.error(
                 f"Invalid arguments for command /{command.metadata.name}: {error_message}",
                 error_details={
@@ -79,9 +78,7 @@ class ValidationMiddleware(BaseMiddleware):
             for i, arg in enumerate(args):
                 if not validator.validate_input(arg, "command_argument"):
                     self.log_middleware_action(
-                        "security validation failed",
-                        command,
-                        f"argument {i}: {arg[:50]}..."
+                        "security validation failed", command, f"argument {i}: {arg[:50]}..."
                     )
                     return MiddlewareResult.STOP, CommandResult.error(
                         f"Security validation failed for argument {i + 1}. "
@@ -122,18 +119,18 @@ class ValidationMiddleware(BaseMiddleware):
         """
         dangerous_patterns = [
             "--",  # Command injection attempt
-            ";",   # Command chaining
-            "|",   # Pipe operator
-            ">",   # Redirection
-            "<",   # Input redirection
-            "&",   # Background execution
+            ";",  # Command chaining
+            "|",  # Pipe operator
+            ">",  # Redirection
+            "<",  # Input redirection
+            "&",  # Background execution
             "$(",  # Command substitution
-            "`",   # Backtick execution
-            "rm ", # Dangerous commands
+            "`",  # Backtick execution
+            "rm ",  # Dangerous commands
             "del ",
             "format",
-            "../", # Path traversal
-            "..\\\\"  # Windows path traversal
+            "../",  # Path traversal
+            "..\\\\",  # Windows path traversal
         ]
 
         for i, arg in enumerate(args):
@@ -143,7 +140,7 @@ class ValidationMiddleware(BaseMiddleware):
                     self.log_middleware_action(
                         "dangerous pattern detected",
                         command,
-                        f"pattern '{pattern}' in argument {i}"
+                        f"pattern '{pattern}' in argument {i}",
                     )
                     return (
                         MiddlewareResult.STOP,

@@ -5,12 +5,13 @@ Integrates with session management and user permission systems.
 """
 
 from typing import List, Optional, Set, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
+    CommandResult,
     ICommand,
     ICommandExecutionContext,
-    CommandResult,
     MiddlewareResult,
 )
 from ui.cli.commands.middleware.base_middleware import BaseMiddleware
@@ -40,9 +41,7 @@ class AuthenticationMiddleware(BaseMiddleware):
 
         self._require_authentication = require_authentication
         self._admin_commands = admin_commands or set()
-        self._guest_allowed_commands = guest_allowed_commands or {
-            "help", "exit", "version"
-        }
+        self._guest_allowed_commands = guest_allowed_commands or {"help", "exit", "version"}
 
         logger.debug(
             f"Authentication middleware initialized: "
@@ -113,9 +112,7 @@ class AuthenticationMiddleware(BaseMiddleware):
             if not required_permissions.issubset(user_permissions):
                 missing_permissions = required_permissions - user_permissions
                 self.log_middleware_action(
-                    "permission denied",
-                    command,
-                    f"missing: {missing_permissions}"
+                    "permission denied", command, f"missing: {missing_permissions}"
                 )
                 return MiddlewareResult.STOP, CommandResult.error(
                     f"Insufficient permissions for command: /{command_name}. "

@@ -20,15 +20,16 @@ from typing import TYPE_CHECKING, Optional
 from loguru import logger
 from rich.console import Console
 
+from ..interfaces.menu_interface import IMenuSystem
+
 # Local imports
 from ..rich_formatter import RichFormatter
-from ..interfaces.menu_interface import IMenuSystem
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
+    from ..enhanced_cli_integration import EnhancedMenuSystem
     from ..interfaces.execution_interface import ITestExecutor
     from ..interfaces.session_interface import ISessionManager
-    from ..enhanced_cli_integration import EnhancedMenuSystem
 
 
 class MenuSystem(IMenuSystem):
@@ -39,10 +40,7 @@ class MenuSystem(IMenuSystem):
     """
 
     def __init__(
-        self,
-        console: Console,
-        formatter: RichFormatter,
-        enhanced_menu: "EnhancedMenuSystem"
+        self, console: Console, formatter: RichFormatter, enhanced_menu: "EnhancedMenuSystem"
     ):
         """Initialize menu system.
 
@@ -137,9 +135,7 @@ class MenuSystem(IMenuSystem):
                 if self._session_manager:
                     self._session_manager.stop_session()
                 self._formatter.print_message(
-                    "Thank you for using EOL Tester!",
-                    message_type="success",
-                    title="Goodbye"
+                    "Thank you for using EOL Tester!", message_type="success", title="Goodbye"
                 )
             else:
                 self._formatter.print_message(
@@ -148,8 +144,7 @@ class MenuSystem(IMenuSystem):
                 )
         except Exception as e:
             self._formatter.print_message(
-                f"Error processing menu choice: {str(e)}",
-                message_type="error"
+                f"Error processing menu choice: {str(e)}", message_type="error"
             )
             logger.error(f"Menu choice processing error: {e}")
 
@@ -163,17 +158,14 @@ class MenuSystem(IMenuSystem):
             self._formatter.print_message(
                 "Test executor not available. Please check system configuration.",
                 message_type="error",
-                title="Test Executor Unavailable"
+                title="Test Executor Unavailable",
             )
             return
 
         try:
             await self._test_executor.execute_eol_test()
         except Exception as e:
-            self._formatter.print_message(
-                f"Test execution error: {str(e)}",
-                message_type="error"
-            )
+            self._formatter.print_message(f"Test execution error: {str(e)}", message_type="error")
             logger.error(f"EOL test execution error: {e}")
 
     async def _execute_usecase_menu(self) -> None:
@@ -186,14 +178,13 @@ class MenuSystem(IMenuSystem):
             self._formatter.print_message(
                 "UseCase manager not available. Please check system configuration.",
                 message_type="error",
-                title="UseCase Manager Unavailable"
+                title="UseCase Manager Unavailable",
             )
             return
 
         try:
             self._formatter.print_header(
-                "UseCase Execution System",
-                "Advanced UseCase selection and execution"
+                "UseCase Execution System", "Advanced UseCase selection and execution"
             )
 
             # Show available UseCases
@@ -215,8 +206,7 @@ class MenuSystem(IMenuSystem):
 
         except Exception as e:
             self._formatter.print_message(
-                f"UseCase execution error: {str(e)}",
-                message_type="error"
+                f"UseCase execution error: {str(e)}", message_type="error"
             )
             logger.error(f"UseCase execution error: {e}")
 
@@ -236,8 +226,7 @@ class MenuSystem(IMenuSystem):
 
         try:
             self._formatter.print_header(
-                "Hardware Control Center",
-                "Individual hardware component control and monitoring"
+                "Hardware Control Center", "Individual hardware component control and monitoring"
             )
 
             while True:
@@ -258,8 +247,7 @@ class MenuSystem(IMenuSystem):
 
         except Exception as e:
             self._formatter.print_message(
-                f"Hardware control center error: {str(e)}",
-                message_type="error"
+                f"Hardware control center error: {str(e)}", message_type="error"
             )
             logger.error(f"Hardware control center error: {e}")
 

@@ -126,7 +126,7 @@ class MockMCU(MCUService):
                 try:
                     await self._temperature_task
                 except asyncio.CancelledError:
-                    pass
+                    ...
 
             self._is_connected = False
             logger.info("Mock MCU disconnected")

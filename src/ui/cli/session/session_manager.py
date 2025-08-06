@@ -19,9 +19,10 @@ from typing import TYPE_CHECKING, Optional
 from loguru import logger
 from rich.console import Console
 
+from ..interfaces.session_interface import ISessionManager
+
 # Local imports
 from ..rich_formatter import RichFormatter
-from ..interfaces.session_interface import ISessionManager
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
@@ -69,8 +70,7 @@ class SessionManager(ISessionManager):
 
             # Display welcome header
             self._formatter.print_header(
-                "EOL Tester - Enhanced Version",
-                "Professional End-of-Line Testing System"
+                "EOL Tester - Enhanced Version", "Professional End-of-Line Testing System"
             )
 
             # Main interactive loop
@@ -83,16 +83,12 @@ class SessionManager(ISessionManager):
 
         except KeyboardInterrupt:
             self._formatter.print_message(
-                "Exiting EOL Tester... Goodbye!",
-                message_type="info",
-                title="Shutdown"
+                "Exiting EOL Tester... Goodbye!", message_type="info", title="Shutdown"
             )
             logger.info("CLI interrupted by user")
         except Exception as e:
             self._formatter.print_message(
-                f"Unexpected error occurred: {e}",
-                message_type="error",
-                title="System Error"
+                f"Unexpected error occurred: {e}", message_type="error", title="System Error"
             )
             logger.error(f"CLI session error: {e}")
         finally:

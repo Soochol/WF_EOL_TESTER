@@ -7,13 +7,14 @@ metadata management, middleware support, and plugin-style loading.
 import importlib
 import inspect
 from typing import Any, Dict, List, Optional, Set, Type
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
-    ICommand,
-    ICommandRegistry,
-    ICommandMiddleware,
     CommandMetadata,
+    ICommand,
+    ICommandMiddleware,
+    ICommandRegistry,
 )
 
 
@@ -76,9 +77,7 @@ class EnhancedCommandRegistry(ICommandRegistry):
 
         # Register command-specific middleware
         if middleware:
-            self._command_middleware[command_name] = sorted(
-                middleware, key=lambda m: m.priority
-            )
+            self._command_middleware[command_name] = sorted(middleware, key=lambda m: m.priority)
 
         # Log registration
         logger.info(
@@ -226,7 +225,9 @@ class EnhancedCommandRegistry(ICommandRegistry):
         # Sort by priority
         self._global_middleware.sort(key=lambda m: m.priority)
 
-        logger.info(f"Registered global middleware: {middleware.name} (priority: {middleware.priority})")
+        logger.info(
+            f"Registered global middleware: {middleware.name} (priority: {middleware.priority})"
+        )
 
     def unregister_middleware(self, middleware_name: str) -> bool:
         """Unregister global middleware.
@@ -271,9 +272,7 @@ class EnhancedCommandRegistry(ICommandRegistry):
         Returns:
             Dictionary with 'global' and command-specific middleware lists
         """
-        result = {
-            "global": self._global_middleware.copy()
-        }
+        result = {"global": self._global_middleware.copy()}
 
         for command_name, middleware_list in self._command_middleware.items():
             result[command_name] = middleware_list.copy()
@@ -302,7 +301,7 @@ class EnhancedCommandRegistry(ICommandRegistry):
             # Scan module for command classes
             for name, obj in inspect.getmembers(module, inspect.isclass):
                 # Check if class implements ICommand interface
-                if (issubclass(obj, ICommand) and obj != ICommand):
+                if issubclass(obj, ICommand) and obj != ICommand:
 
                     try:
                         # Try to instantiate the command
@@ -322,7 +321,7 @@ class EnhancedCommandRegistry(ICommandRegistry):
 
         except ImportError as e:
             logger.error(f"Could not import module {module_path}: {e}")
-            raise ImportError(f"Module discovery failed for {module_path}: {e}")
+            raise ImportError(f"Module discovery failed for {module_path}: {e}") from e
 
     def _can_instantiate_command(self, command_class: Type) -> bool:
         """Check if a command class can be instantiated.
@@ -427,18 +426,24 @@ class EnhancedCommandRegistry(ICommandRegistry):
         # Check for orphaned aliases
         for alias, command_name in self._aliases.items():
             if command_name not in self._commands:
-                issues.append(f"Orphaned alias '{alias}' points to non-existent command '{command_name}'")
+                issues.append(
+                    f"Orphaned alias '{alias}' points to non-existent command '{command_name}'"
+                )
 
         # Check for orphaned categories
         for category, command_names in self._categories.items():
             for command_name in command_names:
                 if command_name not in self._commands:
-                    issues.append(f"Category '{category}' contains non-existent command '{command_name}'")
+                    issues.append(
+                        f"Category '{category}' contains non-existent command '{command_name}'"
+                    )
 
         # Check for orphaned command middleware
         for command_name in self._command_middleware.keys():
             if command_name not in self._commands:
-                issues.append(f"Command-specific middleware exists for non-existent command '{command_name}'")
+                issues.append(
+                    f"Command-specific middleware exists for non-existent command '{command_name}'"
+                )
 
         # Check metadata consistency
         for command_name, command in self._commands.items():

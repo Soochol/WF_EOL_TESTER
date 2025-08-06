@@ -21,8 +21,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 # Local imports - New modular architecture
 from .application_factory import create_production_cli_application
-from .validation.input_validator import ValidationConstants, InputValidator
-from .interfaces.application_interface import ICLIApplication
+from .validation.input_validator import InputValidator, ValidationConstants
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
@@ -77,6 +76,7 @@ class EnhancedEOLTesterCLI:
         # Configuration reader compatibility
         if self._hardware_facade:
             from .config_reader import CLIConfigReader
+
             self._config_reader = CLIConfigReader()
         else:
             self._config_reader = None
@@ -92,12 +92,12 @@ class EnhancedEOLTesterCLI:
     @property
     def _running(self) -> bool:
         """Legacy compatibility property for running state."""
-        return self._application._running
+        return self._application._running  # pylint: disable=protected-access
 
     @_running.setter
     def _running(self, value: bool) -> None:
         """Legacy compatibility setter for running state."""
-        self._application._running = value
+        self._application._running = value  # pylint: disable=protected-access  # type: ignore
 
     # Component access methods for backward compatibility
     def get_console(self):
@@ -119,4 +119,3 @@ class EnhancedEOLTesterCLI:
     def get_usecase_manager(self):
         """Get usecase manager instance for external components."""
         return self._application.get_usecase_manager()
-

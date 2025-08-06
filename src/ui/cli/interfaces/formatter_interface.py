@@ -43,7 +43,7 @@ class IFormatter(ABC):
         Returns:
             Rich Console instance for output operations
         """
-        pass
+        ...
 
     @abstractmethod
     def print_header(self, title: str, subtitle: Optional[str] = None) -> None:
@@ -53,7 +53,7 @@ class IFormatter(ABC):
             title: Main header title
             subtitle: Optional subtitle text
         """
-        pass
+        ...
 
     @abstractmethod
     def print_message(
@@ -69,7 +69,7 @@ class IFormatter(ABC):
             message_type: Type of message (info, success, warning, error)
             title: Optional panel title
         """
-        pass
+        ...
 
     @abstractmethod
     def print_status(
@@ -85,7 +85,7 @@ class IFormatter(ABC):
             status: Current status value
             details: Optional dictionary of additional details
         """
-        pass
+        ...
 
     @abstractmethod
     def create_message_panel(
@@ -104,7 +104,7 @@ class IFormatter(ABC):
         Returns:
             Rich Panel with formatted message
         """
-        pass
+        ...
 
     @abstractmethod
     def create_test_results_table(
@@ -123,7 +123,7 @@ class IFormatter(ABC):
         Returns:
             Rich Table with formatted test results
         """
-        pass
+        ...
 
     @abstractmethod
     def print_table(self, table: Table) -> None:
@@ -132,7 +132,7 @@ class IFormatter(ABC):
         Args:
             table: Rich Table instance to display
         """
-        pass
+        ...
 
     @abstractmethod
     def create_progress_display(
@@ -147,4 +147,4 @@ class IFormatter(ABC):
         Returns:
             Context manager for progress display
         """
-        pass
+        ...

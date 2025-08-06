@@ -15,13 +15,12 @@ For new development, import directly from the controllers package.
 # Legacy compatibility imports - use controllers package for new development
 from .controllers import (
     HardwareController,
-    RobotController,
-    MCUController,
-    LoadCellController,
-    PowerController,
     HardwareControlManager,
+    LoadCellController,
+    MCUController,
+    PowerController,
+    RobotController,
 )
-
 from .controllers.base.hardware_controller import simple_interactive_menu
 
 # Re-export for backward compatibility

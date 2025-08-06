@@ -9,8 +9,9 @@ import asyncio
 from typing import Optional
 
 from application.interfaces.hardware.loadcell import LoadCellService
-from ..base.hardware_controller import HardwareController, simple_interactive_menu
+
 from ...rich_formatter import RichFormatter
+from ..base.hardware_controller import HardwareController, simple_interactive_menu
 
 
 class LoadCellController(HardwareController):
@@ -53,6 +54,7 @@ class LoadCellController(HardwareController):
 
     async def connect(self) -> bool:
         """Connect to LoadCell"""
+
         async def connect_operation():
             await self.loadcell_service.connect(
                 port="/dev/ttyUSB0",
@@ -69,11 +71,12 @@ class LoadCellController(HardwareController):
             "Connecting to LoadCell...",
             connect_operation,
             "LoadCell connected successfully",
-            "Failed to connect to LoadCell"
+            "Failed to connect to LoadCell",
         )
 
     async def disconnect(self) -> bool:
         """Disconnect from LoadCell"""
+
         async def disconnect_operation():
             await self.loadcell_service.disconnect()
             return True
@@ -83,7 +86,7 @@ class LoadCellController(HardwareController):
             disconnect_operation,
             "LoadCell disconnected successfully",
             "Failed to disconnect LoadCell",
-            show_time=0.2
+            show_time=0.2,
         )
 
     async def show_control_menu(self) -> Optional[str]:
@@ -192,6 +195,7 @@ class LoadCellController(HardwareController):
 
     async def _zero_calibration(self) -> None:
         """Perform zero calibration"""
+
         async def calibration_operation():
             await self.loadcell_service.zero_calibration()
             return True
@@ -201,7 +205,7 @@ class LoadCellController(HardwareController):
             calibration_operation,
             "Zero calibration completed successfully",
             "Zero calibration failed",
-            show_time=0.8  # Show spinner longer for calibration
+            show_time=0.8,  # Show spinner longer for calibration
         )
 
     async def _monitor_force(self) -> None:

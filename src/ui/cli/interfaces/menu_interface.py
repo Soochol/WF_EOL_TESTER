@@ -39,7 +39,7 @@ class IMenuSystem(ABC):
         Args:
             session_manager: Session manager instance implementing ISessionManager
         """
-        pass
+        ...
 
     @abstractmethod
     def set_test_executor(self, test_executor: "ITestExecutor") -> None:
@@ -48,7 +48,7 @@ class IMenuSystem(ABC):
         Args:
             test_executor: Test executor instance implementing ITestExecutor
         """
-        pass
+        ...
 
     @abstractmethod
     def set_usecase_manager(self, usecase_manager) -> None:
@@ -57,7 +57,7 @@ class IMenuSystem(ABC):
         Args:
             usecase_manager: UseCase manager instance for advanced functionality
         """
-        pass
+        ...
 
     @abstractmethod
     def set_hardware_manager(self, hardware_manager) -> None:
@@ -66,7 +66,7 @@ class IMenuSystem(ABC):
         Args:
             hardware_manager: Hardware manager instance for hardware operations
         """
-        pass
+        ...
 
     @abstractmethod
     async def show_main_menu(self) -> None:
@@ -79,4 +79,4 @@ class IMenuSystem(ABC):
         Raises:
             Exception: Various exceptions may be raised during menu operations
         """
-        pass
+        ...

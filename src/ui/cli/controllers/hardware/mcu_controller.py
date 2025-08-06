@@ -9,8 +9,9 @@ from typing import Optional
 
 from application.interfaces.hardware.mcu import MCUService
 from domain.enums.mcu_enums import TestMode
-from ..base.hardware_controller import HardwareController, simple_interactive_menu
+
 from ...rich_formatter import RichFormatter
+from ..base.hardware_controller import HardwareController, simple_interactive_menu
 
 
 class MCUController(HardwareController):
@@ -53,6 +54,7 @@ class MCUController(HardwareController):
 
     async def connect(self) -> bool:
         """Connect to MCU"""
+
         async def connect_operation():
             await self.mcu_service.connect(
                 port="/dev/ttyUSB1",
@@ -68,11 +70,12 @@ class MCUController(HardwareController):
             "Connecting to MCU...",
             connect_operation,
             "MCU connected successfully",
-            "Failed to connect to MCU"
+            "Failed to connect to MCU",
         )
 
     async def disconnect(self) -> bool:
         """Disconnect from MCU"""
+
         async def disconnect_operation():
             await self.mcu_service.disconnect()
             return True
@@ -82,7 +85,7 @@ class MCUController(HardwareController):
             disconnect_operation,
             "MCU disconnected successfully",
             "Failed to disconnect MCU",
-            show_time=0.2
+            show_time=0.2,
         )
 
     async def show_control_menu(self) -> Optional[str]:
@@ -207,7 +210,7 @@ class MCUController(HardwareController):
             temperature = self._get_user_input_with_validation(
                 "Enter operating temperature (°C):",
                 input_type=float,
-                validator=lambda x: -50 <= x <= 200  # Reasonable temperature range
+                validator=lambda x: -50 <= x <= 200,  # Reasonable temperature range
             )
 
             if temperature is None:

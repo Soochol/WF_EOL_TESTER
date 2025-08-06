@@ -106,37 +106,42 @@ class EnhancedInputIntegrator:
         return choice if choice else None
 
     async def get_dut_information(self) -> Optional[Dict[str, str]]:
-        """Get DUT information using simple input (enhanced functionality removed)"""
+        """Get DUT information - only Serial Number from user, rest from config"""
         self.console.print("[bold cyan]DUT Information Collection[/bold cyan]")
 
-        # Load default values from configuration if available
+        # Load default values (required)
         defaults = {}
         if self.configuration_service:
             try:
                 defaults = await self.configuration_service.load_dut_defaults()
                 self.console.print(
-                    f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]"
+                    f"[dim][green]✓ Loaded defaults: DUT ID: {defaults.get('dut_id')}, Model: {defaults.get('model')}, Operator: {defaults.get('operator_id')}[/green][/dim]"
                 )
             except Exception as e:
-                self.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
+                self.console.print(f"[dim][red]✗ Could not load defaults: {e}[/red][/dim]")
+                return None
+        else:
+            self.console.print("[dim][red]✗ Configuration service not available[/red][/dim]")
+            return None
 
-        dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
-        if not dut_id:
-            dut_id = defaults.get("dut_id", "")
-            if not dut_id:
+        # Validate required defaults are present
+        required_fields = ['dut_id', 'model', 'operator_id']
+        for field in required_fields:
+            if not defaults.get(field):
+                self.console.print(f"[red]Error: Missing required default value for {field}[/red]")
                 return None
 
-        model = input(f"Model [{defaults.get('model', '')}]: ").strip()
-        if not model:
-            model = defaults.get("model", "Unknown")
+        # Use defaults automatically
+        dut_id = defaults['dut_id']
+        model = defaults['model']
+        operator = defaults['operator_id']
 
-        serial = input(f"Serial Number [{defaults.get('serial_number', dut_id)}]: ").strip()
+        # Only prompt for Serial Number
+        serial = input(f"Serial Number [{dut_id}]: ").strip()
         if not serial:
-            serial = defaults.get("serial_number", dut_id)
+            serial = dut_id  # Default to DUT ID
 
-        operator = input(f"Operator [{defaults.get('operator_id', '')}]: ").strip()
-        if not operator:
-            operator = defaults.get("operator_id", "Unknown")
+        self.console.print(f"[dim]Using: DUT ID={dut_id}, Model={model}, Operator={operator}, Serial={serial}[/dim]")
 
         return {"id": dut_id, "model": model, "serial": serial, "operator": operator}
 

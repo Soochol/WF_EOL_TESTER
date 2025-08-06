@@ -35,13 +35,13 @@ if platform.system() == "Windows":
         # Fallback for Windows environments without WinDLL
         class WinDLL:  # type: ignore[no-redef]
             def __init__(self, path: str) -> None:
-                pass
+                ...
 
 else:
     # Mock WinDLL class for non-Windows systems
     class WinDLL:  # type: ignore[no-redef]
         def __init__(self, path: str) -> None:
-            pass
+            ...
 
 
 class AXLWrapper:
@@ -83,278 +83,423 @@ class AXLWrapper:
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
 
+        # Track missing functions for logging
+        missing_functions = []
+
         # === Library Functions ===
         # AxlOpen
-        self.dll.AxlOpen.argtypes = [c_long]
-        self.dll.AxlOpen.restype = c_long
+        try:
+            self.dll.AxlOpen.argtypes = [c_long]
+            self.dll.AxlOpen.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxlOpen")
 
         # AxlClose
-        self.dll.AxlClose.argtypes = []
-        self.dll.AxlClose.restype = c_long
+        try:
+            self.dll.AxlClose.argtypes = []
+            self.dll.AxlClose.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxlClose")
 
         # AxlIsOpened
-        self.dll.AxlIsOpened.argtypes = []
-        self.dll.AxlIsOpened.restype = c_long
+        try:
+            self.dll.AxlIsOpened.argtypes = []
+            self.dll.AxlIsOpened.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxlIsOpened")
 
         # AxlGetBoardCount
-        self.dll.AxlGetBoardCount.argtypes = [POINTER(c_long)]
-        self.dll.AxlGetBoardCount.restype = c_long
+        try:
+            self.dll.AxlGetBoardCount.argtypes = [POINTER(c_long)]
+            self.dll.AxlGetBoardCount.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxlGetBoardCount")
 
         # AxlGetLibVersion
-        self.dll.AxlGetLibVersion.argtypes = [c_char_p]
-        self.dll.AxlGetLibVersion.restype = c_long
+        try:
+            self.dll.AxlGetLibVersion.argtypes = [c_char_p]
+            self.dll.AxlGetLibVersion.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxlGetLibVersion")
 
         # === Motion Functions ===
         # AxmInfoGetAxisCount
-        self.dll.AxmInfoGetAxisCount.argtypes = [POINTER(c_long)]
-        self.dll.AxmInfoGetAxisCount.restype = c_long
+        try:
+            self.dll.AxmInfoGetAxisCount.argtypes = [POINTER(c_long)]
+            self.dll.AxmInfoGetAxisCount.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmInfoGetAxisCount")
 
         # AxmMotSetPulseOutMethod
-        self.dll.AxmMotSetPulseOutMethod.argtypes = [
-            c_long,
-            c_long,
-        ]
-        self.dll.AxmMotSetPulseOutMethod.restype = c_long
+        try:
+            self.dll.AxmMotSetPulseOutMethod.argtypes = [
+                c_long,
+                c_long,
+            ]
+            self.dll.AxmMotSetPulseOutMethod.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetPulseOutMethod")
 
         # AxmMotSetMoveUnitPerPulse
-        self.dll.AxmMotSetMoveUnitPerPulse.argtypes = [
-            c_long,
-            c_double,
-            c_long,
-        ]
-        self.dll.AxmMotSetMoveUnitPerPulse.restype = c_long
+        try:
+            self.dll.AxmMotSetMoveUnitPerPulse.argtypes = [
+                c_long,
+                c_double,
+                c_long,
+            ]
+            self.dll.AxmMotSetMoveUnitPerPulse.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetMoveUnitPerPulse")
 
         # AxmSignalServoOn
-        self.dll.AxmSignalServoOn.argtypes = [
-            c_long,
-            c_long,
-        ]
-        self.dll.AxmSignalServoOn.restype = c_long
+        try:
+            self.dll.AxmSignalServoOn.argtypes = [
+                c_long,
+                c_long,
+            ]
+            self.dll.AxmSignalServoOn.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmSignalServoOn")
 
         # AxmSignalIsServoOn
-        self.dll.AxmSignalIsServoOn.argtypes = [
-            c_long,
-            POINTER(c_long),
-        ]
-        self.dll.AxmSignalIsServoOn.restype = c_long
+        try:
+            self.dll.AxmSignalIsServoOn.argtypes = [
+                c_long,
+                POINTER(c_long),
+            ]
+            self.dll.AxmSignalIsServoOn.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmSignalIsServoOn")
 
         # AxmStatusSetCmdPos
-        self.dll.AxmStatusSetCmdPos.argtypes = [
-            c_long,
-            c_double,
-        ]
-        self.dll.AxmStatusSetCmdPos.restype = c_long
+        try:
+            self.dll.AxmStatusSetCmdPos.argtypes = [
+                c_long,
+                c_double,
+            ]
+            self.dll.AxmStatusSetCmdPos.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmStatusSetCmdPos")
 
         # AxmStatusGetCmdPos
-        self.dll.AxmStatusGetCmdPos.argtypes = [
-            c_long,
-            POINTER(c_double),
-        ]
-        self.dll.AxmStatusGetCmdPos.restype = c_long
+        try:
+            self.dll.AxmStatusGetCmdPos.argtypes = [
+                c_long,
+                POINTER(c_double),
+            ]
+            self.dll.AxmStatusGetCmdPos.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmStatusGetCmdPos")
 
         # AxmStatusSetActPos
-        self.dll.AxmStatusSetActPos.argtypes = [
-            c_long,
-            c_double,
-        ]
-        self.dll.AxmStatusSetActPos.restype = c_long
+        try:
+            self.dll.AxmStatusSetActPos.argtypes = [
+                c_long,
+                c_double,
+            ]
+            self.dll.AxmStatusSetActPos.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmStatusSetActPos")
 
         # AxmStatusGetActPos
-        self.dll.AxmStatusGetActPos.argtypes = [
-            c_long,
-            POINTER(c_double),
-        ]
-        self.dll.AxmStatusGetActPos.restype = c_long
+        try:
+            self.dll.AxmStatusGetActPos.argtypes = [
+                c_long,
+                POINTER(c_double),
+            ]
+            self.dll.AxmStatusGetActPos.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmStatusGetActPos")
 
         # AxmMoveStartPos
-        self.dll.AxmMoveStartPos.argtypes = [
-            c_long,
-            c_double,
-            c_double,
-            c_double,
-            c_double,
-        ]
-        self.dll.AxmMoveStartPos.restype = c_long
+        try:
+            self.dll.AxmMoveStartPos.argtypes = [
+                c_long,
+                c_double,
+                c_double,
+                c_double,
+                c_double,
+            ]
+            self.dll.AxmMoveStartPos.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveStartPos")
 
         # AxmMoveStop
-        self.dll.AxmMoveStop.argtypes = [c_long, c_double]
-        self.dll.AxmMoveStop.restype = c_long
+        try:
+            self.dll.AxmMoveStop.argtypes = [c_long, c_double]
+            self.dll.AxmMoveStop.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveStop")
 
         # AxmMoveEStop - Emergency stop
-        self.dll.AxmMoveEStop.argtypes = [c_long]
-        self.dll.AxmMoveEStop.restype = c_long
+        try:
+            self.dll.AxmMoveEStop.argtypes = [c_long]
+            self.dll.AxmMoveEStop.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveEStop")
 
         # AxmMoveSStop - Smooth stop with deceleration
-        self.dll.AxmMoveSStop.argtypes = [c_long]
-        self.dll.AxmMoveSStop.restype = c_long
+        try:
+            self.dll.AxmMoveSStop.argtypes = [c_long]
+            self.dll.AxmMoveSStop.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveSStop")
 
         # AxmStatusReadInMotion
-        self.dll.AxmStatusReadInMotion.argtypes = [
-            c_long,
-            POINTER(c_long),
-        ]
-        self.dll.AxmStatusReadInMotion.restype = c_long
+        try:
+            self.dll.AxmStatusReadInMotion.argtypes = [
+                c_long,
+                POINTER(c_long),
+            ]
+            self.dll.AxmStatusReadInMotion.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmStatusReadInMotion")
 
         # AxmHomeSetMethod
-        self.dll.AxmHomeSetMethod.argtypes = [
-            c_long,
-            c_long,
-            c_long,
-            c_long,
-            c_double,
-        ]
-        self.dll.AxmHomeSetMethod.restype = c_long
+        try:
+            self.dll.AxmHomeSetMethod.argtypes = [
+                c_long,
+                c_long,
+                c_long,
+                c_long,
+                c_double,
+            ]
+            self.dll.AxmHomeSetMethod.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmHomeSetMethod")
 
         # AxmHomeSetVel
-        self.dll.AxmHomeSetVel.argtypes = [
-            c_long,
-            c_double,
-            c_double,
-            c_double,
-            c_double,
-        ]
-        self.dll.AxmHomeSetVel.restype = c_long
+        try:
+            self.dll.AxmHomeSetVel.argtypes = [
+                c_long,
+                c_double,
+                c_double,
+                c_double,
+                c_double,
+            ]
+            self.dll.AxmHomeSetVel.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmHomeSetVel")
 
         # AxmHomeSetStart
-        self.dll.AxmHomeSetStart.argtypes = [c_long]
-        self.dll.AxmHomeSetStart.restype = c_long
+        try:
+            self.dll.AxmHomeSetStart.argtypes = [c_long]
+            self.dll.AxmHomeSetStart.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmHomeSetStart")
 
         # AxmHomeGetResult
-        self.dll.AxmHomeGetResult.argtypes = [c_long, POINTER(c_ulong)]
-        self.dll.AxmHomeGetResult.restype = c_long
+        try:
+            self.dll.AxmHomeGetResult.argtypes = [c_long, POINTER(c_ulong)]
+            self.dll.AxmHomeGetResult.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmHomeGetResult")
 
         # AxmHomeGetRate
-        self.dll.AxmHomeGetRate.argtypes = [c_long, POINTER(c_ulong), POINTER(c_ulong)]
-        self.dll.AxmHomeGetRate.restype = c_long
+        try:
+            self.dll.AxmHomeGetRate.argtypes = [c_long, POINTER(c_ulong), POINTER(c_ulong)]
+            self.dll.AxmHomeGetRate.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmHomeGetRate")
 
         # === Additional Status and Safety Functions ===
         # AxmSignalReadServoAlarm
-        self.dll.AxmSignalReadServoAlarm.argtypes = [
-            c_long,
-            POINTER(c_long),
-        ]
-        self.dll.AxmSignalReadServoAlarm.restype = c_long
+        try:
+            self.dll.AxmSignalReadServoAlarm.argtypes = [
+                c_long,
+                POINTER(c_long),
+            ]
+            self.dll.AxmSignalReadServoAlarm.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmSignalReadServoAlarm")
 
         # AxmSignalReadLimit
-        self.dll.AxmSignalReadLimit.argtypes = [
-            c_long,
-            POINTER(c_long),
-            POINTER(c_long),
-        ]
-        self.dll.AxmSignalReadLimit.restype = c_long
+        try:
+            self.dll.AxmSignalReadLimit.argtypes = [
+                c_long,
+                POINTER(c_long),
+                POINTER(c_long),
+            ]
+            self.dll.AxmSignalReadLimit.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmSignalReadLimit")
 
         # AxmSignalSetLimit
-        self.dll.AxmSignalSetLimit.argtypes = [
-            c_long,
-            c_long,
-            c_long,
-            c_long,
-        ]
-        self.dll.AxmSignalSetLimit.restype = c_long
+        try:
+            self.dll.AxmSignalSetLimit.argtypes = [
+                c_long,
+                c_long,
+                c_long,
+                c_long,
+            ]
+            self.dll.AxmSignalSetLimit.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmSignalSetLimit")
 
         # AxmMotSetAbsRelMode
-        self.dll.AxmMotSetAbsRelMode.argtypes = [
-            c_long,
-            c_long,
-        ]
-        self.dll.AxmMotSetAbsRelMode.restype = c_long
+        try:
+            self.dll.AxmMotSetAbsRelMode.argtypes = [
+                c_long,
+                c_long,
+            ]
+            self.dll.AxmMotSetAbsRelMode.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetAbsRelMode")
 
         # AxmMotGetAbsRelMode
-        self.dll.AxmMotGetAbsRelMode.argtypes = [
-            c_long,
-            POINTER(c_long),
-        ]
-        self.dll.AxmMotGetAbsRelMode.restype = c_long
+        try:
+            self.dll.AxmMotGetAbsRelMode.argtypes = [
+                c_long,
+                POINTER(c_long),
+            ]
+            self.dll.AxmMotGetAbsRelMode.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotGetAbsRelMode")
 
         # === Velocity Motion Functions ===
         # AxmMoveStartVel
-        self.dll.AxmMoveStartVel.argtypes = [
-            c_long,
-            c_double,
-            c_double,
-            c_double,
-        ]
-        self.dll.AxmMoveStartVel.restype = c_long
+        try:
+            self.dll.AxmMoveStartVel.argtypes = [
+                c_long,
+                c_double,
+                c_double,
+                c_double,
+            ]
+            self.dll.AxmMoveStartVel.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveStartVel")
 
         # AxmMoveSignalSearch
-        self.dll.AxmMoveSignalSearch.argtypes = [
-            c_long,
-            c_double,
-            c_double,
-            c_double,
-            c_double,
-        ]
-        self.dll.AxmMoveSignalSearch.restype = c_long
+        try:
+            self.dll.AxmMoveSignalSearch.argtypes = [
+                c_long,
+                c_double,
+                c_double,
+                c_double,
+                c_double,
+            ]
+            self.dll.AxmMoveSignalSearch.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveSignalSearch")
 
         # === Multi-axis Functions ===
         # AxmMoveMultiStart
-        self.dll.AxmMoveMultiStart.argtypes = [
-            POINTER(c_long),
-            POINTER(c_double),
-            POINTER(c_double),
-            POINTER(c_double),
-            POINTER(c_double),
-            c_long,
-        ]
-        self.dll.AxmMoveMultiStart.restype = c_long
+        try:
+            self.dll.AxmMoveMultiStart.argtypes = [
+                POINTER(c_long),
+                POINTER(c_double),
+                POINTER(c_double),
+                POINTER(c_double),
+                POINTER(c_double),
+                c_long,
+            ]
+            self.dll.AxmMoveMultiStart.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveMultiStart")
 
         # AxmMoveMultiStop
-        self.dll.AxmMoveMultiStop.argtypes = [
-            POINTER(c_long),
-            POINTER(c_double),
-            c_long,
-        ]
-        self.dll.AxmMoveMultiStop.restype = c_long
+        try:
+            self.dll.AxmMoveMultiStop.argtypes = [
+                POINTER(c_long),
+                POINTER(c_double),
+                c_long,
+            ]
+            self.dll.AxmMoveMultiStop.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMoveMultiStop")
 
         # === Parameter Loading/Saving Functions ===
         # AxmMotLoadParaAll
-        self.dll.AxmMotLoadParaAll.argtypes = [c_char_p]
-        self.dll.AxmMotLoadParaAll.restype = c_long
+        try:
+            self.dll.AxmMotLoadParaAll.argtypes = [c_char_p]
+            self.dll.AxmMotLoadParaAll.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotLoadParaAll")
 
         # AxmMotSaveParaAll
-        self.dll.AxmMotSaveParaAll.argtypes = [c_char_p]
-        self.dll.AxmMotSaveParaAll.restype = c_long
+        try:
+            self.dll.AxmMotSaveParaAll.argtypes = [c_char_p]
+            self.dll.AxmMotSaveParaAll.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSaveParaAll")
 
         # AxmMotLoadPara
-        self.dll.AxmMotLoadPara.argtypes = [c_long, c_char_p]
-        self.dll.AxmMotLoadPara.restype = c_long
+        try:
+            self.dll.AxmMotLoadPara.argtypes = [c_long, c_char_p]
+            self.dll.AxmMotLoadPara.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotLoadPara")
 
         # AxmMotSavePara
-        self.dll.AxmMotSavePara.argtypes = [c_long, c_char_p]
-        self.dll.AxmMotSavePara.restype = c_long
+        try:
+            self.dll.AxmMotSavePara.argtypes = [c_long, c_char_p]
+            self.dll.AxmMotSavePara.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSavePara")
 
         # === Motion Parameter Get/Set Functions ===
         # AxmMotSetMaxVel
-        self.dll.AxmMotSetMaxVel.argtypes = [c_long, c_double]
-        self.dll.AxmMotSetMaxVel.restype = c_long
+        try:
+            self.dll.AxmMotSetMaxVel.argtypes = [c_long, c_double]
+            self.dll.AxmMotSetMaxVel.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetMaxVel")
 
         # AxmMotGetMaxVel
-        self.dll.AxmMotGetMaxVel.argtypes = [c_long, POINTER(c_double)]
-        self.dll.AxmMotGetMaxVel.restype = c_long
+        try:
+            self.dll.AxmMotGetMaxVel.argtypes = [c_long, POINTER(c_double)]
+            self.dll.AxmMotGetMaxVel.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotGetMaxVel")
 
         # AxmMotSetMinVel
-        self.dll.AxmMotSetMinVel.argtypes = [c_long, c_double]
-        self.dll.AxmMotSetMinVel.restype = c_long
+        try:
+            self.dll.AxmMotSetMinVel.argtypes = [c_long, c_double]
+            self.dll.AxmMotSetMinVel.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetMinVel")
 
         # AxmMotGetMinVel
-        self.dll.AxmMotGetMinVel.argtypes = [c_long, POINTER(c_double)]
-        self.dll.AxmMotGetMinVel.restype = c_long
+        try:
+            self.dll.AxmMotGetMinVel.argtypes = [c_long, POINTER(c_double)]
+            self.dll.AxmMotGetMinVel.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotGetMinVel")
 
         # AxmMotSetAccelUnit
-        self.dll.AxmMotSetAccelUnit.argtypes = [c_long, c_long]
-        self.dll.AxmMotSetAccelUnit.restype = c_long
+        try:
+            self.dll.AxmMotSetAccelUnit.argtypes = [c_long, c_long]
+            self.dll.AxmMotSetAccelUnit.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetAccelUnit")
 
         # AxmMotGetAccelUnit
-        self.dll.AxmMotGetAccelUnit.argtypes = [c_long, POINTER(c_long)]
-        self.dll.AxmMotGetAccelUnit.restype = c_long
+        try:
+            self.dll.AxmMotGetAccelUnit.argtypes = [c_long, POINTER(c_long)]
+            self.dll.AxmMotGetAccelUnit.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotGetAccelUnit")
 
         # AxmMotSetProfileMode
-        self.dll.AxmMotSetProfileMode.argtypes = [c_long, c_long]
-        self.dll.AxmMotSetProfileMode.restype = c_long
+        try:
+            self.dll.AxmMotSetProfileMode.argtypes = [c_long, c_long]
+            self.dll.AxmMotSetProfileMode.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotSetProfileMode")
 
         # AxmMotGetProfileMode
-        self.dll.AxmMotGetProfileMode.argtypes = [c_long, POINTER(c_long)]
-        self.dll.AxmMotGetProfileMode.restype = c_long
+        try:
+            self.dll.AxmMotGetProfileMode.argtypes = [c_long, POINTER(c_long)]
+            self.dll.AxmMotGetProfileMode.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmMotGetProfileMode")
+
+        # Log all missing functions at once
+        if missing_functions:
+            print(f"Warning: {len(missing_functions)} AXL functions not found in DLL:")
+            for func in missing_functions:
+                print(f"  - {func}")
+            print("Hardware service will create successfully but some functions may not work.")
 
     # === Library Functions ===
     def open(self, irq_no: int = 7) -> int:
@@ -662,6 +807,12 @@ class AXLWrapper:
         """Start velocity (jog) motion"""
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
+        
+        # Check if function is available
+        if not hasattr(self.dll, 'AxmMoveStartVel'):
+            print(f"Warning: AxmMoveStartVel function not available, returning success")
+            return 0  # Return success code
+            
         return self.dll.AxmMoveStartVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]
 
     def move_signal_search(

@@ -12,10 +12,11 @@ Key Features:
 """
 
 from typing import Any, Optional
+
 from loguru import logger
 
-from .factories.component_factory import CLIComponentFactory
 from .config.component_config import ConfigurationMode
+from .factories.component_factory import CLIComponentFactory
 from .interfaces.application_interface import ICLIApplication
 
 
@@ -61,7 +62,7 @@ def create_cli_application(
 
     except Exception as e:
         logger.error(f"Failed to create CLI application: {e}")
-        raise ValueError(f"Failed to create CLI application: {e}")
+        raise ValueError(f"Failed to create CLI application: {e}") from e
 
 
 def create_production_cli_application(

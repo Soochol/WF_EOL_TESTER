@@ -16,6 +16,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from domain.enums.test_status import TestStatus
+
 from .base_formatter import BaseFormatter
 
 

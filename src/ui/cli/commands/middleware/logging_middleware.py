@@ -5,13 +5,14 @@ metrics, audit trails, and debugging information.
 """
 
 import time
-from typing import List, Optional, Tuple, Dict, Any
+from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
+    CommandResult,
     ICommand,
     ICommandExecutionContext,
-    CommandResult,
     MiddlewareResult,
 )
 from ui.cli.commands.middleware.base_middleware import BaseMiddleware
@@ -80,26 +81,26 @@ class LoggingMiddleware(BaseMiddleware):
         }
 
         if self._include_args and args:
-            log_data["args"] = args
+            log_data["args"] = str(args)
 
         if self._include_user_context:
-            log_data["user_id"] = context.user_id
-            log_data["session_id"] = context.session_data.get("session_id")
+            log_data["user_id"] = context.user_id or "unknown"
+            log_data["session_id"] = context.session_data.get("session_id") or "none"
 
         # Add command metadata
         log_data["command_category"] = command.metadata.category
         log_data["command_version"] = command.metadata.version
 
         if command.metadata.deprecated:
-            log_data["deprecated"] = True
+            log_data["deprecated"] = "true"
             logger.warning(
                 f"DEPRECATED COMMAND EXECUTED: {log_data}",
-                extra={"structured": True, "data": log_data}
+                extra={"structured": True, "data": log_data},
             )
         else:
             logger.info(
                 f"Command execution started: /{command.metadata.name}",
-                extra={"structured": True, "data": log_data}
+                extra={"structured": True, "data": log_data},
             )
 
         return MiddlewareResult.CONTINUE, None
@@ -148,7 +149,9 @@ class LoggingMiddleware(BaseMiddleware):
             log_data["performance"] = {
                 "execution_time_ms": execution_time_ms,
                 "result_data_size": len(str(result.data)) if result.data else 0,
-                "middleware_data_size": len(str(result.middleware_data)) if result.middleware_data else 0,
+                "middleware_data_size": (
+                    len(str(result.middleware_data)) if result.middleware_data else 0
+                ),
             }
 
         # Add error details if present
@@ -159,17 +162,17 @@ class LoggingMiddleware(BaseMiddleware):
         if result.status.value == "error":
             logger.error(
                 f"Command execution failed: /{command.metadata.name} - {result.message}",
-                extra={"structured": True, "data": log_data}
+                extra={"structured": True, "data": log_data},
             )
         elif result.status.value == "warning":
             logger.warning(
                 f"Command execution warning: /{command.metadata.name} - {result.message}",
-                extra={"structured": True, "data": log_data}
+                extra={"structured": True, "data": log_data},
             )
         else:
             logger.info(
                 f"Command execution completed: /{command.metadata.name}",
-                extra={"structured": True, "data": log_data}
+                extra={"structured": True, "data": log_data},
             )
 
         # Add logging info to result metadata
@@ -214,15 +217,15 @@ class LoggingMiddleware(BaseMiddleware):
         }
 
         if self._include_args and args:
-            log_data["args"] = args
+            log_data["args"] = str(args)
 
         if self._include_user_context:
-            log_data["user_id"] = context.user_id
+            log_data["user_id"] = context.user_id or "unknown"
 
         # Log the error
         logger.error(
             f"Command execution error: /{command.metadata.name} - {str(error)}",
-            extra={"structured": True, "data": log_data, "exception": error}
+            extra={"structured": True, "data": log_data, "exception": error},
         )
 
         # Clean up timing data
@@ -247,7 +250,7 @@ class LoggingMiddleware(BaseMiddleware):
             command.metadata.name,
             context.user_id or "anonymous",
             str(time.time()),
-            str(id(context))  # Memory address for uniqueness
+            str(id(context)),  # Memory address for uniqueness
         ]
 
         id_string = ":".join(id_components)

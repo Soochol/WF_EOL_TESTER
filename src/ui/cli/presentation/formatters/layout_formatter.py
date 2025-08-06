@@ -231,7 +231,9 @@ class LayoutFormatter(BaseFormatter):
         # Format each statistic with appropriate styling
         for key, value in stats.items():
             stat_text = Text()
-            stat_text.append(f"  {self.icons.get_icon('bullet')} ", style=self.colors.get_color("muted"))
+            stat_text.append(
+                f"  {self.icons.get_icon('bullet')} ", style=self.colors.get_color("muted")
+            )
             stat_text.append(f"{key.replace('_', ' ').title()}: ", style="bold")
 
             # Apply special formatting for percentage rates
@@ -256,14 +258,18 @@ class LayoutFormatter(BaseFormatter):
         content = []
 
         # Section title
-        title_text = Text(f"\n{self.icons.get_icon('report')} Statistics by Model",
-                         style=f"bold {self.colors.get_color('secondary')}")
+        title_text = Text(
+            f"\n{self.icons.get_icon('report')} Statistics by Model",
+            style=f"bold {self.colors.get_color('secondary')}",
+        )
         content.append(title_text)
 
         # Format each model's statistics
         for model, stats in model_stats.items():
             model_text = Text()
-            model_text.append(f"  {self.icons.get_icon('bullet')} ", style=self.colors.get_color("muted"))
+            model_text.append(
+                f"  {self.icons.get_icon('bullet')} ", style=self.colors.get_color("muted")
+            )
             model_text.append(f"{model}: ", style="bold")
 
             # Format key statistics

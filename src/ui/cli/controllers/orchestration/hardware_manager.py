@@ -13,12 +13,13 @@ from rich.console import Console
 
 from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
-from ..base.hardware_controller import HardwareController, simple_interactive_menu
-from ..hardware.robot_controller import RobotController
-from ..hardware.mcu_controller import MCUController
-from ..hardware.loadcell_controller import LoadCellController
-from ..hardware.power_controller import PowerController
+
 from ...rich_formatter import RichFormatter
+from ..base.hardware_controller import HardwareController, simple_interactive_menu
+from ..hardware.loadcell_controller import LoadCellController
+from ..hardware.mcu_controller import MCUController
+from ..hardware.power_controller import PowerController
+from ..hardware.robot_controller import RobotController
 
 
 class HardwareControlManager:

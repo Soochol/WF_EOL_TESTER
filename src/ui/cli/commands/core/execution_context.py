@@ -5,6 +5,7 @@ dependency injection integration and session management.
 """
 
 from typing import Any, Dict, Optional
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
@@ -74,7 +75,7 @@ class CommandExecutionContext(ICommandExecutionContext):
             return service
         except Exception as e:
             logger.error(f"Failed to resolve service {service_type.__name__}: {e}")
-            raise ValueError(f"Could not resolve service {service_type.__name__}: {e}")
+            raise ValueError(f"Could not resolve service {service_type.__name__}: {e}") from e
 
     def set_data(self, key: str, value: Any) -> None:
         """Set context-specific data.

@@ -40,9 +40,9 @@ class MiddlewareResult(Enum):
     """
 
     CONTINUE = "continue"  # Continue to next middleware or command
-    STOP = "stop"         # Stop pipeline, return current result
-    SKIP = "skip"         # Skip remaining middleware, execute command
-    ERROR = "error"       # Error occurred, stop with error
+    STOP = "stop"  # Stop pipeline, return current result
+    SKIP = "skip"  # Skip remaining middleware, execute command
+    ERROR = "error"  # Error occurred, stop with error
 
 
 @dataclass
@@ -159,19 +159,19 @@ class ICommandExecutionContext(ABC):
     @abstractmethod
     def user_id(self) -> Optional[str]:
         """Get the current user identifier."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def session_data(self) -> Dict[str, Any]:
         """Get session-specific data."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def configuration(self) -> Dict[str, Any]:
         """Get command execution configuration."""
-        pass
+        ...
 
     @abstractmethod
     def get_service(self, service_type: type) -> Any:
@@ -183,17 +183,17 @@ class ICommandExecutionContext(ABC):
         Returns:
             Service instance implementing the requested interface
         """
-        pass
+        ...
 
     @abstractmethod
     def set_data(self, key: str, value: Any) -> None:
         """Set context-specific data."""
-        pass
+        ...
 
     @abstractmethod
     def get_data(self, key: str, default: Any = None) -> Any:
         """Get context-specific data."""
-        pass
+        ...
 
 
 class ICommand(ABC):
@@ -212,7 +212,7 @@ class ICommand(ABC):
         Returns:
             CommandMetadata containing command information and configuration
         """
-        pass
+        ...
 
     @abstractmethod
     async def execute(
@@ -229,7 +229,7 @@ class ICommand(ABC):
         Returns:
             CommandResult with execution outcome and data
         """
-        pass
+        ...
 
     @abstractmethod
     def get_subcommands(self) -> Dict[str, str]:
@@ -238,7 +238,7 @@ class ICommand(ABC):
         Returns:
             Dictionary mapping subcommand names to descriptions
         """
-        pass
+        ...
 
     @abstractmethod
     def validate_args(self, args: List[str]) -> tuple[bool, Optional[str]]:
@@ -250,7 +250,7 @@ class ICommand(ABC):
         Returns:
             Tuple of (is_valid, error_message)
         """
-        pass
+        ...
 
     def get_help(self) -> str:
         """Get comprehensive help text for this command.
@@ -312,13 +312,13 @@ class ICommandMiddleware(ABC):
     @abstractmethod
     def name(self) -> str:
         """Get middleware name for identification."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def priority(self) -> int:
         """Get middleware priority (lower numbers execute first)."""
-        pass
+        ...
 
     @abstractmethod
     async def before_execute(
@@ -338,7 +338,7 @@ class ICommandMiddleware(ABC):
             Tuple of (middleware_result, optional_command_result)
             If middleware_result is STOP, optional_command_result will be returned
         """
-        pass
+        ...
 
     @abstractmethod
     async def after_execute(
@@ -359,7 +359,7 @@ class ICommandMiddleware(ABC):
         Returns:
             Modified or original command result
         """
-        pass
+        ...
 
     @abstractmethod
     async def on_error(
@@ -380,7 +380,7 @@ class ICommandMiddleware(ABC):
         Returns:
             Optional CommandResult to override error handling
         """
-        pass
+        ...
 
 
 class ICommandParser(ABC):
@@ -400,7 +400,7 @@ class ICommandParser(ABC):
         Returns:
             Tuple of (command_name, arguments) or (None, []) if invalid
         """
-        pass
+        ...
 
     @abstractmethod
     async def execute_command(
@@ -417,7 +417,7 @@ class ICommandParser(ABC):
         Returns:
             CommandResult from command execution or middleware
         """
-        pass
+        ...
 
     @abstractmethod
     def get_command_suggestions(self, partial_input: str) -> List[str]:
@@ -429,7 +429,7 @@ class ICommandParser(ABC):
         Returns:
             List of matching command suggestions
         """
-        pass
+        ...
 
     @abstractmethod
     def get_help_text(self, command_name: Optional[str] = None) -> str:
@@ -441,7 +441,7 @@ class ICommandParser(ABC):
         Returns:
             Formatted help text
         """
-        pass
+        ...
 
 
 class ICommandRegistry(ABC):
@@ -463,7 +463,7 @@ class ICommandRegistry(ABC):
             command: Command instance to register
             middleware: Optional list of command-specific middleware
         """
-        pass
+        ...
 
     @abstractmethod
     def unregister_command(self, command_name: str) -> bool:
@@ -475,7 +475,7 @@ class ICommandRegistry(ABC):
         Returns:
             True if command was unregistered, False if not found
         """
-        pass
+        ...
 
     @abstractmethod
     def get_command(self, command_name: str) -> Optional[ICommand]:
@@ -487,7 +487,7 @@ class ICommandRegistry(ABC):
         Returns:
             Command instance or None if not found
         """
-        pass
+        ...
 
     @abstractmethod
     def get_all_commands(self) -> Dict[str, ICommand]:
@@ -496,7 +496,7 @@ class ICommandRegistry(ABC):
         Returns:
             Dictionary mapping command names to command instances
         """
-        pass
+        ...
 
     @abstractmethod
     def get_commands_by_category(self, category: str) -> List[ICommand]:
@@ -508,7 +508,7 @@ class ICommandRegistry(ABC):
         Returns:
             List of commands in the specified category
         """
-        pass
+        ...
 
     @abstractmethod
     def register_middleware(self, middleware: ICommandMiddleware) -> None:
@@ -517,7 +517,7 @@ class ICommandRegistry(ABC):
         Args:
             middleware: Middleware to register globally
         """
-        pass
+        ...
 
     @abstractmethod
     def get_middleware_for_command(self, command_name: str) -> List[ICommandMiddleware]:
@@ -529,7 +529,7 @@ class ICommandRegistry(ABC):
         Returns:
             List of middleware ordered by priority
         """
-        pass
+        ...
 
     @abstractmethod
     def discover_commands(self, module_path: str) -> int:
@@ -541,4 +541,4 @@ class ICommandRegistry(ABC):
         Returns:
             Number of commands discovered and registered
         """
-        pass
+        ...

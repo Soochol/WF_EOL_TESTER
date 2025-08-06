@@ -15,6 +15,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from src.domain.enums.test_status import TestStatus
+
 from ..themes import ColorScheme, IconSet, LayoutConstants
 
 
@@ -146,9 +147,7 @@ class BaseFormatter:
             padding=self.layout.HEADER_PANEL_PADDING,
         )
 
-    def _truncate_text(
-        self, text: str, max_length: Optional[int] = None
-    ) -> str:
+    def _truncate_text(self, text: str, max_length: Optional[int] = None) -> str:
         """Utility to consistently truncate text with proper null handling.
 
         Provides safe text truncation with graceful handling of None values
@@ -200,6 +199,7 @@ class BaseFormatter:
             Formatted timestamp string using standard display format
         """
         from datetime import datetime
+
         return datetime.now().strftime("%Y-%m-%d %H:%M")
 
     def _format_result_timestamp(self, created_at: str) -> str:
@@ -219,6 +219,7 @@ class BaseFormatter:
 
         try:
             from datetime import datetime
+
             # Handle ISO format with timezone (convert Z to +00:00 for Python compatibility)
             dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
             return dt.strftime("%Y-%m-%d %H:%M")

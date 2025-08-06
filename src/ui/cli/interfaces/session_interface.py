@@ -37,7 +37,7 @@ class ISessionManager(ABC):
         Args:
             menu_system: Menu system instance implementing IMenuSystem
         """
-        pass
+        ...
 
     @abstractmethod
     async def run_interactive(self) -> None:
@@ -50,7 +50,7 @@ class ISessionManager(ABC):
         Raises:
             Exception: Various exceptions may be raised during session execution
         """
-        pass
+        ...
 
     @abstractmethod
     def stop_session(self) -> None:
@@ -59,7 +59,7 @@ class ISessionManager(ABC):
         Sets the running flag to False to terminate the main loop.
         Should trigger graceful shutdown procedures.
         """
-        pass
+        ...
 
     @property
     @abstractmethod
@@ -69,4 +69,4 @@ class ISessionManager(ABC):
         Returns:
             True if session is active, False otherwise
         """
-        pass
+        ...

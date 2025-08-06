@@ -50,7 +50,7 @@ class ICLIApplication(ABC):
         Raises:
             Exception: Various exceptions may be raised during application execution
         """
-        pass
+        ...
 
     # Legacy compatibility properties
     @property
@@ -61,7 +61,7 @@ class ICLIApplication(ABC):
         Returns:
             True if session is running, False otherwise
         """
-        pass
+        ...
 
     @_running.setter
     @abstractmethod
@@ -71,7 +71,7 @@ class ICLIApplication(ABC):
         Args:
             value: New running state value
         """
-        pass
+        ...
 
     # Component access methods for external integration
     @abstractmethod
@@ -81,7 +81,7 @@ class ICLIApplication(ABC):
         Returns:
             Rich console instance
         """
-        pass
+        ...
 
     @abstractmethod
     def get_formatter(self) -> "RichFormatter":
@@ -90,7 +90,7 @@ class ICLIApplication(ABC):
         Returns:
             Rich formatter instance
         """
-        pass
+        ...
 
     @abstractmethod
     def get_validator(self) -> IInputValidator:
@@ -99,7 +99,7 @@ class ICLIApplication(ABC):
         Returns:
             Input validator instance implementing IInputValidator
         """
-        pass
+        ...
 
     @abstractmethod
     def get_hardware_manager(self) -> Optional[Any]:
@@ -108,7 +108,7 @@ class ICLIApplication(ABC):
         Returns:
             Hardware manager instance if available, None otherwise
         """
-        pass
+        ...
 
     @abstractmethod
     def get_usecase_manager(self) -> "UseCaseManager":
@@ -117,4 +117,4 @@ class ICLIApplication(ABC):
         Returns:
             UseCase manager instance
         """
-        pass
+        ...

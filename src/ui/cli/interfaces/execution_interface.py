@@ -38,4 +38,4 @@ class ITestExecutor(ABC):
         Raises:
             Exception: Various exceptions may be raised during test execution
         """
-        pass
+        ...

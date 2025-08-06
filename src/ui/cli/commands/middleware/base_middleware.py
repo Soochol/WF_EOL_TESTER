@@ -6,13 +6,14 @@ and default behavior patterns.
 
 from abc import ABC
 from typing import List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
+    CommandResult,
     ICommand,
     ICommandExecutionContext,
     ICommandMiddleware,
-    CommandResult,
     MiddlewareResult,
 )
 

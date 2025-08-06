@@ -5,17 +5,17 @@ with user-friendly error messages and debugging support.
 """
 
 import traceback
-from typing import List, Optional, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
+    CommandResult,
     ICommand,
     ICommandExecutionContext,
-    CommandResult,
     MiddlewareResult,
 )
 from ui.cli.commands.middleware.base_middleware import BaseMiddleware
-from ui.cli.interfaces.formatter_interface import IFormatter
 
 
 class ErrorHandlingMiddleware(BaseMiddleware):
@@ -127,15 +127,11 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         self._error_counts[command_name] = self._error_counts.get(command_name, 0) + 1
 
         self.log_middleware_action(
-            "handling error",
-            command,
-            f"{type(error).__name__}: {str(error)[:100]}"
+            "handling error", command, f"{type(error).__name__}: {str(error)[:100]}"
         )
 
         # Create enhanced error result
-        error_result = self._create_enhanced_error_result(
-            error, command, args, context
-        )
+        error_result = self._create_enhanced_error_result(error, command, args, context)
 
         return error_result
 
@@ -165,7 +161,7 @@ class ErrorHandlingMiddleware(BaseMiddleware):
 
         # Truncate message if too long
         if len(user_message) > self._max_error_message_length:
-            user_message = user_message[:self._max_error_message_length - 3] + "..."
+            user_message = user_message[: self._max_error_message_length - 3] + "..."
 
         # Build comprehensive error details
         error_details = {
@@ -220,19 +216,18 @@ class ErrorHandlingMiddleware(BaseMiddleware):
             result.error_details = {}
 
         # Add error handling enhancements
-        result.error_details.update({
-            "enhanced_by_error_handler": True,
-            "error_count": self._error_counts.get(command.metadata.name, 0),
-        })
+        result.error_details.update(
+            {
+                "enhanced_by_error_handler": True,
+                "error_count": self._error_counts.get(command.metadata.name, 0),
+            }
+        )
 
         # Add recovery suggestions if not present and enabled
-        if (self._enable_recovery_suggestions and
-            "recovery_suggestions" not in result.error_details):
+        if self._enable_recovery_suggestions and "recovery_suggestions" not in result.error_details:
 
             # Try to infer error type from message
-            suggestions = self._get_recovery_suggestions_from_message(
-                result.message, command, args
-            )
+            suggestions = self._get_recovery_suggestions_from_message(result.message, command, args)
             if suggestions:
                 result.error_details["recovery_suggestions"] = suggestions
 
@@ -289,43 +284,55 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         command_name = command.metadata.name
 
         if error_type == "ValueError":
-            suggestions.extend([
-                f"Check the arguments for command /{command_name}",
-                f"Use '/{command_name} help' for usage information",
-                "Verify that all required arguments are provided"
-            ])
+            suggestions.extend(
+                [
+                    f"Check the arguments for command /{command_name}",
+                    f"Use '/{command_name} help' for usage information",
+                    "Verify that all required arguments are provided",
+                ]
+            )
         elif error_type == "FileNotFoundError":
-            suggestions.extend([
-                "Check that all required files exist",
-                "Verify file paths are correct",
-                "Ensure you have access to the specified files"
-            ])
+            suggestions.extend(
+                [
+                    "Check that all required files exist",
+                    "Verify file paths are correct",
+                    "Ensure you have access to the specified files",
+                ]
+            )
         elif error_type == "PermissionError":
-            suggestions.extend([
-                "Check your user permissions",
-                "Try running with appropriate privileges",
-                "Contact your administrator if needed"
-            ])
+            suggestions.extend(
+                [
+                    "Check your user permissions",
+                    "Try running with appropriate privileges",
+                    "Contact your administrator if needed",
+                ]
+            )
         elif error_type == "ConnectionError":
-            suggestions.extend([
-                "Check your network connection",
-                "Verify service endpoints are accessible",
-                "Try again in a few moments"
-            ])
+            suggestions.extend(
+                [
+                    "Check your network connection",
+                    "Verify service endpoints are accessible",
+                    "Try again in a few moments",
+                ]
+            )
         elif error_type == "TimeoutError":
-            suggestions.extend([
-                "Try running the command again",
-                "Check if the system is under heavy load",
-                "Consider using a shorter timeout if available"
-            ])
+            suggestions.extend(
+                [
+                    "Try running the command again",
+                    "Check if the system is under heavy load",
+                    "Consider using a shorter timeout if available",
+                ]
+            )
 
         # Add general suggestions
         if not suggestions:
-            suggestions.extend([
-                f"Use '/{command_name} help' for command usage",
-                "Check the system logs for more details",
-                "Contact support if the problem persists"
-            ])
+            suggestions.extend(
+                [
+                    f"Use '/{command_name} help' for command usage",
+                    "Check the system logs for more details",
+                    "Contact support if the problem persists",
+                ]
+            )
 
         return suggestions
 
@@ -373,7 +380,8 @@ class ErrorHandlingMiddleware(BaseMiddleware):
             "error_counts_by_command": self._error_counts.copy(),
             "most_error_prone_command": (
                 max(self._error_counts.keys(), key=lambda k: self._error_counts[k])
-                if self._error_counts else None
+                if self._error_counts
+                else None
             ),
         }
 

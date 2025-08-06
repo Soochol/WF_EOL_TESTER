@@ -6,14 +6,15 @@ capabilities, and comprehensive error handling.
 
 import time
 from typing import Dict, List, Optional, Tuple
+
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import (
+    CommandResult,
     ICommand,
-    ICommandParser,
     ICommandExecutionContext,
     ICommandMiddleware,
-    CommandResult,
+    ICommandParser,
     MiddlewareResult,
 )
 
@@ -73,7 +74,9 @@ class EnhancedCommandParser(ICommandParser):
         # Sort by priority
         self._global_middleware.sort(key=lambda m: m.priority)
 
-        logger.debug(f"Registered global middleware: {middleware.name} (priority: {middleware.priority})")
+        logger.debug(
+            f"Registered global middleware: {middleware.name} (priority: {middleware.priority})"
+        )
 
     def parse_input(self, user_input: str) -> Tuple[Optional[str], List[str]]:
         """Parse user input into command name and arguments.
@@ -142,10 +145,10 @@ class EnhancedCommandParser(ICommandParser):
                 # End of quoted string
                 in_quotes = False
                 quote_char = None
-            elif char == '\\' and i + 1 < len(command_text):
+            elif char == "\\" and i + 1 < len(command_text):
                 # Escape sequence
                 next_char = command_text[i + 1]
-                if next_char in ['"', "'", '\\', ' ']:
+                if next_char in ['"', "'", "\\", " "]:
                     current_arg += next_char
                     i += 1  # Skip next character
                 else:
@@ -210,9 +213,7 @@ class EnhancedCommandParser(ICommandParser):
             middleware_chain = self._build_middleware_chain(command_name)
 
             # Execute middleware pipeline
-            result = await self._execute_with_middleware(
-                command, args, context, middleware_chain
-            )
+            result = await self._execute_with_middleware(command, args, context, middleware_chain)
 
             # Add timing information
             if result.execution_time_ms is None:
@@ -425,7 +426,7 @@ class EnhancedCommandParser(ICommandParser):
                 suggestions.append(f"/{cmd_name}")
 
         # Check aliases
-        for alias, real_name in self._aliases.items():
+        for alias, _ in self._aliases.items():
             if command_name in alias or alias in command_name:
                 suggestions.append(f"/{alias}")
 
@@ -476,7 +477,9 @@ class EnhancedCommandParser(ICommandParser):
                     help_line += " [DEPRECATED]"
                 help_sections.append(help_line)
 
-        help_sections.append("\nType '/{command_name}' or '/{command_name} help' for command-specific help")
+        help_sections.append(
+            "\nType '/{command_name}' or '/{command_name} help' for command-specific help"
+        )
 
         return "\n".join(help_sections)
 

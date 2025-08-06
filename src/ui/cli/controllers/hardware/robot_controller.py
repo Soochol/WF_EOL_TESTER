@@ -8,10 +8,12 @@ positioning, and status monitoring for AJINEXTEK motion controllers.
 import asyncio
 from typing import Optional
 
-from application.interfaces.hardware.robot import RobotService
-from ..base.hardware_controller import HardwareController, simple_interactive_menu
-from ...rich_formatter import RichFormatter
 from rich.status import Status
+
+from application.interfaces.hardware.robot import RobotService
+
+from ...rich_formatter import RichFormatter
+from ..base.hardware_controller import HardwareController, simple_interactive_menu
 
 
 class RobotController(HardwareController):
@@ -55,6 +57,7 @@ class RobotController(HardwareController):
 
     async def connect(self) -> bool:
         """Connect to robot"""
+
         async def connect_operation():
             await self.robot_service.connect(axis_id=0, irq_no=7)
             return True
@@ -63,11 +66,12 @@ class RobotController(HardwareController):
             "Connecting to robot...",
             connect_operation,
             "Robot connected successfully",
-            "Failed to connect to robot"
+            "Failed to connect to robot",
         )
 
     async def disconnect(self) -> bool:
         """Disconnect from robot"""
+
         async def disconnect_operation():
             await self.robot_service.disconnect()
             return True
@@ -77,7 +81,7 @@ class RobotController(HardwareController):
             disconnect_operation,
             "Robot disconnected successfully",
             "Failed to disconnect robot",
-            show_time=0.2
+            show_time=0.2,
         )
 
     async def show_control_menu(self) -> Optional[str]:
@@ -200,6 +204,7 @@ class RobotController(HardwareController):
     # Private robot-specific operations
     async def _initialize_robot(self) -> None:
         """Initialize robot system"""
+
         async def init_operation():
             # Home primary axis using parameters from configuration
             primary_axis = self.axis_id
@@ -210,7 +215,7 @@ class RobotController(HardwareController):
             "Initializing robot system...",
             init_operation,
             "Robot initialized successfully",
-            "Robot initialization failed"
+            "Robot initialization failed",
         )
 
     async def _emergency_stop(self) -> None:
@@ -246,7 +251,7 @@ class RobotController(HardwareController):
                 f"Homing axis {primary_axis} to origin...",
                 home_operation,
                 f"Axis {primary_axis} homed successfully",
-                "Homing failed"
+                "Homing failed",
             )
 
         except Exception as e:
@@ -285,7 +290,7 @@ class RobotController(HardwareController):
                 f"Moving axis {primary_axis} to position {position}mm...",
                 move_operation,
                 f"Axis {primary_axis} moved to {position}mm successfully",
-                "Absolute move failed"
+                "Absolute move failed",
             )
 
         except Exception as e:
@@ -324,7 +329,7 @@ class RobotController(HardwareController):
                 f"Moving axis {primary_axis} by {distance}mm...",
                 move_operation,
                 f"Axis {primary_axis} moved by {distance}mm successfully",
-                "Relative move failed"
+                "Relative move failed",
             )
 
         except Exception as e:
@@ -351,7 +356,7 @@ class RobotController(HardwareController):
                 stop_operation,
                 f"Motion stopped on axis {primary_axis}",
                 "Stop motion failed",
-                show_time=0.2
+                show_time=0.2,
             )
 
         except Exception as e:

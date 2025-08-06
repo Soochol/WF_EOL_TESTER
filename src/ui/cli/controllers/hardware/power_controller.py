@@ -8,8 +8,9 @@ output management, and safety features for ODA power supplies.
 from typing import Optional
 
 from application.interfaces.hardware.power import PowerService
-from ..base.hardware_controller import HardwareController, simple_interactive_menu
+
 from ...rich_formatter import RichFormatter
+from ..base.hardware_controller import HardwareController, simple_interactive_menu
 
 
 class PowerController(HardwareController):
@@ -56,6 +57,7 @@ class PowerController(HardwareController):
 
     async def connect(self) -> bool:
         """Connect to Power supply"""
+
         async def connect_operation():
             await self.power_service.connect(
                 host="192.168.1.100", port=5025, timeout=5.0, channel=1
@@ -78,11 +80,12 @@ class PowerController(HardwareController):
             "Connecting to Power supply...",
             connect_operation,
             "Power supply connected successfully",
-            "Failed to connect to Power supply"
+            "Failed to connect to Power supply",
         )
 
     async def disconnect(self) -> bool:
         """Disconnect from Power supply"""
+
         async def disconnect_operation():
             await self.power_service.disconnect()
             return True
@@ -92,7 +95,7 @@ class PowerController(HardwareController):
             disconnect_operation,
             "Power supply disconnected successfully",
             "Failed to disconnect Power supply",
-            show_time=0.2
+            show_time=0.2,
         )
 
     async def show_control_menu(self) -> Optional[str]:
@@ -272,7 +275,7 @@ class PowerController(HardwareController):
             voltage = self._get_user_input_with_validation(
                 "Enter new voltage (V):",
                 input_type=float,
-                validator=lambda x: 0 <= x <= 50  # Reasonable voltage range
+                validator=lambda x: 0 <= x <= 50,  # Reasonable voltage range
             )
 
             if voltage is None:
@@ -325,7 +328,7 @@ class PowerController(HardwareController):
             current = self._get_user_input_with_validation(
                 "Enter new current (A):",
                 input_type=float,
-                validator=lambda x: 0 <= x <= 10  # Reasonable current range
+                validator=lambda x: 0 <= x <= 10,  # Reasonable current range
             )
 
             if current is None:
@@ -379,7 +382,7 @@ class PowerController(HardwareController):
             current = self._get_user_input_with_validation(
                 "Enter new current limit (A):",
                 input_type=float,
-                validator=lambda x: 0 <= x <= 10  # Reasonable current limit range
+                validator=lambda x: 0 <= x <= 10,  # Reasonable current limit range
             )
 
             if current is None:

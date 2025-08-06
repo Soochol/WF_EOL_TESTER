@@ -24,12 +24,11 @@ from src.application.use_cases.eol_force_test import EOLForceTestUseCase
 
 # Local imports - UI interfaces
 from ..interfaces.application_interface import ICLIApplication
-from ..interfaces.session_interface import ISessionManager
-from ..interfaces.menu_interface import IMenuSystem
 from ..interfaces.execution_interface import ITestExecutor
-from ..interfaces.validation_interface import IInputValidator
 from ..interfaces.formatter_interface import IFormatter
-from ..rich_formatter import RichFormatter
+from ..interfaces.menu_interface import IMenuSystem
+from ..interfaces.session_interface import ISessionManager
+from ..interfaces.validation_interface import IInputValidator
 from ..usecase_manager import UseCaseManager
 
 # TYPE_CHECKING imports
@@ -91,6 +90,7 @@ class DependencyInjectedCLIApplication(ICLIApplication):
         self._config_reader: Optional[Any] = None
         if self._hardware_facade:
             from ..config_reader import CLIConfigReader
+
             self._config_reader = CLIConfigReader()
 
         # Setup component relationships
@@ -126,9 +126,7 @@ class DependencyInjectedCLIApplication(ICLIApplication):
         except Exception as e:
             logger.error(f"CLI Application error: {e}")
             self._formatter.print_message(
-                f"Application error: {str(e)}",
-                message_type="error",
-                title="System Error"
+                f"Application error: {str(e)}", message_type="error", title="System Error"
             )
         finally:
             logger.info("CLI Application shutdown complete")
@@ -151,8 +149,9 @@ class DependencyInjectedCLIApplication(ICLIApplication):
             value: New running state value
         """
         if value:
-            # Set running state directly for testing
-            self._session_manager._running = True
+            # Note: Cannot directly set running=True through interface
+            # Session must be started via run_interactive() method
+            pass  # Running state is managed internally by session manager
         else:
             self._session_manager.stop_session()
 

@@ -43,7 +43,7 @@ class IInputValidator(ABC):
         Returns:
             True if input passes all validation checks, False otherwise
         """
-        pass
+        ...
 
     @abstractmethod
     def get_validated_input(
@@ -69,4 +69,4 @@ class IInputValidator(ABC):
             Validated input string if successful, or None if validation fails
             or user cancels the operation
         """
-        pass
+        ...

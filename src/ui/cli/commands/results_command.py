@@ -37,7 +37,9 @@ class ResultsCommand(Command):
         """Set the repository service for results access"""
         self._repository_service = repository_service
 
-    async def execute(self, args: List[str]) -> CommandResult:  # pylint: disable=too-many-return-statements
+    async def execute(
+        self, args: List[str]
+    ) -> CommandResult:  # pylint: disable=too-many-return-statements
         """
         Execute results command
 
@@ -177,17 +179,17 @@ class ResultsCommand(Command):
             result_text = "Test Result Details:\\n"
             result_text += "=" * 60 + "\\n"
             # Convert test object to dictionary for display
-            if hasattr(test, '__dict__'):
+            if hasattr(test, "__dict__"):
                 test_dict = test.__dict__
             else:
                 # Fallback: create basic dict from object attributes
                 test_dict = {
-                    'test_id': getattr(test, 'test_id', 'N/A'),
-                    'passed': getattr(test, 'passed', False),
-                    'created_at': getattr(test, 'created_at', 'N/A'),
-                    'duration': getattr(test, 'duration', 'N/A'),
-                    'dut': getattr(test, 'dut', {}),
-                    'measurement_ids': getattr(test, 'measurement_ids', []),
+                    "test_id": getattr(test, "test_id", "N/A"),
+                    "passed": getattr(test, "passed", False),
+                    "created_at": getattr(test, "created_at", "N/A"),
+                    "duration": getattr(test, "duration", "N/A"),
+                    "dut": getattr(test, "dut", {}),
+                    "measurement_ids": getattr(test, "measurement_ids", []),
                 }
             dut_info = test_dict.get("dut", {})
 
@@ -253,7 +255,7 @@ class ResultsCommand(Command):
                     if test_date >= week_ago:
                         recent_tests.append(test)
                 except (ValueError, AttributeError):
-                    pass
+                    ...
 
         recent_total = len(recent_tests)
         recent_passed = sum(1 for test in recent_tests if test.get("passed", False))
@@ -332,7 +334,9 @@ class ResultsCommand(Command):
             logger.error(f"Failed to generate statistics: {e}")
             return CommandResult.error(f"Failed to generate statistics: {str(e)}")
 
-    async def _export_results(self, args: List[str]) -> CommandResult:  # pylint: disable=too-many-return-statements
+    async def _export_results(
+        self, args: List[str]
+    ) -> CommandResult:  # pylint: disable=too-many-return-statements
         """Export test results"""
         format_type = "json"  # Default
         if args:

@@ -13,7 +13,8 @@ Key Features:
 """
 
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, Type, TypeVar, cast
+
 from loguru import logger
 
 # Type variable for generic type handling
@@ -155,9 +156,7 @@ class DependencyContainer:
             lifetime=ServiceLifetime.TRANSIENT,
         )
 
-    def register_instance(
-        self, interface_type: Type[T], instance: T
-    ) -> "DependencyContainer":
+    def register_instance(self, interface_type: Type[T], instance: T) -> "DependencyContainer":
         """Register a specific instance as a singleton.
 
         Args:
@@ -221,7 +220,7 @@ class DependencyContainer:
                 self._singletons[service_type] = instance
 
             logger.debug(f"Resolved {service_type.__name__} as {type(instance).__name__}")
-            return instance
+            return cast(T, instance)
 
         finally:
             # Remove from resolution stack
@@ -239,6 +238,7 @@ class DependencyContainer:
         try:
             # Get constructor signature
             import inspect
+
             signature = inspect.signature(implementation_type.__init__)
 
             # Resolve constructor dependencies
@@ -266,7 +266,7 @@ class DependencyContainer:
 
         except Exception as e:
             logger.error(f"Failed to create instance of {implementation_type.__name__}: {e}")
-            raise ValueError(f"Failed to create {implementation_type.__name__}: {e}")
+            raise ValueError(f"Failed to create {implementation_type.__name__}: {e}") from e
 
     def is_registered(self, service_type: Type) -> bool:
         """Check if a service type is registered.
