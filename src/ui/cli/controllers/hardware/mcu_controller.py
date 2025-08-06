@@ -139,20 +139,13 @@ class MCUController(HardwareController):
             "5": f"🎛️ Set Operating Temp  [{temp_info}]",
             "6": "⏳ Wait Boot Complete",
             "b": "⬅️  Back to Hardware Menu",
-            # Shortcuts
-            "c": "🔌 Connect (shortcut)",
-            "d": "❌ Disconnect (shortcut)",
-            "temp": "🌡️ Get Temperature (shortcut)",
-            "test": "🧪 Enter Test Mode (shortcut)",
-            "set": "🎛️ Set Operating Temp (shortcut)",
-            "boot": "⏳ Wait Boot Complete (shortcut)",
         }
 
         # Create enhanced title with status
         enhanced_title = (
             f"⚙️ MCU Control System\n"
             f"📡 Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]💡 Shortcuts: c=connect, d=disconnect, temp=temperature, test=test_mode, boot=wait[/dim]"
+            f"[dim]💡 Use numbers 1-6 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(

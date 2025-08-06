@@ -143,19 +143,13 @@ class LoadCellController(HardwareController):
             "4": "🎌 Zero Calibration    [Reset to 0.000]",
             "5": f"📊 Monitor Force (Live) [{force_info}]",
             "b": "⬅️  Back to Hardware Menu",
-            # Shortcuts
-            "c": "🔌 Connect (shortcut)",
-            "d": "❌ Disconnect (shortcut)",
-            "read": "⚖️ Read Force (shortcut)",
-            "zero": "🎌 Zero Calibration (shortcut)",
-            "live": "📊 Monitor Force Live (shortcut)",
         }
 
         # Create enhanced title with status
         enhanced_title = (
             f"⚖️ LoadCell Control System\n"
             f"📡 Status: {connection_status}  |  {force_info}  |  {device_info}\n"
-            f"[dim]💡 Shortcuts: c=connect, d=disconnect, read=force, zero=calibrate, live=monitor[/dim]"
+            f"[dim]💡 Use numbers 1-5 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -171,15 +165,15 @@ class LoadCellController(HardwareController):
             # Normalize command input
             cmd = command.strip().lower()
 
-            if cmd == "1" or cmd == "c":
+            if cmd == "1":
                 return await self.connect()
-            elif cmd == "2" or cmd == "d":
+            elif cmd == "2":
                 return await self.disconnect()
-            elif cmd == "3" or cmd == "read":
+            elif cmd == "3":
                 await self._read_force()
-            elif cmd == "4" or cmd == "zero":
+            elif cmd == "4":
                 await self._zero_calibration()
-            elif cmd == "5" or cmd == "live":
+            elif cmd == "5":
                 await self._monitor_force()
             else:
                 return False

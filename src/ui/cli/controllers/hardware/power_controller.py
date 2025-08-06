@@ -154,21 +154,13 @@ class PowerController(HardwareController):
             "6": f"🔋 Set Current        [{current_info}]",
             "7": f"🔌 Set Current Limit  [{current_info}]",
             "b": "⬅️  Back to Hardware Menu",
-            # Additional shortcuts
-            "c": "🔌 Connect (shortcut)",
-            "d": "❌ Disconnect (shortcut)",
-            "on": "✅ Enable Output (shortcut)",
-            "off": "🛑 Disable Output (shortcut)",
-            "v": "⚡ Set Voltage (shortcut)",
-            "curr": "🔋 Set Current (shortcut)",
-            "i": "🔌 Set Current Limit (shortcut)",
         }
 
-        # Create enhanced title with status and shortcuts info
+        # Create enhanced title with status
         enhanced_title = (
             f"🔋 ODA Power Supply Control\n"
             f"📡 Status: {connection_status}  |  🔌 Output: {output_status}  |  ⚡ {voltage_info}  |  🔌 {current_info}\n"
-            f"[dim]💡 Shortcuts: c=connect, d=disconnect, on=enable, off=disable, v=voltage, curr=current, i=current-limit[/dim]"
+            f"[dim]💡 Use numbers 1-7 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -184,20 +176,19 @@ class PowerController(HardwareController):
             # Normalize command input
             cmd = command.strip().lower()
 
-            # Number-based commands (original)
-            if cmd == "1" or cmd == "c":
+            if cmd == "1":
                 return await self.connect()
-            elif cmd == "2" or cmd == "d":
+            elif cmd == "2":
                 return await self.disconnect()
-            elif cmd == "3" or cmd == "on":
+            elif cmd == "3":
                 await self._enable_output()
-            elif cmd == "4" or cmd == "off":
+            elif cmd == "4":
                 await self._disable_output()
-            elif cmd == "5" or cmd == "v":
+            elif cmd == "5":
                 await self._set_voltage()
-            elif cmd == "6" or cmd == "curr":
+            elif cmd == "6":
                 await self._set_current()
-            elif cmd == "7" or cmd == "i":
+            elif cmd == "7":
                 await self._set_current_limit()
             else:
                 return False

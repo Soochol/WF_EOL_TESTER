@@ -124,18 +124,18 @@ class RobotController(HardwareController):
             init_status = "❓ Unknown"
             position_info = "📍 Unknown"
 
-        # Enhanced menu options with icons, status, and shortcuts in descriptions
+        # Enhanced menu options with icons and status
         menu_options = {
-            "1": "🔌 Connect (c)",
-            "2": "❌ Disconnect (d)",
-            "3": "✅ Servo On (servo-on)       ⚡ [Enable Motor]",
-            "4": "❌ Servo Off (servo-off)     ⚠️  [Disable Motor]",
-            "5": "🚨 Emergency Stop (stop)      ⚠️  [Safety Critical]",
-            "6": "🏠 Home Axis (home)",
-            "7": "📍 Move Absolute (abs)",
-            "8": "↔️ Move Relative (rel)",
-            "9": "⏹️ Stop Motion (stop-motion)",
-            "10": "📍 Get Position (pos)",
+            "1": "🔌 Connect",
+            "2": "❌ Disconnect",
+            "3": "✅ Servo On       ⚡ [Enable Motor]",
+            "4": "❌ Servo Off     ⚠️  [Disable Motor]",
+            "5": "🚨 Emergency Stop      ⚠️  [Safety Critical]",
+            "6": "🏠 Home Axis",
+            "7": "📍 Move Absolute",
+            "8": "↔️ Move Relative",
+            "9": "⏹️ Stop Motion",
+            "10": "📍 Get Position",
             "b": "⬅️  Back to Hardware Menu",
         }
 
@@ -143,7 +143,7 @@ class RobotController(HardwareController):
         enhanced_title = (
             f"🤖 Robot Control System\n"
             f"📡 Status: {connection_status}  |  ⚙️ Init: {init_status}  |  {position_info}\n"
-            f"[dim]💡 Shortcuts: c, d, servo-on, servo-off, stop, home, abs, rel, stop-motion, pos[/dim]"
+            f"[dim]💡 Use numbers 1-10 to select options, or 'b' to go back[/dim]"
         )
 
         # Get user input with custom validation that includes shortcuts

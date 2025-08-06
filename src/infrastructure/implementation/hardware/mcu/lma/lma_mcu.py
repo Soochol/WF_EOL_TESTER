@@ -248,17 +248,21 @@ class LMAMCU(MCUService):
 
     async def get_temperature(self) -> float:
         """
-        현재 온도 측정
+        Array 센서 온도 측정 (최고 온도 반환)
 
         Returns:
-            현재 온도 (°C)
+            최고 온도 (°C) - array 센서 픽셀 중 최고값
         """
         await self._ensure_connected()
 
         try:
             response = await self._send_and_wait_for(CMD_REQUEST_TEMP, b"", STATUS_TEMP_RESPONSE)
-            temp_data = response.get("data", b"\x00\x00")
-            self._current_temperature = self._decode_temperature(temp_data)
+            temp_data_bytes = response.get("data", b"\x00\x00\x00\x00\x00\x00\x00\x00")
+            max_temp, min_temp = self._decode_temperature(temp_data_bytes)
+            
+            # Store max temperature as current temperature
+            self._current_temperature = max_temp
+            
             return self._current_temperature
 
         except LMAError as e:
@@ -900,8 +904,11 @@ class LMAMCU(MCUService):
                 
                 # Parse data based on status type
                 if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
-                    temp = self._decode_temperature(data)
-                    parsed_info = f": {temp:.1f}°C"
+                    max_temp, min_temp = self._decode_temperature(data)
+                    if len(data) >= 8:
+                        parsed_info = f": max {max_temp:.1f}°C, min {min_temp:.1f}°C"
+                    else:
+                        parsed_info = f": {max_temp:.1f}°C"
                 elif status == STATUS_BOOT_COMPLETE:
                     parsed_info = ""
                 elif status in [STATUS_TEST_MODE_COMPLETE, STATUS_OPERATING_TEMP_OK, STATUS_FAN_SPEED_OK]:
@@ -938,9 +945,28 @@ class LMAMCU(MCUService):
         temp_int = int(temperature * TEMP_SCALE_FACTOR)
         return struct.pack(">h", temp_int)  # signed short, big endian
 
-    def _decode_temperature(self, data: bytes) -> float:
-        """Decode temperature from LMA protocol"""
-        if len(data) >= 2:
+    def _decode_temperature(self, data: bytes) -> tuple[float, float]:
+        """Decode temperature from LMA array sensor protocol
+        
+        Args:
+            data: 8-byte data containing max temperature (4 bytes) + min temperature (4 bytes)
+            
+        Returns:
+            Tuple of (max_temp, min_temp) from array sensor pixels
+        """
+        if len(data) >= 8:
+            # Unpack two 4-byte big-endian integers
+            max_raw, min_raw = struct.unpack(">II", data[:8])
+            
+            # Convert to temperature values (divide by scale factor)
+            max_temp = float(max_raw) / TEMP_SCALE_FACTOR
+            min_temp = float(min_raw) / TEMP_SCALE_FACTOR
+            
+            return (max_temp, min_temp)
+        elif len(data) >= 2:
+            # Fallback for legacy 2-byte format (for compatibility)
             temp_int = struct.unpack(">h", data[:2])[0]
-            return float(temp_int) / TEMP_SCALE_FACTOR
-        return 0.0
+            temp = float(temp_int) / TEMP_SCALE_FACTOR
+            return (temp, temp)  # Same value for both max and min
+        
+        return (0.0, 0.0)
