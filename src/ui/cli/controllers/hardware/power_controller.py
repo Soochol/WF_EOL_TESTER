@@ -317,7 +317,7 @@ class PowerController(HardwareController):
             current = self._get_user_input_with_validation(
                 "Enter new current (A):",
                 input_type=float,
-                validator=lambda x: 0 <= x <= 10,  # Reasonable current range
+                validator=lambda x: 0 <= x <= 50,  # Extended current range for high-power supplies
             )
 
             if current is None:
