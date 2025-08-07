@@ -761,7 +761,7 @@ class LMAMCU(MCUService):
         try:
             return await asyncio.wait_for(
                 self._wait_for_response(target_status),
-                timeout=self._timeout * 2,  # Allow extra time for complex operations
+                timeout=self._timeout,
             )
         except asyncio.TimeoutError as e:
             logger.error(f"Timeout waiting for response 0x{target_status:02X}")
