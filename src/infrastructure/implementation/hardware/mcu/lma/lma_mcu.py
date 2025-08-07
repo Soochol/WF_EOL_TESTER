@@ -26,10 +26,10 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     CMD_ENTER_TEST_MODE,
     CMD_LMA_INIT,
     CMD_REQUEST_TEMP,
-    CMD_STROKE_INIT_COMPLETE,
     CMD_SET_FAN_SPEED,
     CMD_SET_OPERATING_TEMP,
     CMD_SET_UPPER_TEMP,
+    CMD_STROKE_INIT_COMPLETE,
     COMMAND_MESSAGES,
     ETX,
     FRAME_CMD_SIZE,
@@ -244,7 +244,7 @@ class LMAMCU(MCUService):
         try:
             response = await self._send_and_wait_for(CMD_REQUEST_TEMP, b"", STATUS_TEMP_RESPONSE)
             temp_data_bytes = response.get("data", b"\x00\x00\x00\x00\x00\x00\x00\x00")
-            max_temp, min_temp = self._decode_temperature(temp_data_bytes)
+            max_temp, ambient_temp = self._decode_temperature(temp_data_bytes)
 
             # Store max temperature as current temperature
             self._current_temperature = max_temp
@@ -691,15 +691,12 @@ class LMAMCU(MCUService):
         except Exception as e:
             raise LMACommunicationError(f"Command send failed: {e}") from e
 
-    async def _wait_for_response(
-        self, target_status: int, max_attempts: int = 10
-    ) -> Dict[str, Any]:
+    async def _wait_for_response(self, target_status: int) -> Dict[str, Any]:
         """
-        특정 응답 상태를 기다림 (방법 2: 로그 남기고 버리기)
+        특정 응답 상태를 기다림 (단순화된 버전)
 
         Args:
             target_status: 기다릴 응답 상태 코드
-            max_attempts: 최대 시도 횟수
 
         Returns:
             타겟 응답 딕셔너리
@@ -707,36 +704,23 @@ class LMAMCU(MCUService):
         Raises:
             LMACommunicationError: 타겟 응답을 받지 못한 경우
         """
-        for attempt in range(max_attempts):
-            try:
-                response = await self._receive_response()
+        response = await self._receive_response()
 
-                if response and response["status"] == target_status:
-                    logger.debug(
-                        f"Got target response: status=0x{response['status']:02X}, "
-                        f"message='{response['message']}'"
-                    )
-                    return response
+        if response and response["status"] == target_status:
+            logger.debug(
+                f"Got target response: status=0x{response['status']:02X}, "
+                f"message='{response['message']}'"
+            )
+            return response
 
-                # 원하지 않는 응답은 로그 남기고 버림
-                if response:
-                    logger.debug(
-                        f"Discarding unwanted response: status=0x{response['status']:02X}, "
-                        f"message='{response['message']}' (waiting for 0x{target_status:02X})"
-                    )
-                else:
-                    logger.debug(
-                        f"Received None response (attempt {attempt + 1}/{max_attempts})"
-                    )
-
-            except Exception as e:
-                logger.debug(
-                    f"Response receive error (attempt {attempt + 1}/{max_attempts}): {e}"
-                )
-
-        raise LMACommunicationError(
-            f"Target response 0x{target_status:02X} not received after {max_attempts} attempts"
-        )
+        # 원하지 않는 응답 처리
+        if response:
+            raise LMACommunicationError(
+                f"Unexpected response: status=0x{response['status']:02X}, "
+                f"expected 0x{target_status:02X} ({response['message']})"
+            )
+        else:
+            raise LMACommunicationError(f"No response received (expected 0x{target_status:02X})")
 
     async def _send_and_wait_for(
         self, command: int, data: bytes, target_status: int
@@ -796,26 +780,10 @@ class LMAMCU(MCUService):
                 # Check for valid STX
                 if stx_data == STX:
                     logger.debug("Valid STX received directly")
+                    break
                 else:
-                    # Invalid STX - handle noise
-                    logger.debug(f"Invalid STX received: {stx_data.hex()} (expected: {STX.hex()})")
-
-                    if enable_sync and not sync_attempted:
-                        logger.debug("Attempting STX synchronization due to noise...")
-                        sync_attempted = True
-
-                        # Clear buffer thoroughly for noise recovery
-                        await self._clear_serial_buffer(fast_mode=False)
-
-                        # Search for STX pattern
-                        if await self._find_stx_sync():
-                            logger.debug("STX synchronization successful, continuing with packet reception")
-                            # STX already found, break to read rest of packet
-                            break
-                        else:
-                            raise LMACommunicationError("STX synchronization failed - no valid STX found")
-                    else:
-                        raise LMACommunicationError(f"Invalid STX: received {stx_data.hex()}, expected {STX.hex()}")
+                    # Invalid STX - simplified error handling
+                    raise LMACommunicationError(f"Invalid STX: received {stx_data.hex()}, expected {STX.hex()}")
 
                 # Read status and length (header)
                 header = await self._connection.read(
@@ -861,9 +829,9 @@ class LMAMCU(MCUService):
 
                 # Parse data based on status type
                 if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
-                    max_temp, min_temp = self._decode_temperature(data)
+                    max_temp, ambient_temp = self._decode_temperature(data)
                     if len(data) >= 8:
-                        parsed_info = f": max {max_temp:.1f}°C, min {min_temp:.1f}°C"
+                        parsed_info = f": max {max_temp:.1f}°C, ambient {ambient_temp:.1f}°C"
                     else:
                         parsed_info = f": {max_temp:.1f}°C"
                 elif status == STATUS_BOOT_COMPLETE:
@@ -906,24 +874,24 @@ class LMAMCU(MCUService):
         """Decode temperature from LMA array sensor protocol
 
         Args:
-            data: 8-byte data containing max temperature (4 bytes) + min temperature (4 bytes)
+            data: 8-byte data containing max temperature (4 bytes) + ambient temperature (4 bytes)
 
         Returns:
-            Tuple of (max_temp, min_temp) from array sensor pixels
+            Tuple of (max_temp, ambient_temp) from sensor readings
         """
         if len(data) >= 8:
             # Unpack two 4-byte big-endian integers
-            max_raw, min_raw = struct.unpack(">II", data[:8])
+            max_raw, ambient_raw = struct.unpack(">II", data[:8])
 
             # Convert to temperature values (divide by scale factor)
             max_temp = float(max_raw) / TEMP_SCALE_FACTOR
-            min_temp = float(min_raw) / TEMP_SCALE_FACTOR
+            ambient_temp = float(ambient_raw) / TEMP_SCALE_FACTOR
 
-            return (max_temp, min_temp)
+            return (max_temp, ambient_temp)
         elif len(data) >= 4:
             # Fallback for single 4-byte temperature
             temp_int = struct.unpack(">I", data[:4])[0]
             temp = float(temp_int) / TEMP_SCALE_FACTOR
-            return (temp, temp)  # Same value for both max and min
+            return (temp, temp)  # Same value for both max and ambient
 
         return (0.0, 0.0)
