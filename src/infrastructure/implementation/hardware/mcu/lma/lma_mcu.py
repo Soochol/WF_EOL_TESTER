@@ -26,7 +26,7 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     CMD_ENTER_TEST_MODE,
     CMD_LMA_INIT,
     CMD_REQUEST_TEMP,
-    CMD_SET_COOLING_TEMP,
+    CMD_STROKE_INIT_COMPLETE,
     CMD_SET_FAN_SPEED,
     CMD_SET_OPERATING_TEMP,
     CMD_SET_UPPER_TEMP,
@@ -475,7 +475,7 @@ class LMAMCU(MCUService):
         try:
             # Send cooling command with 0x00 data
             await self._send_and_wait_for(
-                CMD_SET_COOLING_TEMP,
+                CMD_STROKE_INIT_COMPLETE,
                 b"\x00",
                 STATUS_STROKE_INIT_OK,
             )
