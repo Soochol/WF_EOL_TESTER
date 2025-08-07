@@ -385,7 +385,7 @@ class OdaPower(PowerService):
             command_with_terminator = f"{command}\n"
             logger.debug("Adding LF terminator to command: %s", repr(command))
 
-            logger.info(f"Final command to send: {repr(command_with_terminator)}")
+            logger.info(f"Sending command: {command}")
 
             # Use query() method for commands that expect responses
             if command.endswith("?"):
