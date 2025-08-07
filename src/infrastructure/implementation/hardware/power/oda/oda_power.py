@@ -70,14 +70,8 @@ class OdaPower(PowerService):
             await self._tcp_comm.connect()
 
             # 연결 테스트 및 초기화
-            logger.debug("Sending *IDN? command...")
-            try:
-                response = await self._send_command("*IDN?")
-                logger.info("*IDN? response received: %r", response)  # 상세 응답 로깅
-            except Exception as idn_error:
-                logger.error("Failed to send *IDN? command: %s", str(idn_error))
-                logger.error("Exception type: %s", type(idn_error).__name__)
-                raise
+            response = await self._send_command("*IDN?")
+            logger.info("*IDN? response received: %r", response)  # 상세 응답 로깅
             
             if response and len(response.strip()) > 0:
                 self._is_connected = True
