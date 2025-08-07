@@ -16,7 +16,7 @@ hardware_config:
   mcu:
     port: COM4
     baudrate: 115200
-    timeout: 2.0
+    timeout: 60.0
     bytesize: 8
     stopbits: 1
     parity: null
