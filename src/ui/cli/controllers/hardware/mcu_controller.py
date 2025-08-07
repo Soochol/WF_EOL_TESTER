@@ -121,40 +121,40 @@ class MCUController(HardwareController):
                     # Get test mode status (if available) - skip auto temperature reading to avoid immediate communication
                     status = await self.mcu_service.get_status()
                     test_mode = status.get("test_mode", "Normal")
-                    mode_info = f"🧪 {test_mode} Mode"
+                    mode_info = f"{test_mode} Mode"
                     temp_info = (
-                        "🌡️ Click to read"  # Static placeholder instead of auto-reading temperature
+                        "Click to read"  # Static placeholder instead of auto-reading temperature
                     )
                 except Exception:
-                    temp_info = "🌡️ Click to read"
-                    mode_info = "🧪 Unknown Mode"
+                    temp_info = "Click to read"
+                    mode_info = "Unknown Mode"
             else:
-                temp_info = "🌡️ Disconnected"
-                mode_info = "🧪 Unknown Mode"
+                temp_info = "Disconnected"
+                mode_info = "Unknown Mode"
 
         except Exception:
-            connection_status = "❓ Unknown"
-            temp_info = "🌡️ Unknown"
-            mode_info = "🧪 Unknown Mode"
+            connection_status = "Unknown"
+            temp_info = "Unknown"
+            mode_info = "Unknown Mode"
 
         # Enhanced menu options with icons and status
         menu_options = {
-            "1": "🔌 Connect",
-            "2": "❌ Disconnect",
-            "3": f"🌡️ Get Temperature     [{temp_info}]",
-            "4": f"🧪 Enter Test Mode     [{mode_info}]",
-            "5": f"🎛️ Set Operating Temp  [{temp_info}]",
-            "6": "⏳ Wait Boot Complete",
-            "7": "🔥 Start Standby Heating",
-            "8": "❄️ Start Standby Cooling",
-            "b": "⬅️  Back to Hardware Menu",
+            "1": "Connect",
+            "2": "Disconnect",
+            "3": f"Get Temperature [{temp_info}]",
+            "4": f"Enter Test Mode [{mode_info}]",
+            "5": f"Set Operating Temp [{temp_info}]",
+            "6": "Wait Boot Complete",
+            "7": "Start Standby Heating",
+            "8": "Start Standby Cooling",
+            "b": "Back to Hardware Menu",
         }
 
         # Create enhanced title with status
         enhanced_title = (
-            f"⚙️ MCU Control System\n"
-            f"📡 Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]💡 Use numbers 1-8 to select options, or 'b' to go back[/dim]"
+            f"MCU Control System\n"
+            f"Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
+            f"[dim]Use numbers 1-8 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -191,7 +191,7 @@ class MCUController(HardwareController):
             return True
 
         except Exception as e:
-            self.formatter.print_message(f"❌ MCU command failed: {str(e)}", message_type="error")
+            self.formatter.print_message(f"MCU command failed: {str(e)}", message_type="error")
             return False
 
     # Private MCU-specific operations

@@ -27,7 +27,7 @@ class MockRobot(RobotService):
         """
         초기화
         """
-        self._is_connected = False
+        self._is_connected = True  # Mock robot은 항상 연결된 상태로 시작
         self._current_position: float = 0.0
         self._motion_status = MotionStatus.IDLE
         self._axis_velocity: float = 0.0
@@ -43,7 +43,7 @@ class MockRobot(RobotService):
         self._response_delay = 0.1
         self._axis_count = 6
 
-        logger.info("MockRobot initialized")
+        logger.info("MockRobot initialized and connected (mock environment)")
 
     async def connect(self, axis_id: int, irq_no: int) -> None:
         """

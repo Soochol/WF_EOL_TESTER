@@ -132,9 +132,11 @@ class LMAMCU(MCUService):
             )
 
             # Clear any noise or leftover data from previous connections (direct flush for fastest startup)
-            if hasattr(self._connection, 'flush_input_buffer'):
+            if hasattr(self._connection, "flush_input_buffer"):
                 flushed = await self._connection.flush_input_buffer()
-                logger.debug(f"Connection buffer flush: {'success' if flushed else 'not available'}")
+                logger.debug(
+                    f"Connection buffer flush: {'success' if flushed else 'not available'}"
+                )
             else:
                 logger.debug("Native flush not available, skipping buffer clear on connection")
 
@@ -532,7 +534,7 @@ class LMAMCU(MCUService):
 
         try:
             # Step 1: Try native flush first (fastest method)
-            if fast_mode and hasattr(self._connection, 'flush_input_buffer'):
+            if fast_mode and hasattr(self._connection, "flush_input_buffer"):
                 if await self._connection.flush_input_buffer():
                     logger.debug("Buffer cleared using native flush (fast mode)")
                     return
@@ -557,7 +559,9 @@ class LMAMCU(MCUService):
 
             if discarded_bytes > 0:
                 mode_str = "fast" if fast_mode else "thorough"
-                logger.debug(f"Cleared {discarded_bytes} bytes from serial buffer ({mode_str} mode)")
+                logger.debug(
+                    f"Cleared {discarded_bytes} bytes from serial buffer ({mode_str} mode)"
+                )
             elif not fast_mode:
                 logger.debug("No data found in serial buffer during thorough clear")
 
@@ -584,7 +588,9 @@ class LMAMCU(MCUService):
         noise_bytes = bytearray()
 
         try:
-            while (asyncio.get_event_loop().time() - start_time) < timeout and bytes_searched < max_search_bytes:
+            while (
+                asyncio.get_event_loop().time() - start_time
+            ) < timeout and bytes_searched < max_search_bytes:
                 # Read one byte at a time
                 try:
                     byte_data = await self._connection.read(1, 0.1)
@@ -601,7 +607,9 @@ class LMAMCU(MCUService):
                             # Found STX! Log noise data if any
                             if len(noise_bytes) > 2:
                                 noise_data = noise_bytes[:-2]
-                                logger.debug(f"Found STX after {len(noise_data)} noise bytes: {noise_data.hex()}")
+                                logger.debug(
+                                    f"Found STX after {len(noise_data)} noise bytes: {noise_data.hex()}"
+                                )
                             else:
                                 logger.debug("Found STX at start of stream")
                             return True
@@ -640,7 +648,9 @@ class LMAMCU(MCUService):
                         return
                     elif response:
                         # Log received response for debugging
-                        logger.debug(f"Received non-boot response: status=0x{response.get('status', 0):02X}")
+                        logger.debug(
+                            f"Received non-boot response: status=0x{response.get('status', 0):02X}"
+                        )
                 except asyncio.TimeoutError:
                     # This is expected while waiting, just continue
                     logger.debug("Timeout waiting for boot complete, continuing...")
@@ -753,7 +763,9 @@ class LMAMCU(MCUService):
                 f"Operation timed out waiting for response 0x{target_status:02X}"
             ) from e
 
-    async def _receive_response(self, timeout: Optional[float] = None, enable_sync: bool = True) -> Optional[Dict[str, Any]]:
+    async def _receive_response(
+        self, timeout: Optional[float] = None, enable_sync: bool = True
+    ) -> Optional[Dict[str, Any]]:
         """
         Receive response from LMA MCU with noise-resistant protocol handling
 
@@ -780,75 +792,88 @@ class LMAMCU(MCUService):
                 # Check for valid STX
                 if stx_data == STX:
                     logger.debug("Valid STX received directly")
-                    break
+
+                    # Read status and length (header)
+                    header = await self._connection.read(
+                        FRAME_CMD_SIZE + FRAME_LEN_SIZE,
+                        response_timeout,
+                    )
+                    if len(header) < 2:
+                        raise LMACommunicationError(
+                            f"Incomplete header: received {len(header)} bytes, expected 2"
+                        )
+
+                    status = header[0]
+                    data_len = header[1]
+
+                    # Validate data length
+                    if data_len > 255:  # Reasonable maximum for LMA protocol
+                        raise LMACommunicationError(f"Invalid data length: {data_len}")
+
+                    # Read data payload if present
+                    data = b""
+                    if data_len > 0:
+                        data = await self._connection.read(data_len, response_timeout)
+                        if len(data) != data_len:
+                            raise LMACommunicationError(
+                                f"Incomplete data: received {len(data)} bytes, expected {data_len}"
+                            )
+
+                    # Read ETX (end of frame)
+                    etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
+                    if not etx_data:
+                        raise LMACommunicationError("No ETX received")
+
+                    if etx_data != ETX:
+                        logger.debug(
+                            f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})"
+                        )
+                        raise LMACommunicationError(
+                            f"Invalid ETX: received {etx_data.hex()}, expected {ETX.hex()}"
+                        )
+
+                    # Successful packet reception - format hex display with spaces: STX STATUS LEN DATA ETX
+                    hex_parts = [STX.hex().upper(), f"{status:02X}", f"{data_len:02X}"]
+                    if data:
+                        hex_parts.append(data.hex().upper())
+                    hex_parts.append(ETX.hex().upper())
+                    packet_hex = " ".join(hex_parts)
+
+                    # Get status description and parse data
+                    status_name = STATUS_MESSAGES.get(status, f"Unknown STATUS 0x{status:02X}")
+                    parsed_info = ""
+
+                    # Parse data based on status type
+                    if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
+                        max_temp, ambient_temp = self._decode_temperature(data)
+                        if len(data) >= 8:
+                            parsed_info = f": max {max_temp:.1f}°C, ambient {ambient_temp:.1f}°C"
+                        else:
+                            parsed_info = f": {max_temp:.1f}°C"
+                    elif status == STATUS_BOOT_COMPLETE:
+                        parsed_info = ""
+                    elif status in [
+                        STATUS_TEST_MODE_COMPLETE,
+                        STATUS_OPERATING_TEMP_OK,
+                        STATUS_FAN_SPEED_OK,
+                    ]:
+                        parsed_info = ""
+
+                    logger.info(f"MCU -> PC: {packet_hex} ({status_name}{parsed_info})")
+
+                    return {
+                        "status": status,
+                        "data": data,
+                        "message": STATUS_MESSAGES.get(
+                            status,
+                            f"Unknown status: 0x{status:02X}",
+                        ),
+                    }
                 else:
                     # Invalid STX - simplified error handling
-                    raise LMACommunicationError(f"Invalid STX: received {stx_data.hex()}, expected {STX.hex()}")
-
-                # Read status and length (header)
-                header = await self._connection.read(
-                    FRAME_CMD_SIZE + FRAME_LEN_SIZE,
-                    response_timeout,
-                )
-                if len(header) < 2:
-                    raise LMACommunicationError(f"Incomplete header: received {len(header)} bytes, expected 2")
-
-                status = header[0]
-                data_len = header[1]
-
-                # Validate data length
-                if data_len > 255:  # Reasonable maximum for LMA protocol
-                    raise LMACommunicationError(f"Invalid data length: {data_len}")
-
-                # Read data payload if present
-                data = b""
-                if data_len > 0:
-                    data = await self._connection.read(data_len, response_timeout)
-                    if len(data) != data_len:
-                        raise LMACommunicationError(f"Incomplete data: received {len(data)} bytes, expected {data_len}")
-
-                # Read ETX (end of frame)
-                etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
-                if not etx_data:
-                    raise LMACommunicationError("No ETX received")
-
-                if etx_data != ETX:
-                    logger.debug(f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})")
-                    raise LMACommunicationError(f"Invalid ETX: received {etx_data.hex()}, expected {ETX.hex()}")
-
-                # Successful packet reception - format hex display with spaces: STX STATUS LEN DATA ETX
-                hex_parts = [STX.hex().upper(), f"{status:02X}", f"{data_len:02X}"]
-                if data:
-                    hex_parts.append(data.hex().upper())
-                hex_parts.append(ETX.hex().upper())
-                packet_hex = " ".join(hex_parts)
-
-                # Get status description and parse data
-                status_name = STATUS_MESSAGES.get(status, f"Unknown STATUS 0x{status:02X}")
-                parsed_info = ""
-
-                # Parse data based on status type
-                if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
-                    max_temp, ambient_temp = self._decode_temperature(data)
-                    if len(data) >= 8:
-                        parsed_info = f": max {max_temp:.1f}°C, ambient {ambient_temp:.1f}°C"
-                    else:
-                        parsed_info = f": {max_temp:.1f}°C"
-                elif status == STATUS_BOOT_COMPLETE:
-                    parsed_info = ""
-                elif status in [STATUS_TEST_MODE_COMPLETE, STATUS_OPERATING_TEMP_OK, STATUS_FAN_SPEED_OK]:
-                    parsed_info = ""
-
-                logger.info(f"MCU -> PC: {packet_hex} ({status_name}{parsed_info})")
-
-                return {
-                    "status": status,
-                    "data": data,
-                    "message": STATUS_MESSAGES.get(
-                        status,
-                        f"Unknown status: 0x{status:02X}",
-                    ),
-                }
+                    raise LMACommunicationError(
+                        f"Invalid STX: received {stx_data.hex()}, expected {STX.hex()}"
+                    )
 
             except LMACommunicationError as e:
                 # If sync was already attempted or sync is disabled, re-raise
@@ -861,7 +886,9 @@ class LMAMCU(MCUService):
                 continue
 
             except asyncio.TimeoutError as e:
-                raise LMACommunicationError(f"Response receive timeout after {response_timeout}s") from e
+                raise LMACommunicationError(
+                    f"Response receive timeout after {response_timeout}s"
+                ) from e
             except Exception as e:
                 raise LMACommunicationError(f"Response receive failed: {e}") from e
 

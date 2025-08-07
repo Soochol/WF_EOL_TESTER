@@ -15,6 +15,7 @@ from typing import Tuple
 from loguru import logger
 
 # Local application imports - Services
+from src.application.services.button_monitoring_service import ButtonMonitoringService
 from src.application.services.configuration_service import ConfigurationService
 from src.application.services.configuration_validator import ConfigurationValidator
 from src.application.services.exception_handler import ExceptionHandler
@@ -91,6 +92,26 @@ async def main() -> None:
             test_result_evaluator=test_result_evaluator,
             exception_handler=exception_handler,
         )
+
+        # Create button monitoring service for dual button triggering
+        try:
+            hardware_config = await configuration_service.get_hardware_configuration()
+            
+            # Create callback function for button press
+            def button_press_callback():
+                logger.info("Button press callback triggered - EOL test should be started via CLI")
+            
+            button_monitoring_service = ButtonMonitoringService(
+                digital_io_service=hardware_services._digital_io,
+                hardware_config=hardware_config,
+                eol_use_case=eol_force_test_use_case,
+                callback=button_press_callback,
+            )
+            
+            logger.info("Button monitoring service created successfully")
+        except Exception as e:
+            logger.warning(f"Failed to create button monitoring service: {e}")
+            button_monitoring_service = None
 
         # Create and run enhanced command line interface with Rich UI
         try:
@@ -188,7 +209,7 @@ async def create_hardware_services(hardware_model: HardwareModel) -> HardwareSer
     mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
     loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
     power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
-    digital_input_service = ServiceFactory.create_digital_input_service(
+    digital_io_service = ServiceFactory.create_digital_io_service(
         {"model": hw_model_dict["digital_io"]}
     )
 
@@ -197,7 +218,7 @@ async def create_hardware_services(hardware_model: HardwareModel) -> HardwareSer
         mcu_service=mcu_service,
         loadcell_service=loadcell_service,
         power_service=power_service,
-        digital_input_service=digital_input_service,
+        digital_io_service=digital_io_service,
     )
 
 

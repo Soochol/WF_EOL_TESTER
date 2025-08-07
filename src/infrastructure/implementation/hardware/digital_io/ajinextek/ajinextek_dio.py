@@ -9,13 +9,13 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from application.interfaces.hardware.digital_input import (
-    DigitalInputService,
+from application.interfaces.hardware.digital_io import (
+    DigitalIOService,
 )
-from infrastructure.implementation.hardware.digital_input.ajinextek.axl_wrapper import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.axl_wrapper import (
     AXLDIOWrapper,
 )
-from infrastructure.implementation.hardware.digital_input.ajinextek.constants import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
     MAX_INPUT_CHANNELS,
     MAX_OUTPUT_CHANNELS,
     MODULE_ID_PCI_DB64R,
@@ -26,7 +26,7 @@ from infrastructure.implementation.hardware.digital_input.ajinextek.constants im
     MODULE_ID_SIO_DO32,
     STATUS_MESSAGES,
 )
-from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
     AjinextekChannelError,
     AjinextekDIOError,
     AjinextekErrorCode,
@@ -37,7 +37,7 @@ from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes 
 )
 
 
-class AjinextekDIO(DigitalInputService):
+class AjinextekDIO(DigitalIOService):
     """Ajinextek DIO 카드 통합 서비스"""
 
     def __init__(self):

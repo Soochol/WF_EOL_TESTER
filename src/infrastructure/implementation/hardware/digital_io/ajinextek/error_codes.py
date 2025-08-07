@@ -274,7 +274,7 @@ def parse_axl_error(axl_return_code: int) -> str:
         Human readable error message
     """
     # Import here to avoid circular imports
-    from infrastructure.implementation.hardware.digital_input.ajinextek.constants import (
+    from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
         AXT_RT_DIO_INVALID_MODULE_NO,
         AXT_RT_DIO_INVALID_OFFSET_NO,
         AXT_RT_DIO_INVALID_VALUE,

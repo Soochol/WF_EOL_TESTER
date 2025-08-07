@@ -125,42 +125,42 @@ class PowerController(HardwareController):
                     voltage = await self.power_service.get_voltage()
                     current = await self.power_service.get_current()
                     is_output_on = await self.power_service.is_output_enabled()
-                    output_status = "🟢 ON" if is_output_on else "🔴 OFF"
+                    output_status = "ON" if is_output_on else "OFF"
 
-                    voltage_info = f"⚡ {voltage:.2f}V"
-                    current_info = f"🔌 {current:.2f}A"
+                    voltage_info = f"{voltage:.2f}V"
+                    current_info = f"{current:.2f}A"
                 except Exception:
-                    voltage_info = "⚡ --.-V"
-                    current_info = "🔌 --.-A"
-                    output_status = "❓ Unknown"
+                    voltage_info = "--.-V"
+                    current_info = "--.-A"
+                    output_status = "Unknown"
             else:
-                voltage_info = "⚡ --.-V"
-                current_info = "🔌 --.-A"
-                output_status = "🔴 OFF"
+                voltage_info = "--.-V"
+                current_info = "--.-A"
+                output_status = "OFF"
 
         except Exception:
-            connection_status = "❓ Unknown"
-            voltage_info = "⚡ --.-V"
-            current_info = "🔌 --.-A"
-            output_status = "❓ Unknown"
+            connection_status = "Unknown"
+            voltage_info = "--.-V"
+            current_info = "--.-A"
+            output_status = "Unknown"
 
         # Enhanced menu options with icons and grouping
         menu_options = {
-            "1": "🔌 Connect",
-            "2": "❌ Disconnect",
-            "3": f"✅ Enable Output      ⚠️  [Current: {output_status}]",
-            "4": f"🛑 Disable Output     [Current: {output_status}]",
-            "5": f"⚡ Set Voltage        [{voltage_info}]",
-            "6": f"🔋 Set Current        [{current_info}]",
-            "7": f"🔌 Set Current Limit  [{current_info}]",
-            "b": "⬅️  Back to Hardware Menu",
+            "1": "Connect",
+            "2": "Disconnect",
+            "3": f"Enable Output [Current: {output_status}]",
+            "4": f"Disable Output [Current: {output_status}]",
+            "5": f"Set Voltage [{voltage_info}]",
+            "6": f"Set Current [{current_info}]",
+            "7": f"Set Current Limit [{current_info}]",
+            "b": "Back to Hardware Menu",
         }
 
         # Create enhanced title with status
         enhanced_title = (
-            f"🔋 ODA Power Supply Control\n"
-            f"📡 Status: {connection_status}  |  🔌 Output: {output_status}  |  ⚡ {voltage_info}  |  🔌 {current_info}\n"
-            f"[dim]💡 Use numbers 1-7 to select options, or 'b' to go back[/dim]"
+            f"ODA Power Supply Control\n"
+            f"Status: {connection_status}  |  Output: {output_status}  |  {voltage_info}  |  {current_info}\n"
+            f"[dim]Use numbers 1-7 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -195,7 +195,7 @@ class PowerController(HardwareController):
             return True
 
         except Exception as e:
-            self.formatter.print_message(f"❌ Power command failed: {str(e)}", message_type="error")
+            self.formatter.print_message(f"Power command failed: {str(e)}", message_type="error")
             return False
 
     # Private power-specific operations
@@ -209,15 +209,15 @@ class PowerController(HardwareController):
 
                 # Show safety warning with current settings
                 self.formatter.print_message(
-                    f"⚠️  WARNING: About to enable HIGH VOLTAGE output!\n"
-                    f"   Current settings: ⚡ {voltage:.2f}V, 🔌 {current:.2f}A\n"
+                    f"WARNING: About to enable HIGH VOLTAGE output!\n"
+                    f"   Current settings: {voltage:.2f}V, {current:.2f}A\n"
                     f"   Ensure all safety precautions are in place.",
                     message_type="warning",
                 )
             except Exception:
                 # If we can't get voltage/current, still ask for confirmation
                 self.formatter.print_message(
-                    "⚠️  WARNING: About to enable power output!\n"
+                    "WARNING: About to enable power output!\n"
                     "   Ensure all safety precautions are in place.",
                     message_type="warning",
                 )
@@ -225,12 +225,12 @@ class PowerController(HardwareController):
             # Proceed with enabling output (confirmation removed for faster operation)
             await self.power_service.enable_output()
             self.formatter.print_message(
-                "✅ Power output enabled successfully", message_type="success"
+                "Power output enabled successfully", message_type="success"
             )
 
         except Exception as e:
             self.formatter.print_message(
-                f"❌ Failed to enable output: {str(e)}", message_type="error"
+                f"Failed to enable output: {str(e)}", message_type="error"
             )
 
     async def _disable_output(self) -> None:
@@ -252,13 +252,13 @@ class PowerController(HardwareController):
             # Get current voltage for reference
             try:
                 current_voltage = await self.power_service.get_voltage()
-                current_info = f"⚡ Current: {current_voltage:.2f}V"
+                current_info = f"Current: {current_voltage:.2f}V"
             except Exception:
-                current_info = "⚡ Current: Unknown"
+                current_info = "Current: Unknown"
                 current_voltage = 0.0
 
             # Enhanced voltage input prompt
-            self.formatter.console.print("[bold cyan]⚡ Set Output Voltage[/bold cyan]")
+            self.formatter.console.print("[bold cyan]Set Output Voltage[/bold cyan]")
             self.formatter.console.print(f"[dim]   {current_info}[/dim]")
 
             voltage = self._get_user_input_with_validation(
@@ -268,12 +268,12 @@ class PowerController(HardwareController):
             )
 
             if voltage is None:
-                self.formatter.print_message("❌ Voltage setting cancelled", message_type="info")
+                self.formatter.print_message("Voltage setting cancelled", message_type="info")
                 return
 
             # Show what will be set
             self.formatter.print_message(
-                f"⚡ Setting voltage: {current_voltage:.2f}V → {voltage:.2f}V", message_type="info"
+                f"Setting voltage: {current_voltage:.2f}V → {voltage:.2f}V", message_type="info"
             )
 
             # Type check voltage value
@@ -286,17 +286,17 @@ class PowerController(HardwareController):
             try:
                 actual_voltage = await self.power_service.get_voltage()
                 self.formatter.print_message(
-                    f"✅ Voltage set successfully - Actual: {actual_voltage:.2f}V",
+                    f"Voltage set successfully - Actual: {actual_voltage:.2f}V",
                     message_type="success",
                 )
             except Exception:
                 self.formatter.print_message(
-                    f"✅ Voltage set to {voltage:.2f}V successfully", message_type="success"
+                    f"Voltage set to {voltage:.2f}V successfully", message_type="success"
                 )
 
         except Exception as e:
             self.formatter.print_message(
-                f"❌ Failed to set voltage: {str(e)}", message_type="error"
+                f"Failed to set voltage: {str(e)}", message_type="error"
             )
 
     async def _set_current(self) -> None:
@@ -305,13 +305,13 @@ class PowerController(HardwareController):
             # Get current value for reference
             try:
                 current_value = await self.power_service.get_current()
-                current_info = f"🔋 Current: {current_value:.2f}A"
+                current_info = f"Current: {current_value:.2f}A"
             except Exception:
-                current_info = "🔋 Current: Unknown"
+                current_info = "Current: Unknown"
                 current_value = 0.0
 
             # Enhanced current input prompt
-            self.formatter.console.print("[bold cyan]🔋 Set Output Current[/bold cyan]")
+            self.formatter.console.print("[bold cyan]Set Output Current[/bold cyan]")
             self.formatter.console.print(f"[dim]   {current_info}[/dim]")
 
             current = self._get_user_input_with_validation(
@@ -321,12 +321,12 @@ class PowerController(HardwareController):
             )
 
             if current is None:
-                self.formatter.print_message("❌ Current setting cancelled", message_type="info")
+                self.formatter.print_message("Current setting cancelled", message_type="info")
                 return
 
             # Show what will be set
             self.formatter.print_message(
-                f"🔋 Setting current: {current_value:.2f}A → {current:.2f}A",
+                f"Setting current: {current_value:.2f}A → {current:.2f}A",
                 message_type="info",
             )
 
@@ -340,17 +340,17 @@ class PowerController(HardwareController):
             try:
                 actual_current = await self.power_service.get_current()
                 self.formatter.print_message(
-                    f"✅ Current set successfully - Actual: {actual_current:.2f}A",
+                    f"Current set successfully - Actual: {actual_current:.2f}A",
                     message_type="success",
                 )
             except Exception:
                 self.formatter.print_message(
-                    f"✅ Current set to {current:.2f}A successfully", message_type="success"
+                    f"Current set to {current:.2f}A successfully", message_type="success"
                 )
 
         except Exception as e:
             self.formatter.print_message(
-                f"❌ Failed to set current: {str(e)}", message_type="error"
+                f"Failed to set current: {str(e)}", message_type="error"
             )
 
     async def _set_current_limit(self) -> None:
@@ -359,13 +359,13 @@ class PowerController(HardwareController):
             # Get current limit for reference
             try:
                 current_limit = await self.power_service.get_current_limit()
-                current_info = f"🔌 Current Limit: {current_limit:.2f}A"
+                current_info = f"Current Limit: {current_limit:.2f}A"
             except Exception:
-                current_info = "🔌 Current Limit: Unknown"
+                current_info = "Current Limit: Unknown"
                 current_limit = 0.0
 
             # Enhanced current input prompt
-            self.formatter.console.print("[bold cyan]🔌 Set Current Limit[/bold cyan]")
+            self.formatter.console.print("[bold cyan]Set Current Limit[/bold cyan]")
             self.formatter.console.print(f"[dim]   {current_info}[/dim]")
 
             current = self._get_user_input_with_validation(
@@ -376,13 +376,13 @@ class PowerController(HardwareController):
 
             if current is None:
                 self.formatter.print_message(
-                    "❌ Current limit setting cancelled", message_type="info"
+                    "Current limit setting cancelled", message_type="info"
                 )
                 return
 
             # Show what will be set
             self.formatter.print_message(
-                f"🔌 Setting current limit: {current_limit:.2f}A → {current:.2f}A",
+                f"Setting current limit: {current_limit:.2f}A → {current:.2f}A",
                 message_type="info",
             )
 
@@ -396,15 +396,15 @@ class PowerController(HardwareController):
             try:
                 actual_limit = await self.power_service.get_current_limit()
                 self.formatter.print_message(
-                    f"✅ Current limit set successfully - Actual: {actual_limit:.2f}A",
+                    f"Current limit set successfully - Actual: {actual_limit:.2f}A",
                     message_type="success",
                 )
             except Exception:
                 self.formatter.print_message(
-                    f"✅ Current limit set to {current:.2f}A successfully", message_type="success"
+                    f"Current limit set to {current:.2f}A successfully", message_type="success"
                 )
 
         except Exception as e:
             self.formatter.print_message(
-                f"❌ Failed to set current limit: {str(e)}", message_type="error"
+                f"Failed to set current limit: {str(e)}", message_type="error"
             )

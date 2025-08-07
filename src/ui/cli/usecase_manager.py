@@ -170,12 +170,12 @@ class EOLForceTestExecutor(UseCaseExecutor):
 
         # Create test results table with DUT info
         dut_info = None
-        if hasattr(self, '_current_command') and self._current_command:
+        if hasattr(self, "_current_command") and self._current_command:
             dut_info = {
-                'id': self._current_command.dut_info.dut_id,
-                'model': self._current_command.dut_info.model_number
+                "id": self._current_command.dut_info.dut_id,
+                "model": self._current_command.dut_info.model_number,
             }
-        
+
         results_table = formatter.create_test_results_table(
             [result], title="Detailed Test Results", show_details=True, dut_info=dut_info
         )

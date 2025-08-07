@@ -9,26 +9,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from loguru import logger
 
-# IDE 개발용 타입 힌트 - 런타임에는 영향 없음
-if TYPE_CHECKING:
-    from infrastructure.implementation.hardware.digital_input.ajinextek.ajinextek_dio import (
-        AjinextekDIO,
-    )
-    from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
-        BS205LoadCell,
-    )
-    from infrastructure.implementation.hardware.mcu.lma.lma_mcu import (
-        LMAMCU,
-    )
-    from infrastructure.implementation.hardware.power.oda.oda_power import (
-        OdaPower,
-    )
-    from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import (
-        AjinextekRobot,
-    )
-
-from application.interfaces.hardware.digital_input import (
-    DigitalInputService,
+from application.interfaces.hardware.digital_io import (
+    DigitalIOService,
 )
 from application.interfaces.hardware.loadcell import (
     LoadCellService,
@@ -43,6 +25,24 @@ from application.interfaces.hardware.power import (
 from application.interfaces.hardware.robot import (
     RobotService,
 )
+
+# IDE 개발용 타입 힌트 - 런타임에는 영향 없음
+if TYPE_CHECKING:
+    from infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import (
+        AjinextekDIO,
+    )
+    from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
+        BS205LoadCell,
+    )
+    from infrastructure.implementation.hardware.mcu.lma.lma_mcu import (
+        LMAMCU,
+    )
+    from infrastructure.implementation.hardware.power.oda.oda_power import (
+        OdaPower,
+    )
+    from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import (
+        AjinextekRobot,
+    )
 
 # Type checking imports removed as they are no longer needed
 # The constructor now uses interface types instead of concrete types
@@ -76,7 +76,7 @@ class HardwareServiceFacade:
         mcu_service: MCUService,
         loadcell_service: LoadCellService,
         power_service: PowerService,
-        digital_input_service: DigitalInputService,
+        digital_io_service: DigitalIOService,
     ):
         # IDE 개발용 타입 힌트 - 실제 구현체로 인식하도록 함 (런타임에는 동일)
         if TYPE_CHECKING:
@@ -84,13 +84,13 @@ class HardwareServiceFacade:
             self._mcu = cast("LMAMCU", mcu_service)
             self._loadcell = cast("BS205LoadCell", loadcell_service)
             self._power = cast("OdaPower", power_service)
-            self._digital_input = cast("AjinextekDIO", digital_input_service)
+            self._digital_io = cast("AjinextekDIO", digital_io_service)
         else:
             self._robot = robot_service
             self._mcu = mcu_service
             self._loadcell = loadcell_service
             self._power = power_service
-            self._digital_input = digital_input_service
+            self._digital_io = digital_io_service
 
     # ============================================================================
     # 기본 하드웨어 관리 (라이프사이클 순서)

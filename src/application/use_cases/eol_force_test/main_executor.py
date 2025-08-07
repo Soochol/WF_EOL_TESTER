@@ -74,6 +74,18 @@ class EOLForceTestUseCase:
             test_result_evaluator, self._measurement_converter, self._state_manager
         )
 
+        # Execution state for duplicate execution prevention
+        self._is_running = False
+
+    def is_running(self) -> bool:
+        """
+        Check if EOL test is currently running
+        
+        Returns:
+            True if test is currently executing, False otherwise
+        """
+        return self._is_running
+
     async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
         Execute EOL test using component-based architecture
@@ -97,17 +109,22 @@ class EOLForceTestUseCase:
         """
         logger.info(TestExecutionConstants.LOG_TEST_EXECUTION_START, command.dut_info.dut_id)
 
-        # Phase 1: Initialize test setup
-        await self._config_loader.load_and_validate_configurations()
-        test_entity = await self._test_factory.create_test_entity(
-            command.dut_info, command.operator_id, self._config_loader.test_config
-        )
+        # Set running flag to prevent duplicate execution
+        self._is_running = True
 
-        # Phase 2: Execute test with proper error handling
+        # Execute test with proper error handling
         start_time = asyncio.get_event_loop().time()
         measurements: Optional[TestMeasurements] = None
+        test_entity = None
 
         try:
+            # Phase 1: Initialize test setup
+            await self._config_loader.load_and_validate_configurations()
+            test_entity = await self._test_factory.create_test_entity(
+                command.dut_info, command.operator_id, self._config_loader.test_config
+            )
+
+            # Phase 2: Execute test
             test_entity.prepare_test()
 
             # Validate configurations are loaded (will raise exception if None)
@@ -155,9 +172,10 @@ class EOLForceTestUseCase:
 
         finally:
             # Phase 6: Cleanup hardware resources (always executed)
-            await self._cleanup_hardware_resources(
-                test_entity if "test_entity" in locals() else None
-            )
+            await self._cleanup_hardware_resources(test_entity)
+
+            # Clear running flag to allow future executions
+            self._is_running = False
 
     def _calculate_execution_duration(self, start_time: float) -> TestDuration:
         """

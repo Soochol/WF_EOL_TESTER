@@ -63,7 +63,7 @@ class EnhancedInputIntegrator:
         self.menu_options = {
             "main_menu": {
                 "1": "Execute EOL Test",
-                "2": "Execute UseCase (Advanced)",
+                "2": "Robot Home",
                 "3": "Hardware Control Center",
                 "4": "Exit",
             },
@@ -261,7 +261,7 @@ class EnhancedMenuSystem:
         menu_text.append("1.", style="bold cyan")
         menu_text.append(" Execute EOL Test\n")
         menu_text.append("2.", style="bold cyan")
-        menu_text.append(" Execute UseCase (Advanced)\n")
+        menu_text.append(" Robot Home\n")
         menu_text.append("3.", style="bold cyan")
         menu_text.append(" Hardware Control Center\n")
         menu_text.append("4.", style="bold cyan")

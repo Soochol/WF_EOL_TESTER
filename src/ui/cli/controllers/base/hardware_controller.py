@@ -126,7 +126,7 @@ class HardwareController(ABC):
         enhanced_options = base_options.copy()
 
         # Add standard back option
-        enhanced_options["b"] = "⬅️  Back to Hardware Menu"
+        enhanced_options["b"] = "Back to Hardware Menu"
 
         # Add shortcuts if provided
         if shortcuts:
@@ -136,7 +136,7 @@ class HardwareController(ABC):
 
     def _format_connection_status(self, is_connected: bool) -> str:
         """Format connection status with emoji"""
-        return "🟢 Connected" if is_connected else "🔴 Disconnected"
+        return "Connected" if is_connected else "Disconnected"
 
     def _get_user_input_with_validation(
         self, prompt: str, input_type: type = str, allow_cancel: bool = True, validator=None

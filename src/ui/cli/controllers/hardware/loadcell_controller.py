@@ -117,39 +117,39 @@ class LoadCellController(HardwareController):
                 try:
                     # Get current force reading
                     force_value = await self.loadcell_service.read_force()
-                    force_info = f"⚖️ {force_value.value:.3f} {force_value.unit.value}"
+                    force_info = f"{force_value.value:.3f} {force_value.unit.value}"
 
                     # Get status information
                     status = await self.loadcell_service.get_status()
                     hardware_type = status.get("hardware_type", "Unknown")
-                    device_info = f"📱 {hardware_type}"
+                    device_info = f"{hardware_type}"
                 except Exception:
-                    force_info = "⚖️ ---.--- kgf"
-                    device_info = "📱 Unknown"
+                    force_info = "---.--- kgf"
+                    device_info = "Unknown"
             else:
-                force_info = "⚖️ ---.--- kgf"
-                device_info = "📱 Unknown"
+                force_info = "---.--- kgf"
+                device_info = "Unknown"
 
         except Exception:
-            connection_status = "❓ Unknown"
-            force_info = "⚖️ ---.--- kgf"
-            device_info = "📱 Unknown"
+            connection_status = "Unknown"
+            force_info = "---.--- kgf"
+            device_info = "Unknown"
 
         # Enhanced menu options with icons and status
         menu_options = {
-            "1": "🔌 Connect",
-            "2": "❌ Disconnect",
-            "3": f"⚖️ Read Force          [{force_info}]",
-            "4": "🎌 Zero Calibration    [Reset to 0.000]",
-            "5": f"📊 Monitor Force (Live) [{force_info}]",
-            "b": "⬅️  Back to Hardware Menu",
+            "1": "Connect",
+            "2": "Disconnect",
+            "3": f"Read Force [{force_info}]",
+            "4": "Zero Calibration [Reset to 0.000]",
+            "5": f"Monitor Force (Live) [{force_info}]",
+            "b": "Back to Hardware Menu",
         }
 
         # Create enhanced title with status
         enhanced_title = (
-            f"⚖️ LoadCell Control System\n"
-            f"📡 Status: {connection_status}  |  {force_info}  |  {device_info}\n"
-            f"[dim]💡 Use numbers 1-5 to select options, or 'b' to go back[/dim]"
+            f"LoadCell Control System\n"
+            f"Status: {connection_status}  |  {force_info}  |  {device_info}\n"
+            f"[dim]Use numbers 1-5 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -181,7 +181,7 @@ class LoadCellController(HardwareController):
 
         except Exception as e:
             self.formatter.print_message(
-                f"❌ LoadCell command failed: {str(e)}", message_type="error"
+                f"LoadCell command failed: {str(e)}", message_type="error"
             )
             return False
 

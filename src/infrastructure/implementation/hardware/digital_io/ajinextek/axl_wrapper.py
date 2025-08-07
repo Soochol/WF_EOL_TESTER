@@ -15,11 +15,11 @@ from typing import Any, List, Optional, Tuple
 
 from loguru import logger
 
-from infrastructure.implementation.hardware.digital_input.ajinextek.constants import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
     AXL_64BIT_LIBRARY_NAME,
     AXL_LIBRARY_NAME,
 )
-from infrastructure.implementation.hardware.digital_input.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
     AjinextekHardwareError,
     create_hardware_error,
 )

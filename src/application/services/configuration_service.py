@@ -91,10 +91,10 @@ class ConfigurationService:
     async def load_hardware_config(self) -> HardwareConfiguration:
         """
         Load hardware configuration
-        
+
         Returns:
             HardwareConfiguration object containing the loaded hardware settings
-            
+
         Raises:
             RepositoryAccessError: If hardware configuration loading fails
         """

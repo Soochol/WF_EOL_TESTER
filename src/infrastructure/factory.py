@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Union
 from loguru import logger
 
 from application.services.hardware_service_facade import HardwareServiceFacade
-from infrastructure.implementation.hardware.digital_input.ajinextek.ajinextek_dio import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import (
     AjinextekDIO,
 )
 from infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell import (
@@ -31,7 +31,7 @@ from infrastructure.implementation.hardware.robot.mock.mock_robot import (
 
 # Type checking imports for better IDE support
 if TYPE_CHECKING:
-    from infrastructure.implementation.hardware.digital_input.mock.mock_dio import (
+    from infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
         MockDIO,
     )
     from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
@@ -192,30 +192,30 @@ class ServiceFactory:
         return LMAMCU()
 
     @staticmethod
-    def create_digital_input_service(
+    def create_digital_io_service(
         config: Optional[Dict] = None,
     ) -> Union["AjinextekDIO", "MockDIO"]:
         """
-        Digital Input 서비스 생성 (설정 기반)
+        Digital I/O 서비스 생성 (설정 기반)
 
         Args:
-            config: Digital Input 설정 딕셔너리 (model 키로 구분)
+            config: Digital I/O 설정 딕셔너리 (model 키로 구분)
 
         Returns:
-            Digital Input 서비스 인스턴스
+            Digital I/O 서비스 인스턴스
         """
         if config and config.get("model", "").lower() == "mock":
-            from infrastructure.implementation.hardware.digital_input.mock.mock_dio import (
+            from infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
                 MockDIO,
             )
 
-            logger.info("Creating Mock Digital Input service")
+            logger.info("Creating Mock Digital I/O service")
             # MockInput requires config, so pass a default config if none provided
             mock_config = config if config else {"model": "mock"}
             return MockDIO(mock_config)
 
         # Ajinextek DIO 실제 하드웨어
-        logger.info("Creating Ajinextek Digital Input service")
+        logger.info("Creating Ajinextek Digital I/O service")
         return AjinextekDIO()
 
     @staticmethod
@@ -269,7 +269,7 @@ def create_hardware_service_facade(
         power_service = ServiceFactory.create_power_service(
             hardware_configs.get('power') if hardware_configs else ({"model": "mock"} if use_mock else None)
         )
-        digital_input_service = ServiceFactory.create_digital_input_service(
+        digital_io_service = ServiceFactory.create_digital_io_service(
             hardware_configs.get('digital_io') if hardware_configs else ({"model": "mock"} if use_mock else None)
         )
 
@@ -279,7 +279,7 @@ def create_hardware_service_facade(
             mcu_service=mcu_service,
             loadcell_service=loadcell_service,
             power_service=power_service,
-            digital_input_service=digital_input_service,
+            digital_io_service=digital_io_service,
         )
 
         logger.info("Hardware service facade created successfully")
@@ -312,11 +312,11 @@ def create_hardware_service_facade(
             power_service = ServiceFactory.create_power_service(
                 hardware_configs.get('power') if hardware_configs else ({"model": "mock"} if use_mock else None)
             )
-            digital_input_service = ServiceFactory.create_digital_input_service(
+            digital_io_service = ServiceFactory.create_digital_io_service(
                 hardware_configs.get('digital_io') if hardware_configs else ({"model": "mock"} if use_mock else None)
             )
 
-            return robot_service, mcu_service, loadcell_service, power_service, digital_input_service
+            return robot_service, mcu_service, loadcell_service, power_service, digital_io_service
             
         except Exception as e:
             logger.error("Failed to create typed hardware services: %s", e)

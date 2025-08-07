@@ -128,7 +128,7 @@ class MenuSystem(IMenuSystem):
             if choice == "1":
                 await self._execute_eol_test()
             elif choice == "2":
-                await self._execute_usecase_menu()
+                await self._execute_robot_home()
             elif choice == "3":
                 await self._hardware_control_center()
             elif choice == "4":
@@ -209,6 +209,50 @@ class MenuSystem(IMenuSystem):
                 f"UseCase execution error: {str(e)}", message_type="error"
             )
             logger.error(f"UseCase execution error: {e}")
+
+    async def _execute_robot_home(self) -> None:
+        """Execute Robot Home operation.
+
+        Performs robot homing operation to move the robot to its reference position.
+        """
+        if not self._hardware_manager:
+            self._formatter.print_message(
+                "Hardware manager not available. Please check system configuration.",
+                message_type="error",
+                title="Hardware Manager Unavailable",
+            )
+            return
+
+        try:
+            self._formatter.print_header(
+                "Robot Home Operation", "Moving robot to home position"
+            )
+
+            # Execute robot home operation and get result
+            success = await self._hardware_manager.execute_robot_home()
+
+            if success:
+                self._formatter.print_message(
+                    "Robot home operation completed successfully.",
+                    message_type="success",
+                    title="Robot Home Complete"
+                )
+            else:
+                self._formatter.print_message(
+                    "Robot home operation failed. Check the logs for details.",
+                    message_type="error",
+                    title="Robot Home Failed"
+                )
+
+            # Wait for user acknowledgment
+            await self._wait_for_user_acknowledgment()
+
+        except Exception as e:
+            self._formatter.print_message(
+                f"Robot home operation failed: {str(e)}", message_type="error",
+                title="Robot Home Failed"
+            )
+            logger.error(f"Robot home execution error: {e}")
 
     async def _hardware_control_center(self) -> None:
         """Hardware Control Center - Individual hardware control interface.

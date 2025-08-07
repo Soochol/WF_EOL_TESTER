@@ -12,8 +12,8 @@ import asyncio
 
 from loguru import logger
 
-from application.interfaces.hardware.digital_input import (
-    DigitalInputService,
+from application.interfaces.hardware.digital_io import (
+    DigitalIOService,
 )
 from domain.enums.digital_input_enums import (
     LogicLevel,
@@ -25,7 +25,7 @@ from domain.exceptions import (
 )
 
 
-class MockDIO(DigitalInputService):
+class MockDIO(DigitalIOService):
     """Mock 입력 하드웨어 서비스"""
 
     def __init__(self, config: Dict[str, Any]):
@@ -396,7 +396,7 @@ class MockDIO(DigitalInputService):
         """
         return self._pin_configurations.copy()
 
-    async def reset_all_outputs(self) -> None:
+    async def reset_all_outputs(self) -> bool:
         """
         모든 출력을 LOW로 리셋
 
@@ -408,12 +408,13 @@ class MockDIO(DigitalInputService):
         ]
 
         if not output_pins:
-            return
+            return True
 
         try:
             reset_values = {pin: LogicLevel.LOW for pin in output_pins}
             await self.write_multiple_outputs(reset_values)
             logger.info("Mock: All outputs reset to LOW")
+            return True
 
         except Exception as e:
             logger.error("Failed to reset all outputs: %s", e)

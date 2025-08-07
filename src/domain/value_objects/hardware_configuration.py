@@ -54,8 +54,6 @@ class LoadCellConfig:
     indicator_id: int = 0
 
 
-
-
 @dataclass(frozen=True)
 class MCUConfig:
     """MCU device configuration (LMA)"""
@@ -67,7 +65,6 @@ class MCUConfig:
     bytesize: int = 8
     stopbits: int = 1
     parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
-
 
 
 @dataclass(frozen=True)
@@ -84,9 +81,6 @@ class PowerConfig:
     delimiter: Optional[str] = "\n"  # Command terminator (None = TCP driver handles)
 
 
-
-
-
 @dataclass(frozen=True)
 class DigitalIOConfig:
     """Digital Input configuration (AJINEXTEK)"""
@@ -100,7 +94,6 @@ class DigitalIOConfig:
     tower_lamp_yellow: int = 5
     tower_lamp_green: int = 6
     beep: int = 7
-
 
 
 @dataclass(frozen=True)
@@ -171,8 +164,6 @@ class HardwareConfiguration:
                 "LoadCell indicator ID cannot be negative",
             )
 
-
-
         # Validate LoadCell serial parameters
         if self.loadcell.bytesize not in [5, 6, 7, 8]:
             raise ValidationException(
@@ -222,7 +213,6 @@ class HardwareConfiguration:
                 self.mcu.timeout,
                 "MCU timeout must be positive",
             )
-
 
         # Validate MCU serial parameters
         if self.mcu.bytesize not in [5, 6, 7, 8]:
@@ -283,9 +273,6 @@ class HardwareConfiguration:
                 self.power.channel,
                 "Power channel must be positive",
             )
-
-
-
 
     def is_valid(self) -> bool:
         """

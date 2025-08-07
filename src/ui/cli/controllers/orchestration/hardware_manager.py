@@ -45,7 +45,7 @@ class HardwareControlManager:
 
         # Debug logging for configuration status
         if self.hardware_config:
-            logger.info("✓ Hardware configuration loaded successfully")
+            logger.info("Hardware configuration loaded successfully")
             logger.info(f"  - LoadCell port: {self.hardware_config.loadcell.port}")
             logger.info(f"  - MCU port: {self.hardware_config.mcu.port}")
             logger.info(
@@ -53,7 +53,7 @@ class HardwareControlManager:
             )
             logger.info(f"  - Robot axis_id: {self.hardware_config.robot.axis_id}")
         else:
-            logger.warning("❌ Hardware configuration is None - CLI will use fallback defaults!")
+            logger.warning("Hardware configuration is None - CLI will use fallback defaults!")
             logger.warning("This may cause connection issues with hardware devices.")
 
         # Extract axis_id for backward compatibility
@@ -93,7 +93,7 @@ class HardwareControlManager:
                     hasattr(controller, "robot_config") and controller.robot_config is not None
                 )
                 logger.info(
-                    f"  {name} Controller: {'✓ has config' if has_config else '❌ config is None'}"
+                    f"  {name} Controller: {'has config' if has_config else 'config is None'}"
                 )
             else:
                 has_config = (
@@ -101,7 +101,7 @@ class HardwareControlManager:
                     and getattr(controller, config_attr) is not None
                 )
                 logger.info(
-                    f"  {name} Controller: {'✓ has config' if has_config else '❌ config is None'}"
+                    f"  {name} Controller: {'has config' if has_config else 'config is None'}"
                 )
 
         logger.info(f"Initialized {len(self.controllers)} hardware controllers")
@@ -112,7 +112,7 @@ class HardwareControlManager:
 
         try:
             if not self.configuration_service:
-                logger.error("❌ Configuration service is None - cannot load hardware config!")
+                logger.error("Configuration service is None - cannot load hardware config!")
                 logger.error("This indicates a CLI initialization problem.")
                 return None
 
@@ -132,7 +132,7 @@ class HardwareControlManager:
                     # We're in an async context but need to run sync
                     # Try to use asyncio.create_task or run in thread to avoid blocking
                     logger.warning(
-                        "⚠️ Running event loop detected - attempting alternative config loading"
+                        "Running event loop detected - attempting alternative config loading"
                     )
                     try:
                         # Try using run_in_executor to run async code in thread
@@ -158,15 +158,15 @@ class HardwareControlManager:
 
                         if hw_config:
                             logger.info(
-                                "✓ Successfully loaded hardware config using thread executor"
+                                "Successfully loaded hardware config using thread executor"
                             )
                             return hw_config
                         else:
-                            logger.error("❌ Thread executor returned None config")
+                            logger.error("Thread executor returned None config")
                             return None
 
                     except Exception as thread_e:
-                        logger.error(f"❌ Thread executor failed: {thread_e}")
+                        logger.error(f"Thread executor failed: {thread_e}")
                         logger.error("Falling back to default configurations")
                         return None
                 else:
@@ -176,11 +176,11 @@ class HardwareControlManager:
                             self.configuration_service.load_hardware_config()
                         )
                         logger.info(
-                            "✓ Successfully loaded hardware configurations from YAML using existing loop"
+                            "Successfully loaded hardware configurations from YAML using existing loop"
                         )
                         return hw_config
                     else:
-                        logger.error("❌ Configuration service is None")
+                        logger.error("Configuration service is None")
                         return None
 
             except RuntimeError as e:
@@ -189,7 +189,7 @@ class HardwareControlManager:
                 if self.configuration_service is not None:
                     hw_config = asyncio.run(self.configuration_service.load_hardware_config())
                     logger.info(
-                        "✓ Successfully loaded hardware configurations from YAML using new loop"
+                        "Successfully loaded hardware configurations from YAML using new loop"
                     )
                     return hw_config
                 else:
@@ -197,7 +197,7 @@ class HardwareControlManager:
                     return None
 
         except Exception as e:
-            logger.error(f"❌ Exception in hardware configuration loading: {type(e).__name__}: {e}")
+            logger.error(f"Exception in hardware configuration loading: {type(e).__name__}: {e}")
             logger.error("Using default hardware configurations as fallback")
             import traceback
 
@@ -314,3 +314,67 @@ class HardwareControlManager:
     def list_controllers(self) -> List[str]:
         """Get list of available controller names"""
         return list(self.controllers.keys())
+
+    async def execute_robot_home(self) -> bool:
+        """Execute Robot Home operation using the Robot Home use case.
+        
+        Creates and executes a Robot Home use case to move the robot to its home position.
+        
+        Returns:
+            bool: True if robot homing succeeded, False otherwise
+        """
+        try:
+            # Import here to avoid circular imports
+            from src.application.use_cases.robot_home import RobotHomeUseCase, RobotHomeCommand
+            from src.application.services.hardware_service_facade import HardwareServiceFacade
+            
+            # Create hardware service facade from the existing controllers
+            # Note: This assumes we have access to the hardware facade from the parent
+            # For now, we'll use the robot controller directly
+            robot_controller = self.controllers.get("Robot")
+            if not robot_controller:
+                logger.error("Robot controller not available")
+                return False
+            
+            # Get the robot service from the robot controller
+            robot_service = robot_controller.robot_service
+            if not robot_service:
+                logger.error("Robot service not available")
+                return False
+            
+            # Create a minimal hardware facade for the Robot Home use case
+            class MinimalHardwareServiceFacade:
+                def __init__(self, robot_service):
+                    self._robot = robot_service
+                
+                async def get_hardware_status(self):
+                    # Simple hardware status check
+                    try:
+                        await self._robot.get_status()
+                        return {"robot": True}
+                    except:
+                        return {"robot": False}
+            
+            facade = MinimalHardwareServiceFacade(robot_service)
+            
+            # Create Robot Home use case
+            robot_home_use_case = RobotHomeUseCase(facade)
+            
+            # Create Robot Home command
+            command = RobotHomeCommand(operator_id="cli_user")
+            
+            # Execute Robot Home operation
+            logger.info("Starting robot homing operation...")
+            
+            result = await robot_home_use_case.execute(command)
+            
+            if result.is_success:
+                logger.info(f"Robot homing completed successfully in {result.execution_duration.seconds:.2f}s")
+                return True
+            else:
+                logger.error(f"Robot homing failed: {result.error_message}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Robot home execution error: {e}")
+            return False

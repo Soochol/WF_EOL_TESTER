@@ -114,40 +114,40 @@ class RobotController(HardwareController):
                     is_initialized = status.get("initialized", False)
                     current_position = status.get("position", "Unknown")
 
-                    init_status = "🟢 Ready" if is_initialized else "🔴 Not Initialized"
-                    position_info = f"📍 {current_position}"
+                    init_status = "Ready" if is_initialized else "Not Initialized"
+                    position_info = f"Position: {current_position}"
                 except Exception:
-                    init_status = "❓ Unknown"
-                    position_info = "📍 Unknown"
+                    init_status = "Unknown"
+                    position_info = "Position: Unknown"
             else:
-                init_status = "🔴 Not Initialized"
-                position_info = "📍 Unknown"
+                init_status = "Not Initialized"
+                position_info = "Position: Unknown"
 
         except Exception:
-            connection_status = "❓ Unknown"
-            init_status = "❓ Unknown"
-            position_info = "📍 Unknown"
+            connection_status = "Unknown"
+            init_status = "Unknown"
+            position_info = "Position: Unknown"
 
         # Enhanced menu options with icons and status
         menu_options = {
-            "1": "🔌 Connect",
-            "2": "❌ Disconnect",
-            "3": "✅ Servo On       ⚡ [Enable Motor]",
-            "4": "❌ Servo Off     ⚠️  [Disable Motor]",
-            "5": "🚨 Emergency Stop      ⚠️  [Safety Critical]",
-            "6": "🏠 Home Axis",
-            "7": "📍 Move Absolute",
-            "8": "↔️ Move Relative",
-            "9": "⏹️ Stop Motion",
-            "10": "📍 Get Position",
-            "b": "⬅️  Back to Hardware Menu",
+            "1": "Connect",
+            "2": "Disconnect",
+            "3": "Servo On [Enable Motor]",
+            "4": "Servo Off [Disable Motor]",
+            "5": "Emergency Stop [Safety Critical]",
+            "6": "Home Axis",
+            "7": "Move Absolute",
+            "8": "Move Relative",
+            "9": "Stop Motion",
+            "10": "Get Position",
+            "b": "Back to Hardware Menu",
         }
 
         # Create enhanced title with status
         enhanced_title = (
-            f"🤖 Robot Control System\n"
-            f"📡 Status: {connection_status}  |  ⚙️ Init: {init_status}  |  {position_info}\n"
-            f"[dim]💡 Use numbers 1-10 to select options, or 'b' to go back[/dim]"
+            f"Robot Control System\n"
+            f"Status: {connection_status}  |  Init: {init_status}  |  {position_info}\n"
+            f"[dim]Use numbers 1-10 to select options, or 'b' to go back[/dim]"
         )
 
         # Get user input with custom validation that includes shortcuts
@@ -213,7 +213,7 @@ class RobotController(HardwareController):
             return True
 
         except Exception as e:
-            self.formatter.print_message(f"❌ Robot command failed: {str(e)}", message_type="error")
+            self.formatter.print_message(f"Robot command failed: {str(e)}", message_type="error")
             return False
 
     # Private robot-specific operations
@@ -305,7 +305,7 @@ class RobotController(HardwareController):
             primary_axis = self.axis_id
 
             # Get user input for position and motion parameters
-            self.formatter.print_message("🎯 Absolute Position Move Setup", message_type="info")
+            self.formatter.print_message("Absolute Position Move Setup", message_type="info")
 
             # Get target position from user
             position_input = self._get_user_input_with_validation(
@@ -314,7 +314,7 @@ class RobotController(HardwareController):
                 validator=lambda x: -1000.0 <= x <= 1000.0,  # Reasonable position range
             )
             if position_input is None:
-                self.formatter.print_message("❌ Move cancelled", message_type="info")
+                self.formatter.print_message("Move cancelled", message_type="info")
                 return
             position = float(position_input)
 
@@ -367,7 +367,7 @@ class RobotController(HardwareController):
 
             # Show motion parameters summary
             self.formatter.print_message(
-                f"📊 Motion Parameters:\n"
+                f"Motion Parameters:\n"
                 f"   Target Position: {position:.2f} mm\n"
                 f"   Velocity: {velocity:.1f} mm/s\n"
                 f"   Acceleration: {acceleration:.1f} mm/s²\n"
@@ -396,7 +396,7 @@ class RobotController(HardwareController):
             primary_axis = self.axis_id
 
             # Get user input for distance and motion parameters
-            self.formatter.print_message("🎯 Relative Position Move Setup", message_type="info")
+            self.formatter.print_message("Relative Position Move Setup", message_type="info")
 
             # Get relative distance from user
             distance_input = self._get_user_input_with_validation(
@@ -405,7 +405,7 @@ class RobotController(HardwareController):
                 validator=lambda x: -500.0 <= x <= 500.0,  # Reasonable relative distance range
             )
             if distance_input is None:
-                self.formatter.print_message("❌ Move cancelled", message_type="info")
+                self.formatter.print_message("Move cancelled", message_type="info")
                 return
             distance = float(distance_input)
 
@@ -458,7 +458,7 @@ class RobotController(HardwareController):
 
             # Show motion parameters summary
             self.formatter.print_message(
-                f"📊 Motion Parameters:\\n"
+                f"Motion Parameters:\\n"
                 f"   Relative Distance: {distance:.2f} mm\\n"
                 f"   Velocity: {velocity:.1f} mm/s\\n"
                 f"   Acceleration: {acceleration:.1f} mm/s²\\n"
