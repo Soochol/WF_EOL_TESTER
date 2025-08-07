@@ -362,7 +362,7 @@ class HardwareServiceFacade:
 
             await self._mcu.set_upper_temperature(upper_temp)
             await self._mcu.set_fan_speed(fan_speed)
-            logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}%")
+            logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}")
 
             # Set LMA standby sequence
             await self.set_lma_standby(test_config, hardware_config)
