@@ -71,24 +71,26 @@ class OdaPower(PowerService):
 
             # 연결 테스트 및 초기화
             response = await self._send_command("*IDN?")
-            if response and "ODA" in response:
+            logger.info("*IDN? response received: %r", response)  # 상세 응답 로깅
+            
+            if response and len(response.strip()) > 0:
                 self._is_connected = True
                 self._device_identity = response  # Store device identity for CLI display
 
                 # Clear any error status from previous operations
                 await self._send_command("*CLS")
-                logger.debug("ODA Power Supply error status cleared with *CLS")
+                logger.debug("Power Supply error status cleared with *CLS")
 
                 # Small delay before next command
                 await asyncio.sleep(0.2)
 
-
-                logger.info("ODA Power Supply connected successfully: %s", response)
+                logger.info("Power Supply connected successfully: %s", response)
             else:
-                logger.warning("ODA Power Supply identification failed")
+                logger.warning("Power Supply identification failed - no valid *IDN? response")
+                logger.debug("Raw *IDN? response: %r", response)
                 raise HardwareConnectionError(
                     "oda_power",
-                    "Device identification failed",
+                    "Device identification failed - no valid *IDN? response",
                 )
 
         except TCPError as e:
@@ -96,7 +98,7 @@ class OdaPower(PowerService):
             self._is_connected = False
             raise HardwareConnectionError("oda_power", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error during ODA connection: %s", e)
+            logger.error("Unexpected error during ODA connection: %s", str(e))
             self._is_connected = False
             raise HardwareConnectionError("oda_power", str(e)) from e
 
