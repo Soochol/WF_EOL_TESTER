@@ -379,8 +379,8 @@ class OdaPower(PowerService):
         Raises:
             TCPError: 통신 오류
         """
-        if not await self.is_connected():
-            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+        if not self._tcp_comm or not self._tcp_comm.is_connected:
+            raise HardwareConnectionError("oda_power", "TCP connection not available")
 
         # MyPy type narrowing: assert that _tcp_comm is not None after connection check
         assert self._tcp_comm is not None, "TCP communication should be available after connection check"
