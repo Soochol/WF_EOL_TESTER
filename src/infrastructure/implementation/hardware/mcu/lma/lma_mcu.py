@@ -751,7 +751,7 @@ class LMAMCU(MCUService):
             start_time = asyncio.get_event_loop().time()
             while (asyncio.get_event_loop().time() - start_time) < BOOT_COMPLETE_TIMEOUT:
                 try:
-                    response = await self._receive_response(timeout=1.0)
+                    response = await self._receive_response(timeout=self._timeout)
                     if response and response.get("status") == STATUS_BOOT_COMPLETE:
                         logger.info("LMA MCU boot complete signal received")
                         return
@@ -823,7 +823,7 @@ class LMAMCU(MCUService):
         Raises:
             LMACommunicationError: 타겟 응답을 받지 못한 경우
         """
-        response = await self._receive_response()
+        response = await self._receive_response(timeout=self._timeout)
 
         if response and response["status"] == target_status:
             logger.debug(
@@ -923,13 +923,13 @@ class LMAMCU(MCUService):
             ) from e
 
     async def _receive_response(
-        self, timeout: Optional[float] = None, enable_sync: bool = True
+        self, timeout: float, enable_sync: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
         Receive response from LMA MCU with noise-resistant protocol handling
 
         Args:
-            timeout: Response timeout in seconds
+            timeout: Response timeout in seconds (required)
             enable_sync: Whether to attempt STX synchronization on failure
 
         Returns:
@@ -938,7 +938,7 @@ class LMAMCU(MCUService):
         if not self._connection:
             raise LMACommunicationError("No connection available")
 
-        response_timeout = timeout or self._timeout
+        response_timeout = timeout
         sync_attempted = False
 
         while True:
