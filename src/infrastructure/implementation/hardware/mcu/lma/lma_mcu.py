@@ -575,28 +575,28 @@ class LMAMCU(MCUService):
         except Exception as e:
             logger.debug(f"Error clearing serial buffer: {e}")
 
-    async def _find_stx_in_stream(self, timeout: float = 2.0, max_search_bytes: int = 1024) -> bool:
+    async def _find_stx_in_stream(self, timeout: float = 60.0, max_search_bytes: int = 1024) -> bool:
         """
         Find STX pattern in incoming data stream for normal packet reception
-        
+
         This function searches byte-by-byte for STX pattern, handling noise automatically.
         When STX is found, the stream position is left at the byte immediately after STX.
-        
+
         Args:
             timeout: Maximum time to search for STX
             max_search_bytes: Maximum bytes to search through
-            
+
         Returns:
             True if STX found (stream positioned after STX), False if not found
         """
         if not self._connection:
             raise LMACommunicationError("No connection available")
-            
+
         start_time = asyncio.get_event_loop().time()
         bytes_searched = 0
         noise_buffer = bytearray()
         waiting_for_second_ff = False
-        
+
         try:
             while (
                 asyncio.get_event_loop().time() - start_time < timeout
@@ -604,17 +604,19 @@ class LMAMCU(MCUService):
             ):
                 try:
                     # Read one byte at a time with appropriate timeout for MCU communication
-                    byte_data = await self._connection.read(1, 1.0)
+                    byte_data = await self._connection.read(1, timeout)
                     if not byte_data:
                         continue
-                        
+
                     bytes_searched += 1
                     current_byte = byte_data[0]
-                    
+
                     # Periodic progress update (every 50 bytes, avoid log spam)
                     if bytes_searched % 50 == 0:
-                        logger.debug(f"MCU search progress: {bytes_searched} bytes processed, {len(noise_buffer)} noise bytes")
-                    
+                        logger.debug(
+                            f"MCU search progress: {bytes_searched} bytes processed, {len(noise_buffer)} noise bytes"
+                        )
+
                     # Simple state machine for STX detection
                     if current_byte == 0xFF:
                         if waiting_for_second_ff:
@@ -623,7 +625,7 @@ class LMAMCU(MCUService):
                                 logger.debug(
                                     f"🔧 NOISE DETECTED: Removed {len(noise_buffer)} bytes [{noise_buffer.hex().upper()}] before STX"
                                 )
-                            
+
                             logger.debug("STX pattern found in stream")
                             return True
                         else:
@@ -636,28 +638,30 @@ class LMAMCU(MCUService):
                             logger.debug(f"🔧 NOISE: [FF] at position {bytes_searched-1}")
                             noise_buffer.append(0xFF)
                             waiting_for_second_ff = False
-                        
+
                         # Current byte is also noise - log immediately
                         logger.debug(f"🔧 NOISE: [{current_byte:02X}] at position {bytes_searched}")
                         noise_buffer.append(current_byte)
-                        
+
                         # Heavy noise detection
                         if len(noise_buffer) > 0 and len(noise_buffer) % 20 == 0:
-                            logger.warning(f"🔧 HEAVY NOISE: {len(noise_buffer)} consecutive noise bytes detected")
-                            
+                            logger.warning(
+                                f"🔧 HEAVY NOISE: {len(noise_buffer)} consecutive noise bytes detected"
+                            )
+
                 except asyncio.TimeoutError:
                     # Don't spam logs with timeout errors - MCU may be slow during boot
                     if bytes_searched == 0:
                         logger.debug("Waiting for MCU response...")
                     continue
-                    
+
             # Timeout or max bytes reached
             if noise_buffer or waiting_for_second_ff:
                 # Include pending FF if we were waiting for second FF
                 all_searched = noise_buffer
                 if waiting_for_second_ff:
                     all_searched = all_searched + bytearray([0xFF])
-                
+
                 if all_searched:
                     logger.debug(
                         f"🔧 NOISE: STX not found after {bytes_searched} bytes - Data: [{all_searched.hex().upper()}]"
@@ -666,14 +670,14 @@ class LMAMCU(MCUService):
                     logger.debug(f"STX search timeout - no data received in {timeout}s")
             else:
                 logger.debug(f"STX search timeout - no data received in {timeout}s")
-                
+
             return False
-            
+
         except Exception as e:
             logger.error(f"Error during STX stream search: {e}")
             return False
 
-    async def _find_stx_sync(self, max_search_bytes: int = 1024, timeout: float = 2.0) -> bool:
+    async def _find_stx_sync(self, max_search_bytes: int = 1024, timeout: float = 60.0) -> bool:
         """
         Search for STX pattern in incoming data stream to handle noise
 
@@ -698,7 +702,7 @@ class LMAMCU(MCUService):
             ) < timeout and bytes_searched < max_search_bytes:
                 # Read one byte at a time
                 try:
-                    byte_data = await self._connection.read(1, 1.0)
+                    byte_data = await self._connection.read(1, timeout)
                     if not byte_data:
                         continue
 
@@ -896,13 +900,15 @@ class LMAMCU(MCUService):
         try:
             last_response = None
             for i, expected_status in enumerate(expected_statuses):
-                logger.debug(f"Waiting for response {i+1}/{len(expected_statuses)}: 0x{expected_status:02X}")
-                
+                logger.debug(
+                    f"Waiting for response {i+1}/{len(expected_statuses)}: 0x{expected_status:02X}"
+                )
+
                 response = await asyncio.wait_for(
                     self._wait_for_response(expected_status),
                     timeout=self._timeout,
                 )
-                
+
                 if i == len(expected_statuses) - 1:
                     # This is the final response
                     last_response = response
@@ -910,14 +916,16 @@ class LMAMCU(MCUService):
                 else:
                     # This is an intermediate response
                     logger.debug(f"Intermediate response received: 0x{expected_status:02X}")
-            
+
             if last_response is None:
                 raise LMACommunicationError("No responses received in sequence")
-            
+
             return last_response
-            
+
         except asyncio.TimeoutError as e:
-            logger.error(f"Timeout waiting for response sequence {[hex(s) for s in expected_statuses]}")
+            logger.error(
+                f"Timeout waiting for response sequence {[hex(s) for s in expected_statuses]}"
+            )
             raise TimeoutError(
                 f"Operation timed out waiting for response sequence {[hex(s) for s in expected_statuses]}"
             ) from e
@@ -951,7 +959,7 @@ class LMAMCU(MCUService):
                 else:
                     # STX already found by sync recovery, stream is positioned after STX
                     logger.debug("STX already positioned by sync recovery")
-                
+
                 # Read status and length (header)
                 header = await self._connection.read(
                     FRAME_CMD_SIZE + FRAME_LEN_SIZE,
@@ -981,12 +989,12 @@ class LMAMCU(MCUService):
                 # Read ETX (end of frame) - STX 이후이므로 프로토콜 위반은 즉시 에러
                 etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
                 if not etx_data:
-                    raise LMACommunicationError("Invalid packet termination after STX: No ETX received")
+                    raise LMACommunicationError(
+                        "Invalid packet termination after STX: No ETX received"
+                    )
 
                 if etx_data != ETX:
-                    logger.debug(
-                        f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})"
-                    )
+                    logger.debug(f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})")
                     raise LMACommunicationError(
                         f"Invalid packet termination after STX: received {etx_data.hex()}, expected {ETX.hex()}"
                     )
@@ -1039,7 +1047,9 @@ class LMAMCU(MCUService):
                         continue
                     else:
                         logger.error("STX sync recovery failed")
-                        raise LMACommunicationError("STX sync failed after noise removal attempt") from e
+                        raise LMACommunicationError(
+                            "STX sync failed after noise removal attempt"
+                        ) from e
                 else:
                     # STX 이후 프로토콜 오류는 노이즈 처리 없이 즉시 에러 발생
                     if sync_attempted or not enable_sync:
