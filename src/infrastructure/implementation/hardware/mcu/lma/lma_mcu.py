@@ -41,6 +41,8 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     STATUS_LMA_INIT_OK,
     STATUS_MESSAGES,
     STATUS_OPERATING_TEMP_OK,
+    STATUS_OPERATING_TEMP_REACHED,
+    STATUS_STANDBY_TEMP_REACHED,
     STATUS_STROKE_INIT_OK,
     STATUS_TEMP_RESPONSE,
     STATUS_TEST_MODE_COMPLETE,
@@ -446,7 +448,7 @@ class LMAMCU(MCUService):
             await self._send_and_wait_for(
                 CMD_LMA_INIT,
                 data,
-                STATUS_LMA_INIT_OK,
+                STATUS_OPERATING_TEMP_REACHED,
             )
             self._mcu_status = MCUStatus.HEATING
 
@@ -479,7 +481,7 @@ class LMAMCU(MCUService):
             await self._send_and_wait_for(
                 CMD_STROKE_INIT_COMPLETE,
                 b"\x00",
-                STATUS_STROKE_INIT_OK,
+                STATUS_STANDBY_TEMP_REACHED,
             )
             self._mcu_status = MCUStatus.COOLING
 

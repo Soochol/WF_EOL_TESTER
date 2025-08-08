@@ -152,6 +152,24 @@ class HardwareServiceFacade:
             )
             hardware_names.append("LoadCell")
 
+        # Digital I/O connection (if connect method is available)
+        if not await self._digital_io.is_connected():
+            # Check if digital I/O service has connect method
+            if hasattr(self._digital_io, 'connect') and callable(getattr(self._digital_io, 'connect')):
+                try:
+                    # For digital I/O, we may not need specific connection parameters
+                    # Use configuration from hardware_config.digital_io if available
+                    if hasattr(hardware_config, 'digital_io') and hardware_config.digital_io:
+                        # If digital_io config has specific connection parameters, use them
+                        connection_tasks.append(self._digital_io.connect())
+                    else:
+                        connection_tasks.append(self._digital_io.connect())
+                    hardware_names.append("DigitalIO")
+                except Exception as e:
+                    logger.warning(f"Digital I/O connection preparation failed: {e}")
+            else:
+                logger.debug("Digital I/O service does not have connect method - assuming always connected")
+
         # Execute all connections concurrently
         if connection_tasks:
             try:
@@ -172,6 +190,7 @@ class HardwareServiceFacade:
             "mcu": await self._mcu.is_connected(),
             "power": await self._power.is_connected(),
             "loadcell": await self._loadcell.is_connected(),
+            "digital_io": await self._digital_io.is_connected(),
         }
 
     async def shutdown_hardware(
@@ -198,6 +217,13 @@ class HardwareServiceFacade:
 
             if await self._loadcell.is_connected():
                 shutdown_tasks.append(self._loadcell.disconnect())
+
+            # Digital I/O disconnection (if disconnect method is available)
+            if await self._digital_io.is_connected():
+                if hasattr(self._digital_io, 'disconnect') and callable(getattr(self._digital_io, 'disconnect')):
+                    shutdown_tasks.append(self._digital_io.disconnect())
+                else:
+                    logger.debug("Digital I/O service does not have disconnect method")
 
             # Execute all disconnections concurrently
             if shutdown_tasks:

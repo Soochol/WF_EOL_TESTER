@@ -9,14 +9,17 @@ This module provides ctypes bindings for the AXL motion control library.
 
 import ctypes
 import platform
-from ctypes import POINTER, c_char_p, c_double, c_long, c_ulong
+from ctypes import POINTER, c_char_p, c_double, c_long, c_ulong, wintypes
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional, Tuple
 
 from domain.exceptions.robot_exceptions import (
     AXLError,
     AXLMotionError,
 )
+
+
+
 from infrastructure.implementation.hardware.robot.ajinextek.constants import (
     DLL_PATH,
 )
@@ -40,6 +43,43 @@ else:
     # Mock WinDLL class for non-Windows systems
     class WinDLL:  # type: ignore[no-redef]
         def __init__(self, path: str) -> None: ...
+
+
+# Digital I/O Constants
+# DIO Return Codes (additional to motion codes)
+AXT_RT_DIO_NOT_MODULE = 3051
+AXT_RT_DIO_INVALID_MODULE_NO = 3101
+AXT_RT_DIO_INVALID_OFFSET_NO = 3102
+AXT_RT_DIO_INVALID_VALUE = 3105
+
+# Input Level Constants
+LEVEL_LOW = 0
+LEVEL_HIGH = 1
+
+# Interrupt Edge Constants
+UP_EDGE = 1
+DOWN_EDGE = 0
+BOTH_EDGE = 2
+
+# Interrupt Methods
+INTERRUPT_METHOD_MESSAGE = 0
+INTERRUPT_METHOD_CALLBACK = 1
+INTERRUPT_METHOD_EVENT = 2
+
+# Platform-specific function type handling for DIO
+if platform.system() == "Windows":
+    try:
+        from ctypes import WINFUNCTYPE  # type: ignore[attr-defined]
+
+        FuncType = WINFUNCTYPE
+    except ImportError:
+        from ctypes import CFUNCTYPE
+
+        FuncType = CFUNCTYPE
+else:
+    from ctypes import CFUNCTYPE
+
+    FuncType = CFUNCTYPE
 
 
 class AXLWrapper:
@@ -504,6 +544,191 @@ class AXLWrapper:
             self.dll.AxmMotGetProfileMode.restype = c_long
         except AttributeError:
             missing_functions.append("AxmMotGetProfileMode")
+
+        # === Digital I/O Functions ===
+        # Board and Module Information Functions
+        try:
+            self.dll.AxdInfoIsDIOModule.argtypes = [POINTER(wintypes.DWORD)]
+            self.dll.AxdInfoIsDIOModule.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoIsDIOModule")
+
+        try:
+            self.dll.AxdInfoGetModuleCount.argtypes = [POINTER(c_long)]
+            self.dll.AxdInfoGetModuleCount.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoGetModuleCount")
+
+        try:
+            self.dll.AxdInfoGetModuleNo.argtypes = [c_long, c_long, POINTER(c_long)]
+            self.dll.AxdInfoGetModuleNo.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoGetModuleNo")
+
+        try:
+            self.dll.AxdInfoGetInputCount.argtypes = [c_long, POINTER(c_long)]
+            self.dll.AxdInfoGetInputCount.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoGetInputCount")
+
+        try:
+            self.dll.AxdInfoGetOutputCount.argtypes = [c_long, POINTER(c_long)]
+            self.dll.AxdInfoGetOutputCount.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoGetOutputCount")
+
+        try:
+            self.dll.AxdInfoGetModule.argtypes = [
+                c_long,
+                POINTER(c_long),
+                POINTER(c_long),
+                POINTER(wintypes.DWORD),
+            ]
+            self.dll.AxdInfoGetModule.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoGetModule")
+
+        try:
+            self.dll.AxdInfoGetModuleStatus.argtypes = [c_long]
+            self.dll.AxdInfoGetModuleStatus.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdInfoGetModuleStatus")
+
+        # Input Reading Functions
+        try:
+            self.dll.AxdiReadInportBit.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdiReadInportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiReadInportBit")
+
+        try:
+            self.dll.AxdiReadInportByte.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdiReadInportByte.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiReadInportByte")
+
+        try:
+            self.dll.AxdiReadInportWord.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdiReadInportWord.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiReadInportWord")
+
+        try:
+            self.dll.AxdiReadInportDword.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdiReadInportDword.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiReadInportDword")
+
+        # Output Writing Functions
+        try:
+            self.dll.AxdoWriteOutportBit.argtypes = [c_long, c_long, wintypes.DWORD]
+            self.dll.AxdoWriteOutportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoWriteOutportBit")
+
+        try:
+            self.dll.AxdoWriteOutportByte.argtypes = [c_long, c_long, wintypes.DWORD]
+            self.dll.AxdoWriteOutportByte.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoWriteOutportByte")
+
+        try:
+            self.dll.AxdoWriteOutportWord.argtypes = [c_long, c_long, wintypes.DWORD]
+            self.dll.AxdoWriteOutportWord.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoWriteOutportWord")
+
+        try:
+            self.dll.AxdoWriteOutportDword.argtypes = [c_long, c_long, wintypes.DWORD]
+            self.dll.AxdoWriteOutportDword.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoWriteOutportDword")
+
+        # Output Reading Functions
+        try:
+            self.dll.AxdoReadOutportBit.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdoReadOutportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoReadOutportBit")
+
+        try:
+            self.dll.AxdoReadOutportByte.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdoReadOutportByte.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoReadOutportByte")
+
+        try:
+            self.dll.AxdoReadOutportWord.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdoReadOutportWord.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoReadOutportWord")
+
+        try:
+            self.dll.AxdoReadOutportDword.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdoReadOutportDword.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoReadOutportDword")
+
+        # Level Configuration Functions
+        try:
+            self.dll.AxdiLevelSetInportBit.argtypes = [c_long, c_long, wintypes.DWORD]
+            self.dll.AxdiLevelSetInportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiLevelSetInportBit")
+
+        try:
+            self.dll.AxdiLevelGetInportBit.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdiLevelGetInportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiLevelGetInportBit")
+
+        try:
+            self.dll.AxdoLevelSetOutportBit.argtypes = [c_long, c_long, wintypes.DWORD]
+            self.dll.AxdoLevelSetOutportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoLevelSetOutportBit")
+
+        try:
+            self.dll.AxdoLevelGetOutportBit.argtypes = [c_long, c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdoLevelGetOutportBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdoLevelGetOutportBit")
+
+        # Interrupt Functions
+        try:
+            self.dll.AxdiInterruptSetModule.argtypes = [
+                c_long,
+                wintypes.HWND,
+                wintypes.DWORD,
+                FuncType(None),
+                POINTER(wintypes.HANDLE),
+            ]
+            self.dll.AxdiInterruptSetModule.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiInterruptSetModule")
+
+        try:
+            self.dll.AxdiInterruptSetModuleEnable.argtypes = [c_long, wintypes.DWORD]
+            self.dll.AxdiInterruptSetModuleEnable.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiInterruptSetModuleEnable")
+
+        try:
+            self.dll.AxdiInterruptEdgeSetBit.argtypes = [
+                c_long,
+                c_long,
+                wintypes.DWORD,
+                wintypes.DWORD,
+            ]
+            self.dll.AxdiInterruptEdgeSetBit.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiInterruptEdgeSetBit")
+
+        try:
+            self.dll.AxdiInterruptRead.argtypes = [c_long, POINTER(wintypes.DWORD)]
+            self.dll.AxdiInterruptRead.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxdiInterruptRead")
 
         # Log all missing functions at once
         if missing_functions:
@@ -1063,3 +1288,607 @@ class AXLWrapper:
                 "AxmHomeGetRate",
             )
         return (home_main_step.value, home_step.value)
+
+    # === Digital I/O Functions ===
+    # Board and Module Information Functions
+    def is_dio_module(self) -> bool:
+        """Check if DIO modules exist"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        status = wintypes.DWORD()
+        result = self.dll.AxdInfoIsDIOModule(ctypes.byref(status))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdInfoIsDIOModule",
+            )
+        return bool(status.value)
+
+    def get_dio_module_count(self) -> int:
+        """Get total number of DIO modules"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        count = c_long()
+        result = self.dll.AxdInfoGetModuleCount(ctypes.byref(count))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdInfoGetModuleCount",
+            )
+        return count.value
+
+    def get_dio_module_no(self, board_no: int, module_pos: int) -> int:
+        """Get module number from board number and position"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        module_no = c_long()
+        result = self.dll.AxdInfoGetModuleNo(board_no, module_pos, ctypes.byref(module_no))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdInfoGetModuleNo",
+            )
+        return module_no.value
+
+    def get_input_count(self, module_no: int) -> int:
+        """Get input channel count for module"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        count = c_long()
+        result = self.dll.AxdInfoGetInputCount(module_no, ctypes.byref(count))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdInfoGetInputCount",
+            )
+        return count.value
+
+    def get_output_count(self, module_no: int) -> int:
+        """Get output channel count for module"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        count = c_long()
+        result = self.dll.AxdInfoGetOutputCount(module_no, ctypes.byref(count))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdInfoGetOutputCount",
+            )
+        return count.value
+
+    def get_module_info(self, module_no: int) -> Tuple[int, int, int]:
+        """Get module information (board_no, module_pos, module_id)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        board_no = c_long()
+        module_pos = c_long()
+        module_id = wintypes.DWORD()
+
+        result = self.dll.AxdInfoGetModule(
+            module_no, ctypes.byref(board_no), ctypes.byref(module_pos), ctypes.byref(module_id)
+        )
+
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdInfoGetModule",
+            )
+
+        return (board_no.value, module_pos.value, module_id.value)
+
+    def get_dio_module_status(self, module_no: int) -> int:
+        """Get module status"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdInfoGetModuleStatus(module_no)
+        return result
+
+    # Input Reading Functions
+    def read_input_bit(self, module_no: int, offset: int) -> bool:
+        """Read single input bit"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdiReadInportBit(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiReadInportBit",
+            )
+        return bool(value.value)
+
+    def read_input_byte(self, module_no: int, offset: int) -> int:
+        """Read input byte (8 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdiReadInportByte(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiReadInportByte",
+            )
+        return value.value & 0xFF
+
+    def read_input_word(self, module_no: int, offset: int) -> int:
+        """Read input word (16 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdiReadInportWord(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiReadInportWord",
+            )
+        return value.value & 0xFFFF
+
+    def read_input_dword(self, module_no: int, offset: int) -> int:
+        """Read input dword (32 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdiReadInportDword(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiReadInportDword",
+            )
+        return value.value
+
+    # Output Writing Functions
+    def write_output_bit(self, module_no: int, offset: int, value: bool) -> None:
+        """Write single output bit"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        bit_value = 1 if value else 0
+        result = self.dll.AxdoWriteOutportBit(module_no, offset, bit_value)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoWriteOutportBit",
+            )
+
+    def write_output_byte(self, module_no: int, offset: int, value: int) -> None:
+        """Write output byte (8 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdoWriteOutportByte(module_no, offset, value & 0xFF)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoWriteOutportByte",
+            )
+
+    def write_output_word(self, module_no: int, offset: int, value: int) -> None:
+        """Write output word (16 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdoWriteOutportWord(module_no, offset, value & 0xFFFF)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoWriteOutportWord",
+            )
+
+    def write_output_dword(self, module_no: int, offset: int, value: int) -> None:
+        """Write output dword (32 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdoWriteOutportDword(module_no, offset, value)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoWriteOutportDword",
+            )
+
+    def read_output_bit(self, module_no: int, offset: int) -> bool:
+        """Read single output bit state"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdoReadOutportBit(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoReadOutportBit",
+            )
+        return bool(value.value)
+
+    def read_output_byte(self, module_no: int, offset: int) -> int:
+        """Read output byte (8 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdoReadOutportByte(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoReadOutportByte",
+            )
+        return value.value & 0xFF
+
+    def read_output_word(self, module_no: int, offset: int) -> int:
+        """Read output word (16 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdoReadOutportWord(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoReadOutportWord",
+            )
+        return value.value & 0xFFFF
+
+    def read_output_dword(self, module_no: int, offset: int) -> int:
+        """Read output dword (32 bits)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        value = wintypes.DWORD()
+        result = self.dll.AxdoReadOutportDword(module_no, offset, ctypes.byref(value))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoReadOutportDword",
+            )
+        return value.value
+
+    # Level Configuration Functions
+    def set_input_level(self, module_no: int, offset: int, level: int) -> None:
+        """Set input signal level (HIGH/LOW active)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdiLevelSetInportBit(module_no, offset, level)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiLevelSetInportBit",
+            )
+
+    def get_input_level(self, module_no: int, offset: int) -> int:
+        """Get input signal level configuration"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        level = wintypes.DWORD()
+        result = self.dll.AxdiLevelGetInportBit(module_no, offset, ctypes.byref(level))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiLevelGetInportBit",
+            )
+        return level.value
+
+    def set_output_level(self, module_no: int, offset: int, level: int) -> None:
+        """Set output signal level (HIGH/LOW active)"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdoLevelSetOutportBit(module_no, offset, level)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoLevelSetOutportBit",
+            )
+
+    def get_output_level(self, module_no: int, offset: int) -> int:
+        """Get output signal level configuration"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        level = wintypes.DWORD()
+        result = self.dll.AxdoLevelGetOutportBit(module_no, offset, ctypes.byref(level))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdoLevelGetOutportBit",
+            )
+        return level.value
+
+    # Interrupt Functions
+    def setup_interrupt_callback(self, module_no: int, callback_func) -> None:
+        """Setup interrupt with callback function"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        result = self.dll.AxdiInterruptSetModule(
+            module_no,
+            None,  # hWnd (not used for callback method)
+            0,  # uMessage (not used for callback method)
+            callback_func,  # Callback function
+            None,  # pEvent (not used for callback method)
+        )
+
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiInterruptSetModule",
+            )
+
+    def enable_module_interrupt(self, module_no: int, enable: bool = True) -> None:
+        """Enable/disable interrupts for module"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        enable_value = 1 if enable else 0
+        result = self.dll.AxdiInterruptSetModuleEnable(module_no, enable_value)
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiInterruptSetModuleEnable",
+            )
+
+    def set_interrupt_edge(
+        self, module_no: int, offset: int, edge_mode: str, value: int = 1
+    ) -> None:
+        """Set interrupt edge trigger mode for input bit"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        edge_mapping = {
+            "rising": UP_EDGE,
+            "falling": DOWN_EDGE,
+            "both": BOTH_EDGE,
+        }
+
+        edge_value = edge_mapping.get(edge_mode, UP_EDGE)
+        result = self.dll.AxdiInterruptEdgeSetBit(module_no, offset, edge_value, value)
+
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiInterruptEdgeSetBit",
+            )
+
+    def read_interrupt_status(self, module_no: int) -> int:
+        """Read interrupt status for module"""
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        status = wintypes.DWORD()
+        result = self.dll.AxdiInterruptRead(module_no, ctypes.byref(status))
+        if result != AXT_RT_SUCCESS:
+            raise AXLError(
+                get_error_message(result),
+                result,
+                "AxdiInterruptRead",
+            )
+        return status.value
+
+    # Utility Functions
+    def batch_read_inputs(self, module_no: int, start_offset: int, count: int) -> List[bool]:
+        """Optimized batch reading of multiple input bits"""
+        if count <= 0:
+            return []
+
+        results = []
+
+        # Try to use word/dword reads for efficiency
+        if count >= 32 and start_offset % 32 == 0:
+            # Read full dwords
+            dwords_needed = (count + 31) // 32
+            for dword_idx in range(dwords_needed):
+                try:
+                    dword_value = self.read_input_dword(module_no, start_offset // 32 + dword_idx)
+                    for bit_idx in range(32):
+                        if len(results) < count:
+                            bit_value = (dword_value >> bit_idx) & 1
+                            results.append(bool(bit_value))
+                except Exception:
+                    # Fallback to individual bit reads
+                    for bit_idx in range(32):
+                        if len(results) < count:
+                            try:
+                                bit_value = self.read_input_bit(
+                                    module_no, start_offset + len(results)
+                                )
+                                results.append(bit_value)
+                            except Exception:
+                                results.append(False)
+
+        elif count >= 16 and start_offset % 16 == 0:
+            # Read full words
+            words_needed = (count + 15) // 16
+            for word_idx in range(words_needed):
+                try:
+                    word_value = self.read_input_word(module_no, start_offset // 16 + word_idx)
+                    for bit_idx in range(16):
+                        if len(results) < count:
+                            bit_value = (word_value >> bit_idx) & 1
+                            results.append(bool(bit_value))
+                except Exception:
+                    # Fallback to individual bit reads
+                    for bit_idx in range(16):
+                        if len(results) < count:
+                            try:
+                                bit_value = self.read_input_bit(
+                                    module_no, start_offset + len(results)
+                                )
+                                results.append(bit_value)
+                            except Exception:
+                                results.append(False)
+        else:
+            # Individual bit reads
+            for offset in range(start_offset, start_offset + count):
+                try:
+                    bit_value = self.read_input_bit(module_no, offset)
+                    results.append(bit_value)
+                except Exception:
+                    results.append(False)
+
+        return results[:count]
+
+    def batch_write_outputs(self, module_no: int, start_offset: int, values: List[bool]) -> None:
+        """Optimized batch writing of multiple output bits"""
+        if not values:
+            return
+
+        count = len(values)
+
+        # Try to use word/dword writes for efficiency
+        if count >= 32 and start_offset % 32 == 0:
+            # Write full dwords
+            dwords_needed = (count + 31) // 32
+            for dword_idx in range(dwords_needed):
+                dword_value = 0
+                start_idx = dword_idx * 32
+                end_idx = min(start_idx + 32, count)
+
+                for bit_idx in range(end_idx - start_idx):
+                    if values[start_idx + bit_idx]:
+                        dword_value |= 1 << bit_idx
+
+                try:
+                    self.write_output_dword(module_no, start_offset // 32 + dword_idx, dword_value)
+                except Exception:
+                    # Fallback to individual bit writes
+                    for bit_idx in range(end_idx - start_idx):
+                        try:
+                            self.write_output_bit(
+                                module_no,
+                                start_offset + start_idx + bit_idx,
+                                values[start_idx + bit_idx],
+                            )
+                        except Exception:
+                            pass  # Continue with other bits
+
+        elif count >= 16 and start_offset % 16 == 0:
+            # Write full words
+            words_needed = (count + 15) // 16
+            for word_idx in range(words_needed):
+                word_value = 0
+                start_idx = word_idx * 16
+                end_idx = min(start_idx + 16, count)
+
+                for bit_idx in range(end_idx - start_idx):
+                    if values[start_idx + bit_idx]:
+                        word_value |= 1 << bit_idx
+
+                try:
+                    self.write_output_word(module_no, start_offset // 16 + word_idx, word_value)
+                except Exception:
+                    # Fallback to individual bit writes
+                    for bit_idx in range(end_idx - start_idx):
+                        try:
+                            self.write_output_bit(
+                                module_no,
+                                start_offset + start_idx + bit_idx,
+                                values[start_idx + bit_idx],
+                            )
+                        except Exception:
+                            pass  # Continue with other bits
+        else:
+            # Individual bit writes
+            for idx, value in enumerate(values):
+                try:
+                    self.write_output_bit(module_no, start_offset + idx, value)
+                except Exception:
+                    pass  # Continue with other bits
+
+    def batch_read_outputs(self, module_no: int, start_offset: int, count: int) -> List[bool]:
+        """Optimized batch reading of multiple output bits"""
+        if count <= 0:
+            return []
+
+        results = []
+
+        # Try to use word/dword reads for efficiency
+        if count >= 32 and start_offset % 32 == 0:
+            # Read full dwords
+            dwords_needed = (count + 31) // 32
+            for dword_idx in range(dwords_needed):
+                try:
+                    dword_value = self.read_output_dword(module_no, start_offset // 32 + dword_idx)
+                    for bit_idx in range(32):
+                        if len(results) < count:
+                            bit_value = (dword_value >> bit_idx) & 1
+                            results.append(bool(bit_value))
+                except Exception:
+                    # Fallback to individual bit reads
+                    for bit_idx in range(32):
+                        if len(results) < count:
+                            try:
+                                bit_value = self.read_output_bit(
+                                    module_no, start_offset + len(results)
+                                )
+                                results.append(bit_value)
+                            except Exception:
+                                results.append(False)
+
+        elif count >= 16 and start_offset % 16 == 0:
+            # Read full words
+            words_needed = (count + 15) // 16
+            for word_idx in range(words_needed):
+                try:
+                    word_value = self.read_output_word(module_no, start_offset // 16 + word_idx)
+                    for bit_idx in range(16):
+                        if len(results) < count:
+                            bit_value = (word_value >> bit_idx) & 1
+                            results.append(bool(bit_value))
+                except Exception:
+                    # Fallback to individual bit reads
+                    for bit_idx in range(16):
+                        if len(results) < count:
+                            try:
+                                bit_value = self.read_output_bit(
+                                    module_no, start_offset + len(results)
+                                )
+                                results.append(bit_value)
+                            except Exception:
+                                results.append(False)
+        else:
+            # Individual bit reads
+            for offset in range(start_offset, start_offset + count):
+                try:
+                    bit_value = self.read_output_bit(module_no, offset)
+                    results.append(bit_value)
+                except Exception:
+                    results.append(False)
+
+        return results[:count]

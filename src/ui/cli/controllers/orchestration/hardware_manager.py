@@ -16,6 +16,7 @@ from application.services.hardware_service_facade import HardwareServiceFacade
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
+from ..hardware.digital_io_controller import DigitalIOController
 from ..hardware.loadcell_controller import LoadCellController
 from ..hardware.mcu_controller import MCUController
 from ..hardware.power_controller import PowerController
@@ -83,6 +84,11 @@ class HardwareControlManager:
                 self.formatter,
                 self.hardware_config.power if self.hardware_config else None,
             ),
+            "DigitalIO": DigitalIOController(
+                hardware_facade._digital_io,
+                self.formatter,
+                self.hardware_config.digital_io if self.hardware_config else None,
+            ),
         }
 
         # Debug: Check if controllers received configuration
@@ -91,6 +97,13 @@ class HardwareControlManager:
             if name == "Robot":
                 has_config = (
                     hasattr(controller, "robot_config") and controller.robot_config is not None
+                )
+                logger.info(
+                    f"  {name} Controller: {'has config' if has_config else 'config is None'}"
+                )
+            elif name == "DigitalIO":
+                has_config = (
+                    hasattr(controller, "digital_io_config") and controller.digital_io_config is not None
                 )
                 logger.info(
                     f"  {name} Controller: {'has config' if has_config else 'config is None'}"
@@ -242,7 +255,8 @@ class HardwareControlManager:
             "2": "MCU Control",
             "3": "LoadCell Control",
             "4": "Power Control",
-            "5": "All Hardware Status",
+            "5": "Digital Output Control",
+            "6": "All Hardware Status",
             "b": "Back to Main Menu",
         }
 
@@ -255,12 +269,18 @@ class HardwareControlManager:
         if selection == "b":
             return
 
-        if selection == "5":
+        if selection == "6":
             await self._show_all_hardware_status()
             return
 
         # Map selection to controller
-        controller_map = {"1": "Robot", "2": "MCU", "3": "LoadCell", "4": "Power"}
+        controller_map = {
+            "1": "Robot", 
+            "2": "MCU", 
+            "3": "LoadCell", 
+            "4": "Power",
+            "5": "DigitalIO"
+        }
 
         controller_name = controller_map.get(selection)
         if not controller_name:

@@ -12,18 +12,18 @@ from loguru import logger
 from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )
-from infrastructure.implementation.hardware.digital_io.ajinextek.axl_wrapper import (
-    AXLDIOWrapper,
+from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
+    AXLWrapper,
 )
 from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
     MAX_INPUT_CHANNELS,
     MAX_OUTPUT_CHANNELS,
-    MODULE_ID_PCI_DB64R,
-    MODULE_ID_PCI_DI64R,
-    MODULE_ID_PCI_DO64R,
-    MODULE_ID_SIO_DB32,
-    MODULE_ID_SIO_DI32,
-    MODULE_ID_SIO_DO32,
+    MODULE_ID_PCI_DB16R,
+    MODULE_ID_PCI_DI16R,
+    MODULE_ID_PCI_DO16R,
+    MODULE_ID_SIO_DB16,
+    MODULE_ID_SIO_DI16,
+    MODULE_ID_SIO_DO16,
     STATUS_MESSAGES,
 )
 from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
@@ -34,6 +34,10 @@ from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes imp
     AjinextekOperationError,
     validate_channel_list,
     validate_pin_values,
+)
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+    AXT_RT_SUCCESS,
+    get_error_message,
 )
 
 
@@ -49,7 +53,7 @@ class AjinextekDIO(DigitalIOService):
         self._is_connected = False
 
         # AXL library interface
-        self._axl_lib = None
+        self._axl_lib = AXLWrapper()
         self._detected_modules: Dict[int, Dict[str, Any]] = {}
         self._module_input_counts: Dict[int, int] = {}
         self._module_output_counts: Dict[int, int] = {}
@@ -64,15 +68,12 @@ class AjinextekDIO(DigitalIOService):
     # Connection & Lifecycle Management
     # ========================================================================
 
-    async def connect(self, irq_no: int = 7) -> bool:
+    async def connect(self, irq_no: int = 7) -> None:
         """
         DIO 하드웨어 연결
 
         Args:
             irq_no: IRQ 번호 (기본값: 7)
-
-        Returns:
-            연결 성공 여부
 
         Raises:
             AjinextekHardwareError: 하드웨어 연결 실패
@@ -80,37 +81,69 @@ class AjinextekDIO(DigitalIOService):
         try:
             logger.info("Connecting to Ajinextek DIO hardware")
 
-            # Load AXL library (placeholder)
-            if not await self._load_axl_library():
-                raise AjinextekHardwareError(
-                    "Failed to load AXL library",
-                    error_code=int(AjinextekErrorCode.LIBRARY_NOT_LOADED),
-                )
+            # Open AXL library if not already open
+            if self._axl_lib.is_opened():
+                logger.debug("AXL library is already open")
+                result = AXT_RT_SUCCESS
+            else:
+                result = self._axl_lib.open(irq_no)
+                if result != AXT_RT_SUCCESS:
+                    error_msg = get_error_message(result)
+                    logger.error(
+                        f"Failed to initialize AXL library: {error_msg} (Error Code: {result})"
+                    )
+                    raise AjinextekHardwareError(
+                        f"Failed to initialize AXL library: {error_msg}",
+                        error_code=result,
+                    )
+                else:
+                    logger.info("AXL library opened successfully")
 
-            # Open board connection (placeholder)
-            if not await self._open_board(irq_no):
+            # Check if DIO modules exist
+            if not self._axl_lib.is_dio_module():
                 raise AjinextekHardwareError(
-                    "Failed to open DIO board",
-                    error_code=int(AjinextekErrorCode.BOARD_NOT_DETECTED),
-                )
-
-            # Detect and configure modules (placeholder)
-            if not await self._detect_modules():
-                raise AjinextekHardwareError(
-                    "Failed to detect modules on DIO board",
+                    "No DIO modules detected",
                     error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
                 )
+            logger.info("DIO modules detected")
+
+            # Get total module count
+            try:
+                self._module_count = self._axl_lib.get_dio_module_count()
+                logger.info(f"DIO module count: {self._module_count}")
+            except Exception as e:
+                error_msg = f"Failed to get module count: {e}"
+                logger.error(error_msg)
+                raise AjinextekHardwareError(
+                    error_msg,
+                    error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
+                ) from e
+
+            # For simplicity, use the first detected module as active
+            if self._module_count > 0:
+                self._active_module_no = 0
+                
+                # Get module I/O counts
+                try:
+                    self._input_count = self._axl_lib.get_input_count(self._active_module_no)
+                    self._output_count = self._axl_lib.get_output_count(self._active_module_no)
+                    logger.info(f"Module {self._active_module_no}: Inputs={self._input_count}, Outputs={self._output_count}")
+                except Exception as e:
+                    logger.warning(f"Could not get I/O counts for module {self._active_module_no}: {e}")
+                    self._input_count = 16  # Default fallback
+                    self._output_count = 16
 
             self._is_connected = True
+            logger.info(f"AJINEXTEK DIO hardware connected successfully (IRQ: {irq_no}, Modules: {self._module_count})")
 
-            logger.info(STATUS_MESSAGES["board_connected"])
-            return True
-
-        except AjinextekDIOError:
+        except AjinextekHardwareError:
+            self._is_connected = False
             raise
         except Exception as e:
+            self._is_connected = False
+            logger.error(f"Failed to connect to AJINEXTEK DIO: {e}")
             raise AjinextekHardwareError(
-                f"Unexpected error connecting to DIO hardware: {e}",
+                f"DIO hardware initialization failed: {e}",
                 error_code=int(AjinextekErrorCode.HARDWARE_INITIALIZATION_FAILED),
             ) from e
 
@@ -120,12 +153,20 @@ class AjinextekDIO(DigitalIOService):
         """
         try:
             if self._is_connected:
-                # Close board connection (placeholder)
-                await self._close_board()
+                # Close AXL library connection if open
+                try:
+                    if self._axl_lib.is_opened():
+                        result = self._axl_lib.close()
+                        if result != AXT_RT_SUCCESS:
+                            error_msg = get_error_message(result)
+                            logger.warning(f"AXL library close warning: {error_msg}")
+                    else:
+                        logger.debug("AXL library was already closed")
+                except Exception as e:
+                    logger.warning(f"Error closing AXL library: {e}")
 
             self._is_connected = False
-
-            logger.info(STATUS_MESSAGES["board_disconnected"])
+            logger.info("AJINEXTEK DIO hardware disconnected")
 
         except Exception as e:
             logger.error(f"Error disconnecting DIO hardware: {e}")
@@ -245,6 +286,58 @@ class AjinextekDIO(DigitalIOService):
         """
         return self._input_count
 
+    async def get_output_count(self) -> int:
+        """
+        Get the number of available digital output channels
+
+        Returns:
+            Number of digital output channels
+        """
+        return self._output_count
+
+    async def read_output(self, channel: int) -> bool:
+        """
+        Read digital output state from specified channel
+
+        Args:
+            channel: Digital output channel number
+
+        Returns:
+            True if output is HIGH, False if LOW
+
+        Raises:
+            AjinextekChannelError: Invalid channel
+            AjinextekHardwareError: Hardware communication failure
+        """
+        if not await self.is_connected():
+            raise AjinextekHardwareError(
+                "DIO hardware not connected",
+                error_code=int(AjinextekErrorCode.HARDWARE_NOT_CONNECTED),
+            )
+
+        # Check output channel range
+        if not (0 <= channel < self._output_count):
+            raise AjinextekChannelError(
+                f"Output channel {channel} out of range [0, {self._output_count-1}]",
+                error_code=int(AjinextekErrorCode.CHANNEL_NOT_CONFIGURED),
+            )
+
+        try:
+            # Read from hardware
+            hw_value = await self._read_hardware_output(channel)
+
+            # Return hardware value directly as bool
+            result = bool(hw_value)
+
+            logger.debug(f"Read output channel {channel}: {result}")
+            return result
+
+        except Exception as e:
+            raise AjinextekOperationError(
+                f"Failed to read output channel {channel}: {e}",
+                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
     async def read_all_inputs(self) -> List[bool]:
         """
         Read all available digital inputs
@@ -259,6 +352,23 @@ class AjinextekDIO(DigitalIOService):
                 results.append(value)
             except Exception as e:
                 logger.warning(f"Failed to read input channel {channel}: {e}")
+                results.append(False)  # Default to False on error
+        return results
+
+    async def read_all_outputs(self) -> List[bool]:
+        """
+        Read all available digital outputs
+
+        Returns:
+            List of boolean values representing all output states
+        """
+        results = []
+        for channel in range(await self.get_output_count()):
+            try:
+                value = await self.read_output(channel)
+                results.append(value)
+            except Exception as e:
+                logger.warning(f"Failed to read output channel {channel}: {e}")
                 results.append(False)  # Default to False on error
         return results
 
@@ -526,165 +636,10 @@ class AjinextekDIO(DigitalIOService):
     # Private Methods (Internal Implementation)
     # ========================================================================
 
-    async def _load_axl_library(self) -> bool:
-        """Load AXL library using singleton manager"""
-        try:
-            if self._axl_lib is None:
-                self._axl_lib = AXLDIOWrapper()
-                logger.info("AXL DIO library loaded successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to load AXL library: {e}")
-            raise AjinextekHardwareError(
-                f"Failed to load AXL library: {e}",
-                error_code=int(AjinextekErrorCode.LIBRARY_NOT_LOADED),
-            ) from e
-
-    async def _open_board(self, irq_no: int) -> bool:
-        """
-        Open DIO board connection using singleton AXL manager
-
-        Based on C code: AxlOpen(irq_no) where irq_no is the IRQ number
-
-        Args:
-            irq_no: IRQ 번호
-        """
-        try:
-            if self._axl_lib is None:
-                raise AjinextekHardwareError("AXL library not loaded")
-
-            # Check if library is already opened
-            if self._axl_lib.is_opened():
-                logger.info("라이브러리가 이미 초기화되어 있습니다.")
-                return True
-
-            # Open AXL library with specified IRQ number
-            result = self._axl_lib.axl_open(irq_no)
-
-            if result == 0:  # AXT_RT_SUCCESS
-                logger.info("라이브러리가 초기화되었습니다.")
-                return True
-            else:
-                error_msg = f"AxlOpen() : ERROR code 0x{result:x}"
-                logger.error(error_msg)
-                raise AjinextekHardwareError(
-                    error_msg,
-                    error_code=result,
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to open DIO board: {e}")
-            raise AjinextekHardwareError(
-                f"Failed to open DIO board: {e}",
-                error_code=int(AjinextekErrorCode.BOARD_NOT_DETECTED),
-            ) from e
-
-    async def _close_board(self) -> bool:
-        """
-        Close DIO board connection
-
-        Based on C code: AxlClose() - Close library
-        """
-        try:
-            if self._axl_lib is None:
-                return True  # Already closed
-
-            # Close AXL library (equivalent to AxlClose())
-            result = self._axl_lib.axl_close()
-
-            if result:
-                logger.info("라이브러리가 종료되었습니다.")
-                return True
-            else:
-                logger.warning("라이브러리가 정상적으로 종료되지 않았습니다.")
-                return False
-
-        except Exception as e:
-            logger.error(f"Failed to close DIO board: {e}")
-            return False
-
-    async def _detect_modules(self) -> bool:
-        """
-        Detect and configure DIO modules
-
-        Based on C code sequence:
-        1. AxdInfoIsDIOModule(&uStatus) - Check if DIO module exists
-        2. AxdInfoGetModuleCount(&lModuleCounts) - Get module count
-        3. For each module: get input/output counts
-        """
-        try:
-            if self._axl_lib is None:
-                raise AjinextekHardwareError("AXL library not loaded")
-
-            # 1. Check if DIO modules exist (AxdInfoIsDIOModule)
-            status = self._axl_lib.is_dio_module()
-            if not status:
-                error_msg = "AxdInfoIsDIOModule() : ERROR ( NOT STATUS_EXIST )"
-                logger.error(error_msg)
-                return False
-
-            logger.info("DIO 모듈이 존재 합니다.")
-
-            # 2. Get total module count (AxdInfoGetModuleCount)
-            try:
-                self._module_count = self._axl_lib.get_module_count()
-                logger.info(f"DIO 모듈의 개수 : {self._module_count}")
-            except Exception as e:
-                error_msg = f"AxdInfoGetModuleCounts() : ERROR code {e}"
-                logger.error(error_msg)
-                raise AjinextekHardwareError(error_msg) from e
-
-            # 3. For each module, get input and output counts
-            self._detected_modules.clear()
-
-            for module_no in range(self._module_count):
-                try:
-                    # Get input count (AxdInfoGetInputCount)
-                    self._input_count = self._axl_lib.get_input_count(module_no)
-
-                    # Get output count (AxdInfoGetOutputCount)
-                    self._output_count = self._axl_lib.get_output_count(module_no)
-
-                    logger.info(
-                        f"{module_no}번째 모듈 : 입력 접점 {self._input_count}개, 출력 접점 {self._output_count}개"
-                    )
-
-                    # Store module information
-                    self._detected_modules[module_no] = {
-                        "input_count": self._input_count,
-                        "output_count": self._output_count,
-                        "module_id": None,  # Could be determined later
-                    }
-
-                    self._module_input_counts[module_no] = self._input_count
-                    self._module_output_counts[module_no] = self._output_count
-
-                except Exception as e:
-                    logger.error(f"Failed to get counts for module {module_no}: {e}")
-                    continue
-
-            # Set active module (use first module by default)
-            if self._detected_modules:
-                self._active_module_no = min(self._detected_modules.keys())
-                logger.info(f"Active module set to: {self._active_module_no}")
-                return True
-            else:
-                logger.warning("No modules could be configured")
-                return False
-
-        except Exception as e:
-            logger.error(f"Module detection failed: {e}")
-            raise AjinextekHardwareError(
-                f"Module detection failed: {e}",
-                error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
-            ) from e
 
     async def _configure_module(self, module_no: int) -> None:
         """Configure specific DIO module"""
         try:
-            if self._axl_lib is None:
-                raise AjinextekHardwareError("AXL library not loaded")
-
             # Get module information
             board_no, module_pos, module_id = self._axl_lib.get_module_info(module_no)
 
@@ -705,7 +660,7 @@ class AjinextekDIO(DigitalIOService):
                 self._module_output_counts[module_no] = 0
 
             # Get module status
-            module_status = self._axl_lib.get_module_status(module_no)
+            module_status = self._axl_lib.get_dio_module_status(module_no)
 
             # Determine module type from module ID
             module_type = self._get_module_type_from_id(module_id)
@@ -734,21 +689,18 @@ class AjinextekDIO(DigitalIOService):
     def _get_module_type_from_id(self, module_id: int) -> str:
         """Get module type string from module ID"""
         module_type_mapping = {
-            MODULE_ID_SIO_DI32: "SIO-DI32 (32 Input)",
-            MODULE_ID_SIO_DO32: "SIO-DO32 (32 Output)",
-            MODULE_ID_SIO_DB32: "SIO-DB32 (16 Input/16 Output)",
-            MODULE_ID_PCI_DI64R: "PCI-DI64R (64 Input)",
-            MODULE_ID_PCI_DO64R: "PCI-DO64R (64 Output)",
-            MODULE_ID_PCI_DB64R: "PCI-DB64R (32 Input/32 Output)",
+            MODULE_ID_SIO_DI16: "SIO-DI16 (16 Input)",
+            MODULE_ID_SIO_DO16: "SIO-DO16 (16 Output)",
+            MODULE_ID_SIO_DB16: "SIO-DB16 (8 Input/8 Output)",
+            MODULE_ID_PCI_DI16R: "PCI-DI16R (16 Input)",
+            MODULE_ID_PCI_DO16R: "PCI-DO16R (16 Output)",
+            MODULE_ID_PCI_DB16R: "PCI-DB16R (8 Input/8 Output)",
         }
         return module_type_mapping.get(module_id, f"Unknown Module (ID: 0x{module_id:04X})")
 
     async def _read_hardware_input(self, pin: int) -> int:
         """Read input from hardware"""
         try:
-            if self._axl_lib is None:
-                raise AjinextekHardwareError("AXL library not loaded")
-
             if self._active_module_no is None:
                 raise AjinextekHardwareError("No active module configured")
 
@@ -766,9 +718,6 @@ class AjinextekDIO(DigitalIOService):
     async def _write_hardware_output(self, pin: int, value: int) -> bool:
         """Write output to hardware"""
         try:
-            if self._axl_lib is None:
-                raise AjinextekHardwareError("AXL library not loaded")
-
             if self._active_module_no is None:
                 raise AjinextekHardwareError("No active module configured")
 
@@ -783,12 +732,26 @@ class AjinextekDIO(DigitalIOService):
                 error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
             ) from e
 
+    async def _read_hardware_output(self, pin: int) -> int:
+        """Read output from hardware"""
+        try:
+            if self._active_module_no is None:
+                raise AjinextekHardwareError("No active module configured")
+
+            # Read output bit from hardware
+            value = self._axl_lib.read_output_bit(self._active_module_no, pin)
+            return 1 if value else 0
+
+        except Exception as e:
+            logger.error(f"Failed to read hardware output pin {pin}: {e}")
+            raise AjinextekOperationError(
+                f"Hardware output read failed for pin {pin}: {e}",
+                error_code=int(AjinextekErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
     async def _get_hardware_info(self) -> Dict[str, Any]:
         """Get hardware information"""
         try:
-            if self._axl_lib is None:
-                raise AjinextekHardwareError("AXL library not loaded")
-
             # Collect information about detected modules
             modules_info = []
             total_inputs = 0

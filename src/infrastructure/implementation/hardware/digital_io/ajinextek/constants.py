@@ -10,18 +10,18 @@ DEFAULT_MODULE_POSITION = 0
 MAX_BOARDS = 32
 MAX_MODULES_PER_BOARD = 4
 
-# Channel Configuration
-MAX_INPUT_CHANNELS = 32
-MAX_OUTPUT_CHANNELS = 32
+# Channel Configuration - Limited to 16 channels each for consistent hardware interface
+MAX_INPUT_CHANNELS = 16
+MAX_OUTPUT_CHANNELS = 16
 TOTAL_CHANNELS = MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS
 
 # Input Channel Range
 INPUT_CHANNEL_START = 0
-INPUT_CHANNEL_END = MAX_INPUT_CHANNELS - 1
+INPUT_CHANNEL_END = MAX_INPUT_CHANNELS - 1  # 0~15
 
 # Output Channel Range
 OUTPUT_CHANNEL_START = 0
-OUTPUT_CHANNEL_END = MAX_OUTPUT_CHANNELS - 1
+OUTPUT_CHANNEL_END = MAX_OUTPUT_CHANNELS - 1  # 0~15
 
 # Logic Levels
 LOGIC_LOW = 0
@@ -84,13 +84,13 @@ INTERRUPT_METHOD_MESSAGE = 0
 INTERRUPT_METHOD_CALLBACK = 1
 INTERRUPT_METHOD_EVENT = 2
 
-# Module Type IDs (from AXD manual)
-MODULE_ID_SIO_DI32 = 0x5D00  # 32-input module
-MODULE_ID_SIO_DO32 = 0x5E00  # 32-output module
-MODULE_ID_SIO_DB32 = 0x5F00  # 16-input/16-output module
-MODULE_ID_PCI_DI64R = 0x7D00  # 64-input module
-MODULE_ID_PCI_DO64R = 0x7E00  # 64-output module
-MODULE_ID_PCI_DB64R = 0x7F00  # 32-input/32-output module
+# Module Type IDs (Updated for 16-channel configuration)
+MODULE_ID_SIO_DI16 = 0x5D00  # 16-input module
+MODULE_ID_SIO_DO16 = 0x5E00  # 16-output module
+MODULE_ID_SIO_DB16 = 0x5F00  # 8-input/8-output module
+MODULE_ID_PCI_DI16R = 0x7D00  # 16-input module
+MODULE_ID_PCI_DO16R = 0x7E00  # 16-output module
+MODULE_ID_PCI_DB16R = 0x7F00  # 8-input/8-output module
 
 # Network Types
 NETWORK_TYPE_RTEX = 0
@@ -111,15 +111,10 @@ MODULE_TYPE_DO = "DO"  # Digital Output
 MODULE_TYPE_DIO = "DIO"  # Digital Input/Output
 MODULE_TYPE_RELAY = "RELAY"  # Relay Output
 
-# Standard Module Configurations
+# Standard Module Configurations (Updated for 16-channel limit)
 STANDARD_DI_MODULES = {
     "AX5A16": {
         "channels": 16,
-        "type": MODULE_TYPE_DI,
-        "voltage": "24V",
-    },
-    "AX5A32": {
-        "channels": 32,
         "type": MODULE_TYPE_DI,
         "voltage": "24V",
     },
@@ -133,11 +128,6 @@ STANDARD_DI_MODULES = {
 STANDARD_DO_MODULES = {
     "AX5C16": {
         "channels": 16,
-        "type": MODULE_TYPE_DO,
-        "voltage": "24V",
-    },
-    "AX5C32": {
-        "channels": 32,
         "type": MODULE_TYPE_DO,
         "voltage": "24V",
     },
@@ -188,8 +178,8 @@ DEFAULT_CONFIG = {
 PRESET_ALL_INPUTS = {i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)}
 PRESET_ALL_OUTPUTS = {i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)}
 PRESET_MIXED_IO = {
-    **{i: PIN_MODE_INPUT for i in range(0, 16)},  # First 16 as inputs
-    **{i: PIN_MODE_OUTPUT for i in range(16, 32)},  # Last 16 as outputs
+    **{i: PIN_MODE_INPUT for i in range(0, 8)},  # First 8 as inputs
+    **{i: PIN_MODE_OUTPUT for i in range(8, 16)},  # Last 8 as outputs
 }
 
 # Status Messages

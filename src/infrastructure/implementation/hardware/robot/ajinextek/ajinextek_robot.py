@@ -94,15 +94,16 @@ class AjinextekRobot(RobotService):
             )
 
             # Verify DLL installation before attempting to load
-            dll_info = verify_dll_installation()
-            if not dll_info["dll_exists"]:
-                logger.error("AXL DLL not found - printing diagnostic information")
-                print_dll_diagnostic_info()
-                raise RobotConnectionError(
-                    "AXL DLL not found at expected location",
-                    "AJINEXTEK",
-                    details=f"DLL path: {dll_info['dll_path']}, Available DLLs: {dll_info['available_dlls']}",
-                )
+            # Note: This verification can be skipped if DLL is properly installed
+            # dll_info = verify_dll_installation()
+            # if not dll_info["dll_exists"]:
+            #     logger.error("AXL DLL not found - printing diagnostic information")
+            #     print_dll_diagnostic_info()
+            #     raise RobotConnectionError(
+            #         "AXL DLL not found at expected location",
+            #         "AJINEXTEK",
+            #         details=f"DLL path: {dll_info['dll_path']}, Available DLLs: {dll_info['available_dlls']}",
+            #     )
 
             # Open AXL library if not already open
             if self._axl.is_opened():

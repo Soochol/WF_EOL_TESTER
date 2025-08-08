@@ -67,6 +67,19 @@ class DigitalIOService(ABC):
         ...
 
     @abstractmethod
+    async def read_output(self, channel: int) -> bool:
+        """
+        Read digital output state from specified channel
+
+        Args:
+            channel: Digital output channel number
+
+        Returns:
+            True if output is HIGH, False if LOW
+        """
+        ...
+
+    @abstractmethod
     async def reset_all_outputs(self) -> bool:
         """
         Reset all outputs to LOW
@@ -110,6 +123,38 @@ class DigitalIOService(ABC):
             if await self.write_output(channel, level):
                 success_count += 1
         return success_count == len(pin_values)
+
+    async def read_all_outputs(self) -> List[bool]:
+        """
+        Read all digital outputs (default implementation using single reads)
+
+        Returns:
+            List of boolean values representing all output states
+        """
+        results = []
+        # This is a default implementation - subclasses can override for better performance
+        # First we need to determine how many output channels there are
+        try:
+            output_count = await self.get_output_count()
+            for channel in range(output_count):
+                try:
+                    results.append(await self.read_output(channel))
+                except Exception:
+                    results.append(False)  # Default to False on error
+        except Exception:
+            # If we can't determine output count, return empty list
+            pass
+        return results
+
+    async def get_output_count(self) -> int:
+        """
+        Get the number of available digital output channels
+
+        Returns:
+            Number of digital output channels
+        """
+        # Default implementation - should be overridden by subclasses
+        return 0
 
     # ========================================================================
     # Connection Management

@@ -16,13 +16,13 @@ from application.services.exception_handler import ExceptionHandler
 from application.services.hardware_service_facade import HardwareServiceFacade
 from application.services.repository_service import RepositoryService
 from application.services.test_result_evaluator import TestResultEvaluator
+from domain.entities.eol_test import EOLTest
+from domain.enums.test_status import TestStatus
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.time_values import TestDuration
-from domain.entities.eol_test import EOLTest
-from domain.enums.test_status import TestStatus
 
 from .configuration_loader import TestConfigurationLoader
 from .constants import TestExecutionConstants
@@ -80,7 +80,7 @@ class EOLForceTestUseCase:
     def is_running(self) -> bool:
         """
         Check if EOL test is currently running
-        
+
         Returns:
             True if test is currently executing, False otherwise
         """
@@ -150,7 +150,11 @@ class EOLForceTestUseCase:
             await self._state_manager.save_test_state(test_entity)
 
             execution_duration = self._calculate_execution_duration(start_time)
-            result_status = TestExecutionConstants.TEST_RESULT_PASSED if is_test_passed else TestExecutionConstants.TEST_RESULT_FAILED
+            result_status = (
+                TestExecutionConstants.TEST_RESULT_PASSED
+                if is_test_passed
+                else TestExecutionConstants.TEST_RESULT_FAILED
+            )
             logger.info(
                 TestExecutionConstants.LOG_TEST_EXECUTION_COMPLETED,
                 test_entity.test_id,
@@ -263,7 +267,9 @@ class EOLForceTestUseCase:
             test_status=TestStatus.ERROR,
             execution_duration=execution_duration,
             is_passed=False,
-            measurement_ids=self._state_manager.generate_measurement_ids(measurements) if measurements else [],
+            measurement_ids=(
+                self._state_manager.generate_measurement_ids(measurements) if measurements else []
+            ),
             test_summary=measurements or {},
             error_message=error_context.get("user_message", str(error)),
         )
