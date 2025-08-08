@@ -621,11 +621,6 @@ class LMAMCU(MCUService):
                     if current_byte == 0xFF:
                         if waiting_for_second_ff:
                             # Found second FF - STX complete!
-                            if noise_buffer:
-                                logger.debug(
-                                    f"🔧 NOISE DETECTED: Removed {len(noise_buffer)} bytes [{noise_buffer.hex().upper()}] before STX"
-                                )
-
                             logger.debug("STX pattern found in stream")
                             return True
                         else:
@@ -641,11 +636,7 @@ class LMAMCU(MCUService):
                         # Current byte is also noise - add to buffer
                         noise_buffer.append(current_byte)
 
-                        # Heavy noise detection (reduced frequency)
-                        if len(noise_buffer) > 0 and len(noise_buffer) % 100 == 0:
-                            logger.warning(
-                                f"🔧 HEAVY NOISE: {len(noise_buffer)} consecutive noise bytes detected"
-                            )
+                        # Heavy noise detection (no logging - just count)
 
                 except asyncio.TimeoutError:
                     # Don't spam logs with timeout errors - MCU may be slow during boot
@@ -654,20 +645,7 @@ class LMAMCU(MCUService):
                     continue
 
             # Timeout or max bytes reached
-            if noise_buffer or waiting_for_second_ff:
-                # Include pending FF if we were waiting for second FF
-                all_searched = noise_buffer
-                if waiting_for_second_ff:
-                    all_searched = all_searched + bytearray([0xFF])
-
-                if all_searched:
-                    logger.debug(
-                        f"🔧 NOISE: STX not found after {bytes_searched} bytes - Data: [{all_searched.hex().upper()}]"
-                    )
-                else:
-                    logger.debug(f"STX search timeout - no data received in {timeout}s")
-            else:
-                logger.debug(f"STX search timeout - no data received in {timeout}s")
+            logger.debug(f"STX search timeout - no data received in {timeout}s")
 
             return False
 
@@ -711,14 +689,8 @@ class LMAMCU(MCUService):
                     if len(noise_bytes) >= 2:
                         # Check last 2 bytes for STX pattern
                         if noise_bytes[-2:] == STX:
-                            # Found STX! Log noise data if any
-                            if len(noise_bytes) > 2:
-                                noise_data = noise_bytes[:-2]
-                                logger.debug(
-                                    f"🔧 NOISE DETECTED: Removed {len(noise_data)} bytes [{noise_data.hex().upper()}] before STX sync"
-                                )
-                            else:
-                                logger.debug("Found STX at start of stream")
+                            # Found STX!
+                            logger.debug("STX sync recovery successful")
                             return True
 
                         # Keep only last byte to check for split STX
@@ -729,14 +701,8 @@ class LMAMCU(MCUService):
                     # Reduce timeout error spam during sync recovery
                     continue
 
-            # Timeout or max bytes reached - show noise info if detected
-            if noise_bytes:
-                logger.debug(
-                    f"🔧 NOISE: STX sync failed after searching {bytes_searched} bytes - "
-                    f"Unresolved noise: [{noise_bytes.hex().upper()}]"
-                )
-            else:
-                logger.debug(f"STX sync failed - no data received in {timeout}s")
+            # Timeout or max bytes reached
+            logger.debug(f"STX sync failed - no data received in {timeout}s")
 
             return False
 
@@ -1024,7 +990,7 @@ class LMAMCU(MCUService):
                 ]:
                     parsed_info = ""
 
-                logger.info(f"MCU -> PC: {packet_hex} ({status_name}{parsed_info})")
+                logger.info(f"PC <- MCU: {packet_hex} ({status_name}{parsed_info})")
 
                 return {
                     "status": status,
