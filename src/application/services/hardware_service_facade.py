@@ -155,11 +155,13 @@ class HardwareServiceFacade:
         # Digital I/O connection (if connect method is available)
         if not await self._digital_io.is_connected():
             # Check if digital I/O service has connect method
-            if hasattr(self._digital_io, 'connect') and callable(getattr(self._digital_io, 'connect')):
+            if hasattr(self._digital_io, "connect") and callable(
+                getattr(self._digital_io, "connect")
+            ):
                 try:
                     # For digital I/O, we may not need specific connection parameters
                     # Use configuration from hardware_config.digital_io if available
-                    if hasattr(hardware_config, 'digital_io') and hardware_config.digital_io:
+                    if hasattr(hardware_config, "digital_io") and hardware_config.digital_io:
                         # If digital_io config has specific connection parameters, use them
                         connection_tasks.append(self._digital_io.connect())
                     else:
@@ -168,7 +170,9 @@ class HardwareServiceFacade:
                 except Exception as e:
                     logger.warning(f"Digital I/O connection preparation failed: {e}")
             else:
-                logger.debug("Digital I/O service does not have connect method - assuming always connected")
+                logger.debug(
+                    "Digital I/O service does not have connect method - assuming always connected"
+                )
 
         # Execute all connections concurrently
         if connection_tasks:
@@ -220,7 +224,9 @@ class HardwareServiceFacade:
 
             # Digital I/O disconnection (if disconnect method is available)
             if await self._digital_io.is_connected():
-                if hasattr(self._digital_io, 'disconnect') and callable(getattr(self._digital_io, 'disconnect')):
+                if hasattr(self._digital_io, "disconnect") and callable(
+                    getattr(self._digital_io, "disconnect")
+                ):
                     shutdown_tasks.append(self._digital_io.disconnect())
                 else:
                     logger.debug("Digital I/O service does not have disconnect method")
@@ -248,10 +254,14 @@ class HardwareServiceFacade:
         logger.info("Initializing hardware with configuration...")
 
         try:
-            # Digital Output 0번 채널 ON (초기화 시작 신호)
-            await self._digital_io.set_output(0, True)
-            logger.info("Digital output channel 0 enabled for initialization")
-            
+            # Digital Output servo1_brake_release 채널 ON (서보 브레이크 해제 신호)
+            await self._digital_io.write_output(
+                hardware_config.digital_io.servo1_brake_release, True
+            )
+            logger.info(
+                f"Digital output channel {hardware_config.digital_io.servo1_brake_release} enabled for servo brake release"
+            )
+
             # Initialize power settings
             await self._power.disable_output()
             await asyncio.sleep(test_config.power_stabilization)

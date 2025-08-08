@@ -90,6 +90,7 @@ class DigitalIOConfig:
     operator_start_button_right: int = 2
 
     # Digital Output parameters
+    servo1_brake_release: int = 1
     tower_lamp_red: int = 4
     tower_lamp_yellow: int = 5
     tower_lamp_green: int = 6

@@ -112,7 +112,7 @@ class MockDIO(DigitalIOService):
         Read digital input from specified channel
 
         Args:
-            channel: Digital input channel number (0~15, user range)
+            channel: Digital input channel number (0~31, user range)
 
         Returns:
             True if input is HIGH, False if LOW
@@ -121,8 +121,8 @@ class MockDIO(DigitalIOService):
             raise ConnectionError("Mock DIO hardware not connected")
 
         # Validate input channel range
-        if not (0 <= channel < 16):
-            raise ValueError(f"Input channel {channel} out of range [0-15]")
+        if not (0 <= channel < 32):
+            raise ValueError(f"Input channel {channel} out of range [0-31]")
 
         # Simulate read delay
         await asyncio.sleep(self._response_delay_s * 0.2)
@@ -162,7 +162,7 @@ class MockDIO(DigitalIOService):
         Read digital output state from specified channel
 
         Args:
-            channel: Digital output channel number (0~15, user range)
+            channel: Digital output channel number (0~31, user range)
 
         Returns:
             True if output is HIGH, False if LOW
@@ -175,11 +175,11 @@ class MockDIO(DigitalIOService):
             raise HardwareConnectionError("mock_dio", "DIO hardware not connected")
 
         # Validate output channel range
-        if not (0 <= channel < 16):
+        if not (0 <= channel < 32):
             raise HardwareOperationError(
                 "mock_dio", 
                 "read_output", 
-                f"Output channel {channel} out of range [0-15]"
+                f"Output channel {channel} out of range [0-31]"
             )
 
         try:
@@ -217,7 +217,7 @@ class MockDIO(DigitalIOService):
 
             self._is_connected = False
             # Reset all states to default
-            for i in range(16):
+            for i in range(32):
                 self._input_states[i] = False
                 self._output_states[i] = False
 
@@ -242,7 +242,7 @@ class MockDIO(DigitalIOService):
         Write digital output to specified channel
 
         Args:
-            channel: Digital output channel number (0~15, user range)
+            channel: Digital output channel number (0~31, user range)
             level: Output logic level (True=HIGH, False=LOW)
 
         Returns:
@@ -256,11 +256,11 @@ class MockDIO(DigitalIOService):
             raise HardwareConnectionError("mock_dio", "DIO hardware not connected")
 
         # Validate output channel range
-        if not (0 <= channel < 16):
+        if not (0 <= channel < 32):
             raise HardwareOperationError(
                 "mock_dio", 
                 "write_output", 
-                f"Output channel {channel} out of range [0-15]"
+                f"Output channel {channel} out of range [0-31]"
             )
 
         try:
@@ -339,10 +339,10 @@ class MockDIO(DigitalIOService):
         Read all digital inputs
 
         Returns:
-            List of boolean values representing all input states (16 channels)
+            List of boolean values representing all input states (32 channels)
         """
         results = []
-        for channel in range(16):
+        for channel in range(32):
             try:
                 results.append(await self.read_input(channel))
             except Exception:
@@ -355,10 +355,10 @@ class MockDIO(DigitalIOService):
         Read all digital outputs
 
         Returns:
-            List of boolean values representing all output states (16 channels)
+            List of boolean values representing all output states (32 channels)
         """
         results = []
-        for channel in range(16):
+        for channel in range(32):
             try:
                 results.append(await self.read_output(channel))
             except Exception:
@@ -375,8 +375,8 @@ class MockDIO(DigitalIOService):
             True if reset was successful, False otherwise
         """
         try:
-            # Reset all 16 output channels to LOW
-            reset_values = {channel: False for channel in range(16)}
+            # Reset all 32 output channels to LOW
+            reset_values = {channel: False for channel in range(32)}
             success = await self.write_multiple_outputs(reset_values)
             
             if success:
@@ -397,8 +397,8 @@ class MockDIO(DigitalIOService):
         status = {
             "connected": await self.is_connected(),
             "hardware_type": "Mock DIO",
-            "input_channels": 16,
-            "output_channels": 16,
+            "input_channels": 32,
+            "output_channels": 32,
             "simulate_noise": self._simulate_noise,
             "noise_probability": self._noise_probability,
             "response_delay_ms": self._response_delay_s * 1000,
@@ -420,17 +420,17 @@ class MockDIO(DigitalIOService):
         Mock용: 입력 채널 상태를 직접 설정 (테스트용)
 
         Args:
-            channel: 입력 채널 번호 (0-15)
+            channel: 입력 채널 번호 (0-31)
             level: 설정할 상태 (True=HIGH, False=LOW)
 
         Raises:
             HardwareOperationError: If channel setting fails
         """
-        if not 0 <= channel < 16:
+        if not 0 <= channel < 32:
             raise HardwareOperationError(
                 "mock_dio",
                 "set_input_state",
-                f"Input channel {channel} out of range [0-15]",
+                f"Input channel {channel} out of range [0-31]",
             )
 
         self._input_states[channel] = level
@@ -441,7 +441,7 @@ class MockDIO(DigitalIOService):
         Mock용: 입력 상태를 토글 (테스트용)
 
         Args:
-            channel: 입력 채널 번호 (0-15)
+            channel: 입력 채널 번호 (0-31)
 
         Raises:
             HardwareOperationError: If toggle operation fails
@@ -458,7 +458,7 @@ class MockDIO(DigitalIOService):
             channels: 랜덤화할 입력 채널 번호 리스트
         """
         for channel in channels:
-            if 0 <= channel < 16:
+            if 0 <= channel < 32:
                 random_state = random.random() > 0.5
                 await self.set_input_state(channel, random_state)
 
