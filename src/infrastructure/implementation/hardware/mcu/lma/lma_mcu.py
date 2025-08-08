@@ -597,13 +597,17 @@ class LMAMCU(MCUService):
                 and bytes_searched < max_search_bytes
             ):
                 try:
-                    # Read one byte at a time
-                    byte_data = await self._connection.read(1, 0.1)
+                    # Read one byte at a time with appropriate timeout for MCU communication
+                    byte_data = await self._connection.read(1, 1.0)
                     if not byte_data:
                         continue
                         
                     bytes_searched += 1
                     current_byte = byte_data[0]
+                    
+                    # Periodic progress update (every 50 bytes, avoid log spam)
+                    if bytes_searched % 50 == 0:
+                        logger.debug(f"MCU search progress: {bytes_searched} bytes processed, {len(noise_buffer)} noise bytes")
                     
                     # Simple state machine for STX detection
                     if current_byte == 0xFF:
@@ -620,16 +624,25 @@ class LMAMCU(MCUService):
                             # Found first FF - wait for second
                             waiting_for_second_ff = True
                     else:
-                        # Not FF - handle as noise
+                        # Not FF - handle as noise with real-time logging
                         if waiting_for_second_ff:
-                            # Previous FF was not part of STX
+                            # Previous FF was not part of STX - log it as noise
+                            logger.warning(f"🔧 NOISE: [FF] at position {bytes_searched-1}")
                             noise_buffer.append(0xFF)
                             waiting_for_second_ff = False
                         
-                        # Current byte is also noise
+                        # Current byte is also noise - log immediately
+                        logger.warning(f"🔧 NOISE: [{current_byte:02X}] at position {bytes_searched}")
                         noise_buffer.append(current_byte)
+                        
+                        # Heavy noise detection
+                        if len(noise_buffer) > 0 and len(noise_buffer) % 20 == 0:
+                            logger.warning(f"🔧 HEAVY NOISE: {len(noise_buffer)} consecutive noise bytes detected")
                             
                 except asyncio.TimeoutError:
+                    # Don't spam logs with timeout errors - MCU may be slow during boot
+                    if bytes_searched == 0:
+                        logger.debug("Waiting for MCU response...")
                     continue
                     
             # Timeout or max bytes reached
@@ -679,7 +692,7 @@ class LMAMCU(MCUService):
             ) < timeout and bytes_searched < max_search_bytes:
                 # Read one byte at a time
                 try:
-                    byte_data = await self._connection.read(1, 0.1)
+                    byte_data = await self._connection.read(1, 1.0)
                     if not byte_data:
                         continue
 
@@ -705,6 +718,7 @@ class LMAMCU(MCUService):
                             noise_bytes = noise_bytes[-1:]
 
                 except asyncio.TimeoutError:
+                    # Reduce timeout error spam during sync recovery
                     continue
 
             # Timeout or max bytes reached - show noise info if detected
