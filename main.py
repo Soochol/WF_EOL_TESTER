@@ -25,7 +25,6 @@ from src.application.services.test_result_evaluator import TestResultEvaluator
 
 # Local application imports - Use Cases
 from src.application.use_cases.eol_force_test import EOLForceTestUseCase
-from src.domain.value_objects.hardware_model import HardwareModel
 
 # Local infrastructure imports
 from src.infrastructure.factory import ServiceFactory
@@ -74,7 +73,22 @@ async def main() -> None:
         # Create services
         hardware_services = None
         try:
-            hardware_services = await create_hardware_services(hardware_model, digital_io_service)
+            # Create hardware services based on hardware model specifications
+            hw_model_dict = hardware_model.to_dict()
+            
+            # Create services directly using model dictionary
+            robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
+            mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
+            loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
+            power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
+            
+            hardware_services = HardwareServiceFacade(
+                robot_service=robot_service,
+                mcu_service=mcu_service,
+                loadcell_service=loadcell_service,
+                power_service=power_service,
+                digital_io_service=digital_io_service,
+            )
 
             (
                 configuration_service,
@@ -239,36 +253,6 @@ async def create_repositories() -> JsonResultRepository:
     test_result_repository = JsonResultRepository()
     return test_result_repository
 
-
-async def create_hardware_services(
-    hardware_model: HardwareModel, digital_io_service
-) -> HardwareServiceFacade:
-    """Create hardware services based on hardware model specifications.
-
-    Args:
-        hardware_model: Hardware model specifications (which hardware types to use)
-        digital_io_service: Pre-created digital I/O service instance
-
-    Returns:
-        HardwareServiceFacade instance with configured hardware services.
-    """
-    # Convert hardware model to dictionary for ServiceFactory
-    hw_model_dict = hardware_model.to_dict()
-
-    # Create services directly using model dictionary
-    robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
-    mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
-    loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
-    power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
-    # Use the provided digital_io_service instead of creating a new one
-
-    return HardwareServiceFacade(
-        robot_service=robot_service,
-        mcu_service=mcu_service,
-        loadcell_service=loadcell_service,
-        power_service=power_service,
-        digital_io_service=digital_io_service,
-    )
 
 
 async def create_business_services(

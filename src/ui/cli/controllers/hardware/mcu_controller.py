@@ -293,7 +293,7 @@ class MCUController(HardwareController):
             operating_temp_input = self._get_user_input_with_validation(
                 "Enter operating temperature (°C) [30-60, default: 60]:",
                 input_type=float,
-                validator=lambda x: 30 <= x <= 60
+                validator=lambda x: 30 <= x <= 60,
             )
             if operating_temp_input is None:
                 self.formatter.print_message("Operation cancelled", message_type="warning")
@@ -304,7 +304,7 @@ class MCUController(HardwareController):
             standby_temp_input = self._get_user_input_with_validation(
                 "Enter standby temperature (°C) [30-60, default: 40]:",
                 input_type=float,
-                validator=lambda x: 30 <= x <= 60
+                validator=lambda x: 30 <= x <= 60,
             )
             if standby_temp_input is None:
                 self.formatter.print_message("Operation cancelled", message_type="warning")
@@ -315,7 +315,7 @@ class MCUController(HardwareController):
             hold_time_input = self._get_user_input_with_validation(
                 "Enter hold time (ms) [1000-60000, default: 10000]:",
                 input_type=int,
-                validator=lambda x: 1000 <= x <= 60000
+                validator=lambda x: 1000 <= x <= 60000,
             )
             if hold_time_input is None:
                 self.formatter.print_message("Operation cancelled", message_type="warning")

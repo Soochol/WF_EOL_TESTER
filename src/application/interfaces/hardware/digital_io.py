@@ -161,6 +161,16 @@ class DigitalIOService(ABC):
     # ========================================================================
 
     @abstractmethod
+    async def connect(self, irq_no: int = 7) -> None:
+        """
+        Connect to the digital I/O device
+        
+        Args:
+            irq_no: IRQ number for connection (default: 7)
+        """
+        ...
+
+    @abstractmethod
     async def disconnect(self) -> None:
         """Disconnect from the digital I/O device"""
         ...

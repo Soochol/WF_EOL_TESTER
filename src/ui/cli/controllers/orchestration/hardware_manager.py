@@ -103,7 +103,8 @@ class HardwareControlManager:
                 )
             elif name == "DigitalIO":
                 has_config = (
-                    hasattr(controller, "digital_io_config") and controller.digital_io_config is not None
+                    hasattr(controller, "digital_io_config")
+                    and controller.digital_io_config is not None
                 )
                 logger.info(
                     f"  {name} Controller: {'has config' if has_config else 'config is None'}"
@@ -170,9 +171,7 @@ class HardwareControlManager:
                             hw_config = future.result(timeout=10)  # 10 second timeout
 
                         if hw_config:
-                            logger.info(
-                                "Successfully loaded hardware config using thread executor"
-                            )
+                            logger.info("Successfully loaded hardware config using thread executor")
                             return hw_config
                         else:
                             logger.error("Thread executor returned None config")
@@ -274,13 +273,7 @@ class HardwareControlManager:
             return
 
         # Map selection to controller
-        controller_map = {
-            "1": "Robot", 
-            "2": "MCU", 
-            "3": "LoadCell", 
-            "4": "Power",
-            "5": "DigitalIO"
-        }
+        controller_map = {"1": "Robot", "2": "MCU", "3": "LoadCell", "4": "Power", "5": "DigitalIO"}
 
         controller_name = controller_map.get(selection)
         if not controller_name:
@@ -337,17 +330,19 @@ class HardwareControlManager:
 
     async def execute_robot_home(self) -> bool:
         """Execute Robot Home operation using the Robot Home use case.
-        
+
         Creates and executes a Robot Home use case to move the robot to its home position.
-        
+
         Returns:
             bool: True if robot homing succeeded, False otherwise
         """
         try:
             # Import here to avoid circular imports
-            from src.application.use_cases.robot_home import RobotHomeUseCase, RobotHomeCommand
-            from src.application.services.hardware_service_facade import HardwareServiceFacade
-            
+            from src.application.use_cases.robot_home import (
+                RobotHomeCommand,
+                RobotHomeUseCase,
+            )
+
             # Create hardware service facade from the existing controllers
             # Note: This assumes we have access to the hardware facade from the parent
             # For now, we'll use the robot controller directly
@@ -355,46 +350,56 @@ class HardwareControlManager:
             if not robot_controller:
                 logger.error("Robot controller not available")
                 return False
-            
+
             # Get the robot service from the robot controller
             robot_service = robot_controller.robot_service
             if not robot_service:
                 logger.error("Robot service not available")
                 return False
-            
+
             # Create a minimal hardware facade for the Robot Home use case
-            class MinimalHardwareServiceFacade:
-                def __init__(self, robot_service):
-                    self._robot = robot_service
-                
-                async def get_hardware_status(self):
-                    # Simple hardware status check
-                    try:
-                        await self._robot.get_status()
-                        return {"robot": True}
-                    except:
-                        return {"robot": False}
-            
-            facade = MinimalHardwareServiceFacade(robot_service)
-            
+            from src.infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
+                MockDIO,
+            )
+            from src.infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
+                MockLoadCell,
+            )
+            from src.infrastructure.implementation.hardware.mcu.mock.mock_mcu import (
+                MockMCU,
+            )
+            from src.infrastructure.implementation.hardware.power.mock.mock_power import (
+                MockPower,
+            )
+
+            # Create minimal facade with real robot service and mock others for robot home operation
+            facade = HardwareServiceFacade(
+                robot_service=robot_service,
+                mcu_service=MockMCU(),
+                loadcell_service=MockLoadCell(),
+                power_service=MockPower(),
+                digital_io_service=MockDIO({}),
+            )
+
             # Create Robot Home use case
             robot_home_use_case = RobotHomeUseCase(facade)
-            
+
             # Create Robot Home command
             command = RobotHomeCommand(operator_id="cli_user")
-            
+
             # Execute Robot Home operation
             logger.info("Starting robot homing operation...")
-            
+
             result = await robot_home_use_case.execute(command)
-            
+
             if result.is_success:
-                logger.info(f"Robot homing completed successfully in {result.execution_duration.seconds:.2f}s")
+                logger.info(
+                    f"Robot homing completed successfully in {result.execution_duration.seconds:.2f}s"
+                )
                 return True
             else:
                 logger.error(f"Robot homing failed: {result.error_message}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Robot home execution error: {e}")
             return False

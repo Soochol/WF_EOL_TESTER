@@ -248,6 +248,10 @@ class HardwareServiceFacade:
         logger.info("Initializing hardware with configuration...")
 
         try:
+            # Digital Output 0번 채널 ON (초기화 시작 신호)
+            await self._digital_io.set_output(0, True)
+            logger.info("Digital output channel 0 enabled for initialization")
+            
             # Initialize power settings
             await self._power.disable_output()
             await asyncio.sleep(test_config.power_stabilization)

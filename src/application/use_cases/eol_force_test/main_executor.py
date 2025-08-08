@@ -227,7 +227,7 @@ class EOLForceTestUseCase:
     async def _handle_test_failure(  # pylint: disable=too-many-arguments
         self,
         error: Exception,
-        test_entity: EOLTest,
+        test_entity: Optional[EOLTest],
         command: EOLForceTestCommand,  # pylint: disable=unused-argument
         measurements: Optional[TestMeasurements],
         start_time: float,

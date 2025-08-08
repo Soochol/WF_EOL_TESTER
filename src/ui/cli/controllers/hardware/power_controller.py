@@ -17,7 +17,12 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class PowerController(HardwareController):
     """Controller for Power hardware"""
 
-    def __init__(self, power_service: PowerService, formatter: RichFormatter, power_config: Optional[PowerConfig] = None):
+    def __init__(
+        self,
+        power_service: PowerService,
+        formatter: RichFormatter,
+        power_config: Optional[PowerConfig] = None,
+    ):
         super().__init__(formatter)
         self.power_service = power_service
         self.power_config = power_config
@@ -229,9 +234,7 @@ class PowerController(HardwareController):
             )
 
         except Exception as e:
-            self.formatter.print_message(
-                f"Failed to enable output: {str(e)}", message_type="error"
-            )
+            self.formatter.print_message(f"Failed to enable output: {str(e)}", message_type="error")
 
     async def _disable_output(self) -> None:
         """Disable power output"""
@@ -295,9 +298,7 @@ class PowerController(HardwareController):
                 )
 
         except Exception as e:
-            self.formatter.print_message(
-                f"Failed to set voltage: {str(e)}", message_type="error"
-            )
+            self.formatter.print_message(f"Failed to set voltage: {str(e)}", message_type="error")
 
     async def _set_current(self) -> None:
         """Set output current with enhanced UX"""
@@ -349,9 +350,7 @@ class PowerController(HardwareController):
                 )
 
         except Exception as e:
-            self.formatter.print_message(
-                f"Failed to set current: {str(e)}", message_type="error"
-            )
+            self.formatter.print_message(f"Failed to set current: {str(e)}", message_type="error")
 
     async def _set_current_limit(self) -> None:
         """Set current limit with enhanced UX"""
@@ -371,13 +370,13 @@ class PowerController(HardwareController):
             current = self._get_user_input_with_validation(
                 "Enter new current limit (A):",
                 input_type=float,
-                validator=lambda x: 0 <= x <= 50,  # Extended current limit range for high-power supplies
+                validator=lambda x: 0
+                <= x
+                <= 50,  # Extended current limit range for high-power supplies
             )
 
             if current is None:
-                self.formatter.print_message(
-                    "Current limit setting cancelled", message_type="info"
-                )
+                self.formatter.print_message("Current limit setting cancelled", message_type="info")
                 return
 
             # Show what will be set

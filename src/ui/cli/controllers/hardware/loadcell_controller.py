@@ -18,7 +18,12 @@ from ..base.hardware_controller import HardwareController, simple_interactive_me
 class LoadCellController(HardwareController):
     """Controller for LoadCell hardware"""
 
-    def __init__(self, loadcell_service: LoadCellService, formatter: RichFormatter, loadcell_config: Optional[LoadCellConfig] = None):
+    def __init__(
+        self,
+        loadcell_service: LoadCellService,
+        formatter: RichFormatter,
+        loadcell_config: Optional[LoadCellConfig] = None,
+    ):
         super().__init__(formatter)
         self.loadcell_service = loadcell_service
         self.loadcell_config = loadcell_config
@@ -180,9 +185,7 @@ class LoadCellController(HardwareController):
             return True
 
         except Exception as e:
-            self.formatter.print_message(
-                f"LoadCell command failed: {str(e)}", message_type="error"
-            )
+            self.formatter.print_message(f"LoadCell command failed: {str(e)}", message_type="error")
             return False
 
     # Private LoadCell-specific operations
