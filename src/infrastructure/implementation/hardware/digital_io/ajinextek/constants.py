@@ -10,18 +10,18 @@ DEFAULT_MODULE_POSITION = 0
 MAX_BOARDS = 32
 MAX_MODULES_PER_BOARD = 4
 
-# Channel Configuration - Limited to 16 channels each for consistent hardware interface
-MAX_INPUT_CHANNELS = 16
-MAX_OUTPUT_CHANNELS = 16
+# Channel Configuration - Updated to match actual hardware spec (32+32 channels)
+MAX_INPUT_CHANNELS = 32
+MAX_OUTPUT_CHANNELS = 32
 TOTAL_CHANNELS = MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS
 
 # Input Channel Range
 INPUT_CHANNEL_START = 0
-INPUT_CHANNEL_END = MAX_INPUT_CHANNELS - 1  # 0~15
+INPUT_CHANNEL_END = MAX_INPUT_CHANNELS - 1  # 0~31
 
 # Output Channel Range
 OUTPUT_CHANNEL_START = 0
-OUTPUT_CHANNEL_END = MAX_OUTPUT_CHANNELS - 1  # 0~15
+OUTPUT_CHANNEL_END = MAX_OUTPUT_CHANNELS - 1  # 0~31
 
 # Logic Levels
 LOGIC_LOW = 0
@@ -178,8 +178,8 @@ DEFAULT_CONFIG = {
 PRESET_ALL_INPUTS = {i: PIN_MODE_INPUT for i in range(MAX_INPUT_CHANNELS)}
 PRESET_ALL_OUTPUTS = {i: PIN_MODE_OUTPUT for i in range(MAX_OUTPUT_CHANNELS)}
 PRESET_MIXED_IO = {
-    **{i: PIN_MODE_INPUT for i in range(0, 8)},  # First 8 as inputs
-    **{i: PIN_MODE_OUTPUT for i in range(8, 16)},  # Last 8 as outputs
+    **{i: PIN_MODE_INPUT for i in range(0, 16)},  # First 16 as inputs
+    **{i: PIN_MODE_OUTPUT for i in range(16, 32)},  # Last 16 as outputs
 }
 
 # Status Messages

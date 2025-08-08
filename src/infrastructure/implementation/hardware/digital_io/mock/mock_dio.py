@@ -58,21 +58,21 @@ class MockDIO(DigitalIOService):
 
         # State tracking
         self._is_connected = False
-        self._input_states: Dict[int, bool] = {}  # 16 input channels (0-15)
-        self._output_states: Dict[int, bool] = {}  # 16 output channels (0-15)
+        self._input_states: Dict[int, bool] = {}  # 32 input channels (0-31)
+        self._output_states: Dict[int, bool] = {}  # 32 output channels (0-31)
 
         # Additional attributes for compatibility
         # (already stored directly above)
 
         # Initialize with default states
-        for i in range(16):
+        for i in range(32):
             self._input_states[i] = False  # All inputs default to LOW
             self._output_states[i] = False  # All outputs default to LOW
             
         # Override with config if provided
         initial_input_states = config.get("initial_input_states", {})
         for channel, state in initial_input_states.items():
-            if 0 <= channel < 16:
+            if 0 <= channel < 32:
                 self._input_states[channel] = bool(state)
 
         # Statistics for testing
@@ -144,18 +144,18 @@ class MockDIO(DigitalIOService):
         Get the number of available digital input channels
 
         Returns:
-            Number of digital input channels (16, not 32)
+            Number of digital input channels (32)
         """
-        return 16  # 실제 하드웨어에 맞춰 INPUT 채널은 16개
+        return 32  # 실제 하드웨어에 맞춰 INPUT 채널은 32개
 
     async def get_output_count(self) -> int:
         """
         Get the number of available digital output channels
 
         Returns:
-            Number of digital output channels (16, not 32)
+            Number of digital output channels (32)
         """
-        return 16  # 실제 하드웨어에 맞춰 OUTPUT 채널은 16개
+        return 32  # 실제 하드웨어에 맞춰 OUTPUT 채널은 32개
 
     async def read_output(self, channel: int) -> bool:
         """
