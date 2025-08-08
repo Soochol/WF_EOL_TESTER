@@ -478,11 +478,11 @@ class LMAMCU(MCUService):
         await self._ensure_connected()
 
         try:
-            # Send cooling command with 0x00 data and sequential response handling (2개의 ACK 패킷)
+            # Send cooling command with no data and sequential response handling (2개의 ACK 패킷)
             logger.debug("Sending CMD_STROKE_INIT_COMPLETE with sequential response handling")
             await self._send_and_wait_for_sequence(
                 CMD_STROKE_INIT_COMPLETE,
-                b"\x00",
+                b"",
                 [STATUS_STROKE_INIT_OK, STATUS_STANDBY_TEMP_REACHED],
             )
             logger.info("LMA cooling sequence completed - both ACK packets received")
@@ -611,8 +611,8 @@ class LMAMCU(MCUService):
                     bytes_searched += 1
                     current_byte = byte_data[0]
 
-                    # Periodic progress update (every 50 bytes, avoid log spam)
-                    if bytes_searched % 50 == 0:
+                    # Periodic progress update (every 200 bytes, avoid log spam)
+                    if bytes_searched % 200 == 0:
                         logger.debug(
                             f"MCU search progress: {bytes_searched} bytes processed, {len(noise_buffer)} noise bytes"
                         )
@@ -632,19 +632,17 @@ class LMAMCU(MCUService):
                             # Found first FF - wait for second
                             waiting_for_second_ff = True
                     else:
-                        # Not FF - handle as noise with real-time logging
+                        # Not FF - handle as noise with reduced logging
                         if waiting_for_second_ff:
-                            # Previous FF was not part of STX - log it as noise
-                            logger.debug(f"🔧 NOISE: [FF] at position {bytes_searched-1}")
+                            # Previous FF was not part of STX - add to noise buffer
                             noise_buffer.append(0xFF)
                             waiting_for_second_ff = False
 
-                        # Current byte is also noise - log immediately
-                        logger.debug(f"🔧 NOISE: [{current_byte:02X}] at position {bytes_searched}")
+                        # Current byte is also noise - add to buffer
                         noise_buffer.append(current_byte)
 
-                        # Heavy noise detection
-                        if len(noise_buffer) > 0 and len(noise_buffer) % 20 == 0:
+                        # Heavy noise detection (reduced frequency)
+                        if len(noise_buffer) > 0 and len(noise_buffer) % 100 == 0:
                             logger.warning(
                                 f"🔧 HEAVY NOISE: {len(noise_buffer)} consecutive noise bytes detected"
                             )

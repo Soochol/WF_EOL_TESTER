@@ -9,6 +9,9 @@ REM ========================================================================
 
 setlocal enabledelayedexpansion
 
+REM Maximize console window
+mode con cols=120 lines=40
+
 REM Set console title
 title WF EOL Tester
 
