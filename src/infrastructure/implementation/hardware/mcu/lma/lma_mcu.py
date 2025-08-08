@@ -887,12 +887,14 @@ class LMAMCU(MCUService):
 
         while True:
             try:
-                # Search for STX pattern in stream (handles noise automatically)
-                if not await self._find_stx_in_stream(response_timeout):
-                    raise LMACommunicationError("STX pattern not found in data stream")
-
-                # STX found, stream is now positioned after STX - read header
-                logger.debug("Valid STX found in stream")
+                # Search for STX pattern in stream (handles noise automatically) - skip if sync was just performed
+                if not sync_attempted:
+                    if not await self._find_stx_in_stream(response_timeout):
+                        raise LMACommunicationError("STX pattern not found in data stream")
+                    logger.debug("Valid STX found in stream")
+                else:
+                    # STX already found by sync recovery, stream is positioned after STX
+                    logger.debug("STX already positioned by sync recovery")
                 
                 # Read status and length (header)
                 header = await self._connection.read(
