@@ -69,6 +69,18 @@ async def main() -> None:
         digital_io_service = ServiceFactory.create_digital_io_service(
             {"model": hw_model_dict["digital_io"]}
         )
+        
+        # Connect digital I/O service if not already connected (needed for button monitoring)
+        try:
+            if not await digital_io_service.is_connected():
+                logger.info("Connecting Digital I/O service for button monitoring...")
+                await digital_io_service.connect()
+                logger.info("Digital I/O service connected successfully")
+            else:
+                logger.info("Digital I/O service already connected")
+        except Exception as e:
+            logger.warning(f"Failed to connect Digital I/O service: {e}")
+            logger.warning("Button monitoring may not work properly without Digital I/O connection")
 
         # Create services
         hardware_services = None

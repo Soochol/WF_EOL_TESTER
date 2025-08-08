@@ -37,10 +37,12 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     FRAME_LEN_SIZE,
     STATUS_BOOT_COMPLETE,
     STATUS_FAN_SPEED_OK,
+    STATUS_LMA_INIT_OK,
     STATUS_MESSAGES,
     STATUS_OPERATING_TEMP_OK,
     STATUS_OPERATING_TEMP_REACHED,
     STATUS_STANDBY_TEMP_REACHED,
+    STATUS_STROKE_INIT_OK,
     STATUS_TEMP_RESPONSE,
     STATUS_TEST_MODE_COMPLETE,
     STATUS_UPPER_TEMP_OK,
@@ -441,12 +443,14 @@ class LMAMCU(MCUService):
                 hold_time_ms,
             )
 
-            # LMA 초기화 명령 전송 및 응답 대기
-            await self._send_and_wait_for(
+            # LMA 초기화 명령 전송 및 순차적 응답 대기 (2개의 ACK 패킷)
+            logger.debug("Sending CMD_LMA_INIT with sequential response handling")
+            await self._send_and_wait_for_sequence(
                 CMD_LMA_INIT,
                 data,
-                STATUS_OPERATING_TEMP_REACHED,
+                [STATUS_LMA_INIT_OK, STATUS_OPERATING_TEMP_REACHED],
             )
+            logger.info("LMA initialization sequence completed - both ACK packets received")
             self._mcu_status = MCUStatus.HEATING
 
             logger.info(
@@ -474,12 +478,14 @@ class LMAMCU(MCUService):
         await self._ensure_connected()
 
         try:
-            # Send cooling command with 0x00 data
-            await self._send_and_wait_for(
+            # Send cooling command with 0x00 data and sequential response handling (2개의 ACK 패킷)
+            logger.debug("Sending CMD_STROKE_INIT_COMPLETE with sequential response handling")
+            await self._send_and_wait_for_sequence(
                 CMD_STROKE_INIT_COMPLETE,
                 b"\x00",
-                STATUS_STANDBY_TEMP_REACHED,
+                [STATUS_STROKE_INIT_OK, STATUS_STANDBY_TEMP_REACHED],
             )
+            logger.info("LMA cooling sequence completed - both ACK packets received")
             self._mcu_status = MCUStatus.COOLING
 
             logger.info("LMA standby cooling started")
@@ -560,7 +566,7 @@ class LMAMCU(MCUService):
 
             if discarded_bytes > 0:
                 mode_str = "fast" if fast_mode else "thorough"
-                logger.warning(
+                logger.debug(
                     f"🔧 NOISE: Cleared {discarded_bytes} bytes from buffer [{noise_data.hex().upper()}] ({mode_str} mode)"
                 )
             elif not fast_mode:
@@ -614,7 +620,7 @@ class LMAMCU(MCUService):
                         if waiting_for_second_ff:
                             # Found second FF - STX complete!
                             if noise_buffer:
-                                logger.warning(
+                                logger.debug(
                                     f"🔧 NOISE DETECTED: Removed {len(noise_buffer)} bytes [{noise_buffer.hex().upper()}] before STX"
                                 )
                             
@@ -627,12 +633,12 @@ class LMAMCU(MCUService):
                         # Not FF - handle as noise with real-time logging
                         if waiting_for_second_ff:
                             # Previous FF was not part of STX - log it as noise
-                            logger.warning(f"🔧 NOISE: [FF] at position {bytes_searched-1}")
+                            logger.debug(f"🔧 NOISE: [FF] at position {bytes_searched-1}")
                             noise_buffer.append(0xFF)
                             waiting_for_second_ff = False
                         
                         # Current byte is also noise - log immediately
-                        logger.warning(f"🔧 NOISE: [{current_byte:02X}] at position {bytes_searched}")
+                        logger.debug(f"🔧 NOISE: [{current_byte:02X}] at position {bytes_searched}")
                         noise_buffer.append(current_byte)
                         
                         # Heavy noise detection
@@ -653,7 +659,7 @@ class LMAMCU(MCUService):
                     all_searched = all_searched + bytearray([0xFF])
                 
                 if all_searched:
-                    logger.warning(
+                    logger.debug(
                         f"🔧 NOISE: STX not found after {bytes_searched} bytes - Data: [{all_searched.hex().upper()}]"
                     )
                 else:
@@ -706,7 +712,7 @@ class LMAMCU(MCUService):
                             # Found STX! Log noise data if any
                             if len(noise_bytes) > 2:
                                 noise_data = noise_bytes[:-2]
-                                logger.warning(
+                                logger.debug(
                                     f"🔧 NOISE DETECTED: Removed {len(noise_data)} bytes [{noise_data.hex().upper()}] before STX sync"
                                 )
                             else:
@@ -723,7 +729,7 @@ class LMAMCU(MCUService):
 
             # Timeout or max bytes reached - show noise info if detected
             if noise_bytes:
-                logger.warning(
+                logger.debug(
                     f"🔧 NOISE: STX sync failed after searching {bytes_searched} bytes - "
                     f"Unresolved noise: [{noise_bytes.hex().upper()}]"
                 )
@@ -864,6 +870,56 @@ class LMAMCU(MCUService):
             logger.error(f"Timeout waiting for response 0x{target_status:02X}")
             raise TimeoutError(
                 f"Operation timed out waiting for response 0x{target_status:02X}"
+            ) from e
+
+    async def _send_and_wait_for_sequence(
+        self, command: int, data: bytes, expected_statuses: list[int]
+    ) -> Dict[str, Any]:
+        """
+        명령 전송 + 순차적 응답 대기 (다중 ACK 패킷 처리)
+
+        Args:
+            command: 명령 코드
+            data: 데이터
+            expected_statuses: 기다릴 응답 상태 코드 리스트 (순서대로)
+
+        Returns:
+            마지막 응답 딕셔너리
+
+        Raises:
+            TimeoutError: 응답 타임아웃
+            LMACommunicationError: 예상하지 못한 응답
+        """
+        await self._send_command(command, data)
+
+        # Add timeout protection for entire sequence
+        try:
+            last_response = None
+            for i, expected_status in enumerate(expected_statuses):
+                logger.debug(f"Waiting for response {i+1}/{len(expected_statuses)}: 0x{expected_status:02X}")
+                
+                response = await asyncio.wait_for(
+                    self._wait_for_response(expected_status),
+                    timeout=self._timeout,
+                )
+                
+                if i == len(expected_statuses) - 1:
+                    # This is the final response
+                    last_response = response
+                    logger.debug(f"Final response received: 0x{expected_status:02X}")
+                else:
+                    # This is an intermediate response
+                    logger.debug(f"Intermediate response received: 0x{expected_status:02X}")
+            
+            if last_response is None:
+                raise LMACommunicationError("No responses received in sequence")
+            
+            return last_response
+            
+        except asyncio.TimeoutError as e:
+            logger.error(f"Timeout waiting for response sequence {[hex(s) for s in expected_statuses]}")
+            raise TimeoutError(
+                f"Operation timed out waiting for response sequence {[hex(s) for s in expected_statuses]}"
             ) from e
 
     async def _receive_response(
