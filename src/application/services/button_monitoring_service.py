@@ -6,7 +6,7 @@ when both buttons are pressed simultaneously.
 """
 
 import asyncio
-from typing import Callable, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional, Union, Awaitable, Any
 
 from loguru import logger
 
@@ -31,7 +31,7 @@ class ButtonMonitoringService:
         digital_io_service: DigitalIOService,
         hardware_config: HardwareConfiguration,
         eol_use_case: Optional["EOLForceTestUseCase"] = None,
-        callback: Optional[Callable[[], None]] = None,
+        callback: Optional[Union[Callable[[], None], Callable[[], Awaitable[None]]]] = None,
     ):
         """
         Initialize button monitoring service
@@ -70,7 +70,7 @@ class ButtonMonitoringService:
     async def start_monitoring(self) -> None:
         """
         Start monitoring button inputs in the background
-        
+
         Creates an asyncio task that continuously monitors the button states
         and triggers events/callbacks when both buttons are pressed.
         """
@@ -86,7 +86,7 @@ class ButtonMonitoringService:
     async def stop_monitoring(self) -> None:
         """
         Stop monitoring button inputs
-        
+
         Cancels the monitoring task and cleans up resources.
         """
         if not self._is_monitoring:
@@ -195,7 +195,7 @@ class ButtonMonitoringService:
         except Exception as e:
             logger.error(f"Error executing button press callback: {e}")
 
-    def set_callback(self, callback: Callable[[], None]) -> None:
+    def set_callback(self, callback: Union[Callable[[], None], Callable[[], Awaitable[None]]]) -> None:
         """
         Set or update the callback function
 

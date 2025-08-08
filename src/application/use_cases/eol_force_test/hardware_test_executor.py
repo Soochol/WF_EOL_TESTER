@@ -73,7 +73,7 @@ class HardwareTestExecutor:
             logger.info(TestExecutionConstants.LOG_HARDWARE_CONFIG_START)
             await self._hardware_services.initialize_hardware(test_config, hardware_config)
             logger.info(TestExecutionConstants.LOG_HARDWARE_CONFIG_SUCCESS)
-
+3
             # Setup test environment
             await self._hardware_services.setup_test(test_config, hardware_config)
 

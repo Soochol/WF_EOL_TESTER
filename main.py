@@ -65,10 +65,16 @@ async def main() -> None:
         # Load hardware model
         hardware_model = await yaml_configuration.load_hardware_model()
 
+        # Create digital I/O service first (needed by both hardware facade and button monitoring)
+        hw_model_dict = hardware_model.to_dict()
+        digital_io_service = ServiceFactory.create_digital_io_service(
+            {"model": hw_model_dict["digital_io"]}
+        )
+
         # Create services
         hardware_services = None
         try:
-            hardware_services = await create_hardware_services(hardware_model)
+            hardware_services = await create_hardware_services(hardware_model, digital_io_service)
 
             (
                 configuration_service,
@@ -94,21 +100,56 @@ async def main() -> None:
         )
 
         # Create button monitoring service for dual button triggering
+        button_monitoring_service = None
         try:
-            hardware_config = await configuration_service.get_hardware_configuration()
-            
+            hardware_config = await configuration_service.load_hardware_config()
+
             # Create callback function for button press
-            def button_press_callback():
-                logger.info("Button press callback triggered - EOL test should be started via CLI")
-            
+            async def button_press_callback():
+                """Execute EOL test when both buttons are pressed"""
+                logger.info("Button press callback triggered - Starting EOL test...")
+                
+                try:
+                    # Create DUT command info for test execution
+                    from src.domain.value_objects.dut_command_info import DUTCommandInfo
+                    from src.application.use_cases.eol_force_test.main_executor import EOLForceTestCommand
+                    
+                    # Default DUT info for button-triggered tests
+                    dut_info = DUTCommandInfo(
+                        dut_id="BUTTON_TEST_001",
+                        model_number="AUTO_TRIGGER", 
+                        serial_number="BTN_" + str(int(__import__('time').time())),
+                        manufacturer="Button Trigger"
+                    )
+                    
+                    # Create command
+                    command = EOLForceTestCommand(
+                        dut_info=dut_info,
+                        operator_id="BUTTON_OPERATOR"
+                    )
+                    
+                    # Execute test
+                    logger.info(f"Starting EOL test for DUT: {dut_info.dut_id}")
+                    result = await eol_force_test_use_case.execute(command)
+                    
+                    logger.info(f"EOL test completed - Status: {result.test_status}, Passed: {result.is_passed}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to execute EOL test via button press: {e}")
+                    # More specific error handling could be added here based on exception types
+                    import traceback
+                    logger.debug(f"Button test execution traceback: {traceback.format_exc()}")
+
             button_monitoring_service = ButtonMonitoringService(
-                digital_io_service=hardware_services._digital_io,
+                digital_io_service=digital_io_service,
                 hardware_config=hardware_config,
                 eol_use_case=eol_force_test_use_case,
                 callback=button_press_callback,
             )
-            
-            logger.info("Button monitoring service created successfully")
+
+            # Start button monitoring in background
+            await button_monitoring_service.start_monitoring()
+            logger.info("Button monitoring service created and started successfully")
         except Exception as e:
             logger.warning(f"Failed to create button monitoring service: {e}")
             button_monitoring_service = None
@@ -123,14 +164,21 @@ async def main() -> None:
             logger.info("Enhanced EOL Tester application finished")
         except Exception as e:
             logger.error(f"CLI execution failed: {e}")
-            sys.exit(1)
+            raise
+        finally:
+            # Cleanup button monitoring service
+            if button_monitoring_service:
+                try:
+                    await button_monitoring_service.stop_monitoring()
+                    logger.info("Button monitoring service stopped")
+                except Exception as e:
+                    logger.error(f"Error stopping button monitoring service: {e}")
 
     except KeyboardInterrupt:
         logger.info("Application interrupted by user")
-        sys.exit(0)
     except Exception:
         logger.exception("Unexpected application error occurred")
-        sys.exit(1)
+        raise
 
 
 def setup_logging(debug: bool = False) -> None:
@@ -192,11 +240,14 @@ async def create_repositories() -> JsonResultRepository:
     return test_result_repository
 
 
-async def create_hardware_services(hardware_model: HardwareModel) -> HardwareServiceFacade:
+async def create_hardware_services(
+    hardware_model: HardwareModel, digital_io_service
+) -> HardwareServiceFacade:
     """Create hardware services based on hardware model specifications.
 
     Args:
         hardware_model: Hardware model specifications (which hardware types to use)
+        digital_io_service: Pre-created digital I/O service instance
 
     Returns:
         HardwareServiceFacade instance with configured hardware services.
@@ -209,9 +260,7 @@ async def create_hardware_services(hardware_model: HardwareModel) -> HardwareSer
     mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
     loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
     power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
-    digital_io_service = ServiceFactory.create_digital_io_service(
-        {"model": hw_model_dict["digital_io"]}
-    )
+    # Use the provided digital_io_service instead of creating a new one
 
     return HardwareServiceFacade(
         robot_service=robot_service,
