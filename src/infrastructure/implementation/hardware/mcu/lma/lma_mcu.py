@@ -1033,7 +1033,7 @@ class LMAMCU(MCUService):
                 # STX 검색 실패만 sync 재시도 가능 (STX 이후 패킷 오류는 즉시 실패)
                 if "STX pattern not found" in str(e) and not sync_attempted and enable_sync:
                     logger.debug(f"STX search failed, attempting sync recovery: {e}")
-                    if await self._find_stx_sync():
+                    if await self._find_stx_sync(timeout=response_timeout):
                         logger.info("STX sync recovery successful, retrying response")
                         sync_attempted = True
                         continue
