@@ -12,9 +12,6 @@ from loguru import logger
 from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )
-from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
-    AXLWrapper,
-)
 from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
     MAX_INPUT_CHANNELS,
     MAX_OUTPUT_CHANNELS,
@@ -34,6 +31,9 @@ from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes imp
     AjinextekOperationError,
     validate_channel_list,
     validate_pin_values,
+)
+from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
+    AXLWrapper,
 )
 from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
@@ -58,6 +58,10 @@ class AjinextekDIO(DigitalIOService):
         self._module_input_counts: Dict[int, int] = {}
         self._module_output_counts: Dict[int, int] = {}
         self._active_module_no: Optional[int] = None
+
+        # Module role tracking
+        self._input_module: Optional[int] = None
+        self._output_module: Optional[int] = None
 
         # runtime parameters
         self._module_count: int = 0
@@ -119,22 +123,61 @@ class AjinextekDIO(DigitalIOService):
                     error_code=int(AjinextekErrorCode.MODULE_NOT_FOUND),
                 ) from e
 
-            # For simplicity, use the first detected module as active
+            # Scan all modules to identify input and output modules
             if self._module_count > 0:
-                self._active_module_no = 0
-                
-                # Get module I/O counts
-                try:
-                    self._input_count = self._axl_lib.get_input_count(self._active_module_no)
-                    self._output_count = self._axl_lib.get_output_count(self._active_module_no)
-                    logger.info(f"Module {self._active_module_no}: Inputs={self._input_count}, Outputs={self._output_count}")
-                except Exception as e:
-                    logger.warning(f"Could not get I/O counts for module {self._active_module_no}: {e}")
-                    self._input_count = 16  # Default fallback
-                    self._output_count = 16
+                total_inputs = 0
+                total_outputs = 0
+
+                for module_no in range(self._module_count):
+                    try:
+                        module_inputs = self._axl_lib.get_input_count(module_no)
+                        module_outputs = self._axl_lib.get_output_count(module_no)
+
+                        logger.info(
+                            f"Module {module_no}: Inputs={module_inputs}, Outputs={module_outputs}"
+                        )
+
+                        total_inputs += module_inputs
+                        total_outputs += module_outputs
+
+                        # Identify module roles
+                        if module_inputs > 0:
+                            self._input_module = module_no
+                            logger.info(f"Input module identified: Module {module_no}")
+                        if module_outputs > 0:
+                            self._output_module = module_no
+                            logger.info(f"Output module identified: Module {module_no}")
+
+                    except Exception as e:
+                        logger.warning(f"Failed to get I/O counts for module {module_no}: {e}")
+
+                self._input_count = total_inputs
+                self._output_count = total_outputs
+
+                # Set active module (prefer output module if available, otherwise input module)
+                self._active_module_no = (
+                    self._output_module if self._output_module is not None else self._input_module
+                )
+
+                # Fallback if no modules could be scanned
+                if total_inputs == 0 and total_outputs == 0:
+                    logger.warning("No I/O channels detected, using fallback values")
+                    self._input_count = 32  # Match actual hardware spec
+                    self._output_count = 32
+                    self._input_module = 0
+                    self._output_module = 1 if self._module_count > 1 else 0
+
+                logger.info(
+                    f"Total I/O channels - Inputs: {self._input_count}, Outputs: {self._output_count}"
+                )
+                logger.info(
+                    f"Module assignment - Input module: {self._input_module}, Output module: {self._output_module}"
+                )
 
             self._is_connected = True
-            logger.info(f"AJINEXTEK DIO hardware connected successfully (IRQ: {irq_no}, Modules: {self._module_count})")
+            logger.info(
+                f"AJINEXTEK DIO hardware connected successfully (IRQ: {irq_no}, Modules: {self._module_count})"
+            )
 
         except AjinextekHardwareError:
             self._is_connected = False
@@ -636,7 +679,6 @@ class AjinextekDIO(DigitalIOService):
     # Private Methods (Internal Implementation)
     # ========================================================================
 
-
     async def _configure_module(self, module_no: int) -> None:
         """Configure specific DIO module"""
         try:
@@ -701,11 +743,11 @@ class AjinextekDIO(DigitalIOService):
     async def _read_hardware_input(self, pin: int) -> int:
         """Read input from hardware"""
         try:
-            if self._active_module_no is None:
-                raise AjinextekHardwareError("No active module configured")
+            if self._input_module is None:
+                raise AjinextekHardwareError("No input module configured")
 
-            # Read input bit from hardware
-            value = self._axl_lib.read_input_bit(self._active_module_no, pin)
+            # Read input bit from hardware using input module
+            value = self._axl_lib.read_input_bit(self._input_module, pin)
             return 1 if value else 0
 
         except Exception as e:
@@ -718,11 +760,11 @@ class AjinextekDIO(DigitalIOService):
     async def _write_hardware_output(self, pin: int, value: int) -> bool:
         """Write output to hardware"""
         try:
-            if self._active_module_no is None:
-                raise AjinextekHardwareError("No active module configured")
+            if self._output_module is None:
+                raise AjinextekHardwareError("No output module configured")
 
-            # Write output bit to hardware
-            self._axl_lib.write_output_bit(self._active_module_no, pin, bool(value))
+            # Write output bit to hardware using output module
+            self._axl_lib.write_output_bit(self._output_module, pin, bool(value))
             return True
 
         except Exception as e:
@@ -735,11 +777,11 @@ class AjinextekDIO(DigitalIOService):
     async def _read_hardware_output(self, pin: int) -> int:
         """Read output from hardware"""
         try:
-            if self._active_module_no is None:
-                raise AjinextekHardwareError("No active module configured")
+            if self._output_module is None:
+                raise AjinextekHardwareError("No output module configured")
 
-            # Read output bit from hardware
-            value = self._axl_lib.read_output_bit(self._active_module_no, pin)
+            # Read output bit from hardware using output module
+            value = self._axl_lib.read_output_bit(self._output_module, pin)
             return 1 if value else 0
 
         except Exception as e:
