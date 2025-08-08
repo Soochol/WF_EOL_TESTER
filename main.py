@@ -210,13 +210,23 @@ def setup_logging(debug: bool = False) -> None:
 
     # Console logging setup
     log_level = "DEBUG" if debug else "INFO"
+    # Custom formatter for noise detection warnings
+    def noise_formatter(record):
+        if "🔧 NOISE" in record["message"]:
+            return (
+                "<green>{time:HH:mm:ss}</green> | <yellow><bold>WARNING </bold></yellow> | "
+                "<cyan>{name}</cyan> - <yellow><bold>{message}</bold></yellow>\n"
+            )
+        else:
+            return (
+                "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
+                "<cyan>{name}</cyan> - <level>{message}</level>\n"
+            )
+    
     logger.add(
         sys.stderr,
         level=log_level,
-        format=(
-            "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
-            "<cyan>{name}</cyan> - <level>{message}</level>"
-        ),
+        format=noise_formatter,
     )
 
     # File logging setup
