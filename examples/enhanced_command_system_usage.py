@@ -1,285 +1,189 @@
-#!/usr/bin/env python3
-"""Enhanced Command System Usage Example
+"""
+Enhanced Command System Usage Example
 
-Demonstrates how to use the new enhanced command system with dependency
-injection, middleware pipeline, and command registry.
-
-This example shows:
-1. Setting up the dependency injection container
-2. Creating and configuring middleware
-3. Registering commands with the enhanced registry
-4. Creating a command parser with middleware pipeline
-5. Executing commands through the enhanced system
+This module demonstrates the usage of the enhanced CLI system with proper imports
+and examples of how to use the various components.
 """
 
+# Standard library imports
 import asyncio
-from typing import Optional
+from typing import Dict, Optional
 
-# Import the enhanced command system
-from ui.cli.commands import (
-    # Middleware
-    AuthenticationMiddleware,
-    BaseCommand,
-    CommandExecutionContext,
-    CommandFactory,
-    CommandMetadata,
-    CommandResult,
-    EnhancedCommandParser,
-    EnhancedCommandRegistry,
-    ErrorHandlingMiddleware,
-    # Core interfaces and components
-    ICommandExecutionContext,
-    LoggingMiddleware,
-    # Enhanced command handlers
-    TestCommandHandler,
-    ValidationMiddleware,
+# Third-party imports
+from rich.console import Console
+
+# Correct imports using existing modules
+from ui.cli.rich_formatter import RichFormatter
+from ui.cli.validation.input_validator import InputValidator
+
+# Other CLI imports
+from ui.cli.enhanced_cli_integration import (
+    EnhancedInputIntegrator,
+    EnhancedMenuSystem,
+    create_enhanced_cli_integrator,
+    create_enhanced_menu_system,
 )
 
-# Import dependency injection
-from ui.cli.container.dependency_container import DependencyContainer
 
-# Import existing implementations for services
-from ui.cli.implementation.formatter import RichFormatter
-from ui.cli.implementation.validation import SecurityInputValidator
-from ui.cli.interfaces.formatter_interface import IFormatter
-from ui.cli.interfaces.validation_interface import IInputValidator
+class EnhancedCommandSystemExample:
+    """Example class demonstrating the enhanced command system usage"""
 
-
-class ExampleCommand(BaseCommand):
-    """Example command showing the enhanced command system features."""
-
-    def __init__(self, formatter: Optional[IFormatter] = None):
-        metadata = CommandMetadata(
-            name="example",
-            description="Example command demonstrating enhanced features",
-            category="demo",
-            aliases=["ex", "demo"],
-            examples=[
-                "/example - Show basic example",
-                "/example advanced - Show advanced features",
-            ],
-            help_text="This command demonstrates the enhanced command system "
-            "with dependency injection and middleware support.",
-            version="1.0.0",
-            author="Enhanced Command System",
+    def __init__(self):
+        """Initialize the enhanced command system example"""
+        # Create console and formatter
+        self.console = Console(force_terminal=True, legacy_windows=False)
+        self.formatter = RichFormatter(self.console)
+        
+        # Create validator
+        self.validator = InputValidator()
+        
+        # Create enhanced integrator and menu system
+        self.integrator = create_enhanced_cli_integrator(
+            self.console, self.formatter, None  # No configuration service for example
         )
-
-        super().__init__(metadata)
-        self._formatter = formatter
-
-    async def execute(self, args: list[str], context: ICommandExecutionContext) -> CommandResult:
-        """Execute the example command."""
-        # Get formatter from context if not provided
-        if not self._formatter:
-            try:
-                self._formatter = context.get_service(IFormatter)
-            except ValueError:
-                pass  # Use basic output
-
-        if not args:
-            message = (
-                "Enhanced Command System Demo\n\n"
-                "Features demonstrated:\n"
-                "• Dependency injection integration\n"
-                "• Middleware pipeline processing\n"
-                "• Enhanced validation and error handling\n"
-                "• Rich UI formatting support\n"
-                "• Comprehensive logging and metrics\n\n"
-                "Try: /example advanced"
-            )
-        elif args[0].lower() == "advanced":
-            user_id = context.user_id or "anonymous"
-            session_data = context.session_data
-            config = context.configuration
-
-            message = (
-                f"Advanced Features Demo\n\n"
-                f"Execution Context:\n"
-                f"• User ID: {user_id}\n"
-                f"• Session Data Keys: {list(session_data.keys())}\n"
-                f"• Configuration Keys: {list(config.keys())}\n\n"
-                f"Middleware Processing:\n"
-                f"• Authentication: Validated user access\n"
-                f"• Validation: Checked input security\n"
-                f"• Logging: Recorded execution metrics\n"
-                f"• Error Handling: Provided recovery guidance\n"
+        self.menu_system = create_enhanced_menu_system(self.integrator)
+        
+    async def demonstrate_menu_system(self) -> None:
+        """Demonstrate the enhanced menu system"""
+        self.formatter.print_header(
+            "Enhanced Menu System Demo",
+            "Demonstrating advanced menu features with Rich formatting"
+        )
+        
+        # Show the main menu
+        choice = await self.menu_system.show_main_menu_enhanced()
+        
+        if choice:
+            self.formatter.print_message(
+                f"You selected option: {choice}",
+                message_type="success",
+                title="Menu Selection"
             )
         else:
-            return CommandResult.error(
-                f"Unknown subcommand: {args[0]}", error_details={"valid_subcommands": ["advanced"]}
+            self.formatter.print_message(
+                "No selection made",
+                message_type="info"
             )
-
-        # Use formatter if available
-        if self._formatter:
-            self._formatter.print_message(message, "info", "Command System Demo")
+    
+    async def demonstrate_input_validation(self) -> None:
+        """Demonstrate input validation features"""
+        self.formatter.print_header(
+            "Input Validation Demo",
+            "Demonstrating input validation with the InputValidator"
+        )
+        
+        # Example of validated input
+        try:
+            result = await self.integrator.get_validated_input(
+                prompt="Enter a test value: ",
+                input_type="general",
+                required=True,
+                placeholder="Type any value to test validation"
+            )
+            
+            if result:
+                # Validate the input using the validator
+                is_valid = self.validator.validate_input(result, "general")
+                
+                if is_valid:
+                    self.formatter.print_message(
+                        f"Input '{result}' is valid!",
+                        message_type="success"
+                    )
+                else:
+                    self.formatter.print_message(
+                        f"Input '{result}' failed validation",
+                        message_type="warning"
+                    )
+                    
+        except Exception as e:
+            self.formatter.print_message(
+                f"Validation error: {e}",
+                message_type="error"
+            )
+    
+    async def demonstrate_dut_collection(self) -> None:
+        """Demonstrate DUT information collection"""
+        self.formatter.print_header(
+            "DUT Information Collection Demo",
+            "Demonstrating DUT data collection workflow"
+        )
+        
+        # This would normally require a configuration service
+        self.formatter.print_message(
+            "DUT information collection requires configuration service",
+            message_type="info",
+            title="Configuration Required"
+        )
+        
+        # Example of confirmation dialog
+        proceed = await self.integrator.get_confirmation(
+            "Would you like to continue with the demo?",
+            default=True
+        )
+        
+        if proceed:
+            self.formatter.print_message(
+                "Continuing with demo...",
+                message_type="success"
+            )
         else:
-            print(message)
-
-        return CommandResult.success(
-            "Example command executed successfully",
-            data={"mode": "advanced" if args and args[0].lower() == "advanced" else "basic"},
+            self.formatter.print_message(
+                "Demo cancelled by user",
+                message_type="info"
+            )
+    
+    async def run_complete_demo(self) -> None:
+        """Run the complete demonstration"""
+        self.formatter.print_header(
+            "Enhanced Command System Complete Demo",
+            "Full demonstration of enhanced CLI capabilities"
         )
-
-    def get_subcommands(self) -> dict[str, str]:
-        return {
-            "": "Show basic command system features",
-            "advanced": "Show advanced features with context information",
-        }
-
-
-async def setup_enhanced_command_system():
-    """Set up the enhanced command system with all components."""
-
-    print("Setting up Enhanced Command System...")
-
-    # 1. Create dependency injection container
-    container = DependencyContainer()
-
-    # 2. Register services with the container
-    container.register_singleton(IFormatter, RichFormatter)
-    container.register_singleton(IInputValidator, SecurityInputValidator)
-
-    # 3. Create command factory
-    factory = CommandFactory(container)
-
-    # 4. Create command registry
-    registry = EnhancedCommandRegistry()
-
-    # 5. Create and register middleware (in priority order)
-    auth_middleware = AuthenticationMiddleware(
-        require_authentication=False,  # Disabled for demo
-        guest_allowed_commands={"example", "help", "exit"},
-    )
-
-    validation_middleware = ValidationMiddleware(enable_strict_validation=True)
-
-    logging_middleware = LoggingMiddleware(
-        log_level="INFO", include_args=True, include_performance=True, include_user_context=True
-    )
-
-    error_middleware = ErrorHandlingMiddleware(
-        include_stack_trace=False, enable_recovery_suggestions=True
-    )
-
-    # Register global middleware
-    registry.register_middleware(auth_middleware)
-    registry.register_middleware(validation_middleware)
-    registry.register_middleware(logging_middleware)
-    registry.register_middleware(error_middleware)
-
-    # 6. Create and register commands
-    example_command = factory.create_command(ExampleCommand)
-    registry.register_command(example_command)
-
-    # Create test command handler with DI
-    test_command = factory.create_command(TestCommandHandler)
-    registry.register_command(test_command)
-
-    # 7. Create enhanced command parser with registry
-    parser = EnhancedCommandParser()
-
-    # Register commands with parser
-    for command_name, command in registry.get_all_commands().items():
-        middleware = registry.get_middleware_for_command(command_name)
-        parser.register_command(command, middleware)
-
-    # Register global middleware with parser
-    for middleware in [
-        auth_middleware,
-        validation_middleware,
-        logging_middleware,
-        error_middleware,
-    ]:
-        parser.register_global_middleware(middleware)
-
-    print("Enhanced Command System Ready!")
-    print(f"• Commands registered: {len(registry.get_all_commands())}")
-    print(
-        f"• Middleware registered: {registry.get_registry_statistics()['total_global_middleware']}"
-    )
-    print(f"• Categories: {', '.join(registry.get_all_categories())}")
-
-    return parser, container, registry
-
-
-async def demo_command_execution(parser: EnhancedCommandParser, container: DependencyContainer):
-    """Demonstrate command execution with the enhanced system."""
-
-    print("\n" + "=" * 60)
-    print("ENHANCED COMMAND SYSTEM DEMO")
-    print("=" * 60)
-
-    # Create execution context
-    context = CommandExecutionContext(
-        container=container,
-        user_id="demo_user",
-        session_data={"session_id": "demo_session_123", "role": "user"},
-        configuration={"demo_mode": True, "log_level": "INFO"},
-    )
-
-    # Demo commands to execute
-    demo_commands = [
-        "/example",
-        "/example advanced",
-        "/test help",  # This will show help for test command
-        "/invalid_command",  # This will demonstrate error handling
-        "/example invalid_sub",  # This will demonstrate validation
-    ]
-
-    for i, command_input in enumerate(demo_commands, 1):
-        print(f"\n[{i}] Executing: {command_input}")
-        print("-" * 40)
-
-        # Execute command through enhanced parser
-        result = await parser.execute_command(command_input, context)
-
-        # Display result
-        status_icon = {"success": "✅", "error": "❌", "warning": "⚠️", "info": "ℹ️"}.get(
-            result.status.value, "❓"
-        )
-
-        print(f"Result: {status_icon} {result.status.value.upper()}")
-        print(f"Message: {result.message}")
-
-        if result.execution_time_ms:
-            print(f"Execution Time: {result.execution_time_ms:.2f}ms")
-
-        if result.data:
-            print(f"Data: {result.data}")
-
-        if result.error_details:
-            print(f"Error Details: {result.error_details}")
-
-        if result.middleware_data:
-            print(f"Middleware Data: {result.middleware_data}")
-
-    print("\n" + "=" * 60)
-    print("DEMO COMPLETED")
-    print("=" * 60)
+        
+        try:
+            # Demonstrate menu system
+            await self.demonstrate_menu_system()
+            await self.integrator.wait_for_acknowledgment()
+            
+            # Demonstrate input validation
+            await self.demonstrate_input_validation()
+            await self.integrator.wait_for_acknowledgment()
+            
+            # Demonstrate DUT collection
+            await self.demonstrate_dut_collection()
+            
+            self.formatter.print_message(
+                "Demo completed successfully!",
+                message_type="success",
+                title="Demo Complete"
+            )
+            
+        except KeyboardInterrupt:
+            self.formatter.print_message(
+                "Demo interrupted by user",
+                message_type="info",
+                title="Demo Cancelled"
+            )
+        except Exception as e:
+            self.formatter.print_message(
+                f"Demo error: {e}",
+                message_type="error",
+                title="Demo Error"
+            )
 
 
 async def main():
-    """Main demo function."""
+    """Main function to run the enhanced command system example"""
     try:
-        # Set up the enhanced command system
-        parser, container, registry = await setup_enhanced_command_system()
-
-        # Run the demo
-        await demo_command_execution(parser, container)
-
-        # Show registry statistics
-        stats = registry.get_registry_statistics()
-        print("\nRegistry Statistics:")
-        for key, value in stats.items():
-            print(f"  {key}: {value}")
-
+        # Create and run the example
+        example = EnhancedCommandSystemExample()
+        await example.run_complete_demo()
+        
     except Exception as e:
-        print(f"Demo failed: {e}")
-        import traceback
-
-        traceback.print_exc()
+        console = Console()
+        console.print(f"[red]Example execution error: {e}[/red]")
 
 
 if __name__ == "__main__":
-    # Run the demo
+    # Run the example
     asyncio.run(main())

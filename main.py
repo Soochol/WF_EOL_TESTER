@@ -18,6 +18,7 @@ from loguru import logger
 from src.application.services.button_monitoring_service import ButtonMonitoringService
 from src.application.services.configuration_service import ConfigurationService
 from src.application.services.configuration_validator import ConfigurationValidator
+from src.application.services.emergency_stop_service import EmergencyStopService
 from src.application.services.exception_handler import ExceptionHandler
 from src.application.services.hardware_service_facade import HardwareServiceFacade
 from src.application.services.repository_service import RepositoryService
@@ -125,7 +126,13 @@ async def main() -> None:
             exception_handler=exception_handler,
         )
 
-        # Create button monitoring service for dual button triggering
+        # Create Emergency Stop Service
+        emergency_stop_service = EmergencyStopService(
+            hardware_facade=hardware_services,
+            eol_use_case=eol_force_test_use_case,
+        )
+        
+        # Create button monitoring service for dual button triggering and emergency stop
         button_monitoring_service = None
         try:
             hardware_config = await configuration_service.load_hardware_config()
@@ -166,12 +173,27 @@ async def main() -> None:
                     import traceback
                     logger.debug(f"Button test execution traceback: {traceback.format_exc()}")
 
+            # Create emergency stop callback
+            async def emergency_stop_callback():
+                """Execute emergency stop procedure when emergency button is pressed"""
+                logger.critical("Emergency stop callback triggered!")
+                try:
+                    await emergency_stop_service.execute_emergency_stop()
+                except Exception as e:
+                    logger.error(f"Emergency stop execution failed: {e}")
+                    # Emergency stop failures should not prevent system safety
+                    import traceback
+                    logger.debug(f"Emergency stop traceback: {traceback.format_exc()}")
+
             button_monitoring_service = ButtonMonitoringService(
                 digital_io_service=digital_io_service,
                 hardware_config=hardware_config,
                 eol_use_case=eol_force_test_use_case,
                 callback=button_press_callback,
             )
+            
+            # Set emergency stop callback
+            button_monitoring_service.set_emergency_stop_callback(emergency_stop_callback)
 
             # Start button monitoring in background
             await button_monitoring_service.start_monitoring()

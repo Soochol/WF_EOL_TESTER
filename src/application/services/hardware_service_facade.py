@@ -93,6 +93,35 @@ class HardwareServiceFacade:
             self._digital_io = digital_io_service
 
     # ============================================================================
+    # 서비스 접근자 (Public Accessors)
+    # ============================================================================
+
+    @property
+    def robot_service(self) -> RobotService:
+        """Get robot service instance"""
+        return self._robot
+
+    @property
+    def mcu_service(self) -> MCUService:
+        """Get MCU service instance"""
+        return self._mcu
+
+    @property
+    def loadcell_service(self) -> LoadCellService:
+        """Get loadcell service instance"""
+        return self._loadcell
+
+    @property
+    def power_service(self) -> PowerService:
+        """Get power service instance"""
+        return self._power
+
+    @property
+    def digital_io_service(self) -> DigitalIOService:
+        """Get digital I/O service instance"""
+        return self._digital_io
+
+    # ============================================================================
     # 기본 하드웨어 관리 (라이프사이클 순서)
     # ============================================================================
 
@@ -280,7 +309,7 @@ class HardwareServiceFacade:
             await self._robot.enable_servo(hardware_config.robot.axis_id)
             logger.info("Robot servo enabled successfully")
 
-            logger.info(f"Moving robot to initial position: {test_config.initial_position}mm")
+            logger.info(f"Moving robot to initial position: {test_config.initial_position}μm")
             await self._robot.move_absolute(
                 position=test_config.initial_position,
                 axis_id=hardware_config.robot.axis_id,
@@ -325,9 +354,7 @@ class HardwareServiceFacade:
                 standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
             )
             logger.info(
-                "MCU standby heating started - operating: %s°C, standby: %s°C",
-                test_config.activation_temperature,
-                calculated_standby_temp,
+                f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
             )
 
             # Robot to max stroke position using parameters from hardware config
@@ -338,7 +365,7 @@ class HardwareServiceFacade:
                 acceleration=hardware_config.robot.acceleration,
                 deceleration=hardware_config.robot.deceleration,
             )
-            logger.info(f"Robot moved to max stroke position: {test_config.max_stroke}mm")
+            logger.info(f"Robot moved to max stroke position: {test_config.max_stroke}μm")
 
             # Wait for standby heating stabilization
             await asyncio.sleep(test_config.standby_stabilization)
@@ -352,7 +379,7 @@ class HardwareServiceFacade:
                 acceleration=hardware_config.robot.acceleration,
                 deceleration=hardware_config.robot.deceleration,
             )
-            logger.info(f"Robot moved to initial position: {test_config.initial_position}mm")
+            logger.info(f"Robot moved to initial position: {test_config.initial_position}μm")
 
             # MCU start standby cooling
             await self._mcu.start_standby_cooling()
@@ -430,10 +457,7 @@ class HardwareServiceFacade:
         logger.info("Starting force test sequence...")
         total_tests = len(test_config.temperature_list) * len(test_config.stroke_positions)
         logger.info(
-            "Test matrix: %s×%s = %s measurements",
-            len(test_config.temperature_list),
-            len(test_config.stroke_positions),
-            total_tests,
+            f"Test matrix: {len(test_config.temperature_list)}×{len(test_config.stroke_positions)} = {total_tests} measurements"
         )
 
         measurements_dict: Dict[float, Dict[float, Dict[str, Any]]] = {}
@@ -442,10 +466,7 @@ class HardwareServiceFacade:
             # Outer loop: Iterate through temperature list
             for temp_idx, temperature in enumerate(test_config.temperature_list):
                 logger.info(
-                    "Setting temperature to %s°C (%s/%s)",
-                    temperature,
-                    temp_idx + 1,
-                    len(test_config.temperature_list),
+                    f"Setting temperature to {temperature}°C ({temp_idx + 1}/{len(test_config.temperature_list)})"
                 )
 
                 # Loadcell holds force measurement
@@ -467,7 +488,7 @@ class HardwareServiceFacade:
                 # Inner loop: Iterate through stroke positions
                 for pos_idx, position in enumerate(test_config.stroke_positions):
                     logger.info(
-                        f"Measuring at temp {temperature}°C, position {position}mm ({pos_idx+1}/{len(test_config.stroke_positions)})"
+                        f"Measuring at temp {temperature}°C, position {position}μm ({pos_idx+1}/{len(test_config.stroke_positions)})"
                     )
 
                     # Move to position using parameters from hardware config
@@ -512,8 +533,7 @@ class HardwareServiceFacade:
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
                 )
                 logger.info(
-                    "MCU standby heating started - operating: %s°C",
-                    test_config.activation_temperature,
+                    f"MCU standby heating started - operating: {test_config.activation_temperature}°C"
                 )
 
                 # Robot to initial stroke position
@@ -526,12 +546,11 @@ class HardwareServiceFacade:
                 )
 
                 await asyncio.sleep(test_config.stabilization_delay)
-                logger.info(f"Robot returned to initial position: {test_config.initial_position}mm")
+                logger.info(f"Robot returned to initial position: {test_config.initial_position}μm")
 
                 await self._mcu.start_standby_cooling()
                 logger.info(
-                    "MCU standby heating started - standby: %s°C",
-                    calculated_standby_temp,
+                    f"MCU standby cooling started - standby: {calculated_standby_temp}°C"
                 )
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
@@ -540,13 +559,10 @@ class HardwareServiceFacade:
             measurements = TestMeasurements.from_legacy_dict(measurements_dict)
 
             logger.info(
-                "Force test sequence completed with %s measurements",
-                measurements.get_total_measurement_count(),
+                f"Force test sequence completed with {measurements.get_total_measurement_count()} measurements"
             )
             logger.info(
-                "Test matrix completed: %s temperatures × %s positions",
-                measurements.get_temperature_count(),
-                len(test_config.stroke_positions),
+                f"Test matrix completed: {measurements.get_temperature_count()} temperatures × {len(test_config.stroke_positions)} positions"
             )
             return measurements
 

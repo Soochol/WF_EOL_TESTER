@@ -59,9 +59,9 @@ class MCUConfig:
     """MCU device configuration (LMA)"""
 
     # Connection parameters
-    port: str = "COM4"
+    port: str = "COM9"
     baudrate: int = 115200
-    timeout: float = 2.0
+    timeout: float = 60.0
     bytesize: int = 8
     stopbits: int = 1
     parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
@@ -72,8 +72,8 @@ class PowerConfig:
     """Power supply configuration (ODA)"""
 
     # Connection parameters
-    host: str = "192.168.1.100"
-    port: int = 8080
+    host: str = "192.168.11.1"
+    port: int = 5000
     timeout: float = 5.0
     channel: int = 1
 
@@ -86,10 +86,25 @@ class DigitalIOConfig:
     """Digital Input configuration (AJINEXTEK)"""
 
     # Digital Input connection parameters
+
+    # Operator start buttons
     operator_start_button_left: int = 1
     operator_start_button_right: int = 2
 
+    # Safety sensor parameters
+    # Sensor to verify product is safely clamped
+    dut_clamp_safety_sensor: int = 10
+    # Sensor to verify product is properly chained for safe operation
+    dut_chain_safety_sensor: int = 11
+
+    # Sensor to verifty that safety door is closed
+    safety_door_closed_sensor: int = 12
+
+    # emergency stop button
+    emergency_stop_button: int = 3
+
     # Digital Output parameters
+
     servo1_brake_release: int = 1
     tower_lamp_red: int = 4
     tower_lamp_yellow: int = 5

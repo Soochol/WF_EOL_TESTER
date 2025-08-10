@@ -38,8 +38,8 @@ class MockRobot(RobotService):
 
         # Mock-specific settings
         self._model = "MOCK"
-        self._max_position = 1000.0
-        self._max_velocity = 500.0
+        self._max_position = 500000.0  # μm
+        self._max_velocity = 100000.0  # μm/s
         self._response_delay = 0.1
         self._axis_count = 6
 
@@ -95,7 +95,7 @@ class MockRobot(RobotService):
             axis: 축 번호
 
         Returns:
-            현재 위치 (mm)
+            현재 위치 (μm)
 
         Raises:
             HardwareConnectionError: If robot is not connected
@@ -104,7 +104,7 @@ class MockRobot(RobotService):
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
         # 작은 노이즈 추가로 실제 하드웨어 시뮬레이션
-        noise = random.uniform(-0.01, 0.01)  # ±0.01mm 노이즈
+        noise = random.uniform(-10, 10)  # ±10μm 노이즈
         return self._current_position + noise
 
     async def get_current_position(self, axis: int) -> float:
@@ -115,7 +115,7 @@ class MockRobot(RobotService):
             axis: 축 번호 (0부터 시작)
 
         Returns:
-            현재 위치 (mm)
+            현재 위치 (μm)
 
         Raises:
             HardwareConnectionError: If robot is not connected
@@ -131,7 +131,7 @@ class MockRobot(RobotService):
             )
 
         # Same as get_position but with different method name for compatibility
-        noise = random.uniform(-0.01, 0.01)  # ±0.01mm 노이즈
+        noise = random.uniform(-10, 10)  # ±10μm 노이즈
         return self._current_position + noise
 
     async def move_absolute(
@@ -146,11 +146,11 @@ class MockRobot(RobotService):
         Move axis to absolute position with motion parameters
 
         Args:
-            position: Target position in mm
+            position: Target position in μm
             axis_id: Axis ID number
-            velocity: Motion velocity
-            acceleration: Motion acceleration
-            deceleration: Motion deceleration
+            velocity: Motion velocity in μm/s
+            acceleration: Motion acceleration in μm/s²
+            deceleration: Motion deceleration in μm/s²
 
         Raises:
             HardwareOperationError: If movement fails
@@ -169,20 +169,20 @@ class MockRobot(RobotService):
             raise HardwareOperationError(
                 "mock_robot",
                 "move_absolute",
-                f"Position {position} exceeds limit ±{self._max_position}mm",
+                f"Position {position} exceeds limit ±{self._max_position}μm",
             )
 
         if velocity > self._max_velocity:
             raise HardwareOperationError(
                 "mock_robot",
                 "move_absolute",
-                f"Velocity {velocity} exceeds maximum {self._max_velocity} mm/s",
+                f"Velocity {velocity} exceeds maximum {self._max_velocity} μm/s",
             )
 
         try:
             logger.info(
-                f"Moving mock robot axis {axis_id} to position {position}mm "
-                f"(vel: {velocity}mm/s, acc: {acceleration}mm/s², dec: {deceleration}mm/s²)"
+                f"Moving mock robot axis {axis_id} to position {position}μm "
+                f"(vel: {velocity}μm/s, acc: {acceleration}μm/s², dec: {deceleration}μm/s²)"
             )
 
             self._motion_status = MotionStatus.MOVING
@@ -205,10 +205,10 @@ class MockRobot(RobotService):
             self._current_position = position
             self._motion_status = MotionStatus.IDLE
 
-            logger.info(f"Mock robot axis {axis_id} reached position {position}mm")
+            logger.info(f"Mock robot axis {axis_id} reached position {position}μm")
 
         except Exception as e:
-            logger.error(f"Failed to move mock robot axis {axis_id} to position {position}mm: {e}")
+            logger.error(f"Failed to move mock robot axis {axis_id} to position {position}μm: {e}")
             self._motion_status = MotionStatus.ERROR
             raise HardwareOperationError("mock_robot", "move_absolute", str(e)) from e
 
@@ -224,11 +224,11 @@ class MockRobot(RobotService):
         Move axis by relative distance
 
         Args:
-            distance: Distance to move in mm
+            distance: Distance to move in μm
             axis_id: Axis ID number
-            velocity: Motion velocity
-            acceleration: Motion acceleration
-            deceleration: Motion deceleration
+            velocity: Motion velocity in μm/s
+            acceleration: Motion acceleration in μm/s²
+            deceleration: Motion deceleration in μm/s²
 
         Raises:
             HardwareOperationError: If movement fails
@@ -277,14 +277,14 @@ class MockRobot(RobotService):
 
         try:
             logger.info(
-                f"Stopping motion on mock robot axis {axis_id} with deceleration {deceleration}mm/s²"
+                f"Stopping motion on mock robot axis {axis_id} with deceleration {deceleration}μm/s²"
             )
 
             # 시뮬레이션: 즉시 정지
             self._motion_status = MotionStatus.IDLE
             self._axis_velocity = 0.0
 
-            logger.info(f"Mock robot axis {axis_id} stopped at position {self._current_position}mm")
+            logger.info(f"Mock robot axis {axis_id} stopped at position {self._current_position}μm")
 
         except Exception as e:
             logger.error(f"Failed to stop mock robot axis {axis_id}: {e}")
@@ -319,7 +319,7 @@ class MockRobot(RobotService):
             self._axis_velocity = 0.0
 
             logger.info(
-                f"Mock robot axis {axis} emergency stopped at position {self._current_position}mm"
+                f"Mock robot axis {axis} emergency stopped at position {self._current_position}μm"
             )
 
         except Exception as e:
@@ -491,7 +491,7 @@ class MockRobot(RobotService):
             self._current_position = 0.0
             self._motion_status = MotionStatus.IDLE
 
-            logger.info(f"Mock robot axis {axis} homed to position 0.0mm")
+            logger.info(f"Mock robot axis {axis} homed to position 0.0μm")
 
         except Exception as e:
             logger.error(f"Failed to home mock robot axis {axis}: {e}")

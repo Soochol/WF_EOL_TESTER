@@ -6,7 +6,7 @@ when both buttons are pressed simultaneously.
 """
 
 import asyncio
-from typing import TYPE_CHECKING, Callable, Optional, Union, Awaitable, Any
+from typing import TYPE_CHECKING, Callable, Optional, Union, Awaitable
 
 from loguru import logger
 
@@ -51,8 +51,17 @@ class ButtonMonitoringService:
         self.left_button_channel = hardware_config.digital_io.operator_start_button_left
         self.right_button_channel = hardware_config.digital_io.operator_start_button_right
 
-        # Event for signaling button press
+        # Safety sensor channels from configuration
+        self.clamp_sensor_channel = hardware_config.digital_io.dut_clamp_safety_sensor
+        self.chain_sensor_channel = hardware_config.digital_io.dut_chain_safety_sensor
+        self.door_sensor_channel = hardware_config.digital_io.safety_door_closed_sensor
+        
+        # Emergency stop button channel from configuration
+        self.emergency_stop_channel = hardware_config.digital_io.emergency_stop_button
+
+        # Events for signaling button presses
         self.button_pressed_event = asyncio.Event()
+        self.emergency_stop_event = asyncio.Event()
 
         # Monitoring state
         self._monitoring_task: Optional[asyncio.Task] = None
@@ -63,8 +72,13 @@ class ButtonMonitoringService:
         self._polling_interval = 0.1  # seconds
 
         logger.info(
-            f"ButtonMonitoringService initialized - Left: channel {self.left_button_channel}, "
-            f"Right: channel {self.right_button_channel}"
+            f"ButtonMonitoringService initialized - "
+            f"Left button: channel {self.left_button_channel}, "
+            f"Right button: channel {self.right_button_channel}, "
+            f"Emergency stop: channel {self.emergency_stop_channel}, "
+            f"Clamp safety sensor: channel {self.clamp_sensor_channel}, "
+            f"Chain safety sensor: channel {self.chain_sensor_channel}, "
+            f"Door safety sensor: channel {self.door_sensor_channel}"
         )
 
     async def start_monitoring(self) -> None:
@@ -134,6 +148,28 @@ class ButtonMonitoringService:
         finally:
             logger.info("Button monitoring loop ended")
 
+    async def _check_safety_sensors(self) -> bool:
+        """
+        Check if all safety sensors are active
+
+        Returns:
+            True if all safety sensors (clamp, chain, door) are active, False otherwise
+        """
+        try:
+            clamp_sensor_active = await self.digital_io.read_input(self.clamp_sensor_channel)
+            chain_sensor_active = await self.digital_io.read_input(self.chain_sensor_channel)
+            door_sensor_active = await self.digital_io.read_input(self.door_sensor_channel)
+
+            logger.debug(
+                f"Safety sensor states - Clamp: {clamp_sensor_active}, "
+                f"Chain: {chain_sensor_active}, Door: {door_sensor_active}"
+            )
+
+            return clamp_sensor_active and chain_sensor_active and door_sensor_active
+        except Exception as e:
+            logger.error(f"Error reading safety sensors: {e}")
+            return False
+
     async def _process_button_cycle(self) -> None:
         """Process a single button monitoring cycle"""
         # Check if digital I/O service is connected
@@ -142,22 +178,41 @@ class ButtonMonitoringService:
             await asyncio.sleep(1.0)
             return
 
-        # Read both button states
+        # Read emergency stop button first (highest priority)
+        emergency_stop_pressed = await self.digital_io.read_input(self.emergency_stop_channel)
+        
+        if emergency_stop_pressed:
+            logger.critical("🚨 EMERGENCY STOP BUTTON PRESSED! 🚨")
+            await self._handle_emergency_stop()
+            return  # Skip other button checks during emergency
+
+        # Read both operator start button states
         left_button_pressed = await self.digital_io.read_input(self.left_button_channel)
         right_button_pressed = await self.digital_io.read_input(self.right_button_channel)
 
         # Check for simultaneous press (industrial safety requirement)
         if left_button_pressed and right_button_pressed:
-            await self._handle_button_press()
+            # Check safety sensors before proceeding
+            if await self._check_safety_sensors():
+                await self._handle_button_press()
+            else:
+                logger.warning(
+                    "Both buttons pressed but safety sensors not satisfied - "
+                    "DUT must be properly clamped, chained, and safety door must be closed"
+                )
+                # Apply polling interval to prevent rapid warnings
+                await asyncio.sleep(self._polling_interval)
         else:
             # Polling interval
             await asyncio.sleep(self._polling_interval)
 
     async def _handle_button_press(self) -> None:
-        """Handle dual button press event"""
+        """Handle dual button press event with safety confirmation"""
         logger.info(
-            f"Dual button press detected! Left: {self.left_button_channel}, "
-            f"Right: {self.right_button_channel}"
+            f"Dual button press detected with all safety sensors satisfied! "
+            f"Buttons - Left: {self.left_button_channel}, Right: {self.right_button_channel}, "
+            f"Safety sensors - Clamp: {self.clamp_sensor_channel}, Chain: {self.chain_sensor_channel}, "
+            f"Door: {self.door_sensor_channel}"
         )
 
         # Check if EOL test is currently running to prevent duplicate execution
@@ -244,20 +299,37 @@ class ButtonMonitoringService:
                     "connected": False,
                     "left_button": None,
                     "right_button": None,
+                    "emergency_stop": None,
                     "left_channel": self.left_button_channel,
                     "right_channel": self.right_button_channel,
+                    "emergency_stop_channel": self.emergency_stop_channel,
                 }
 
             left_state = await self.digital_io.read_input(self.left_button_channel)
             right_state = await self.digital_io.read_input(self.right_button_channel)
+            emergency_stop_state = await self.digital_io.read_input(self.emergency_stop_channel)
+            clamp_sensor_state = await self.digital_io.read_input(self.clamp_sensor_channel)
+            chain_sensor_state = await self.digital_io.read_input(self.chain_sensor_channel)
+            door_sensor_state = await self.digital_io.read_input(self.door_sensor_channel)
 
             return {
                 "connected": True,
                 "left_button": left_state,
                 "right_button": right_state,
+                "emergency_stop": emergency_stop_state,
                 "left_channel": self.left_button_channel,
                 "right_channel": self.right_button_channel,
+                "emergency_stop_channel": self.emergency_stop_channel,
                 "both_pressed": left_state and right_state,
+                "clamp_safety_sensor": clamp_sensor_state,
+                "chain_safety_sensor": chain_sensor_state,
+                "door_safety_sensor": door_sensor_state,
+                "clamp_sensor_channel": self.clamp_sensor_channel,
+                "chain_sensor_channel": self.chain_sensor_channel,
+                "door_sensor_channel": self.door_sensor_channel,
+                "emergency_stop_active": emergency_stop_state,
+                "safety_sensors_satisfied": clamp_sensor_state and chain_sensor_state and door_sensor_state,
+                "all_conditions_met": left_state and right_state and clamp_sensor_state and chain_sensor_state and door_sensor_state,
                 "monitoring": self._is_monitoring,
                 "debounce_time": self._debounce_time,
                 "polling_interval": self._polling_interval,
@@ -269,7 +341,55 @@ class ButtonMonitoringService:
                 "error": str(e),
                 "left_channel": self.left_button_channel,
                 "right_channel": self.right_button_channel,
+                "emergency_stop_channel": self.emergency_stop_channel,
+                "clamp_sensor_channel": self.clamp_sensor_channel,
+                "chain_sensor_channel": self.chain_sensor_channel,
+                "door_sensor_channel": self.door_sensor_channel,
             }
+
+    async def _handle_emergency_stop(self) -> None:
+        """Handle emergency stop button press with immediate hardware safety actions"""
+        logger.critical(
+            f"🚨 EMERGENCY STOP ACTIVATED! Channel: {self.emergency_stop_channel} 🚨"
+        )
+        
+        # Signal emergency stop event
+        self.emergency_stop_event.set()
+        
+        # Execute emergency stop callback if provided
+        await self._execute_emergency_stop_callback()
+        
+        # Emergency stops typically don't have debounce period - immediate action required
+        # But we clear the event after handling
+        self.emergency_stop_event.clear()
+        
+        logger.critical("Emergency stop handling completed")
+
+    async def _execute_emergency_stop_callback(self) -> None:
+        """Execute emergency stop specific callback if available"""
+        # For emergency stop, we need a dedicated callback
+        # This will be set when integrating with main application
+        if hasattr(self, 'emergency_stop_callback') and self.emergency_stop_callback:
+            try:
+                if asyncio.iscoroutinefunction(self.emergency_stop_callback):
+                    await self.emergency_stop_callback()
+                else:
+                    self.emergency_stop_callback()
+                logger.info("Emergency stop callback executed successfully")
+            except Exception as e:
+                logger.error(f"Error executing emergency stop callback: {e}")
+        else:
+            logger.warning("No emergency stop callback configured - only logging emergency stop")
+
+    def set_emergency_stop_callback(self, callback: Union[Callable[[], None], Callable[[], Awaitable[None]]]) -> None:
+        """
+        Set emergency stop callback function
+        
+        Args:
+            callback: Function to call when emergency stop is pressed
+        """
+        self.emergency_stop_callback = callback
+        logger.info("Emergency stop callback configured")
 
     def is_monitoring(self) -> bool:
         """
@@ -287,4 +407,5 @@ class ButtonMonitoringService:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
+        _ = exc_type, exc_val, exc_tb  # Unused parameters
         await self.stop_monitoring()

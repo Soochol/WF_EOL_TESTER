@@ -33,14 +33,14 @@ class TestConfiguration:
     standby_temperature: float = 40.0
     fan_speed: int = 10
 
-    # Motion control settings
-    velocity: float = 100.0
-    acceleration: float = 100.0
-    deceleration: float = 100.0
+    # Motion control settings (μm/s, μm/s²)
+    velocity: float = 60000.0  # μm/s
+    acceleration: float = 60000.0  # μm/s²
+    deceleration: float = 60000.0  # μm/s²
 
-    # Positioning settings
-    initial_position: float = 10.0
-    max_stroke: float = 240.0
+    # Positioning settings (μm)
+    initial_position: float = 10000.0  # μm (10mm)
+    max_stroke: float = 240000.0  # μm (240mm)
 
     # Test parameters
     temperature_list: List[float] = field(
@@ -61,13 +61,13 @@ class TestConfiguration:
     )
     stroke_positions: List[float] = field(
         default_factory=lambda: [
-            10.0,
-            60.0,
-            100.0,
-            140.0,
-            180.0,
-            220.0,
-            240.0,
+            10000.0,  # 10mm in μm
+            60000.0,  # 60mm in μm
+            100000.0,  # 100mm in μm
+            140000.0,  # 140mm in μm
+            180000.0,  # 180mm in μm
+            220000.0,  # 220mm in μm
+            240000.0,  # 240mm in μm
         ]
     )
 
@@ -93,9 +93,9 @@ class TestConfiguration:
     # Safety limits
     max_voltage: float = 30.0
     max_current: float = 30.0
-    max_velocity: float = 500.0
-    max_acceleration: float = 1000.0
-    max_deceleration: float = 1000.0
+    max_velocity: float = 100000.0  # μm/s
+    max_acceleration: float = 100000.0  # μm/s²
+    max_deceleration: float = 100000.0  # μm/s²
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization"""
@@ -239,7 +239,6 @@ class TestConfiguration:
                 self.max_deceleration,
                 f"Max deceleration must be greater than operating deceleration ({self.deceleration})",
             )
-
 
     def _validate_timing_settings(self) -> None:
         """Validate timing configuration parameters"""
@@ -458,8 +457,8 @@ class TestConfiguration:
                     "activation_temperature": hardware.get("activation_temperature", 60.0),
                     "standby_temperature": hardware.get("standby_temperature", 40.0),
                     "fan_speed": hardware.get("fan_speed", 10),
-                    "max_stroke": hardware.get("max_stroke", 240.0),
-                    "initial_position": hardware.get("initial_position", 10.0),
+                    "max_stroke": hardware.get("max_stroke", 240000.0),
+                    "initial_position": hardware.get("initial_position", 10000.0),
                 }
             )
 
@@ -468,9 +467,9 @@ class TestConfiguration:
             motion = structured_data["motion_control"]
             flattened.update(
                 {
-                    "velocity": motion.get("velocity", 100.0),
-                    "acceleration": motion.get("acceleration", 100.0),
-                    "deceleration": motion.get("deceleration", 100.0),
+                    "velocity": motion.get("velocity", 60000.0),
+                    "acceleration": motion.get("acceleration", 60000.0),
+                    "deceleration": motion.get("deceleration", 60000.0),
                 }
             )
 
@@ -499,13 +498,13 @@ class TestConfiguration:
                     "stroke_positions": test_params.get(
                         "stroke_positions",
                         [
-                            10.0,
-                            60.0,
-                            100.0,
-                            140.0,
-                            180.0,
-                            220.0,
-                            240.0,
+                            10000.0,
+                            60000.0,
+                            100000.0,
+                            140000.0,
+                            180000.0,
+                            220000.0,
+                            240000.0,
                         ],
                     ),
                 }
@@ -552,9 +551,9 @@ class TestConfiguration:
                 {
                     "max_voltage": safety.get("max_voltage", 30.0),
                     "max_current": safety.get("max_current", 30.0),
-                    "max_velocity": safety.get("max_velocity", 500.0),
-                    "max_acceleration": safety.get("max_acceleration", 1000.0),
-                    "max_deceleration": safety.get("max_deceleration", 1000.0),
+                    "max_velocity": safety.get("max_velocity", 100000.0),
+                    "max_acceleration": safety.get("max_acceleration", 100000.0),
+                    "max_deceleration": safety.get("max_deceleration", 100000.0),
                 }
             )
 
