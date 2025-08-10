@@ -1,0 +1,10 @@
+# Fonts Directory - WF EOL Tester Web Interface
+#
+# This directory will contain font files including:
+# - Primary application fonts
+# - Icon fonts
+# - Monospace fonts for code/data display
+# - Custom branding fonts
+#
+# Supported formats: WOFF2, WOFF, TTF, OTF
+# Recommended: Use WOFF2 for best compression and browser support

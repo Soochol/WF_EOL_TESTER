@@ -1,0 +1,324 @@
+<!--
+Robot Hardware Control Panel Template - WF EOL Tester Web Interface
+
+This template provides comprehensive robot control functionality including:
+- Connection management (Connect/Disconnect)
+- Servo control (Enable/Disable motor power)  
+- Movement controls (Home Axis, Move Absolute, Move Relative)
+- Position display and monitoring
+- Motion parameters configuration (velocity, acceleration, deceleration)
+- Emergency stop functionality
+- Status monitoring (connection, position, servo state, motion status)
+-->
+
+<div id="robot-control" class="content-page hardware-control-panel" style="display: none;">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                Robot Control System
+            </h1>
+            <div class="page-subtitle">
+                AJINEXTEK Motion Controller
+            </div>
+        </div>
+        
+        <!-- Status Badge -->
+        <div class="status-badge" id="robot-status-badge">
+            <div class="status-indicator">
+                <div class="status-light status-unknown"></div>
+                <span class="status-text">Disconnected</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-grid">
+        <!-- Connection Panel -->
+        <div class="control-panel connection-panel">
+            <div class="panel-header">
+                <h3>Connection</h3>
+                <div class="connection-status" id="robot-connection-status">
+                    <div class="status-dot status-unknown"></div>
+                    <span>Disconnected</span>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="connection-info" id="robot-connection-info">
+                    <div class="info-row">
+                        <label>Controller Type:</label>
+                        <span>AJINEXTEK Motion Controller</span>
+                    </div>
+                    <div class="info-row">
+                        <label for="robot-axis-select">Axis ID:</label>
+                        <select id="robot-axis-select" class="form-control form-control-sm">
+                            <option value="0">Axis 0</option>
+                            <option value="1">Axis 1</option>
+                            <option value="2">Axis 2</option>
+                            <option value="3">Axis 3</option>
+                        </select>
+                    </div>
+                    <div class="info-row">
+                        <label>IRQ Number:</label>
+                        <span id="robot-irq-no">7</span>
+                    </div>
+                </div>
+                
+                <div class="connection-controls">
+                    <button class="btn btn-success" id="robot-connect-btn">
+                        <i class="icon-connect"></i>
+                        Connect
+                    </button>
+                    <button class="btn btn-secondary" id="robot-disconnect-btn" disabled>
+                        <i class="icon-disconnect"></i>
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Position and Status Panel -->
+        <div class="control-panel status-panel">
+            <div class="panel-header">
+                <h3>Position & Status</h3>
+                <button class="btn btn-sm btn-outline" id="robot-refresh-status-btn">
+                    <i class="icon-refresh"></i>
+                    Refresh
+                </button>
+            </div>
+            
+            <div class="panel-content">
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-label">Current Position</div>
+                        <div class="status-value" id="robot-current-position">
+                            <span class="value">---.--- </span>
+                            <span class="unit">μm</span>
+                        </div>
+                        <button class="btn btn-sm btn-primary" id="robot-get-position-btn">
+                            <i class="icon-target"></i>
+                            Read Position
+                        </button>
+                    </div>
+                    
+                    <div class="status-card">
+                        <div class="status-label">Servo Status</div>
+                        <div class="status-value" id="robot-servo-status">
+                            <span class="status-indicator">
+                                <div class="status-dot status-unknown"></div>
+                                <span>Unknown</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card">
+                        <div class="status-label">Motion Status</div>
+                        <div class="status-value" id="robot-motion-status">
+                            <span class="status-indicator">
+                                <div class="status-dot status-unknown"></div>
+                                <span>Unknown</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card">
+                        <div class="status-label">Initialization</div>
+                        <div class="status-value" id="robot-init-status">
+                            <span class="status-indicator">
+                                <div class="status-dot status-unknown"></div>
+                                <span>Not Initialized</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Servo Control Panel -->
+        <div class="control-panel servo-panel">
+            <div class="panel-header">
+                <h3>Servo Control</h3>
+                <div class="warning-indicator">
+                    <i class="icon-warning"></i>
+                    Motor Power Control
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="servo-controls">
+                    <button class="btn btn-success servo-btn" id="robot-servo-on-btn" disabled>
+                        <i class="icon-power-on"></i>
+                        Enable Servo
+                        <span class="btn-subtitle">Turn ON motor power</span>
+                    </button>
+                    
+                    <button class="btn btn-warning servo-btn" id="robot-servo-off-btn" disabled>
+                        <i class="icon-power-off"></i>
+                        Disable Servo
+                        <span class="btn-subtitle">Turn OFF motor power</span>
+                    </button>
+                </div>
+                
+                <div class="safety-notice">
+                    <i class="icon-info"></i>
+                    <span>Ensure safety precautions before enabling servo</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Control Panel -->
+        <div class="control-panel emergency-panel">
+            <div class="panel-header">
+                <h3>Emergency Control</h3>
+                <div class="danger-indicator">
+                    <i class="icon-danger"></i>
+                    Safety Critical
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <button class="btn btn-danger btn-lg emergency-btn" id="robot-emergency-stop-btn">
+                    <i class="icon-stop"></i>
+                    EMERGENCY STOP
+                    <span class="btn-subtitle">Immediate stop all motion</span>
+                </button>
+                
+                <button class="btn btn-warning" id="robot-stop-motion-btn" disabled>
+                    <i class="icon-pause"></i>
+                    Stop Motion
+                    <span class="btn-subtitle">Controlled stop with deceleration</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Movement Control Panel -->
+        <div class="control-panel movement-panel">
+            <div class="panel-header">
+                <h3>Movement Control</h3>
+                <div class="panel-tabs">
+                    <button class="tab-btn active" data-tab="home">Home</button>
+                    <button class="tab-btn" data-tab="absolute">Absolute</button>
+                    <button class="tab-btn" data-tab="relative">Relative</button>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <!-- Home Tab -->
+                <div class="tab-content active" id="home-tab">
+                    <div class="home-control">
+                        <button class="btn btn-primary btn-lg" id="robot-home-axis-btn" disabled>
+                            <i class="icon-home"></i>
+                            Home Axis
+                            <span class="btn-subtitle">Move to origin position</span>
+                        </button>
+                        
+                        <div class="home-info">
+                            <i class="icon-info"></i>
+                            <span>This will move the axis to the origin (0.000 μm)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Absolute Move Tab -->
+                <div class="tab-content" id="absolute-tab">
+                    <div class="move-form">
+                        <div class="form-group">
+                            <label for="absolute-position">Target Position (μm)</label>
+                            <input type="number" id="absolute-position" class="form-control" 
+                                   min="0" max="500000" step="0.001" placeholder="Enter position">
+                            <div class="input-help">Range: 0.000 - 500,000.000 μm</div>
+                        </div>
+                        
+                        <div class="motion-parameters">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="absolute-velocity">Velocity (μm/s)</label>
+                                    <input type="number" id="absolute-velocity" class="form-control" 
+                                           min="1" max="100000" step="0.1" value="200">
+                                </div>
+                                <div class="form-group">
+                                    <label for="absolute-acceleration">Acceleration (μm/s²)</label>
+                                    <input type="number" id="absolute-acceleration" class="form-control" 
+                                           min="100" max="100000" step="1" value="1000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="absolute-deceleration">Deceleration (μm/s²)</label>
+                                    <input type="number" id="absolute-deceleration" class="form-control" 
+                                           min="100" max="100000" step="1" value="1000">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary btn-lg" id="robot-move-absolute-btn" disabled>
+                            <i class="icon-target"></i>
+                            Move to Position
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Relative Move Tab -->
+                <div class="tab-content" id="relative-tab">
+                    <div class="move-form">
+                        <div class="form-group">
+                            <label for="relative-distance">Relative Distance (μm)</label>
+                            <input type="number" id="relative-distance" class="form-control" 
+                                   min="0" max="500000" step="0.001" placeholder="Enter distance">
+                            <div class="input-help">Range: 0.000 - 500,000.000 μm</div>
+                        </div>
+                        
+                        <div class="motion-parameters">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="relative-velocity">Velocity (μm/s)</label>
+                                    <input type="number" id="relative-velocity" class="form-control" 
+                                           min="1" max="100000" step="0.1" value="200">
+                                </div>
+                                <div class="form-group">
+                                    <label for="relative-acceleration">Acceleration (μm/s²)</label>
+                                    <input type="number" id="relative-acceleration" class="form-control" 
+                                           min="100" max="100000" step="1" value="1000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="relative-deceleration">Deceleration (μm/s²)</label>
+                                    <input type="number" id="relative-deceleration" class="form-control" 
+                                           min="100" max="100000" step="1" value="1000">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary btn-lg" id="robot-move-relative-btn" disabled>
+                            <i class="icon-move"></i>
+                            Move Distance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operations Log Panel -->
+        <div class="control-panel log-panel">
+            <div class="panel-header">
+                <h3>Operations Log</h3>
+                <div class="log-controls">
+                    <button class="btn btn-sm btn-outline" id="robot-clear-log-btn">
+                        <i class="icon-clear"></i>
+                        Clear
+                    </button>
+                    <button class="btn btn-sm btn-outline" id="robot-export-log-btn">
+                        <i class="icon-export"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="log-viewer" id="robot-log-viewer">
+                    <div class="log-entry">
+                        <span class="timestamp">[--:--:--]</span>
+                        <span class="level info">INFO</span>
+                        <span class="message">Robot Control Panel initialized</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

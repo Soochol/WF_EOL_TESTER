@@ -1,0 +1,164 @@
+<!--
+Dashboard Page Template - WF EOL Tester Web Interface
+
+This template provides the main dashboard page including:
+- Test status overview
+- Real-time charts and graphs
+- Hardware status monitoring
+- Recent test results summary
+- System alerts and notifications
+- Quick action buttons
+- Performance metrics display
+-->
+
+{% extends "layouts/base.html" %}
+
+{% block title %}Dashboard - WF EOL Tester{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Page Header -->
+    <header class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <div class="page-actions">
+            <button class="btn btn-primary" id="start-new-test">
+                <i class="icon-plus"></i>
+                Start New Test
+            </button>
+            <button class="btn btn-secondary" id="refresh-dashboard">
+                <i class="icon-refresh"></i>
+                Refresh
+            </button>
+        </div>
+    </header>
+    
+    <!-- Status Overview Cards -->
+    <section class="status-overview">
+        <div class="card stat-card">
+            <div class="card-header">
+                <h3>Active Tests</h3>
+                <i class="icon-test"></i>
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="active-tests-count">0</div>
+                <div class="stat-label">Running</div>
+            </div>
+        </div>
+        
+        <div class="card stat-card">
+            <div class="card-header">
+                <h3>Tests Today</h3>
+                <i class="icon-calendar"></i>
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="tests-today-count">12</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+        
+        <div class="card stat-card">
+            <div class="card-header">
+                <h3>Pass Rate</h3>
+                <i class="icon-check"></i>
+            </div>
+            <div class="card-body">
+                <div class="stat-value" id="pass-rate">95.2%</div>
+                <div class="stat-label">Last 24h</div>
+            </div>
+        </div>
+        
+        <div class="card stat-card">
+            <div class="card-header">
+                <h3>Hardware Status</h3>
+                <i class="icon-hardware"></i>
+            </div>
+            <div class="card-body">
+                <div class="stat-value status-healthy" id="hardware-status">Healthy</div>
+                <div class="stat-label">All Systems</div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Real-time Charts -->
+    <section class="charts-section">
+        <div class="chart-container">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h3>Real-time Force Data</h3>
+                    <div class="chart-controls">
+                        <button class="btn btn-sm" id="pause-chart">Pause</button>
+                        <button class="btn btn-sm" id="clear-chart">Clear</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="force-chart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h3>Test Results Trend</h3>
+                    <select id="trend-timeframe">
+                        <option value="1h">Last Hour</option>
+                        <option value="24h" selected>Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <canvas id="results-trend-chart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Recent Activity -->
+    <section class="recent-activity">
+        <div class="card">
+            <div class="card-header">
+                <h3>Recent Test Results</h3>
+                <a href="/results" class="view-all-link">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="results-table-container">
+                    <table class="results-table" id="recent-results-table">
+                        <thead>
+                            <tr>
+                                <th>Test ID</th>
+                                <th>DUT ID</th>
+                                <th>Start Time</th>
+                                <th>Duration</th>
+                                <th>Result</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Results will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- System Alerts -->
+    <section class="alerts-section">
+        <div class="card">
+            <div class="card-header">
+                <h3>System Alerts</h3>
+                <button class="btn btn-sm" id="clear-alerts">Clear All</button>
+            </div>
+            <div class="card-body">
+                <div class="alerts-container" id="alerts-container">
+                    <!-- Alerts will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="/static/js/pages/dashboard.js"></script>
+{% endblock %}

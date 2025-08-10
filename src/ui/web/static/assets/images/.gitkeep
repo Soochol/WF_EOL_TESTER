@@ -1,0 +1,12 @@
+# Images Directory - WF EOL Tester Web Interface
+#
+# This directory will contain image assets including:
+# - Application logo and branding
+# - Icons and graphics
+# - Background images
+# - Hardware component images
+# - User interface graphics
+# - Charts and diagrams
+#
+# Supported formats: PNG, JPG, SVG, WebP
+# Recommended: Use SVG for scalable graphics, WebP for photos

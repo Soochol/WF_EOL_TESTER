@@ -1,0 +1,111 @@
+<!--
+Navigation Component Template - WF EOL Tester Web Interface
+
+This template provides the main navigation header including:
+- Application logo and branding
+- Primary navigation menu items
+- User account dropdown
+- Quick action buttons
+- Hardware status indicators
+- Search functionality
+- Mobile responsive menu toggle
+-->
+
+<nav class="navigation">
+    <!-- Logo and Branding -->
+    <div class="nav-brand">
+        <img src="/static/assets/images/logo.png" alt="WF EOL Tester" class="logo">
+        <span class="brand-text">WF EOL Tester</span>
+    </div>
+    
+    <!-- Primary Navigation -->
+    <ul class="nav-menu">
+        <li class="nav-item">
+            <a href="/dashboard" class="nav-link">
+                <i class="icon-dashboard"></i>
+                Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="/tests" class="nav-link">
+                <i class="icon-test"></i>
+                Tests
+            </a>
+        </li>
+        <li class="nav-item dropdown">
+            <a href="/hardware" class="nav-link dropdown-toggle">
+                <i class="icon-hardware"></i>
+                Hardware
+                <i class="icon-dropdown"></i>
+            </a>
+            <ul class="dropdown-menu">
+                <li><a href="/hardware/dashboard" class="dropdown-link">Hardware Dashboard</a></li>
+                <li><a href="/hardware/robot" class="dropdown-link">Robot Control</a></li>
+                <li><a href="/hardware/loadcell" class="dropdown-link">Load Cell</a></li>
+                <li><a href="/hardware/mcu" class="dropdown-link">MCU Control</a></li>
+                <li><a href="/hardware/power" class="dropdown-link">Power Control</a></li>
+                <li class="dropdown-divider"></li>
+                <li><a href="/hardware/digital-io" class="dropdown-link">
+                    <i class="icon-digital-io"></i>
+                    Digital I/O Control
+                </a></li>
+            </ul>
+        </li>
+        <li class="nav-item">
+            <a href="/configuration" class="nav-link">
+                <i class="icon-config"></i>
+                Configuration
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="/results" class="nav-link">
+                <i class="icon-results"></i>
+                Results
+            </a>
+        </li>
+    </ul>
+    
+    <!-- Hardware Status Indicators -->
+    <div class="hardware-status-bar">
+        <div class="status-indicator" id="robot-status">
+            <i class="icon-robot"></i>
+            <span class="status-text">Robot</span>
+            <div class="status-light"></div>
+        </div>
+        <div class="status-indicator" id="loadcell-status">
+            <i class="icon-loadcell"></i>
+            <span class="status-text">Load Cell</span>
+            <div class="status-light"></div>
+        </div>
+        <div class="status-indicator" id="mcu-status">
+            <i class="icon-mcu"></i>
+            <span class="status-text">MCU</span>
+            <div class="status-light"></div>
+        </div>
+        <div class="status-indicator" id="digital-io-status">
+            <i class="icon-digital-io"></i>
+            <span class="status-text">Digital I/O</span>
+            <div class="status-light"></div>
+            <span class="io-counts">
+                <span class="input-count" id="nav-input-active">0</span>/<span class="output-count" id="nav-output-active">0</span>
+            </span>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="nav-actions">
+        <button class="btn btn-primary" id="start-test-btn">
+            <i class="icon-play"></i>
+            Start Test
+        </button>
+        <button class="btn btn-danger" id="emergency-stop-btn">
+            <i class="icon-stop"></i>
+            E-Stop
+        </button>
+    </div>
+    
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <span class="hamburger"></span>
+    </button>
+</nav>

@@ -22,6 +22,7 @@ from domain.exceptions import (
 from domain.value_objects.hardware_configuration import (
     HardwareConfiguration,
 )
+from domain.value_objects.hardware_model import HardwareModel
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
@@ -294,4 +295,119 @@ class ConfigurationService:
             logger.error(f"Unexpected error loading DUT defaults: {e}")
             raise RepositoryAccessError(
                 operation="load_dut_defaults", reason=f"Failed to load DUT defaults: {str(e)}"
+            ) from e
+
+    async def save_test_profile(self, profile_name: str, config_data: Dict[str, Any]) -> None:
+        """
+        Save test profile configuration
+
+        Args:
+            profile_name: Name of the profile to save
+            config_data: Configuration data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            # Convert dict to TestConfiguration object
+            test_config = TestConfiguration.from_structured_dict(config_data)
+            
+            # Save using the configuration repository
+            await self._configuration.save_profile(profile_name, test_config)
+            
+            logger.info(f"Successfully saved test profile: {profile_name}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save test profile {profile_name}: {e}")
+            raise RepositoryAccessError(
+                operation="save_test_profile",
+                reason=str(e),
+                file_path=f"{profile_name}.yaml",
+            ) from e
+
+    async def save_hardware_configuration(self, hardware_config_data: Dict[str, Any]) -> None:
+        """
+        Save hardware configuration
+
+        Args:
+            hardware_config_data: Hardware configuration data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            # Extract hardware_config section if present, otherwise use the whole dict
+            config_data = hardware_config_data.get("hardware_config", hardware_config_data)
+            
+            # Convert dict to HardwareConfiguration object
+            hardware_config = HardwareConfiguration.from_dict(config_data)
+            
+            # Save using the configuration repository
+            await self._configuration.save_hardware_config(hardware_config)
+            
+            logger.info("Successfully saved hardware configuration")
+            
+        except Exception as e:
+            logger.error(f"Failed to save hardware configuration: {e}")
+            raise RepositoryAccessError(
+                operation="save_hardware_configuration",
+                reason=str(e),
+                file_path="hardware_configuration.yaml",
+            ) from e
+
+    async def save_hardware_model(self, hardware_model_data: Dict[str, Any]) -> None:
+        """
+        Save hardware model configuration
+
+        Args:
+            hardware_model_data: Hardware model data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            # Extract hardware_model section if present, otherwise use the whole dict
+            model_data = hardware_model_data.get("hardware_model", hardware_model_data)
+            
+            # Convert dict to HardwareModel object
+            hardware_model = HardwareModel.from_dict(model_data)
+            
+            # Save using the configuration repository
+            await self._configuration.save_hardware_model(hardware_model)
+            
+            logger.info("Successfully saved hardware model configuration")
+            
+        except Exception as e:
+            logger.error(f"Failed to save hardware model configuration: {e}")
+            raise RepositoryAccessError(
+                operation="save_hardware_model",
+                reason=str(e),
+                file_path="hardware_model.yaml",
+            ) from e
+
+    async def save_dut_defaults_configuration(self, dut_defaults_data: Dict[str, Any]) -> None:
+        """
+        Save DUT defaults configuration
+
+        Args:
+            dut_defaults_data: DUT defaults data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            # Extract profile name if present
+            profile_name = dut_defaults_data.get("active_profile", "default")
+            
+            # Save using the configuration repository
+            await self._configuration.save_dut_defaults(dut_defaults_data, profile_name)
+            
+            logger.info("Successfully saved DUT defaults configuration")
+            
+        except Exception as e:
+            logger.error(f"Failed to save DUT defaults configuration: {e}")
+            raise RepositoryAccessError(
+                operation="save_dut_defaults",
+                reason=str(e),
+                file_path="dut_defaults.yaml",
             ) from e

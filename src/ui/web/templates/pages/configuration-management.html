@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Management - WF EOL Tester</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/config-editor.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    {% include "components/navigation.html" %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>Configuration Management</h1>
+                <nav class="breadcrumb">
+                    <ol class="breadcrumb-list">
+                        <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li class="active">Configuration Management</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <div class="config-management-container">
+                <div class="config-overview-section">
+                    <h2>Configuration Overview</h2>
+                    <div class="overview-cards">
+                        <div class="overview-card">
+                            <div class="card-icon">📋</div>
+                            <div class="card-content">
+                                <h3>Test Profiles</h3>
+                                <p>Configure test parameters, timing settings, and pass criteria</p>
+                                <div class="card-status">
+                                    <span class="status-indicator status-success"></span>
+                                    <span>Configured</span>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <a href="/configuration/test-profiles" class="btn btn-primary">Edit</a>
+                            </div>
+                        </div>
+
+                        <div class="overview-card">
+                            <div class="card-icon">🏷️</div>
+                            <div class="card-content">
+                                <h3>DUT Defaults</h3>
+                                <p>Set default values for device under test information</p>
+                                <div class="card-status">
+                                    <span class="status-indicator status-success"></span>
+                                    <span>Configured</span>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <a href="/configuration/dut-defaults" class="btn btn-primary">Edit</a>
+                            </div>
+                        </div>
+
+                        <div class="overview-card">
+                            <div class="card-icon">🔧</div>
+                            <div class="card-content">
+                                <h3>Hardware Configuration</h3>
+                                <p>Configure hardware communication settings and I/O mappings</p>
+                                <div class="card-status">
+                                    <span class="status-indicator status-warning"></span>
+                                    <span>Review Required</span>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <a href="/configuration/hardware-config" class="btn btn-primary">Edit</a>
+                            </div>
+                        </div>
+
+                        <div class="overview-card">
+                            <div class="card-icon">🖥️</div>
+                            <div class="card-content">
+                                <h3>Hardware Model</h3>
+                                <p>Select hardware implementations (mock vs real hardware)</p>
+                                <div class="card-status">
+                                    <span class="status-indicator status-info"></span>
+                                    <span>Mock Mode</span>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <a href="/configuration/hardware-model" class="btn btn-primary">Edit</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-tools-section">
+                    <h2>Configuration Tools</h2>
+                    <div class="tools-grid">
+                        <div class="tool-card">
+                            <div class="tool-icon">✅</div>
+                            <h4>Validate All</h4>
+                            <p>Run validation on all configuration files</p>
+                            <button class="btn btn-secondary" id="validate-all-btn">Validate</button>
+                        </div>
+
+                        <div class="tool-card">
+                            <div class="tool-icon">💾</div>
+                            <h4>Backup Configurations</h4>
+                            <p>Create backup of all configuration files</p>
+                            <button class="btn btn-secondary" id="backup-all-btn">Create Backup</button>
+                        </div>
+
+                        <div class="tool-card">
+                            <div class="tool-icon">📥</div>
+                            <h4>Import Configuration</h4>
+                            <p>Import configuration from file or template</p>
+                            <button class="btn btn-secondary" id="import-config-btn">Import</button>
+                        </div>
+
+                        <div class="tool-card">
+                            <div class="tool-icon">📤</div>
+                            <h4>Export All</h4>
+                            <p>Export all configurations as ZIP archive</p>
+                            <button class="btn btn-secondary" id="export-all-btn">Export</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-status-section">
+                    <h2>System Status</h2>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <strong>Active Profile:</strong>
+                            <span id="active-profile">Loading...</span>
+                        </div>
+                        <div class="status-item">
+                            <strong>Hardware Mode:</strong>
+                            <span id="hardware-mode">Loading...</span>
+                        </div>
+                        <div class="status-item">
+                            <strong>Configuration Version:</strong>
+                            <span id="config-version">Loading...</span>
+                        </div>
+                        <div class="status-item">
+                            <strong>Last Modified:</strong>
+                            <span id="last-modified">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-changes-section">
+                    <h2>Recent Changes</h2>
+                    <div class="changes-list" id="recent-changes-list">
+                        <div class="loading-placeholder">
+                            <div class="loading-spinner"></div>
+                            <p>Loading recent changes...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notifications Container -->
+    <div id="notifications-container" class="notifications-container"></div>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="loading-indicator" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-message">Loading...</div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', path='js/pages/configuration-management.js') }}"></script>
+</body>
+</html>

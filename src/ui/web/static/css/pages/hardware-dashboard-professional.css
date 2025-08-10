@@ -1,0 +1,756 @@
+/**
+ * Professional Hardware Dashboard CSS - WF EOL Tester v3.0
+ * 
+ * Enterprise-grade hardware control dashboard
+ * Design inspired by: Linear, Notion, Stripe Dashboard, Vercel
+ * Features: Clean minimalism, enterprise typography, functional design
+ * Updated: 2025-01-10 - Professional web standards implementation
+ */
+
+/* ==========================================================================
+   DASHBOARD LAYOUT - PROFESSIONAL STANDARD
+   ========================================================================== */
+
+#hardware-dashboard-page {
+    min-height: 100vh;
+    background: #fafafa;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+    color: #1a1a1a;
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   HEADER - ENTERPRISE STANDARD
+   ========================================================================== */
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-left .page-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    letter-spacing: -0.025em;
+}
+
+.title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #f4f4f5;
+    border-radius: 8px;
+    font-size: 18px;
+}
+
+.page-description {
+    font-size: 15px;
+    color: #6b7280;
+    margin: 6px 0 0 0;
+    font-weight: 400;
+    max-width: 600px;
+}
+
+/* System Status Indicator */
+.system-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1rem 1.5rem;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-pulse {
+    position: relative;
+    width: 20px;
+    height: 20px;
+}
+
+.pulse-ring {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #4ade80;
+    border-radius: 50%;
+    animation: pulse-ring 2s infinite;
+}
+
+.pulse-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #4ade80;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.6);
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.8); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+.status-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.status-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+.status-text {
+    font-size: 1.1rem;
+    color: white;
+    font-weight: 600;
+}
+
+/* Refresh Button */
+.refresh-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.refresh-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.refresh-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s ease;
+}
+
+.refresh-button:hover .refresh-icon {
+    transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   MAIN DASHBOARD
+   ========================================================================== */
+
+.dashboard-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    grid-template-rows: auto 1fr;
+    gap: 2rem;
+    height: calc(100vh - 200px);
+}
+
+.overview-section {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.hardware-section {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.activity-section {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+/* ==========================================================================
+   GLASS CARDS
+   ========================================================================== */
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.card-header {
+    padding: 1.5rem 2rem 1rem 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.card-icon {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.card-body {
+    padding: 1.5rem 2rem;
+}
+
+.card-footer {
+    padding: 1rem 2rem 1.5rem 2rem;
+    display: flex;
+    gap: 1rem;
+}
+
+/* ==========================================================================
+   OVERVIEW SECTION
+   ========================================================================== */
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.metric-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.02);
+}
+
+.metric-icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.metric-content {
+    flex: 1;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+}
+
+.metric-value .value {
+    color: #4ade80;
+}
+
+.metric-value .unit {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    margin-top: 0.25rem;
+}
+
+/* Emergency Metric Special Styling */
+.emergency-metric {
+    border: 2px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.emergency-metric:hover {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.15);
+}
+
+/* ==========================================================================
+   EMERGENCY CONTROLS
+   ========================================================================== */
+
+.emergency-card .danger-header {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.safety-badge {
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.emergency-stop-button {
+    position: relative;
+    width: 100%;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border: none;
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.emergency-stop-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(239, 68, 68, 0.4);
+}
+
+.button-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    z-index: 2;
+}
+
+.stop-icon {
+    font-size: 2rem;
+}
+
+.button-text {
+    text-align: left;
+}
+
+.primary-text {
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.secondary-text {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.button-glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.emergency-stop-button:hover .button-glow {
+    transform: translateX(100%);
+}
+
+.safety-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(251, 191, 36, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.notice-icon {
+    font-size: 1.25rem;
+    margin-top: 0.125rem;
+}
+
+.notice-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+}
+
+/* ==========================================================================
+   HARDWARE CARDS
+   ========================================================================== */
+
+.hardware-card .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.component-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.component-icon {
+    font-size: 2.5rem;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.component-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.component-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.component-subtitle {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    margin: 0;
+}
+
+.connection-status .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: 0 0 15px currentColor;
+    animation: status-pulse 2s infinite;
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.status-dot.status-success {
+    background: #4ade80;
+    color: #4ade80;
+}
+
+.status-dot.status-error {
+    background: #ef4444;
+    color: #ef4444;
+}
+
+.status-dot.status-warning {
+    background: #fbbf24;
+    color: #fbbf24;
+}
+
+.status-dot.status-unknown {
+    background: #6b7280;
+    color: #6b7280;
+}
+
+.status-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+/* Data Grid */
+.data-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.data-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.data-value {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    font-weight: 700;
+}
+
+.data-value .value {
+    font-size: 1.1rem;
+    color: #4ade80;
+}
+
+.data-value .unit {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Control Buttons */
+.control-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.control-button.primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    flex: 1;
+}
+
+.control-button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.control-button.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.control-button.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.control-button.mini {
+    padding: 0.5rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.control-button.mini:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* ==========================================================================
+   ACTIVITY LOG
+   ========================================================================== */
+
+.activity-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.log-container {
+    flex: 1;
+    min-height: 0;
+}
+
+.log-viewer {
+    height: 300px;
+    overflow-y: auto;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.log-entry {
+    display: grid;
+    grid-template-columns: auto auto auto 1fr;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.log-entry:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.log-time {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.log-level {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.log-level.info {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+}
+
+.log-level.success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+}
+
+.log-level.warning {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fde047;
+}
+
+.log-level.error {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+.log-source {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.log-message {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+    .dashboard-main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+    }
+    
+    .hardware-section {
+        grid-column: 1;
+        grid-row: 2;
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .activity-section {
+        grid-column: 1;
+        grid-row: 3;
+    }
+}
+
+@media (max-width: 768px) {
+    #hardware-dashboard-page {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .hardware-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#hardware-dashboard-page.active {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Smooth scrollbar */
+.log-viewer::-webkit-scrollbar {
+    width: 6px;
+}
+
+.log-viewer::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.log-viewer::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.log-viewer::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}

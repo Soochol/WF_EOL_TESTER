@@ -1,0 +1,330 @@
+<!--
+MCU Hardware Control Panel Template - WF EOL Tester Web Interface
+
+This template provides comprehensive MCU control functionality including:
+- Connection management with serial port settings
+- Temperature monitoring and control
+- Test mode operations (Enter/Exit test modes)
+- Operating temperature setting
+- Standby heating/cooling operations with parameter input
+- Boot completion monitoring
+- Real-time temperature readings with chart visualization
+-->
+
+<div id="mcu-control-page" class="content-page hardware-control-panel" style="display: none;">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="icon-mcu"></i>
+                MCU Control System
+            </h1>
+            <div class="page-subtitle">
+                LMA Temperature Controller
+            </div>
+        </div>
+        
+        <!-- Status Badge -->
+        <div class="status-badge" id="mcu-status-badge">
+            <div class="status-indicator">
+                <div class="status-light status-unknown"></div>
+                <span class="status-text">Disconnected</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-grid">
+        <!-- Connection Panel -->
+        <div class="control-panel connection-panel">
+            <div class="panel-header">
+                <h3><i class="icon-connection"></i> Serial Connection</h3>
+                <div class="connection-status" id="mcu-connection-status">
+                    <div class="status-dot status-unknown"></div>
+                    <span>Disconnected</span>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="connection-info" id="mcu-connection-info">
+                    <div class="info-row">
+                        <label>Controller Type:</label>
+                        <span>LMA Temperature Controller</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Port:</label>
+                        <span id="mcu-port">COM4</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Baudrate:</label>
+                        <span id="mcu-baudrate">115200</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Timeout:</label>
+                        <span id="mcu-timeout">2.0s</span>
+                    </div>
+                </div>
+                
+                <div class="connection-controls">
+                    <button class="btn btn-success" id="mcu-connect-btn">
+                        <i class="icon-connect"></i>
+                        Connect
+                    </button>
+                    <button class="btn btn-secondary" id="mcu-disconnect-btn" disabled>
+                        <i class="icon-disconnect"></i>
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Temperature Monitoring Panel -->
+        <div class="control-panel temperature-panel">
+            <div class="panel-header">
+                <h3><i class="icon-temperature"></i> Temperature Monitoring</h3>
+                <button class="btn btn-sm btn-outline" id="mcu-refresh-temperature-btn">
+                    <i class="icon-refresh"></i>
+                    Read
+                </button>
+            </div>
+            
+            <div class="panel-content">
+                <div class="temperature-display">
+                    <div class="temperature-reading">
+                        <div class="reading-label">Current Temperature</div>
+                        <div class="reading-value" id="mcu-current-temperature">
+                            <span class="value">---.--</span>
+                            <span class="unit">°C</span>
+                        </div>
+                        <div class="reading-status" id="mcu-temperature-status">
+                            <div class="status-dot status-unknown"></div>
+                            <span>Unknown</span>
+                        </div>
+                    </div>
+                    
+                    <div class="temperature-chart" id="mcu-temperature-chart">
+                        <!-- Temperature chart will be rendered here -->
+                    </div>
+                </div>
+                
+                <div class="temperature-controls">
+                    <button class="btn btn-primary" id="mcu-get-temperature-btn" disabled>
+                        <i class="icon-thermometer"></i>
+                        Read Temperature
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Mode Control Panel -->
+        <div class="control-panel test-mode-panel">
+            <div class="panel-header">
+                <h3><i class="icon-test"></i> Test Mode Control</h3>
+                <div class="test-mode-status" id="mcu-test-mode-status">
+                    <div class="status-dot status-unknown"></div>
+                    <span>Normal Mode</span>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="test-mode-info">
+                    <div class="info-card">
+                        <div class="info-title">Current Mode</div>
+                        <div class="info-value" id="mcu-current-mode">Normal Mode</div>
+                    </div>
+                </div>
+                
+                <div class="test-mode-controls">
+                    <button class="btn btn-warning btn-lg" id="mcu-enter-test-mode-btn" disabled>
+                        <i class="icon-test"></i>
+                        Enter Test Mode
+                        <span class="btn-subtitle">Mode 1 - Testing</span>
+                    </button>
+                    
+                    <button class="btn btn-secondary" id="mcu-exit-test-mode-btn" disabled>
+                        <i class="icon-normal"></i>
+                        Exit Test Mode
+                        <span class="btn-subtitle">Return to normal operation</span>
+                    </button>
+                </div>
+                
+                <div class="test-mode-description">
+                    <i class="icon-info"></i>
+                    <span>Test mode enables special diagnostic and calibration functions</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Temperature Control Panel -->
+        <div class="control-panel temperature-control-panel">
+            <div class="panel-header">
+                <h3><i class="icon-control"></i> Temperature Control</h3>
+                <div class="current-setpoint" id="mcu-temperature-setpoint">
+                    Setpoint: <span>---.-- °C</span>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="control-form">
+                    <div class="form-group">
+                        <label for="operating-temperature">Operating Temperature (°C)</label>
+                        <div class="input-group">
+                            <input type="number" id="operating-temperature" class="form-control" 
+                                   min="-50" max="200" step="0.1" placeholder="25.0">
+                            <div class="input-group-append">
+                                <span class="input-group-text">°C</span>
+                            </div>
+                        </div>
+                        <div class="input-help">Range: -50.0 - 200.0 °C</div>
+                    </div>
+                    
+                    <div class="temperature-presets">
+                        <div class="presets-label">Quick Presets:</div>
+                        <div class="preset-buttons">
+                            <button class="btn btn-sm btn-outline preset-btn" data-temperature="25">25°C</button>
+                            <button class="btn btn-sm btn-outline preset-btn" data-temperature="40">40°C</button>
+                            <button class="btn btn-sm btn-outline preset-btn" data-temperature="60">60°C</button>
+                            <button class="btn btn-sm btn-outline preset-btn" data-temperature="85">85°C</button>
+                            <button class="btn btn-sm btn-outline preset-btn" data-temperature="125">125°C</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-lg" id="mcu-set-temperature-btn" disabled>
+                        <i class="icon-set"></i>
+                        Set Operating Temperature
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Standby Operations Panel -->
+        <div class="control-panel standby-panel">
+            <div class="panel-header">
+                <h3><i class="icon-standby"></i> Standby Operations</h3>
+                <div class="panel-tabs">
+                    <button class="tab-btn active" data-tab="heating">Heating</button>
+                    <button class="tab-btn" data-tab="cooling">Cooling</button>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <!-- Standby Heating Tab -->
+                <div class="tab-content active" id="heating-tab">
+                    <div class="standby-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="heating-operating-temp">Operating Temp (°C)</label>
+                                <input type="number" id="heating-operating-temp" class="form-control" 
+                                       min="30" max="60" step="0.1" value="60" placeholder="60.0">
+                                <div class="input-help">30-60°C</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="heating-standby-temp">Standby Temp (°C)</label>
+                                <input type="number" id="heating-standby-temp" class="form-control" 
+                                       min="30" max="60" step="0.1" value="40" placeholder="40.0">
+                                <div class="input-help">30-60°C</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="heating-hold-time">Hold Time (ms)</label>
+                                <input type="number" id="heating-hold-time" class="form-control" 
+                                       min="1000" max="60000" step="1000" value="10000" placeholder="10000">
+                                <div class="input-help">1000-60000ms</div>
+                            </div>
+                        </div>
+                        
+                        <div class="heating-preview" id="heating-preview">
+                            <div class="preview-title">Heating Sequence:</div>
+                            <div class="preview-steps">
+                                <div class="step">1. Heat to <span id="preview-operating">60.0</span>°C</div>
+                                <div class="step">2. Hold for <span id="preview-hold">10.0</span>s</div>
+                                <div class="step">3. Cool to <span id="preview-standby">40.0</span>°C</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-warning btn-lg" id="mcu-start-heating-btn" disabled>
+                            <i class="icon-heat"></i>
+                            Start Standby Heating
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Standby Cooling Tab -->
+                <div class="tab-content" id="cooling-tab">
+                    <div class="standby-form">
+                        <div class="cooling-info">
+                            <i class="icon-info"></i>
+                            <span>Standby cooling will start the cooling process to ambient temperature</span>
+                        </div>
+                        
+                        <button class="btn btn-info btn-lg" id="mcu-start-cooling-btn" disabled>
+                            <i class="icon-cool"></i>
+                            Start Standby Cooling
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Boot Control Panel -->
+        <div class="control-panel boot-panel">
+            <div class="panel-header">
+                <h3><i class="icon-boot"></i> Boot Control</h3>
+                <div class="boot-status" id="mcu-boot-status">
+                    <div class="status-dot status-unknown"></div>
+                    <span>Unknown</span>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="boot-info">
+                    <div class="info-row">
+                        <label>Boot Status:</label>
+                        <span id="mcu-boot-complete-status">Unknown</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Last Boot:</label>
+                        <span id="mcu-last-boot-time">--</span>
+                    </div>
+                </div>
+                
+                <div class="boot-controls">
+                    <button class="btn btn-primary" id="mcu-wait-boot-btn" disabled>
+                        <i class="icon-wait"></i>
+                        Wait for Boot Complete
+                        <span class="btn-subtitle">Monitor boot completion signal</span>
+                    </button>
+                </div>
+                
+                <div class="boot-description">
+                    <i class="icon-info"></i>
+                    <span>Wait for MCU to complete its boot sequence and send ready signal</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operations Log Panel -->
+        <div class="control-panel log-panel">
+            <div class="panel-header">
+                <h3><i class="icon-log"></i> Operations Log</h3>
+                <div class="log-controls">
+                    <button class="btn btn-sm btn-outline" id="mcu-clear-log-btn">
+                        <i class="icon-clear"></i>
+                        Clear
+                    </button>
+                    <button class="btn btn-sm btn-outline" id="mcu-export-log-btn">
+                        <i class="icon-export"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="log-viewer" id="mcu-log-viewer">
+                    <div class="log-entry">
+                        <span class="timestamp">[--:--:--]</span>
+                        <span class="level info">INFO</span>
+                        <span class="message">MCU Control Panel initialized</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

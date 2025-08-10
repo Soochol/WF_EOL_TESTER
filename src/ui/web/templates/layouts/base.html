@@ -1,0 +1,74 @@
+<!--
+Base Layout Template - WF EOL Tester Web Interface
+
+This is the base template that provides the common structure for all pages including:
+- HTML document structure and meta tags
+- CSS and JavaScript imports
+- Navigation header and sidebar
+- Footer and copyright information
+- Common modal containers
+- Notification areas
+- Loading indicators
+- Responsive layout containers
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WF EOL Tester Web Interface">
+    <title>{% block title %}WF EOL Tester{% endblock %}</title>
+    
+    <!-- CSS Stylesheets -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/charts.css">
+    
+    <!-- Third-party CSS -->
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/assets/icons/favicon.ico">
+</head>
+<body>
+    <!-- Header Navigation -->
+    <header class="header">
+        {% include 'components/navigation.html' %}
+    </header>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            {% include 'components/sidebar.html' %}
+        </aside>
+        
+        <!-- Page Content -->
+        <section class="page-content">
+            {% block content %}{% endblock %}
+        </section>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        {% include 'components/footer.html' %}
+    </footer>
+    
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+    
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="/static/libs/chart.js/chart.min.js"></script>
+    {% block extra_js %}{% endblock %}
+    <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

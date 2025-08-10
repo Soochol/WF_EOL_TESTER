@@ -1,0 +1,568 @@
+<!--
+Digital I/O Control Panel Template - WF EOL Tester Web Interface
+
+This template provides comprehensive digital I/O control functionality including:
+- 32 Digital Input Channels with real-time monitoring
+- 32 Digital Output Channels with individual and bulk controls
+- Safety sensor monitoring (channels 10, 11, 12)
+- Operator button status display (channels 1, 2)
+- Real-time WebSocket updates with 100ms polling
+- Tower lamp controls (channels 4, 5, 6)
+- Input event logging with timestamps
+- Output operation safety confirmations
+- Channel configuration and labeling
+- Emergency stop integration
+- Full-screen monitoring mode
+- Accessibility features
+- Keyboard shortcuts
+-->
+
+<div id="digital-io-control-page" class="content-page hardware-control-panel" style="display: none;">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="icon-digital-io"></i>
+                Digital I/O Control System
+            </h1>
+            <div class="page-subtitle">
+                32 Input / 32 Output Channels - Real-time Monitoring
+            </div>
+        </div>
+        
+        <!-- Status Badge -->
+        <div class="status-badge" id="digital-io-status-badge">
+            <div class="status-indicator">
+                <div class="status-light status-unknown"></div>
+                <span class="status-text">Initializing</span>
+            </div>
+        </div>
+        
+        <!-- Page Actions -->
+        <div class="page-actions">
+            <button class="btn btn-outline btn-sm" id="digital-io-fullscreen-btn" title="Toggle fullscreen mode">
+                <i class="icon-fullscreen"></i>
+                <span class="btn-text">Fullscreen</span>
+            </button>
+            <button class="btn btn-outline btn-sm" id="digital-io-settings-btn" title="Configuration settings">
+                <i class="icon-settings"></i>
+                <span class="btn-text">Settings</span>
+            </button>
+            <button class="btn btn-primary btn-sm" id="digital-io-refresh-btn" title="Refresh all channel status">
+                <i class="icon-refresh"></i>
+                <span class="btn-text">Refresh</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Connection Status Panel -->
+    <div class="control-panel connection-panel">
+        <div class="panel-header">
+            <h3><i class="icon-connection"></i> Connection Status</h3>
+            <div class="connection-status" id="digital-io-connection-status">
+                <div class="status-dot status-unknown"></div>
+                <span>Initializing</span>
+            </div>
+        </div>
+        
+        <div class="panel-content">
+            <div class="connection-stats" id="digital-io-connection-stats">
+                <div class="stat-item">
+                    <label>Update Rate:</label>
+                    <span id="digital-io-update-rate">-- Hz</span>
+                </div>
+                <div class="stat-item">
+                    <label>Latency:</label>
+                    <span id="digital-io-latency">-- ms</span>
+                </div>
+                <div class="stat-item">
+                    <label>Last Update:</label>
+                    <span id="digital-io-last-update">Never</span>
+                </div>
+                <div class="stat-item">
+                    <label>Total Events:</label>
+                    <span id="digital-io-total-events">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Digital Inputs Panel -->
+    <div class="control-panel digital-inputs-panel">
+        <div class="panel-header">
+            <h3><i class="icon-input"></i> Digital Inputs (32 Channels)</h3>
+            <div class="panel-stats" id="digital-inputs-stats">
+                <div class="stat-badge">
+                    <span class="stat-label">Active:</span>
+                    <span class="stat-value" id="inputs-active-count">0</span>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-label">Changes/min:</span>
+                    <span class="stat-value" id="inputs-change-rate">0</span>
+                </div>
+            </div>
+            <div class="panel-controls">
+                <button class="btn btn-sm btn-outline" id="inputs-clear-history-btn" title="Clear input event history">
+                    <i class="icon-clear"></i>
+                    Clear History
+                </button>
+                <button class="btn btn-sm btn-outline" id="inputs-export-btn" title="Export input data">
+                    <i class="icon-export"></i>
+                    Export
+                </button>
+            </div>
+        </div>
+        
+        <div class="panel-content">
+            <div class="digital-io-grid inputs-grid" id="digital-inputs-grid">
+                <!-- Digital Input Channels (0-31) will be generated by JavaScript -->
+            </div>
+            
+            <!-- Safety Sensors Status -->
+            <div class="safety-sensors-section">
+                <h4><i class="icon-safety"></i> Safety Sensors</h4>
+                <div class="safety-sensors-grid">
+                    <div class="safety-sensor" id="safety-sensor-10">
+                        <div class="sensor-indicator">
+                            <div class="status-light status-unknown"></div>
+                            <span class="sensor-label">DUT Safety 1</span>
+                        </div>
+                        <div class="sensor-info">
+                            <span class="channel-id">Ch 10</span>
+                            <span class="sensor-status">Unknown</span>
+                        </div>
+                    </div>
+                    
+                    <div class="safety-sensor" id="safety-sensor-11">
+                        <div class="sensor-indicator">
+                            <div class="status-light status-unknown"></div>
+                            <span class="sensor-label">DUT Safety 2</span>
+                        </div>
+                        <div class="sensor-info">
+                            <span class="channel-id">Ch 11</span>
+                            <span class="sensor-status">Unknown</span>
+                        </div>
+                    </div>
+                    
+                    <div class="safety-sensor" id="safety-sensor-12">
+                        <div class="sensor-indicator">
+                            <div class="status-light status-unknown"></div>
+                            <span class="sensor-label">Safety Door</span>
+                        </div>
+                        <div class="sensor-info">
+                            <span class="channel-id">Ch 12</span>
+                            <span class="sensor-status">Unknown</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Operator Buttons Status -->
+            <div class="operator-buttons-section">
+                <h4><i class="icon-button"></i> Operator Controls</h4>
+                <div class="operator-buttons-grid">
+                    <div class="operator-button" id="operator-button-1">
+                        <div class="button-indicator">
+                            <div class="status-light status-unknown"></div>
+                            <span class="button-label">Start Button</span>
+                        </div>
+                        <div class="button-info">
+                            <span class="channel-id">Ch 1</span>
+                            <span class="button-status">Unknown</span>
+                            <span class="press-count">Presses: <span id="button-1-count">0</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="operator-button" id="operator-button-2">
+                        <div class="button-indicator">
+                            <div class="status-light status-unknown"></div>
+                            <span class="button-label">Stop Button</span>
+                        </div>
+                        <div class="button-info">
+                            <span class="channel-id">Ch 2</span>
+                            <span class="button-status">Unknown</span>
+                            <span class="press-count">Presses: <span id="button-2-count">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Digital Outputs Panel -->
+    <div class="control-panel digital-outputs-panel">
+        <div class="panel-header">
+            <h3><i class="icon-output"></i> Digital Outputs (32 Channels)</h3>
+            <div class="panel-stats" id="digital-outputs-stats">
+                <div class="stat-badge">
+                    <span class="stat-label">Active:</span>
+                    <span class="stat-value" id="outputs-active-count">0</span>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-label">Operations/min:</span>
+                    <span class="stat-value" id="outputs-operation-rate">0</span>
+                </div>
+            </div>
+            <div class="panel-controls">
+                <button class="btn btn-sm btn-success" id="outputs-all-on-btn" title="Turn on all outputs">
+                    <i class="icon-power-on"></i>
+                    All ON
+                </button>
+                <button class="btn btn-sm btn-warning" id="outputs-all-off-btn" title="Turn off all outputs">
+                    <i class="icon-power-off"></i>
+                    All OFF
+                </button>
+                <button class="btn btn-sm btn-danger" id="outputs-reset-all-btn" title="Reset all outputs">
+                    <i class="icon-reset"></i>
+                    Reset All
+                </button>
+            </div>
+        </div>
+        
+        <div class="panel-content">
+            <div class="digital-io-grid outputs-grid" id="digital-outputs-grid">
+                <!-- Digital Output Channels (0-31) will be generated by JavaScript -->
+            </div>
+            
+            <!-- Tower Lamp Controls -->
+            <div class="tower-lamp-section">
+                <h4><i class="icon-light"></i> Tower Lamp Controls</h4>
+                <div class="tower-lamp-controls">
+                    <div class="lamp-control" id="tower-lamp-red">
+                        <div class="lamp-indicator red">
+                            <div class="status-light status-unknown"></div>
+                            <span class="lamp-label">Red</span>
+                        </div>
+                        <div class="lamp-info">
+                            <span class="channel-id">Ch 4</span>
+                            <button class="btn btn-sm lamp-toggle-btn" data-channel="4" data-lamp="red">
+                                <i class="icon-toggle"></i>
+                                Toggle
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="lamp-control" id="tower-lamp-yellow">
+                        <div class="lamp-indicator yellow">
+                            <div class="status-light status-unknown"></div>
+                            <span class="lamp-label">Yellow</span>
+                        </div>
+                        <div class="lamp-info">
+                            <span class="channel-id">Ch 5</span>
+                            <button class="btn btn-sm lamp-toggle-btn" data-channel="5" data-lamp="yellow">
+                                <i class="icon-toggle"></i>
+                                Toggle
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="lamp-control" id="tower-lamp-green">
+                        <div class="lamp-indicator green">
+                            <div class="status-light status-unknown"></div>
+                            <span class="lamp-label">Green</span>
+                        </div>
+                        <div class="lamp-info">
+                            <span class="channel-id">Ch 6</span>
+                            <button class="btn btn-sm lamp-toggle-btn" data-channel="6" data-lamp="green">
+                                <i class="icon-toggle"></i>
+                                Toggle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lamp-presets">
+                    <button class="btn btn-sm btn-outline" id="lamp-preset-all-off">
+                        <i class="icon-power-off"></i>
+                        All Off
+                    </button>
+                    <button class="btn btn-sm btn-outline" id="lamp-preset-error">
+                        <i class="icon-error"></i>
+                        Error (Red)
+                    </button>
+                    <button class="btn btn-sm btn-outline" id="lamp-preset-warning">
+                        <i class="icon-warning"></i>
+                        Warning (Yellow)
+                    </button>
+                    <button class="btn btn-sm btn-outline" id="lamp-preset-success">
+                        <i class="icon-success"></i>
+                        Success (Green)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency Stop Panel -->
+    <div class="control-panel emergency-panel">
+        <div class="panel-header">
+            <h3><i class="icon-emergency"></i> Emergency Controls</h3>
+            <div class="danger-indicator">
+                <i class="icon-danger"></i>
+                Safety Critical
+            </div>
+        </div>
+        
+        <div class="panel-content">
+            <button class="btn btn-danger btn-xl emergency-btn" id="digital-io-emergency-stop-btn">
+                <i class="icon-stop"></i>
+                EMERGENCY STOP
+                <span class="btn-subtitle">Immediately disable all outputs</span>
+            </button>
+            
+            <div class="emergency-info">
+                <div class="info-item">
+                    <i class="icon-info"></i>
+                    <span>Emergency stop will disable all 32 output channels instantly</span>
+                </div>
+                <div class="info-item">
+                    <i class="icon-warning"></i>
+                    <span>Manual reset required after emergency stop activation</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Log Panel -->
+    <div class="control-panel log-panel">
+        <div class="panel-header">
+            <h3><i class="icon-log"></i> I/O Event Log</h3>
+            <div class="log-controls">
+                <div class="log-filters">
+                    <select id="log-level-filter" class="form-control form-control-sm">
+                        <option value="all">All Events</option>
+                        <option value="input">Input Changes</option>
+                        <option value="output">Output Operations</option>
+                        <option value="safety">Safety Events</option>
+                        <option value="error">Errors Only</option>
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-outline" id="digital-io-clear-log-btn">
+                    <i class="icon-clear"></i>
+                    Clear
+                </button>
+                <button class="btn btn-sm btn-outline" id="digital-io-export-log-btn">
+                    <i class="icon-export"></i>
+                    Export
+                </button>
+                <button class="btn btn-sm btn-outline" id="digital-io-pause-log-btn">
+                    <i class="icon-pause"></i>
+                    Pause
+                </button>
+            </div>
+        </div>
+        
+        <div class="panel-content">
+            <div class="log-viewer" id="digital-io-log-viewer">
+                <div class="log-entry">
+                    <span class="timestamp">[--:--:--]</span>
+                    <span class="level info">INFO</span>
+                    <span class="source">SYS</span>
+                    <span class="message">Digital I/O Control Panel initialized</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Panel -->
+    <div class="control-panel statistics-panel">
+        <div class="panel-header">
+            <h3><i class="icon-statistics"></i> Real-time Statistics</h3>
+            <div class="panel-controls">
+                <button class="btn btn-sm btn-outline" id="stats-reset-btn" title="Reset all statistics">
+                    <i class="icon-reset"></i>
+                    Reset Stats
+                </button>
+            </div>
+        </div>
+        
+        <div class="panel-content">
+            <div class="statistics-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h4>Input Activity</h4>
+                        <div class="stat-icon"><i class="icon-input"></i></div>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-row">
+                            <label>Total Changes:</label>
+                            <span id="stat-input-changes">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Changes/Hour:</label>
+                            <span id="stat-input-rate-hour">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Most Active Ch:</label>
+                            <span id="stat-most-active-input">--</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Last Change:</label>
+                            <span id="stat-last-input-change">Never</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h4>Output Operations</h4>
+                        <div class="stat-icon"><i class="icon-output"></i></div>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-row">
+                            <label>Total Operations:</label>
+                            <span id="stat-output-operations">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Operations/Hour:</label>
+                            <span id="stat-output-rate-hour">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Most Used Ch:</label>
+                            <span id="stat-most-used-output">--</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Last Operation:</label>
+                            <span id="stat-last-output-operation">Never</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h4>Safety Events</h4>
+                        <div class="stat-icon"><i class="icon-safety"></i></div>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-row">
+                            <label>Safety Violations:</label>
+                            <span id="stat-safety-violations">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>E-Stop Activations:</label>
+                            <span id="stat-estop-count">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Door Opens:</label>
+                            <span id="stat-door-opens">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Last Safety Event:</label>
+                            <span id="stat-last-safety-event">Never</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h4>System Health</h4>
+                        <div class="stat-icon"><i class="icon-health"></i></div>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-row">
+                            <label>Uptime:</label>
+                            <span id="stat-uptime">00:00:00</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Avg Latency:</label>
+                            <span id="stat-avg-latency">-- ms</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Update Success:</label>
+                            <span id="stat-update-success">--%</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Error Count:</label>
+                            <span id="stat-error-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Channel Configuration Modal -->
+<div id="channel-config-modal" class="modal-container" style="display: none;">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2 class="modal-title">Channel Configuration</h2>
+            <button class="modal-close" id="channel-config-close">×</button>
+        </div>
+        <div class="modal-body">
+            <form id="channel-config-form">
+                <div class="form-group">
+                    <label for="channel-number">Channel Number</label>
+                    <input type="number" id="channel-number" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="channel-type">Channel Type</label>
+                    <select id="channel-type" class="form-control" disabled>
+                        <option value="input">Digital Input</option>
+                        <option value="output">Digital Output</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="channel-name">Channel Name</label>
+                    <input type="text" id="channel-name" class="form-control" maxlength="50" 
+                           placeholder="Enter descriptive name">
+                </div>
+                <div class="form-group">
+                    <label for="channel-description">Description</label>
+                    <textarea id="channel-description" class="form-control" rows="3" maxlength="200"
+                              placeholder="Enter detailed description"></textarea>
+                </div>
+                <div class="form-group" id="input-specific-config" style="display: none;">
+                    <div class="form-check">
+                        <input type="checkbox" id="input-invert-logic" class="form-check-input">
+                        <label for="input-invert-logic" class="form-check-label">Invert Logic (Active Low)</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="input-enable-alerts" class="form-check-input">
+                        <label for="input-enable-alerts" class="form-check-label">Enable State Change Alerts</label>
+                    </div>
+                </div>
+                <div class="form-group" id="output-specific-config" style="display: none;">
+                    <div class="form-check">
+                        <input type="checkbox" id="output-safety-confirmation" class="form-check-input">
+                        <label for="output-safety-confirmation" class="form-check-label">Require Safety Confirmation</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="output-interlock" class="form-check-input">
+                        <label for="output-interlock" class="form-check-label">Enable Interlock Logic</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="channel-config-cancel">Cancel</button>
+            <button class="btn btn-primary" id="channel-config-save">Save Configuration</button>
+        </div>
+    </div>
+</div>
+
+<!-- Safety Confirmation Modal -->
+<div id="safety-confirm-modal" class="modal-container" style="display: none;">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h2 class="modal-title">Safety Confirmation</h2>
+        </div>
+        <div class="modal-body">
+            <div class="safety-warning">
+                <i class="icon-warning"></i>
+                <p id="safety-confirm-message">Are you sure you want to proceed with this operation?</p>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="safety-understand" class="form-check-input" required>
+                    <label for="safety-understand" class="form-check-label">
+                        I understand the safety implications of this action
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="safety-confirm-cancel">Cancel</button>
+            <button class="btn btn-danger" id="safety-confirm-proceed" disabled>Proceed</button>
+        </div>
+    </div>
+</div>

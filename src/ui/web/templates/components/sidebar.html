@@ -1,0 +1,102 @@
+<!--
+Sidebar Component Template - WF EOL Tester Web Interface
+
+This template provides the sidebar navigation including:
+- Secondary navigation menu
+- Hardware control panels
+- Quick settings
+- Recent test results
+- System status information
+- Collapsible sections
+- Context-sensitive content based on current page
+-->
+
+<aside class="sidebar">
+    <!-- Hardware Control Panel -->
+    <section class="sidebar-section" id="hardware-control">
+        <h3 class="section-title">Hardware Control</h3>
+        
+        <!-- Robot Control -->
+        <div class="control-panel">
+            <h4 class="panel-title">Robot</h4>
+            <div class="control-buttons">
+                <button class="btn btn-sm" id="robot-home">Home</button>
+                <button class="btn btn-sm" id="robot-jog">Jog</button>
+                <button class="btn btn-sm" id="robot-reset">Reset</button>
+            </div>
+            <div class="status-display" id="robot-position">
+                Position: <span class="value">0, 0, 0</span>
+            </div>
+        </div>
+        
+        <!-- Load Cell Control -->
+        <div class="control-panel">
+            <h4 class="panel-title">Load Cell</h4>
+            <div class="control-buttons">
+                <button class="btn btn-sm" id="loadcell-calibrate">Calibrate</button>
+                <button class="btn btn-sm" id="loadcell-zero">Zero</button>
+            </div>
+            <div class="status-display" id="loadcell-reading">
+                Force: <span class="value">0.00 N</span>
+            </div>
+        </div>
+        
+        <!-- MCU Control -->
+        <div class="control-panel">
+            <h4 class="panel-title">MCU</h4>
+            <div class="control-buttons">
+                <button class="btn btn-sm" id="mcu-connect">Connect</button>
+                <button class="btn btn-sm" id="mcu-reset">Reset</button>
+            </div>
+            <div class="status-display" id="mcu-status">
+                Status: <span class="value">Connected</span>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Quick Settings -->
+    <section class="sidebar-section" id="quick-settings">
+        <h3 class="section-title">Quick Settings</h3>
+        <div class="settings-group">
+            <label class="setting-item">
+                <input type="checkbox" id="auto-refresh" checked>
+                <span>Auto Refresh</span>
+            </label>
+            <label class="setting-item">
+                <input type="checkbox" id="sound-alerts">
+                <span>Sound Alerts</span>
+            </label>
+            <label class="setting-item">
+                <input type="range" id="refresh-rate" min="500" max="5000" value="1000">
+                <span>Refresh Rate: <span id="refresh-value">1000ms</span></span>
+            </label>
+        </div>
+    </section>
+    
+    <!-- Recent Tests -->
+    <section class="sidebar-section" id="recent-tests">
+        <h3 class="section-title">Recent Tests</h3>
+        <div class="test-list" id="recent-tests-list">
+            <!-- Recent test items will be populated dynamically -->
+        </div>
+    </section>
+    
+    <!-- System Status -->
+    <section class="sidebar-section" id="system-status">
+        <h3 class="section-title">System Status</h3>
+        <div class="status-grid">
+            <div class="status-item">
+                <span class="label">CPU:</span>
+                <span class="value" id="cpu-usage">25%</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Memory:</span>
+                <span class="value" id="memory-usage">1.2GB</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Uptime:</span>
+                <span class="value" id="system-uptime">2h 15m</span>
+            </div>
+        </div>
+    </section>
+</aside>

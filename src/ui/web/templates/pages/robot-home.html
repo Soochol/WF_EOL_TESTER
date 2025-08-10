@@ -1,0 +1,414 @@
+<!--
+Robot Home Page Template - WF EOL Tester Web Interface
+
+This page provides the interface for Robot Homing operations including:
+- Simple robot homing operation controls
+- Robot status monitoring and display
+- Operation progress indication
+- Safety controls and emergency stop integration
+- Success/failure status feedback
+- Operation history and logging
+-->
+
+<div class="content-page" id="robot-home" data-page="robot-home" style="display: none;">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <h1>🏠 Robot Home</h1>
+            <p class="page-subtitle">Robot Homing & Position Control</p>
+        </div>
+        <div class="page-actions">
+            <div class="status-badge" id="robot-home-status">
+                <span class="status-indicator ready"></span>
+                <span class="status-text">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Robot Control Panel -->
+    <div class="control-panel">
+        <div class="panel-section main-controls">
+            <h3>🎮 Robot Control</h3>
+            <div class="robot-control-grid">
+                
+                <!-- Home Operation -->
+                <div class="control-card primary-control">
+                    <div class="control-header">
+                        <h4>🏠 Home Robot</h4>
+                        <div class="control-status" id="home-operation-status">
+                            <span class="status-indicator ready"></span>
+                            <span class="status-text">Ready</span>
+                        </div>
+                    </div>
+                    <div class="control-body">
+                        <p>Move robot to home position (origin point)</p>
+                        <div class="control-actions">
+                            <button id="start-home-btn" class="btn btn-primary btn-large">
+                                🏠 Start Homing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Position Status -->
+                <div class="control-card">
+                    <div class="control-header">
+                        <h4>📍 Current Position</h4>
+                    </div>
+                    <div class="control-body">
+                        <div class="position-display">
+                            <div class="axis-position">
+                                <label>X-Axis:</label>
+                                <span id="robot-pos-x">-- mm</span>
+                            </div>
+                            <div class="axis-position">
+                                <label>Y-Axis:</label>
+                                <span id="robot-pos-y">-- mm</span>
+                            </div>
+                            <div class="axis-position">
+                                <label>Z-Axis:</label>
+                                <span id="robot-pos-z">-- mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Robot Status -->
+                <div class="control-card">
+                    <div class="control-header">
+                        <h4>🤖 Robot Status</h4>
+                    </div>
+                    <div class="control-body">
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <label>Connection:</label>
+                                <span class="status-value" id="robot-connection">
+                                    <span class="status-indicator disconnected"></span>
+                                    Disconnected
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <label>Servo State:</label>
+                                <span class="status-value" id="robot-servo">
+                                    <span class="status-indicator off"></span>
+                                    Off
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <label>Home State:</label>
+                                <span class="status-value" id="robot-home-state">
+                                    <span class="status-indicator unknown"></span>
+                                    Unknown
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <label>Error State:</label>
+                                <span class="status-value" id="robot-error">
+                                    <span class="status-indicator ok"></span>
+                                    No Errors
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Safety Controls -->
+        <div class="panel-section safety-section">
+            <h3>🛡️ Safety Controls</h3>
+            <div class="safety-controls">
+                <button id="emergency-stop-robot" class="btn btn-emergency btn-large">
+                    🛑 EMERGENCY STOP
+                </button>
+                <button id="servo-enable-btn" class="btn btn-warning" disabled>
+                    ⚡ Enable Servo
+                </button>
+                <button id="servo-disable-btn" class="btn btn-secondary" disabled>
+                    🔌 Disable Servo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operation Progress -->
+    <div class="progress-section" id="home-progress-section" style="display: none;">
+        <div class="progress-header">
+            <h3>🔄 Homing Progress</h3>
+            <div class="progress-info">
+                <span id="home-current-step">Initializing...</span>
+                <span id="home-progress-percentage">0%</span>
+            </div>
+        </div>
+        
+        <!-- Progress Indicator -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="home-progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="progress-steps">
+                <div class="step" data-step="1">
+                    <div class="step-indicator">1</div>
+                    <div class="step-label">Initialize</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-indicator">2</div>
+                    <div class="step-label">Enable Servo</div>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-indicator">3</div>
+                    <div class="step-label">Home Axes</div>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-indicator">4</div>
+                    <div class="step-label">Verify</div>
+                </div>
+                <div class="step" data-step="5">
+                    <div class="step-indicator">5</div>
+                    <div class="step-label">Complete</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Status -->
+        <div class="realtime-status">
+            <div class="status-card">
+                <h4>🎯 Target Position</h4>
+                <div class="target-position">
+                    <div class="axis">X: 0.00 mm</div>
+                    <div class="axis">Y: 0.00 mm</div>
+                    <div class="axis">Z: 0.00 mm</div>
+                </div>
+            </div>
+            <div class="status-card">
+                <h4>📏 Distance to Home</h4>
+                <div class="distance-display" id="distance-to-home">
+                    <div class="distance-value">-- mm</div>
+                    <div class="distance-progress">
+                        <div class="distance-bar"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="status-card">
+                <h4>⏱️ Operation Time</h4>
+                <div class="operation-time">
+                    <div class="time-elapsed" id="home-elapsed-time">00:00</div>
+                    <div class="time-estimated">Est: --:--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operation Result -->
+    <div class="result-section" id="home-result-section" style="display: none;">
+        <div class="result-header">
+            <h3>🎯 Homing Result</h3>
+        </div>
+        
+        <div class="result-display">
+            <div class="result-status" id="home-result-status">
+                <div class="result-icon"></div>
+                <div class="result-text">
+                    <h4 id="result-title">--</h4>
+                    <p id="result-message">--</p>
+                </div>
+            </div>
+            
+            <div class="result-details">
+                <div class="detail-item">
+                    <label>Final Position:</label>
+                    <span id="final-position">X: -- Y: -- Z: --</span>
+                </div>
+                <div class="detail-item">
+                    <label>Accuracy:</label>
+                    <span id="home-accuracy">±-- mm</span>
+                </div>
+                <div class="detail-item">
+                    <label>Total Time:</label>
+                    <span id="total-home-time">--:--</span>
+                </div>
+                <div class="detail-item">
+                    <label>Completion:</label>
+                    <span id="completion-time">--</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hardware Monitoring -->
+    <div class="hardware-status-section">
+        <h3>🔧 Hardware Monitor</h3>
+        <div class="hardware-monitor-grid">
+            <div class="monitor-card">
+                <h4>🤖 Robot Controller</h4>
+                <div class="monitor-details">
+                    <div class="detail-row">
+                        <span>Model:</span>
+                        <span id="robot-model">--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Firmware:</span>
+                        <span id="robot-firmware">--</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Temperature:</span>
+                        <span id="robot-temperature">-- °C</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Voltage:</span>
+                        <span id="robot-voltage">-- V</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="monitor-card">
+                <h4>⚡ Power System</h4>
+                <div class="monitor-details">
+                    <div class="detail-row">
+                        <span>Main Power:</span>
+                        <span class="status-value" id="main-power">
+                            <span class="status-indicator off"></span>
+                            Off
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Servo Power:</span>
+                        <span class="status-value" id="servo-power">
+                            <span class="status-indicator off"></span>
+                            Off
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Current:</span>
+                        <span id="power-current">-- A</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Consumption:</span>
+                        <span id="power-consumption">-- W</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="monitor-card">
+                <h4>🔒 Safety Systems</h4>
+                <div class="monitor-details">
+                    <div class="detail-row">
+                        <span>E-Stop:</span>
+                        <span class="status-value" id="estop-status">
+                            <span class="status-indicator ok"></span>
+                            Normal
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Light Curtain:</span>
+                        <span class="status-value" id="safety-curtain">
+                            <span class="status-indicator ok"></span>
+                            Clear
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Door Lock:</span>
+                        <span class="status-value" id="door-lock">
+                            <span class="status-indicator ok"></span>
+                            Secured
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Area Clear:</span>
+                        <span class="status-value" id="area-clear">
+                            <span class="status-indicator ok"></span>
+                            Safe
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operation History -->
+    <div class="history-section">
+        <div class="history-header">
+            <h3>📚 Operation History</h3>
+            <div class="history-controls">
+                <button class="btn btn-sm btn-secondary" id="refresh-history-btn">
+                    🔄 Refresh
+                </button>
+                <button class="btn btn-sm btn-info" id="export-history-btn">
+                    💾 Export
+                </button>
+            </div>
+        </div>
+        
+        <div class="history-table-container">
+            <table class="history-table" id="home-history-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                        <th>Duration</th>
+                        <th>Final Position</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body">
+                    <tr class="no-data">
+                        <td colspan="5">No homing operations recorded</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Operation Log -->
+    <div class="log-section">
+        <div class="log-header">
+            <h3>📝 Operation Log</h3>
+            <div class="log-controls">
+                <button class="btn btn-sm btn-secondary" id="clear-robot-log-btn">
+                    🗑️ Clear Log
+                </button>
+                <button class="btn btn-sm btn-info" id="export-robot-log-btn">
+                    💾 Export Log
+                </button>
+            </div>
+        </div>
+        <div class="log-container" id="robot-operation-log">
+            <div class="log-entry info">
+                <span class="log-time">--:--:--</span>
+                <span class="log-message">Robot Home system ready</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Safety Confirmation Modal for Robot Home -->
+<div class="modal-template" id="robot-safety-confirmation-modal-template" style="display: none;">
+    <div class="modal-overlay">
+        <div class="modal modal-medium modal-warning">
+            <div class="modal-header">
+                <h3>⚠️ Robot Safety Confirmation</h3>
+            </div>
+            <div class="modal-body">
+                <div class="warning-content">
+                    <div class="warning-icon">🤖</div>
+                    <div class="warning-text">
+                        <p><strong>ROBOT SAFETY NOTICE:</strong></p>
+                        <ul>
+                            <li>Ensure workspace is clear of personnel and obstacles</li>
+                            <li>Verify emergency stop button is accessible</li>
+                            <li>Confirm all safety systems are operational</li>
+                            <li>Robot will move to home position (0,0,0)</li>
+                        </ul>
+                        <p>Do you confirm it is safe to start robot homing operation?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+                <button class="btn btn-primary" data-action="confirm">Confirm & Start Homing</button>
+            </div>
+        </div>
+    </div>
+</div>

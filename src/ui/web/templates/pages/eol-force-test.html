@@ -1,0 +1,368 @@
+<!--
+EOL Force Test Page Template - WF EOL Tester Web Interface
+
+This page provides the interface for End-of-Line Force Testing operations including:
+- Test configuration and parameter display
+- Start/Stop test execution with safety confirmations
+- Real-time test progress monitoring
+- Hardware status during test execution
+- Test results and data visualization
+- Operation history and logging
+-->
+
+<div class="content-page" id="eol-force-test" data-page="eol-force-test" style="display: none;">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <h1>🔬 EOL Force Test</h1>
+            <p class="page-subtitle">End-of-Line Force Testing & Validation</p>
+        </div>
+        <div class="page-actions">
+            <div class="status-badge" id="eol-test-status">
+                <span class="status-indicator ready"></span>
+                <span class="status-text">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Control Panel -->
+    <div class="control-panel">
+        <div class="panel-section">
+            <h3>🎮 Test Control</h3>
+            <div class="control-buttons">
+                <button id="start-test-btn" class="btn btn-primary btn-large">
+                    ▶️ Start Test
+                </button>
+                <button id="pause-test-btn" class="btn btn-warning btn-large" disabled>
+                    ⏸️ Pause
+                </button>
+                <button id="resume-test-btn" class="btn btn-info btn-large" disabled>
+                    ⏯️ Resume
+                </button>
+                <button id="stop-test-btn" class="btn btn-danger btn-large" disabled>
+                    ⏹️ Stop Test
+                </button>
+            </div>
+            <div class="safety-controls">
+                <button id="emergency-stop-test" class="btn btn-emergency">
+                    🛑 EMERGENCY STOP
+                </button>
+            </div>
+        </div>
+        
+        <!-- Test Parameters -->
+        <div class="panel-section">
+            <h3>📊 Test Parameters</h3>
+            <div class="parameter-grid">
+                <div class="parameter-item">
+                    <label>Temperature</label>
+                    <div class="parameter-value" id="test-temp">25°C</div>
+                </div>
+                <div class="parameter-item">
+                    <label>Max Force</label>
+                    <div class="parameter-value" id="test-force">1000N</div>
+                </div>
+                <div class="parameter-item">
+                    <label>Stroke Length</label>
+                    <div class="parameter-value" id="test-stroke">50mm</div>
+                </div>
+                <div class="parameter-item">
+                    <label>Test Duration</label>
+                    <div class="parameter-value" id="test-duration">120s</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Progress Section -->
+    <div class="progress-section" id="test-progress-section" style="display: none;">
+        <div class="progress-header">
+            <h3>🔄 Test Progress</h3>
+            <div class="progress-info">
+                <span id="current-step">Initializing...</span>
+                <span id="progress-percentage">0%</span>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="progress-steps">
+                <div class="step" data-step="1">
+                    <div class="step-indicator">1</div>
+                    <div class="step-label">Initialize</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-indicator">2</div>
+                    <div class="step-label">Prepare</div>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-indicator">3</div>
+                    <div class="step-label">Execute</div>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-indicator">4</div>
+                    <div class="step-label">Analyze</div>
+                </div>
+                <div class="step" data-step="5">
+                    <div class="step-indicator">5</div>
+                    <div class="step-label">Complete</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Measurements -->
+        <div class="measurements-grid">
+            <div class="measurement-card">
+                <h4>⚡ Current Force</h4>
+                <div class="measurement-value" id="current-force">0 N</div>
+                <div class="measurement-chart" id="force-chart"></div>
+            </div>
+            <div class="measurement-card">
+                <h4>📏 Position</h4>
+                <div class="measurement-value" id="current-position">0 mm</div>
+                <div class="measurement-chart" id="position-chart"></div>
+            </div>
+            <div class="measurement-card">
+                <h4>🌡️ Temperature</h4>
+                <div class="measurement-value" id="current-temp">25 °C</div>
+                <div class="measurement-chart" id="temp-chart"></div>
+            </div>
+            <div class="measurement-card">
+                <h4>⏱️ Elapsed Time</h4>
+                <div class="measurement-value" id="elapsed-time">00:00</div>
+                <div class="time-remaining" id="time-remaining">Remaining: --:--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hardware Status Monitor -->
+    <div class="hardware-status-section">
+        <h3>🔧 Hardware Status</h3>
+        <div class="hardware-grid">
+            <div class="hardware-item">
+                <div class="hardware-icon">🤖</div>
+                <div class="hardware-info">
+                    <div class="hardware-name">Robot</div>
+                    <div class="hardware-status" id="robot-status-test">
+                        <span class="status-indicator disconnected"></span>
+                        <span class="status-text">Disconnected</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hardware-item">
+                <div class="hardware-icon">⚖️</div>
+                <div class="hardware-info">
+                    <div class="hardware-name">Load Cell</div>
+                    <div class="hardware-status" id="loadcell-status-test">
+                        <span class="status-indicator disconnected"></span>
+                        <span class="status-text">Disconnected</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hardware-item">
+                <div class="hardware-icon">🌡️</div>
+                <div class="hardware-info">
+                    <div class="hardware-name">MCU</div>
+                    <div class="hardware-status" id="mcu-status-test">
+                        <span class="status-indicator disconnected"></span>
+                        <span class="status-text">Disconnected</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hardware-item">
+                <div class="hardware-icon">⚡</div>
+                <div class="hardware-info">
+                    <div class="hardware-name">Power</div>
+                    <div class="hardware-status" id="power-status-test">
+                        <span class="status-indicator disconnected"></span>
+                        <span class="status-text">Disconnected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Results Section -->
+    <div class="results-section" id="test-results-section" style="display: none;">
+        <div class="results-header">
+            <h3>📊 Test Results</h3>
+            <div class="results-actions">
+                <button class="btn btn-secondary" id="export-results-btn">
+                    💾 Export Results
+                </button>
+                <button class="btn btn-info" id="view-report-btn">
+                    📄 View Report
+                </button>
+            </div>
+        </div>
+        
+        <div class="results-grid">
+            <div class="result-card">
+                <h4>🎯 Test Result</h4>
+                <div class="result-status" id="test-result-status">
+                    <span class="result-indicator"></span>
+                    <span class="result-text">--</span>
+                </div>
+            </div>
+            <div class="result-card">
+                <h4>📈 Peak Force</h4>
+                <div class="result-value" id="peak-force">-- N</div>
+            </div>
+            <div class="result-card">
+                <h4>📏 Max Displacement</h4>
+                <div class="result-value" id="max-displacement">-- mm</div>
+            </div>
+            <div class="result-card">
+                <h4>⏱️ Test Duration</h4>
+                <div class="result-value" id="actual-duration">--:--</div>
+            </div>
+        </div>
+
+        <div class="results-charts">
+            <div class="chart-container">
+                <h4>Force vs Time</h4>
+                <canvas id="force-time-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h4>Position vs Time</h4>
+                <canvas id="position-time-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comprehensive Results Visualization Section -->
+    <div class="comprehensive-results-section" id="comprehensive-results-section" style="display: none;">
+        <div class="results-section-header">
+            <div class="results-title">
+                <h2>📊 Comprehensive Results Visualization</h2>
+                <p class="results-subtitle">Advanced analysis and visualization of EOL Force Test results</p>
+            </div>
+            <div class="results-section-actions">
+                <button class="btn btn-sm btn-info" id="toggle-results-view-btn" title="Toggle Results View">
+                    📈 Toggle View
+                </button>
+                <button class="btn btn-sm btn-success" id="comprehensive-export-btn" title="Export All Results">
+                    💾 Export All
+                </button>
+                <button class="btn btn-sm btn-secondary" id="results-fullscreen-btn" title="Fullscreen Results">
+                    🔍 Fullscreen
+                </button>
+            </div>
+        </div>
+        
+        <!-- Force Results Visualizer Container -->
+        <div class="force-results-visualizer-container" id="force-results-visualizer-container">
+            <!-- Force Results Visualizer component will be initialized here -->
+        </div>
+    </div>
+
+    <!-- Real-time Log Viewer -->
+    <div class="log-section">
+        <div class="log-header">
+            <h3>📝 Test Logs</h3>
+            <div class="log-header-actions">
+                <button class="btn btn-sm btn-info" id="expand-log-viewer-btn" title="Open in Full Screen">
+                    🔍 Full View
+                </button>
+                <a href="/logs" class="btn btn-sm btn-secondary" title="Open Logs Page">
+                    📋 Logs Page
+                </a>
+            </div>
+        </div>
+        <div class="log-viewer-container" id="eol-test-log-viewer">
+            <!-- Log viewer component will be initialized here -->
+        </div>
+    </div>
+
+</div>
+
+<!-- Test Configuration Modal -->
+<div class="modal-template" id="test-config-modal-template" style="display: none;">
+    <div class="modal-overlay">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h3>⚙️ Test Configuration</h3>
+                <button class="modal-close" data-action="close">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="test-config-form">
+                    <div class="form-section">
+                        <h4>Test Parameters</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="config-temp">Target Temperature (°C)</label>
+                                <input type="number" id="config-temp" name="temperature" value="25" min="10" max="60">
+                            </div>
+                            <div class="form-group">
+                                <label for="config-force">Maximum Force (N)</label>
+                                <input type="number" id="config-force" name="maxForce" value="1000" min="100" max="5000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="config-stroke">Stroke Length (mm)</label>
+                                <input type="number" id="config-stroke" name="strokeLength" value="50" min="10" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label for="config-duration">Test Duration (s)</label>
+                                <input type="number" id="config-duration" name="duration" value="120" min="30" max="600">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4>Safety Limits</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="config-force-limit">Force Limit (N)</label>
+                                <input type="number" id="config-force-limit" name="forceLimit" value="1200" min="100" max="6000">
+                            </div>
+                            <div class="form-group">
+                                <label for="config-temp-limit">Temperature Limit (°C)</label>
+                                <input type="number" id="config-temp-limit" name="tempLimit" value="70" min="40" max="100">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+                <button class="btn btn-primary" data-action="save">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Safety Confirmation Modal -->
+<div class="modal-template" id="safety-confirmation-modal-template" style="display: none;">
+    <div class="modal-overlay">
+        <div class="modal modal-medium modal-warning">
+            <div class="modal-header">
+                <h3>⚠️ Safety Confirmation</h3>
+            </div>
+            <div class="modal-body">
+                <div class="warning-content">
+                    <div class="warning-icon">🛑</div>
+                    <div class="warning-text">
+                        <p><strong>SAFETY NOTICE:</strong></p>
+                        <ul>
+                            <li>Ensure all personnel are clear of the test area</li>
+                            <li>Verify all safety systems are operational</li>
+                            <li>Emergency stop is accessible and functional</li>
+                            <li>Test parameters are within safe operating limits</li>
+                        </ul>
+                        <p>Do you confirm it is safe to proceed with the test?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+                <button class="btn btn-danger" data-action="confirm">Confirm & Start Test</button>
+            </div>
+        </div>
+    </div>
+</div>

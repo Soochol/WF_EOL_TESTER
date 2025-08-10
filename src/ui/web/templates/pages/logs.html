@@ -1,0 +1,317 @@
+<!--
+Standalone Log Viewer Page - WF EOL Tester Web Interface
+
+This page provides a dedicated full-screen view for the log viewer component.
+It extends the base layout and provides additional page-specific features:
+- Full-screen log viewing with dedicated layout
+- Page-specific navigation and breadcrumbs
+- Enhanced toolbar with additional export options
+- Integration with the main application context
+- Responsive design for different screen sizes
+-->
+
+{% extends "layouts/base.html" %}
+
+{% block title %}System Logs - WF EOL Tester{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/pages/logs.css">
+{% endblock %}
+
+{% block content %}
+<div class="logs-page">
+    <!-- Page Header -->
+    <div class="logs-page__header">
+        <div class="logs-page__header-content">
+            <div class="logs-page__title-section">
+                <h1 class="logs-page__title">
+                    <span class="logs-page__title-icon">📋</span>
+                    System Logs
+                </h1>
+                <div class="logs-page__breadcrumbs">
+                    <a href="/" class="logs-page__breadcrumb">Home</a>
+                    <span class="logs-page__breadcrumb-separator">›</span>
+                    <span class="logs-page__breadcrumb logs-page__breadcrumb--current">Logs</span>
+                </div>
+            </div>
+            
+            <div class="logs-page__header-actions">
+                <button class="logs-page__btn logs-page__btn--secondary" id="logs-help-btn" title="Show Help">
+                    <span class="logs-page__btn-icon">❓</span>
+                    <span class="logs-page__btn-text">Help</span>
+                </button>
+                
+                <button class="logs-page__btn logs-page__btn--secondary" id="logs-settings-btn" title="Log Settings">
+                    <span class="logs-page__btn-icon">⚙️</span>
+                    <span class="logs-page__btn-text">Settings</span>
+                </button>
+                
+                <div class="logs-page__view-toggle">
+                    <button class="logs-page__toggle-btn logs-page__toggle-btn--active" 
+                            data-view="full" 
+                            title="Full View">
+                        <span class="logs-page__toggle-icon">📋</span>
+                    </button>
+                    <button class="logs-page__toggle-btn" 
+                            data-view="split" 
+                            title="Split View">
+                        <span class="logs-page__toggle-icon">⫼</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats Bar -->
+        <div class="logs-page__stats-bar" id="logs-stats-bar">
+            <div class="logs-page__stat-item">
+                <span class="logs-page__stat-icon">📊</span>
+                <span class="logs-page__stat-label">Active Sessions:</span>
+                <span class="logs-page__stat-value" id="active-sessions-count">-</span>
+            </div>
+            
+            <div class="logs-page__stat-item">
+                <span class="logs-page__stat-icon">🔄</span>
+                <span class="logs-page__stat-label">System Status:</span>
+                <span class="logs-page__stat-value logs-page__stat-value--status" id="system-status">Unknown</span>
+            </div>
+            
+            <div class="logs-page__stat-item">
+                <span class="logs-page__stat-icon">🔗</span>
+                <span class="logs-page__stat-label">WebSocket:</span>
+                <span class="logs-page__stat-value logs-page__stat-value--connection" id="websocket-status">Disconnected</span>
+            </div>
+            
+            <div class="logs-page__stat-item">
+                <span class="logs-page__stat-icon">💾</span>
+                <span class="logs-page__stat-label">Storage Used:</span>
+                <span class="logs-page__stat-value" id="storage-used">-</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="logs-page__content">
+        <!-- Split View Sidebar (hidden by default) -->
+        <aside class="logs-page__sidebar" id="logs-sidebar" style="display: none;">
+            <div class="logs-page__sidebar-header">
+                <h3 class="logs-page__sidebar-title">Log Sources</h3>
+            </div>
+            
+            <div class="logs-page__sidebar-content">
+                <div class="logs-page__source-list">
+                    <div class="logs-page__source-item logs-page__source-item--active" data-source="ALL">
+                        <span class="logs-page__source-icon">📋</span>
+                        <span class="logs-page__source-name">All Sources</span>
+                        <span class="logs-page__source-count" id="source-all-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="HARDWARE">
+                        <span class="logs-page__source-icon">🔧</span>
+                        <span class="logs-page__source-name">Hardware</span>
+                        <span class="logs-page__source-count" id="source-hardware-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="TEST">
+                        <span class="logs-page__source-icon">🧪</span>
+                        <span class="logs-page__source-name">Test</span>
+                        <span class="logs-page__source-count" id="source-test-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="SYSTEM">
+                        <span class="logs-page__source-icon">🖥️</span>
+                        <span class="logs-page__source-name">System</span>
+                        <span class="logs-page__source-count" id="source-system-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="API">
+                        <span class="logs-page__source-icon">🌐</span>
+                        <span class="logs-page__source-name">API</span>
+                        <span class="logs-page__source-count" id="source-api-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="WEBSOCKET">
+                        <span class="logs-page__source-icon">🔗</span>
+                        <span class="logs-page__source-name">WebSocket</span>
+                        <span class="logs-page__source-count" id="source-websocket-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="MCU">
+                        <span class="logs-page__source-icon">⚡</span>
+                        <span class="logs-page__source-name">MCU</span>
+                        <span class="logs-page__source-count" id="source-mcu-count">0</span>
+                    </div>
+                    
+                    <div class="logs-page__source-item" data-source="ROBOT">
+                        <span class="logs-page__source-icon">🤖</span>
+                        <span class="logs-page__source-name">Robot</span>
+                        <span class="logs-page__source-count" id="source-robot-count">0</span>
+                    </div>
+                </div>
+                
+                <div class="logs-page__sidebar-section">
+                    <h4 class="logs-page__sidebar-section-title">Recent Sessions</h4>
+                    <div class="logs-page__session-list" id="recent-sessions-list">
+                        <!-- Recent sessions will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Log Viewer Container -->
+        <main class="logs-page__main" id="logs-main">
+            <div class="logs-page__viewer-container">
+                <!-- The LogViewerComponent will be initialized here -->
+                <div id="logs-page-viewer" class="logs-page__viewer">
+                    <!-- Log viewer will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Page-specific Modals -->
+    <!-- Session Management Modal -->
+    <div class="logs-page__modal" id="session-management-modal" style="display: none;">
+        <div class="logs-page__modal-overlay"></div>
+        <div class="logs-page__modal-content">
+            <div class="logs-page__modal-header">
+                <h3 class="logs-page__modal-title">Session Management</h3>
+                <button class="logs-page__modal-close" id="session-modal-close">&times;</button>
+            </div>
+            
+            <div class="logs-page__modal-body">
+                <div class="logs-page__session-tabs">
+                    <button class="logs-page__session-tab logs-page__session-tab--active" data-tab="current">
+                        Current Session
+                    </button>
+                    <button class="logs-page__session-tab" data-tab="saved">
+                        Saved Sessions
+                    </button>
+                    <button class="logs-page__session-tab" data-tab="import">
+                        Import/Export
+                    </button>
+                </div>
+                
+                <div class="logs-page__session-content">
+                    <!-- Current Session Tab -->
+                    <div class="logs-page__session-panel logs-page__session-panel--active" data-panel="current">
+                        <div class="logs-page__session-info">
+                            <div class="logs-page__session-detail">
+                                <span class="logs-page__session-label">Session ID:</span>
+                                <span class="logs-page__session-value" id="current-session-id">-</span>
+                            </div>
+                            <div class="logs-page__session-detail">
+                                <span class="logs-page__session-label">Started:</span>
+                                <span class="logs-page__session-value" id="session-start-time">-</span>
+                            </div>
+                            <div class="logs-page__session-detail">
+                                <span class="logs-page__session-label">Messages:</span>
+                                <span class="logs-page__session-value" id="session-message-count">0</span>
+                            </div>
+                            <div class="logs-page__session-detail">
+                                <span class="logs-page__session-label">Storage:</span>
+                                <span class="logs-page__session-value" id="session-storage-size">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="logs-page__session-actions">
+                            <button class="logs-page__btn logs-page__btn--primary" id="save-session-btn">
+                                Save Current Session
+                            </button>
+                            <button class="logs-page__btn logs-page__btn--secondary" id="export-session-btn">
+                                Export Session
+                            </button>
+                            <button class="logs-page__btn logs-page__btn--danger" id="clear-session-btn">
+                                Clear Session
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Saved Sessions Tab -->
+                    <div class="logs-page__session-panel" data-panel="saved">
+                        <div class="logs-page__saved-sessions" id="saved-sessions-list">
+                            <!-- Saved sessions will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Import/Export Tab -->
+                    <div class="logs-page__session-panel" data-panel="import">
+                        <div class="logs-page__import-export-section">
+                            <h4>Export All Sessions</h4>
+                            <div class="logs-page__export-options">
+                                <button class="logs-page__btn logs-page__btn--secondary" data-format="json">
+                                    Export as JSON
+                                </button>
+                                <button class="logs-page__btn logs-page__btn--secondary" data-format="csv">
+                                    Export as CSV
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="logs-page__import-export-section">
+                            <h4>Import Session</h4>
+                            <div class="logs-page__import-area">
+                                <input type="file" 
+                                       class="logs-page__file-input" 
+                                       id="session-import-file" 
+                                       accept=".json,.csv,.txt">
+                                <label for="session-import-file" class="logs-page__file-label">
+                                    <span class="logs-page__file-icon">📁</span>
+                                    Choose File
+                                </label>
+                                <button class="logs-page__btn logs-page__btn--primary" 
+                                        id="import-session-btn" 
+                                        disabled>
+                                    Import Session
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Log Analysis Modal -->
+    <div class="logs-page__modal" id="log-analysis-modal" style="display: none;">
+        <div class="logs-page__modal-overlay"></div>
+        <div class="logs-page__modal-content logs-page__modal-content--large">
+            <div class="logs-page__modal-header">
+                <h3 class="logs-page__modal-title">Log Analysis</h3>
+                <button class="logs-page__modal-close" id="analysis-modal-close">&times;</button>
+            </div>
+            
+            <div class="logs-page__modal-body">
+                <div class="logs-page__analysis-container">
+                    <!-- Analysis results will be populated here -->
+                    <div class="logs-page__analysis-placeholder">
+                        <div class="logs-page__analysis-icon">📊</div>
+                        <div class="logs-page__analysis-text">
+                            Select a time range and click "Analyze" to generate insights from your logs.
+                        </div>
+                        <button class="logs-page__btn logs-page__btn--primary" id="start-analysis-btn">
+                            Start Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Screen -->
+<div class="logs-page__loading-screen" id="logs-loading-screen">
+    <div class="logs-page__loading-content">
+        <div class="logs-page__loading-spinner"></div>
+        <div class="logs-page__loading-text">Initializing log viewer...</div>
+        <div class="logs-page__loading-progress">
+            <div class="logs-page__loading-progress-bar" id="loading-progress-bar"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="/static/js/components/log-viewer.js"></script>
+<script type="module" src="/static/js/utils/log-formatter.js"></script>
+<script type="module" src="/static/js/pages/logs.js"></script>
+{% endblock %}
