@@ -20,7 +20,7 @@ if str(src_path) not in sys.path:
 # Third-party imports
 from loguru import logger  # noqa: E402
 
-# Local application imports - Services
+# Local application imports - Services (bypassing __init__.py files for Windows compatibility)
 from application.services.button_monitoring_service import ButtonMonitoringService  # noqa: E402
 from application.services.configuration_service import ConfigurationService  # noqa: E402
 from application.services.configuration_validator import ConfigurationValidator  # noqa: E402
