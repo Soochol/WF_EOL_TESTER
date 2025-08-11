@@ -16,8 +16,9 @@ TestResults/
 # Dependency directories
 node_modules/
 
-# configuration folders (but not src/application/interfaces/configuration/)
-# configuration/
+# configuration folders (environment-specific, should not be versioned)
+configuration/
+!configuration/*.template
 # Environment variables
 .env
 

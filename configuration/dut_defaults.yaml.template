@@ -1,0 +1,12 @@
+active_profile: default
+default:
+  dut_id: DEFAULT001
+  model: Default Model
+  operator_id: DEFAULT_OP
+  manufacturer: Default Manufacturer
+  serial_number: SN001
+  part_number: PN001
+metadata:
+  description: DUT defaults template - copy to dut_defaults.yaml and modify for your environment
+  template: true
+  usage: "Copy this file to dut_defaults.yaml and update with your actual DUT information"
