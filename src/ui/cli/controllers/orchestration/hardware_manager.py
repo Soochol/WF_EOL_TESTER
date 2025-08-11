@@ -254,7 +254,7 @@ class HardwareControlManager:
             "2": "MCU Control",
             "3": "LoadCell Control",
             "4": "Power Control",
-            "5": "Digital Output Control",
+            "5": "Digital I/O Control",
             "6": "All Hardware Status",
             "b": "Back to Main Menu",
         }
