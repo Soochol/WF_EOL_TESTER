@@ -9,20 +9,12 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-# Import configuration interfaces with Windows fallback
-try:
-    from application.interfaces.configuration.configuration import Configuration
-except ImportError:
-    # Fallback for Windows compatibility issues
-    from application.interfaces.configuration.fallback_configuration import Configuration
-
-try:
-    from application.interfaces.configuration.profile_preference import ProfilePreference
-except ImportError:
-    # Create minimal fallback if needed
-    from typing import Protocol
-    class ProfilePreference(Protocol):
-        pass
+from application.interfaces.configuration.configuration import (
+    Configuration,
+)
+from application.interfaces.configuration.profile_preference import (
+    ProfilePreference,
+)
 from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
