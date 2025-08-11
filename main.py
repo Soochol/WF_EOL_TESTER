@@ -20,7 +20,7 @@ if str(src_path) not in sys.path:
 # Third-party imports
 from loguru import logger  # noqa: E402
 
-# Local application imports - Services  
+# Local application imports - Services
 from application.services.button_monitoring_service import ButtonMonitoringService  # noqa: E402
 from application.services.configuration_service import ConfigurationService  # noqa: E402
 from application.services.configuration_validator import ConfigurationValidator  # noqa: E402
@@ -32,21 +32,22 @@ from application.services.test_result_evaluator import TestResultEvaluator  # no
 
 # Local application imports - Use Cases
 from application.use_cases.eol_force_test import EOLForceTestUseCase  # noqa: E402
-from infrastructure.configuration.json_profile_preference import (  # noqa: E402
-    JsonProfilePreference,
+from infrastructure.configuration.json_profile_preference import (
+    JsonProfilePreference,  # noqa: E402
 )
-from infrastructure.configuration.yaml_configuration import (  # noqa: E402
-    YamlConfiguration,
+from infrastructure.configuration.yaml_configuration import (
+    YamlConfiguration,  # noqa: E402
 )
 
 # Local infrastructure imports
 from infrastructure.factory import ServiceFactory  # noqa: E402
-from infrastructure.implementation.repositories.json_result_repository import (  # noqa: E402
-    JsonResultRepository,
+from infrastructure.implementation.repositories.json_result_repository import (
+    JsonResultRepository,  # noqa: E402
 )
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI  # noqa: E402
+
 
 # Application configuration constants
 DEFAULT_LOG_ROTATION_SIZE = "10 MB"
@@ -155,7 +156,9 @@ async def main() -> None:
                     from application.use_cases.eol_force_test.main_executor import (  # noqa: E402
                         EOLForceTestCommand,
                     )
-                    from domain.value_objects.dut_command_info import DUTCommandInfo  # noqa: E402
+                    from domain.value_objects.dut_command_info import (
+                        DUTCommandInfo,  # noqa: E402
+                    )
 
                     # Default DUT info for button-triggered tests
                     dut_info = DUTCommandInfo(
