@@ -365,14 +365,14 @@ class HardwareServiceFacade:
         try:
             # Step 1: MCU start standby heating
             logger.info("🔄 Step 1: Starting MCU standby heating...")
-            
+
             # Calculate standby temperature: minimum of configured standby temp and test temperature list minimum
             if not test_config.temperature_list:
                 raise ValueError("Temperature list cannot be empty")
 
             min_test_temp = min(test_config.temperature_list)
             calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
-            
+
             try:
                 await self._mcu.start_standby_heating(
                     operating_temp=test_config.activation_temperature,
@@ -395,21 +395,27 @@ class HardwareServiceFacade:
                     acceleration=hardware_config.robot.acceleration,
                     deceleration=hardware_config.robot.deceleration,
                 )
-                logger.info(f"✅ Step 2 COMPLETED: Robot moved to max stroke position: {test_config.max_stroke}μm")
+                logger.info(
+                    f"✅ Step 2 COMPLETED: Robot moved to max stroke position: {test_config.max_stroke}μm"
+                )
             except Exception as e:
                 logger.error(f"❌ Step 2 FAILED: Robot move to max stroke - {e}")
                 raise
 
             # Step 3: Wait for standby heating stabilization
             stabilization_time = test_config.standby_stabilization
-            logger.info(f"🔄 Step 3: Waiting for standby heating stabilization ({stabilization_time}s)...")
-            
+            logger.info(
+                f"🔄 Step 3: Waiting for standby heating stabilization ({stabilization_time}s)..."
+            )
+
             if stabilization_time > 300:  # More than 5 minutes seems excessive
                 logger.warning(f"⚠️  Long stabilization time detected: {stabilization_time}s")
-            
+
             try:
                 await asyncio.sleep(stabilization_time)
-                logger.info(f"✅ Step 3 COMPLETED: Standby heating stabilized after {stabilization_time}s")
+                logger.info(
+                    f"✅ Step 3 COMPLETED: Standby heating stabilized after {stabilization_time}s"
+                )
             except Exception as e:
                 logger.error(f"❌ Step 3 FAILED: Stabilization wait - {e}")
                 raise
@@ -424,7 +430,9 @@ class HardwareServiceFacade:
                     acceleration=hardware_config.robot.acceleration,
                     deceleration=hardware_config.robot.deceleration,
                 )
-                logger.info(f"✅ Step 4 COMPLETED: Robot moved to initial position: {test_config.initial_position}μm")
+                logger.info(
+                    f"✅ Step 4 COMPLETED: Robot moved to initial position: {test_config.initial_position}μm"
+                )
             except Exception as e:
                 logger.error(f"❌ Step 4 FAILED: Robot move to initial position - {e}")
                 raise
@@ -433,7 +441,6 @@ class HardwareServiceFacade:
             logger.info("🔄 Step 5: Starting MCU standby cooling...")
             try:
                 await self._mcu.start_standby_cooling()
-                await asyncio.sleep(1)  # Short delay to ensure mode is set
                 logger.info("✅ Step 5 COMPLETED: MCU standby cooling started")
             except Exception as e:
                 logger.error(f"❌ Step 5 FAILED: MCU standby cooling - {e}")
