@@ -79,7 +79,34 @@ class YamlConfiguration:
         dut_path = self.config_dir / "dut_defaults.yaml"
         
         if not dut_path.exists():
-            raise FileNotFoundError(f"DUT defaults not found: {dut_path}")
+            # Create default DUT configuration when file is missing
+            from datetime import datetime
+            
+            default_config = {
+                "active_profile": "default",
+                "default": {
+                    "dut_id": "DEFAULT001",
+                    "model": "Default Model",
+                    "operator_id": "DEFAULT_OP",
+                    "manufacturer": "Default Manufacturer",
+                    "serial_number": "SN001",
+                    "part_number": "PN001"
+                },
+                "metadata": {
+                    "created_at": datetime.now().isoformat(),
+                    "note": "Auto-generated default configuration",
+                    "created_by": "YamlConfiguration (auto-generated)"
+                }
+            }
+            
+            # Save the default configuration for future use
+            with open(dut_path, "w", encoding="utf-8") as f:
+                yaml.dump(default_config, f, default_flow_style=False, sort_keys=False)
+            
+            # Return the appropriate profile
+            if profile_name and profile_name in default_config:
+                return default_config[profile_name]
+            return default_config.get("default", default_config)
         
         with open(dut_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
