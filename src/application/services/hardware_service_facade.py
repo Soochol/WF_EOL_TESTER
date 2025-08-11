@@ -374,6 +374,15 @@ class HardwareServiceFacade:
             calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
 
             try:
+                # MCU configuration before standby heating
+                await self._mcu.set_upper_temperature(test_config.upper_temperature)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_stabilization)
+
+                await self._mcu.set_fan_speed(test_config.fan_speed)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_stabilization)
+
                 await self._mcu.start_standby_heating(
                     operating_temp=test_config.activation_temperature,
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
@@ -595,6 +604,15 @@ class HardwareServiceFacade:
                 # mcu standy heating
                 min_test_temp = min(test_config.temperature_list)
                 calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
+
+                # MCU configuration before standby heating
+                await self._mcu.set_upper_temperature(test_config.upper_temperature)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_stabilization)
+
+                await self._mcu.set_fan_speed(test_config.fan_speed)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_stabilization)
 
                 # MCU start standby heating
                 await self._mcu.start_standby_heating(

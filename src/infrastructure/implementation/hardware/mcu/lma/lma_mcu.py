@@ -429,7 +429,9 @@ class LMAMCU(MCUService):
         Raises:
             HardwareOperationError: If heating start fails
         """
-        logger.debug(f"🚀 ENTER start_standby_heating: op_temp={operating_temp}°C, standby_temp={standby_temp}°C, hold_time={hold_time_ms}ms")
+        logger.debug(
+            f"🚀 ENTER start_standby_heating: op_temp={operating_temp}°C, standby_temp={standby_temp}°C, hold_time={hold_time_ms}ms"
+        )
         await self._ensure_connected()
 
         try:
@@ -445,14 +447,60 @@ class LMAMCU(MCUService):
                 hold_time_ms,
             )
 
-            # LMA 초기화 명령 전송 및 순차적 응답 대기 (2개의 ACK 패킷)
-            logger.debug("🚀 CALLING _send_and_wait_for_sequence for CMD_LMA_INIT")
-            await self._send_and_wait_for_sequence(
-                CMD_LMA_INIT,
-                data,
-                [STATUS_LMA_INIT_OK, STATUS_OPERATING_TEMP_REACHED],
-            )
-            logger.info("LMA initialization sequence completed - both ACK packets received")
+            # LMA 초기화 명령 전송 및 유연한 응답 처리
+            logger.debug("🚀 Sending CMD_LMA_INIT with flexible response handling")
+
+            max_retries = 3
+            for retry_count in range(max_retries):
+                try:
+                    logger.debug(
+                        f"🔄 Attempt {retry_count + 1}/{max_retries} for complete CMD_LMA_INIT sequence"
+                    )
+                    await self._send_command(CMD_LMA_INIT, data)
+
+                    # Wait for first response - could be either STATUS_LMA_INIT_OK or STATUS_OPERATING_TEMP_REACHED
+                    first_response = await self._receive_response(timeout=self._timeout)
+
+                    if not first_response:
+                        raise LMACommunicationError("No response received")
+
+                    if first_response["status"] == STATUS_OPERATING_TEMP_REACHED:
+                        # Case 2: Final response received directly
+                        logger.info(
+                            "✅ LMA initialization completed - direct final response received"
+                        )
+                        break
+                    elif first_response["status"] == STATUS_LMA_INIT_OK:
+                        # Case 1: Intermediate response, wait for final response
+                        logger.debug(
+                            "📨 Intermediate response (STATUS_LMA_INIT_OK) received, waiting for final response"
+                        )
+                        await asyncio.wait_for(
+                            self._wait_for_response(STATUS_OPERATING_TEMP_REACHED),
+                            timeout=self._timeout,
+                        )
+                        logger.info("✅ LMA initialization completed - both responses received")
+                        break
+                    else:
+                        raise LMACommunicationError(
+                            f"Unexpected first response: 0x{first_response['status']:02X}, expected 0x{STATUS_LMA_INIT_OK:02X} or 0x{STATUS_OPERATING_TEMP_REACHED:02X}"
+                        )
+
+                except (asyncio.TimeoutError, LMACommunicationError) as e:
+                    error_msg = str(e)
+                    logger.error(
+                        f"🚨 Complete sequence failed in attempt {retry_count + 1}/{max_retries}: {type(e).__name__}: {error_msg}"
+                    )
+
+                    if retry_count < max_retries - 1:
+                        logger.warning("⚠️ Retrying complete sequence from beginning...")
+                        await asyncio.sleep(0.1)  # Brief delay before retry
+                        continue
+                    else:
+                        logger.error(
+                            f"💥 All {max_retries} attempts failed for CMD_LMA_INIT complete sequence"
+                        )
+                        raise
             self._mcu_status = MCUStatus.HEATING
 
             logger.info(
@@ -480,14 +528,60 @@ class LMAMCU(MCUService):
         await self._ensure_connected()
 
         try:
-            # Send cooling command with no data and sequential response handling (2개의 ACK 패킷)
-            logger.debug("Sending CMD_STROKE_INIT_COMPLETE with sequential response handling")
-            await self._send_and_wait_for_sequence(
-                CMD_STROKE_INIT_COMPLETE,
-                b"",
-                [STATUS_STROKE_INIT_OK, STATUS_STANDBY_TEMP_REACHED],
-            )
-            logger.info("LMA cooling sequence completed - both ACK packets received")
+            # Send cooling command with flexible response handling
+            logger.debug("🚀 Sending CMD_STROKE_INIT_COMPLETE with flexible response handling")
+
+            max_retries = 3
+            for retry_count in range(max_retries):
+                try:
+                    logger.debug(
+                        f"🔄 Attempt {retry_count + 1}/{max_retries} for complete CMD_STROKE_INIT_COMPLETE sequence"
+                    )
+                    await self._send_command(CMD_STROKE_INIT_COMPLETE, b"")
+
+                    # Wait for first response - could be either STATUS_STROKE_INIT_OK or STATUS_STANDBY_TEMP_REACHED
+                    first_response = await self._receive_response(timeout=self._timeout)
+
+                    if not first_response:
+                        raise LMACommunicationError("No response received")
+
+                    if first_response["status"] == STATUS_STANDBY_TEMP_REACHED:
+                        # Case 2: Final response received directly
+                        logger.info(
+                            "✅ LMA cooling sequence completed - direct final response received"
+                        )
+                        break
+                    elif first_response["status"] == STATUS_STROKE_INIT_OK:
+                        # Case 1: Intermediate response, wait for final response
+                        logger.debug(
+                            "📨 Intermediate response (STATUS_STROKE_INIT_OK) received, waiting for final response"
+                        )
+                        await asyncio.wait_for(
+                            self._wait_for_response(STATUS_STANDBY_TEMP_REACHED),
+                            timeout=self._timeout,
+                        )
+                        logger.info("✅ LMA cooling sequence completed - both responses received")
+                        break
+                    else:
+                        raise LMACommunicationError(
+                            f"Unexpected first response: 0x{first_response['status']:02X}, expected 0x{STATUS_STROKE_INIT_OK:02X} or 0x{STATUS_STANDBY_TEMP_REACHED:02X}"
+                        )
+
+                except (asyncio.TimeoutError, LMACommunicationError) as e:
+                    error_msg = str(e)
+                    logger.error(
+                        f"🚨 Complete sequence failed in attempt {retry_count + 1}/{max_retries}: {type(e).__name__}: {error_msg}"
+                    )
+
+                    if retry_count < max_retries - 1:
+                        logger.warning("⚠️ Retrying complete sequence from beginning...")
+                        await asyncio.sleep(0.1)  # Brief delay before retry
+                        continue
+                    else:
+                        logger.error(
+                            f"💥 All {max_retries} attempts failed for CMD_STROKE_INIT_COMPLETE complete sequence"
+                        )
+                        raise
             self._mcu_status = MCUStatus.COOLING
 
             logger.info("LMA standby cooling started")
@@ -967,7 +1061,9 @@ class LMAMCU(MCUService):
 
         for retry_count in range(max_retries):
             try:
-                logger.debug(f"🔄 Attempt {retry_count + 1}/{max_retries} for command 0x{command:02X} (timeout: {self._timeout}s)")
+                logger.debug(
+                    f"🔄 Attempt {retry_count + 1}/{max_retries} for command 0x{command:02X} (timeout: {self._timeout}s)"
+                )
                 await self._send_command(command, data)
 
                 # Add timeout protection to prevent hanging
@@ -979,8 +1075,10 @@ class LMAMCU(MCUService):
             except (asyncio.TimeoutError, LMACommunicationError) as e:
                 error_msg = str(e)
                 # Debug logging for exception analysis
-                logger.error(f"🚨 Exception in attempt {retry_count + 1}/{max_retries} for command 0x{command:02X}: {type(e).__name__}: {error_msg}")
-                
+                logger.error(
+                    f"🚨 Exception in attempt {retry_count + 1}/{max_retries} for command 0x{command:02X}: {type(e).__name__}: {error_msg}"
+                )
+
                 # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
                 is_timeout_error = (
                     isinstance(e, asyncio.TimeoutError)
@@ -988,8 +1086,10 @@ class LMAMCU(MCUService):
                     or "Read timeout" in error_msg
                     or "STX" in error_msg
                 )
-                
-                logger.debug(f"🔍 Timeout check: isinstance(asyncio.TimeoutError)={isinstance(e, asyncio.TimeoutError)}, error_msg='{error_msg}', is_timeout_error={is_timeout_error}")
+
+                logger.debug(
+                    f"🔍 Timeout check: isinstance(asyncio.TimeoutError)={isinstance(e, asyncio.TimeoutError)}, error_msg='{error_msg}', is_timeout_error={is_timeout_error}"
+                )
 
                 if is_timeout_error and retry_count < max_retries - 1:
                     logger.warning(
@@ -1051,7 +1151,9 @@ class LMAMCU(MCUService):
 
         for retry_count in range(max_retries):
             try:
-                logger.debug(f"🔄 Sequence attempt {retry_count + 1}/{max_retries} for command 0x{command:02X} (timeout: {self._timeout}s)")
+                logger.debug(
+                    f"🔄 Sequence attempt {retry_count + 1}/{max_retries} for command 0x{command:02X} (timeout: {self._timeout}s)"
+                )
                 await self._send_command(command, data)
 
                 # Add timeout protection for entire sequence
@@ -1082,8 +1184,10 @@ class LMAMCU(MCUService):
             except (asyncio.TimeoutError, LMACommunicationError) as e:
                 error_msg = str(e)
                 # Debug logging for exception analysis
-                logger.error(f"🚨 Sequence exception in attempt {retry_count + 1}/{max_retries} for command 0x{command:02X}: {type(e).__name__}: {error_msg}")
-                
+                logger.error(
+                    f"🚨 Sequence exception in attempt {retry_count + 1}/{max_retries} for command 0x{command:02X}: {type(e).__name__}: {error_msg}"
+                )
+
                 # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
                 is_timeout_error = (
                     isinstance(e, asyncio.TimeoutError)
@@ -1091,8 +1195,10 @@ class LMAMCU(MCUService):
                     or "Read timeout" in error_msg
                     or "STX" in error_msg
                 )
-                
-                logger.debug(f"🔍 Sequence timeout check: isinstance(asyncio.TimeoutError)={isinstance(e, asyncio.TimeoutError)}, error_msg='{error_msg}', is_timeout_error={is_timeout_error}")
+
+                logger.debug(
+                    f"🔍 Sequence timeout check: isinstance(asyncio.TimeoutError)={isinstance(e, asyncio.TimeoutError)}, error_msg='{error_msg}', is_timeout_error={is_timeout_error}"
+                )
 
                 if is_timeout_error and retry_count < max_retries - 1:
                     logger.warning(
