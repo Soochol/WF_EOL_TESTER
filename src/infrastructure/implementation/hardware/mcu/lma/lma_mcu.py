@@ -931,7 +931,7 @@ class LMAMCU(MCUService):
         self, command: int, data: bytes, target_status: int
     ) -> Dict[str, Any]:
         """
-        명령 전송 + 특정 응답 대기 (타임아웃 보호)
+        명령 전송 + 특정 응답 대기 (타임아웃 보호 + 자동 재시도)
 
         Args:
             command: 명령 코드
@@ -942,27 +942,65 @@ class LMAMCU(MCUService):
             타겟 응답 딕셔너리
 
         Raises:
-            TimeoutError: 응답 타임아웃
+            TimeoutError: 응답 타임아웃 (재시도 후에도 실패)
         """
-        await self._send_command(command, data)
+        max_retries = 3
+        
+        for retry_count in range(max_retries):
+            try:
+                await self._send_command(command, data)
 
-        # Add timeout protection to prevent hanging
-        try:
-            return await asyncio.wait_for(
-                self._wait_for_response(target_status),
-                timeout=self._timeout,
-            )
-        except asyncio.TimeoutError as e:
-            logger.error(f"Timeout waiting for response 0x{target_status:02X}")
-            raise TimeoutError(
-                f"Operation timed out waiting for response 0x{target_status:02X}"
-            ) from e
+                # Add timeout protection to prevent hanging
+                return await asyncio.wait_for(
+                    self._wait_for_response(target_status),
+                    timeout=self._timeout,
+                )
+                
+            except (asyncio.TimeoutError, LMACommunicationError) as e:
+                error_msg = str(e)
+                is_stx_timeout = "Read timeout" in error_msg or "STX" in error_msg
+                
+                if is_stx_timeout and retry_count < max_retries - 1:
+                    logger.warning(
+                        f"STX read timeout (retry {retry_count + 1}/{max_retries}) "
+                        f"for command 0x{command:02X}, clearing buffer and retrying..."
+                    )
+                    
+                    # Clear serial buffer to remove potential noise
+                    await self._clear_serial_buffer(fast_mode=True)
+                    await asyncio.sleep(0.1)  # Short delay before retry
+                    continue
+                else:
+                    # Final attempt failed or non-STX error
+                    if retry_count == max_retries - 1:
+                        logger.error(
+                            f"Command 0x{command:02X} failed after {max_retries} retries: {error_msg}"
+                        )
+                    else:
+                        logger.error(f"Non-recoverable error for command 0x{command:02X}: {error_msg}")
+                    
+                    if isinstance(e, asyncio.TimeoutError):
+                        raise TimeoutError(
+                            f"Operation timed out waiting for response 0x{target_status:02X} after {max_retries} retries"
+                        ) from e
+                    else:
+                        raise e
+            
+            except Exception as e:
+                # Unexpected error - don't retry
+                logger.error(f"Unexpected error for command 0x{command:02X}: {e}")
+                raise e
+
+        # Should never reach here due to the loop logic, but just in case
+        raise TimeoutError(
+            f"Operation failed after {max_retries} retries for command 0x{command:02X}"
+        )
 
     async def _send_and_wait_for_sequence(
         self, command: int, data: bytes, expected_statuses: list[int]
     ) -> Dict[str, Any]:
         """
-        명령 전송 + 순차적 응답 대기 (다중 ACK 패킷 처리)
+        명령 전송 + 순차적 응답 대기 (다중 ACK 패킷 처리 + 자동 재시도)
 
         Args:
             command: 명령 코드
@@ -973,44 +1011,79 @@ class LMAMCU(MCUService):
             마지막 응답 딕셔너리
 
         Raises:
-            TimeoutError: 응답 타임아웃
+            TimeoutError: 응답 타임아웃 (재시도 후에도 실패)
             LMACommunicationError: 예상하지 못한 응답
         """
-        await self._send_command(command, data)
+        max_retries = 3
+        
+        for retry_count in range(max_retries):
+            try:
+                await self._send_command(command, data)
 
-        # Add timeout protection for entire sequence
-        try:
-            last_response = None
-            for i, expected_status in enumerate(expected_statuses):
-                logger.debug(
-                    f"Waiting for response {i+1}/{len(expected_statuses)}: 0x{expected_status:02X}"
-                )
+                # Add timeout protection for entire sequence
+                last_response = None
+                for i, expected_status in enumerate(expected_statuses):
+                    logger.debug(
+                        f"Waiting for response {i+1}/{len(expected_statuses)}: 0x{expected_status:02X}"
+                    )
 
-                response = await asyncio.wait_for(
-                    self._wait_for_response(expected_status),
-                    timeout=self._timeout,
-                )
+                    response = await asyncio.wait_for(
+                        self._wait_for_response(expected_status),
+                        timeout=self._timeout,
+                    )
 
-                if i == len(expected_statuses) - 1:
-                    # This is the final response
-                    last_response = response
-                    logger.debug(f"Final response received: 0x{expected_status:02X}")
+                    if i == len(expected_statuses) - 1:
+                        # This is the final response
+                        last_response = response
+                        logger.debug(f"Final response received: 0x{expected_status:02X}")
+                    else:
+                        # This is an intermediate response
+                        logger.debug(f"Intermediate response received: 0x{expected_status:02X}")
+
+                if last_response is None:
+                    raise LMACommunicationError("No responses received in sequence")
+
+                return last_response
+
+            except (asyncio.TimeoutError, LMACommunicationError) as e:
+                error_msg = str(e)
+                is_stx_timeout = "Read timeout" in error_msg or "STX" in error_msg
+                
+                if is_stx_timeout and retry_count < max_retries - 1:
+                    logger.warning(
+                        f"STX read timeout in sequence (retry {retry_count + 1}/{max_retries}) "
+                        f"for command 0x{command:02X}, clearing buffer and retrying..."
+                    )
+                    
+                    # Clear serial buffer to remove potential noise
+                    await self._clear_serial_buffer(fast_mode=True)
+                    await asyncio.sleep(0.1)  # Short delay before retry
+                    continue
                 else:
-                    # This is an intermediate response
-                    logger.debug(f"Intermediate response received: 0x{expected_status:02X}")
+                    # Final attempt failed or non-STX error
+                    if retry_count == max_retries - 1:
+                        logger.error(
+                            f"Command sequence 0x{command:02X} failed after {max_retries} retries: {error_msg}"
+                        )
+                    else:
+                        logger.error(f"Non-recoverable error for command sequence 0x{command:02X}: {error_msg}")
+                    
+                    if isinstance(e, asyncio.TimeoutError):
+                        raise TimeoutError(
+                            f"Operation timed out waiting for response sequence {[hex(s) for s in expected_statuses]} after {max_retries} retries"
+                        ) from e
+                    else:
+                        raise e
+            
+            except Exception as e:
+                # Unexpected error - don't retry
+                logger.error(f"Unexpected error for command sequence 0x{command:02X}: {e}")
+                raise e
 
-            if last_response is None:
-                raise LMACommunicationError("No responses received in sequence")
-
-            return last_response
-
-        except asyncio.TimeoutError as e:
-            logger.error(
-                f"Timeout waiting for response sequence {[hex(s) for s in expected_statuses]}"
-            )
-            raise TimeoutError(
-                f"Operation timed out waiting for response sequence {[hex(s) for s in expected_statuses]}"
-            ) from e
+        # Should never reach here due to the loop logic, but just in case
+        raise TimeoutError(
+            f"Operation failed after {max_retries} retries for command sequence 0x{command:02X}"
+        )
 
     async def _receive_response(
         self, timeout: float, enable_sync: bool = True

@@ -16,7 +16,7 @@ hardware_config:
   mcu:
     port: COM9
     baudrate: 115200
-    timeout: 60
+    timeout: 10
     bytesize: 8
     stopbits: 1
     parity: null
