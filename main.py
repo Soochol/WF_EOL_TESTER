@@ -48,7 +48,6 @@ from infrastructure.implementation.repositories.json_result_repository import (
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI  # noqa: E402
 
-
 # Application configuration constants
 DEFAULT_LOG_ROTATION_SIZE = "10 MB"
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"

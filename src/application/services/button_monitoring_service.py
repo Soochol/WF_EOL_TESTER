@@ -187,8 +187,13 @@ class ButtonMonitoringService:
             return  # Skip other button checks during emergency
 
         # Read both operator start button states
-        left_button_pressed = await self.digital_io.read_input(self.left_button_channel)
-        right_button_pressed = await self.digital_io.read_input(self.right_button_channel)
+        # Note: Buttons are B-contact (Normally Closed) - pressed = False, released = True
+        left_button_raw = await self.digital_io.read_input(self.left_button_channel)
+        right_button_raw = await self.digital_io.read_input(self.right_button_channel)
+        
+        # Invert B-contact logic: pressed = not raw_state
+        left_button_pressed = not left_button_raw
+        right_button_pressed = not right_button_raw
 
         # Check for simultaneous press (industrial safety requirement)
         if left_button_pressed and right_button_pressed:
@@ -305,22 +310,29 @@ class ButtonMonitoringService:
                     "emergency_stop_channel": self.emergency_stop_channel,
                 }
 
-            left_state = await self.digital_io.read_input(self.left_button_channel)
-            right_state = await self.digital_io.read_input(self.right_button_channel)
+            # Read raw button states
+            left_state_raw = await self.digital_io.read_input(self.left_button_channel)
+            right_state_raw = await self.digital_io.read_input(self.right_button_channel)
             emergency_stop_state = await self.digital_io.read_input(self.emergency_stop_channel)
             clamp_sensor_state = await self.digital_io.read_input(self.clamp_sensor_channel)
             chain_sensor_state = await self.digital_io.read_input(self.chain_sensor_channel)
             door_sensor_state = await self.digital_io.read_input(self.door_sensor_channel)
 
+            # Apply B-contact logic for start buttons (pressed = not raw_state)
+            left_button_pressed = not left_state_raw
+            right_button_pressed = not right_state_raw
+
             return {
                 "connected": True,
-                "left_button": left_state,
-                "right_button": right_state,
+                "left_button": left_button_pressed,
+                "right_button": right_button_pressed,
+                "left_button_raw": left_state_raw,
+                "right_button_raw": right_state_raw,
                 "emergency_stop": emergency_stop_state,
                 "left_channel": self.left_button_channel,
                 "right_channel": self.right_button_channel,
                 "emergency_stop_channel": self.emergency_stop_channel,
-                "both_pressed": left_state and right_state,
+                "both_pressed": left_button_pressed and right_button_pressed,
                 "clamp_safety_sensor": clamp_sensor_state,
                 "chain_safety_sensor": chain_sensor_state,
                 "door_safety_sensor": door_sensor_state,
@@ -329,7 +341,7 @@ class ButtonMonitoringService:
                 "door_sensor_channel": self.door_sensor_channel,
                 "emergency_stop_active": emergency_stop_state,
                 "safety_sensors_satisfied": clamp_sensor_state and chain_sensor_state and door_sensor_state,
-                "all_conditions_met": left_state and right_state and clamp_sensor_state and chain_sensor_state and door_sensor_state,
+                "all_conditions_met": left_button_pressed and right_button_pressed and clamp_sensor_state and chain_sensor_state and door_sensor_state,
                 "monitoring": self._is_monitoring,
                 "debounce_time": self._debounce_time,
                 "polling_interval": self._polling_interval,

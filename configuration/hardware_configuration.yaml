@@ -26,8 +26,8 @@ hardware_config:
     timeout: 5.0
     channel: 1
   digital_io:
-    operator_start_button_left: 1
-    operator_start_button_right: 2
+    operator_start_button_left: 8
+    operator_start_button_right: 9
     tower_lamp_red: 4
     tower_lamp_yellow: 5
     tower_lamp_green: 6

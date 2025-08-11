@@ -87,9 +87,9 @@ class DigitalIOConfig:
 
     # Digital Input connection parameters
 
-    # Operator start buttons
-    operator_start_button_left: int = 1
-    operator_start_button_right: int = 2
+    # Operator start buttons (B-contact/Normally Closed)
+    operator_start_button_left: int = 8
+    operator_start_button_right: int = 9
 
     # Safety sensor parameters
     # Sensor to verify product is safely clamped
