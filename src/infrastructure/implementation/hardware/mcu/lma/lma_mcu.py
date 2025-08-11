@@ -576,7 +576,9 @@ class LMAMCU(MCUService):
         except Exception as e:
             logger.debug(f"Error clearing serial buffer: {e}")
 
-    async def _find_stx_in_stream(self, timeout: float = 60.0, max_search_bytes: int = 1024) -> bool:
+    async def _find_stx_in_stream(
+        self, timeout: float = 60.0, max_search_bytes: int = 1024
+    ) -> bool:
         """
         Find STX pattern in incoming data stream for normal packet reception
 
@@ -622,11 +624,17 @@ class LMAMCU(MCUService):
                     if current_byte == 0xFF:
                         if waiting_for_second_ff:
                             # Found second FF - STX complete!
-                            logger.debug(f"STX pattern found in stream at position {bytes_searched}")
+                            logger.debug(
+                                f"STX pattern found in stream at position {bytes_searched}"
+                            )
                             # Log some context bytes before STX for analysis
                             if len(noise_buffer) > 0:
-                                recent_bytes = noise_buffer[-10:] if len(noise_buffer) >= 10 else noise_buffer
-                                logger.debug(f"Bytes before STX: {bytes(recent_bytes).hex().upper()}")
+                                recent_bytes = (
+                                    noise_buffer[-10:] if len(noise_buffer) >= 10 else noise_buffer
+                                )
+                                logger.debug(
+                                    f"Bytes before STX: {bytes(recent_bytes).hex().upper()}"
+                                )
                             return True
                         else:
                             # Found first FF - wait for second
@@ -718,10 +726,10 @@ class LMAMCU(MCUService):
     async def _validate_complete_packet_structure(self, timeout: float) -> Optional[Dict[str, Any]]:
         """
         Validate complete LMA packet structure after finding STX candidate
-        
+
         Args:
             timeout: Timeout for reading packet components
-            
+
         Returns:
             Dictionary with packet data if valid, None if invalid
         """
@@ -731,34 +739,36 @@ class LMAMCU(MCUService):
             if len(header) < 2:
                 logger.debug("Invalid header length in packet validation")
                 return None
-                
+
             status = header[0]
             data_len = header[1]
-            
+
             # Validate STATUS field (must be 0x00-0x0E for LMA)
             if not (0 <= status <= 0x0E):
                 logger.debug(f"Invalid STATUS in packet validation: 0x{status:02X}")
                 return None
-                
+
             # Validate data length (must be 0-12 for LMA)
             if not (0 <= data_len <= MAX_DATA_SIZE):
                 logger.debug(f"Invalid data length in packet validation: {data_len}")
                 return None
-            
+
             # Read data payload if present
             data = b""
             if data_len > 0:
                 data = await self._connection.read(data_len, timeout)
                 if len(data) != data_len:
-                    logger.debug(f"Data length mismatch in packet validation: expected {data_len}, got {len(data)}")
+                    logger.debug(
+                        f"Data length mismatch in packet validation: expected {data_len}, got {len(data)}"
+                    )
                     return None
-            
+
             # Read and validate ETX
             etx_data = await self._connection.read(FRAME_ETX_SIZE, timeout)
             if len(etx_data) != FRAME_ETX_SIZE or etx_data != ETX:
                 logger.debug(f"Invalid ETX in packet validation: {etx_data.hex().upper()}")
                 return None
-                
+
             # Complete valid packet found!
             logger.debug(f"Valid packet found: STATUS=0x{status:02X}, LEN={data_len}")
             return {
@@ -766,7 +776,7 @@ class LMAMCU(MCUService):
                 "data": data,
                 "message": STATUS_MESSAGES.get(status, f"Unknown status: 0x{status:02X}"),
             }
-            
+
         except asyncio.TimeoutError:
             logger.debug("Timeout during packet validation")
             return None
@@ -777,13 +787,13 @@ class LMAMCU(MCUService):
     async def _find_and_validate_complete_packet(self, timeout: float) -> Optional[Dict[str, Any]]:
         """
         Find and validate complete LMA packet with robust STX synchronization
-        
+
         This method searches for STX patterns and validates the entire packet structure
         to prevent false STX detection in noisy environments.
-        
+
         Args:
             timeout: Total timeout for finding valid packet
-            
+
         Returns:
             Dictionary with packet data if valid packet found, None otherwise
         """
@@ -792,38 +802,46 @@ class LMAMCU(MCUService):
 
         start_time = asyncio.get_event_loop().time()
         stx_candidates_checked = 0
-        
+
         logger.debug(f"Searching for complete valid LMA packet (timeout: {timeout}s)")
-        
+
         try:
             while (asyncio.get_event_loop().time() - start_time) < timeout:
                 # Step 1: Find STX candidate
-                if not await self._find_stx_in_stream(timeout=min(timeout/4, 15.0)):
+                if not await self._find_stx_in_stream(timeout=min(timeout / 4, 15.0)):
                     logger.debug("No STX candidate found")
                     continue
-                    
+
                 stx_candidates_checked += 1
-                logger.debug(f"STX candidate #{stx_candidates_checked} found, validating packet structure...")
-                
+                logger.debug(
+                    f"STX candidate #{stx_candidates_checked} found, validating packet structure..."
+                )
+
                 # Step 2: Validate complete packet structure
                 remaining_timeout = timeout - (asyncio.get_event_loop().time() - start_time)
                 packet_data = await self._validate_complete_packet_structure(
                     timeout=min(remaining_timeout, 5.0)
                 )
-                
+
                 if packet_data is not None:
                     # Complete valid packet found!
-                    logger.debug(f"Valid packet found after checking {stx_candidates_checked} STX candidates")
+                    logger.debug(
+                        f"Valid packet found after checking {stx_candidates_checked} STX candidates"
+                    )
                     return packet_data
                 else:
                     # Invalid packet, continue searching for next STX
-                    logger.debug(f"STX candidate #{stx_candidates_checked} failed validation, continuing search...")
+                    logger.debug(
+                        f"STX candidate #{stx_candidates_checked} failed validation, continuing search..."
+                    )
                     continue
-                    
+
             # Timeout reached without finding valid packet
-            logger.debug(f"Packet search timeout after checking {stx_candidates_checked} STX candidates")
+            logger.debug(
+                f"Packet search timeout after checking {stx_candidates_checked} STX candidates"
+            )
             return None
-            
+
         except Exception as e:
             logger.error(f"Error during complete packet search: {e}")
             return None
@@ -945,9 +963,10 @@ class LMAMCU(MCUService):
             TimeoutError: 응답 타임아웃 (재시도 후에도 실패)
         """
         max_retries = 3
-        
+
         for retry_count in range(max_retries):
             try:
+                logger.debug(f"🔄 Attempt {retry_count + 1}/{max_retries} for command 0x{command:02X} (timeout: {self._timeout}s)")
                 await self._send_command(command, data)
 
                 # Add timeout protection to prevent hanging
@@ -955,21 +974,28 @@ class LMAMCU(MCUService):
                     self._wait_for_response(target_status),
                     timeout=self._timeout,
                 )
-                
+
             except (asyncio.TimeoutError, LMACommunicationError) as e:
                 error_msg = str(e)
-                # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
-                is_timeout_error = (isinstance(e, asyncio.TimeoutError) or 
-                                   "timeout" in error_msg.lower() or 
-                                   "Read timeout" in error_msg or 
-                                   "STX" in error_msg)
+                # Debug logging for exception analysis
+                logger.error(f"🚨 Exception in attempt {retry_count + 1}/{max_retries} for command 0x{command:02X}: {type(e).__name__}: {error_msg}")
                 
+                # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
+                is_timeout_error = (
+                    isinstance(e, asyncio.TimeoutError)
+                    or "timeout" in error_msg.lower()
+                    or "Read timeout" in error_msg
+                    or "STX" in error_msg
+                )
+                
+                logger.debug(f"🔍 Timeout check: isinstance(asyncio.TimeoutError)={isinstance(e, asyncio.TimeoutError)}, error_msg='{error_msg}', is_timeout_error={is_timeout_error}")
+
                 if is_timeout_error and retry_count < max_retries - 1:
                     logger.warning(
-                        f"Communication timeout (retry {retry_count + 1}/{max_retries}) "
+                        f"🔄 Communication timeout (retry {retry_count + 1}/{max_retries}) "
                         f"for command 0x{command:02X}, clearing buffer and retrying..."
                     )
-                    
+
                     # Clear serial buffer to remove potential noise
                     await self._clear_serial_buffer(fast_mode=True)
                     await asyncio.sleep(0.1)  # Short delay before retry
@@ -981,15 +1007,17 @@ class LMAMCU(MCUService):
                             f"Command 0x{command:02X} failed after {max_retries} retries: {error_msg}"
                         )
                     else:
-                        logger.error(f"Non-recoverable error for command 0x{command:02X}: {error_msg}")
-                    
+                        logger.error(
+                            f"Non-recoverable error for command 0x{command:02X}: {error_msg}"
+                        )
+
                     if isinstance(e, asyncio.TimeoutError):
                         raise TimeoutError(
                             f"Operation timed out waiting for response 0x{target_status:02X} after {max_retries} retries"
                         ) from e
                     else:
                         raise e
-            
+
             except Exception as e:
                 # Unexpected error - don't retry
                 logger.error(f"Unexpected error for command 0x{command:02X}: {e}")
@@ -1019,9 +1047,10 @@ class LMAMCU(MCUService):
             LMACommunicationError: 예상하지 못한 응답
         """
         max_retries = 3
-        
+
         for retry_count in range(max_retries):
             try:
+                logger.debug(f"🔄 Sequence attempt {retry_count + 1}/{max_retries} for command 0x{command:02X} (timeout: {self._timeout}s)")
                 await self._send_command(command, data)
 
                 # Add timeout protection for entire sequence
@@ -1051,18 +1080,25 @@ class LMAMCU(MCUService):
 
             except (asyncio.TimeoutError, LMACommunicationError) as e:
                 error_msg = str(e)
-                # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
-                is_timeout_error = (isinstance(e, asyncio.TimeoutError) or 
-                                   "timeout" in error_msg.lower() or 
-                                   "Read timeout" in error_msg or 
-                                   "STX" in error_msg)
+                # Debug logging for exception analysis
+                logger.error(f"🚨 Sequence exception in attempt {retry_count + 1}/{max_retries} for command 0x{command:02X}: {type(e).__name__}: {error_msg}")
                 
+                # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
+                is_timeout_error = (
+                    isinstance(e, asyncio.TimeoutError)
+                    or "timeout" in error_msg.lower()
+                    or "Read timeout" in error_msg
+                    or "STX" in error_msg
+                )
+                
+                logger.debug(f"🔍 Sequence timeout check: isinstance(asyncio.TimeoutError)={isinstance(e, asyncio.TimeoutError)}, error_msg='{error_msg}', is_timeout_error={is_timeout_error}")
+
                 if is_timeout_error and retry_count < max_retries - 1:
                     logger.warning(
-                        f"Communication timeout in sequence (retry {retry_count + 1}/{max_retries}) "
+                        f"🔄 Communication timeout in sequence (retry {retry_count + 1}/{max_retries}) "
                         f"for command 0x{command:02X}, clearing buffer and retrying..."
                     )
-                    
+
                     # Clear serial buffer to remove potential noise
                     await self._clear_serial_buffer(fast_mode=True)
                     await asyncio.sleep(0.1)  # Short delay before retry
@@ -1074,15 +1110,17 @@ class LMAMCU(MCUService):
                             f"Command sequence 0x{command:02X} failed after {max_retries} retries: {error_msg}"
                         )
                     else:
-                        logger.error(f"Non-recoverable error for command sequence 0x{command:02X}: {error_msg}")
-                    
+                        logger.error(
+                            f"Non-recoverable error for command sequence 0x{command:02X}: {error_msg}"
+                        )
+
                     if isinstance(e, asyncio.TimeoutError):
                         raise TimeoutError(
                             f"Operation timed out waiting for response sequence {[hex(s) for s in expected_statuses]} after {max_retries} retries"
                         ) from e
                     else:
                         raise e
-            
+
             except Exception as e:
                 # Unexpected error - don't retry
                 logger.error(f"Unexpected error for command sequence 0x{command:02X}: {e}")
@@ -1111,23 +1149,25 @@ class LMAMCU(MCUService):
 
         try:
             # Use new complete packet validation method
-            logger.debug(f"Receiving MCU response with complete packet validation (timeout: {timeout}s)")
-            
+            logger.debug(
+                f"Receiving MCU response with complete packet validation (timeout: {timeout}s)"
+            )
+
             packet_data = await self._find_and_validate_complete_packet(timeout)
-            
+
             if packet_data is not None:
                 # Log successful packet reception with details
                 status = packet_data["status"]
                 data = packet_data["data"]
                 message = packet_data["message"]
-                
+
                 # Format hex display with spaces: STX STATUS LEN DATA ETX
                 hex_parts = [STX.hex().upper(), f"{status:02X}", f"{len(data):02X}"]
                 if data:
                     hex_parts.append(data.hex().upper())
                 hex_parts.append(ETX.hex().upper())
                 packet_hex = " ".join(hex_parts)
-                
+
                 # Parse data based on status type for enhanced logging
                 parsed_info = ""
                 if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
@@ -1136,23 +1176,25 @@ class LMAMCU(MCUService):
                         parsed_info = f": max {max_temp:.1f}°C, ambient {ambient_temp:.1f}°C"
                     else:
                         parsed_info = f": {max_temp:.1f}°C"
-                
+
                 logger.info(f"PC <- MCU: {packet_hex} ({message}{parsed_info})")
                 return packet_data
             else:
                 # No valid packet found within timeout
                 raise LMACommunicationError(f"No valid packet received within {timeout}s")
-                
+
         except LMACommunicationError as e:
             # Handle sync recovery if enabled
             if enable_sync and "No valid packet received" in str(e):
                 logger.debug("Attempting STX sync recovery for robust packet detection...")
                 if await self._find_stx_sync(timeout=timeout):
                     logger.info("STX sync recovery successful, retrying with validation")
-                    return await self._receive_response(timeout, enable_sync=False)  # Avoid infinite recursion
+                    return await self._receive_response(
+                        timeout, enable_sync=False
+                    )  # Avoid infinite recursion
                 else:
                     logger.warning("STX sync recovery failed")
-                    
+
             logger.error(f"❌ PROTOCOL ERROR: {e}")
             raise e
         except Exception as e:

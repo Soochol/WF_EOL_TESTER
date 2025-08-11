@@ -375,8 +375,6 @@ class HardwareServiceFacade:
                 operating_temp=test_config.activation_temperature,
                 standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
             )
-            await asyncio.sleep(1)  # Short delay to ensure mode is set
-
             logger.info(
                 f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
             )
