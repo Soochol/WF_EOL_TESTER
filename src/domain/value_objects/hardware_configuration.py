@@ -97,7 +97,7 @@ class DigitalIOConfig:
     # Sensor to verify product is properly chained for safe operation
     dut_chain_safety_sensor: int = 11
 
-    # Sensor to verifty that safety door is closed
+    # Sensor to verify that safety door is closed
     safety_door_closed_sensor: int = 12
 
     # emergency stop button
@@ -105,7 +105,7 @@ class DigitalIOConfig:
 
     # Digital Output parameters
 
-    servo1_brake_release: int = 1
+    servo1_brake_release: int = 0
     tower_lamp_red: int = 4
     tower_lamp_yellow: int = 5
     tower_lamp_green: int = 6
@@ -410,6 +410,11 @@ class HardwareConfiguration:
             "digital_io": {
                 "operator_start_button_left": self.digital_io.operator_start_button_left,
                 "operator_start_button_right": self.digital_io.operator_start_button_right,
+                "dut_clamp_safety_sensor": self.digital_io.dut_clamp_safety_sensor,
+                "dut_chain_safety_sensor": self.digital_io.dut_chain_safety_sensor,
+                "safety_door_closed_sensor": self.digital_io.safety_door_closed_sensor,
+                "emergency_stop_button": self.digital_io.emergency_stop_button,
+                "servo1_brake_release": self.digital_io.servo1_brake_release,
                 "tower_lamp_red": self.digital_io.tower_lamp_red,
                 "tower_lamp_yellow": self.digital_io.tower_lamp_yellow,
                 "tower_lamp_green": self.digital_io.tower_lamp_green,

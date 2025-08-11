@@ -1010,7 +1010,7 @@ class LMAMCU(MCUService):
                         sync_attempted = True
                         continue
                     else:
-                        logger.error("STX sync recovery failed")
+                        logger.warning("STX sync recovery failed")
                         raise LMACommunicationError(
                             "STX sync failed after noise removal attempt"
                         ) from e

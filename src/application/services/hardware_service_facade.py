@@ -92,6 +92,9 @@ class HardwareServiceFacade:
             self._power = power_service
             self._digital_io = digital_io_service
 
+        # Robot homing state management
+        self._robot_homed = False
+
     # ============================================================================
     # 서비스 접근자 (Public Accessors)
     # ============================================================================
@@ -304,10 +307,13 @@ class HardwareServiceFacade:
             await self._power.set_current_limit(test_config.upper_current)
             await asyncio.sleep(test_config.power_stabilization)
 
-            # Initialize robot - enable servo first, then move to initial position
+            # Initialize robot - enable servo, ensure homed, then move to initial position
             logger.info(f"Enabling servo for axis {hardware_config.robot.axis_id}...")
             await self._robot.enable_servo(hardware_config.robot.axis_id)
             logger.info("Robot servo enabled successfully")
+
+            # Ensure robot is homed (only on first execution)
+            await self._ensure_robot_homed(hardware_config.robot.axis_id)
 
             logger.info(f"Moving robot to initial position: {test_config.initial_position}μm")
             await self._robot.move_absolute(
@@ -331,6 +337,21 @@ class HardwareServiceFacade:
                 f"Failed to initialize hardware: {str(e)}",
                 details={"config": test_config.to_dict()},
             ) from e
+
+    async def _ensure_robot_homed(self, axis_id: int) -> None:
+        """
+        Ensure robot is homed (only perform homing on first call)
+        
+        Args:
+            axis_id: Robot axis ID to home
+        """
+        if not self._robot_homed:
+            logger.info("Performing initial robot homing...")
+            await self._robot.home_axis(axis_id)
+            self._robot_homed = True
+            logger.info("Initial robot homing completed")
+        else:
+            logger.debug("Robot already homed, skipping homing")
 
     async def set_lma_standby(
         self,
