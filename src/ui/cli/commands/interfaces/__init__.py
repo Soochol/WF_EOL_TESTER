@@ -5,7 +5,7 @@ middleware pipeline, and registry pattern support. These interfaces enable
 loose coupling, testability, and extensibility.
 """
 
-from ui.cli.commands.interfaces.command_interface import (
+from src.ui.cli.commands.interfaces.command_interface import (
     ICommand,
     ICommandParser,
     ICommandRegistry,

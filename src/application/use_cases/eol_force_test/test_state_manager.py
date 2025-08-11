@@ -7,10 +7,10 @@ Extracted from EOLForceTestUseCase for better separation of concerns.
 
 from loguru import logger
 
-from application.services.repository_service import RepositoryService
-from domain.entities.eol_test import EOLTest
-from domain.value_objects.identifiers import MeasurementId
-from domain.value_objects.measurements import TestMeasurements
+from src.application.services.repository_service import RepositoryService
+from src.domain.entities.eol_test import EOLTest
+from src.domain.value_objects.identifiers import MeasurementId
+from src.domain.value_objects.measurements import TestMeasurements
 
 from .constants import TestExecutionConstants
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Set, cast
 
-from domain.exceptions.validation_exceptions import (
+from src.domain.exceptions.validation_exceptions import (
     ValidationException,
 )
 

@@ -6,7 +6,7 @@ Handles application exit.
 
 from typing import Dict, List
 
-from ui.cli.commands.base import Command, CommandResult
+from src.ui.cli.commands.base import Command, CommandResult
 
 
 class ExitCommand(Command):

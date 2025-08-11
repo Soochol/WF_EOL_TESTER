@@ -8,8 +8,8 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
-from ui.cli.container.dependency_container import DependencyContainer
+from src.ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
+from src.ui.cli.container.dependency_container import DependencyContainer
 
 
 class CommandExecutionContext(ICommandExecutionContext):

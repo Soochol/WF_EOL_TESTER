@@ -17,9 +17,9 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from starlette.requests import Request
 
-from ui.api.dependencies import get_container
-from ui.api.middleware.error_handler import add_error_handlers
-from ui.api.routes import (
+from src.ui.api.dependencies import get_container
+from src.ui.api.middleware.error_handler import add_error_handlers
+from src.ui.api.routes import (
     config_router,
     hardware_router,
     status_router,

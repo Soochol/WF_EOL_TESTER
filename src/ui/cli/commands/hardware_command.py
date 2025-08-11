@@ -8,10 +8,10 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 
-from application.services.hardware_service_facade import (
+from src.application.services.hardware_service_facade import (
     HardwareServiceFacade,
 )
-from ui.cli.commands.base import Command, CommandResult
+from src.ui.cli.commands.base import Command, CommandResult
 
 
 class HardwareCommand(Command):

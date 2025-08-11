@@ -17,7 +17,7 @@ while preserving identical functionality and execution order.
 """
 
 # Import EOLTestResult from its actual location for backward compatibility
-from domain.value_objects.eol_test_result import EOLTestResult
+from src.domain.value_objects.eol_test_result import EOLTestResult
 
 # Import all components to maintain backward compatibility
 from .eol_force_test.constants import TestExecutionConstants

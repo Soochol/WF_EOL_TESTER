@@ -7,7 +7,7 @@ Interface for load cell operations and force measurement.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from domain.value_objects.measurements import ForceValue
+from src.domain.value_objects.measurements import ForceValue
 
 
 class LoadCellService(ABC):

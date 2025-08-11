@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
-from ui.cli.commands.base import Command, CommandResult
+from src.ui.cli.commands.base import Command, CommandResult
 
 
 class SlashCommandParser:

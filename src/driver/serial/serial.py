@@ -10,14 +10,14 @@ from typing import Optional
 
 from loguru import logger
 
-from driver.serial.constants import (
+from src.driver.serial.constants import (
     COMMAND_TERMINATOR,
     CONNECT_TIMEOUT,
     DEFAULT_BAUDRATE,
     DEFAULT_TIMEOUT,
     ENCODING,
 )
-from driver.serial.exceptions import (
+from src.driver.serial.exceptions import (
     SerialCommunicationError,
     SerialConfigurationError,
     SerialConnectionError,

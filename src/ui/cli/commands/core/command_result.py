@@ -6,7 +6,7 @@ metadata and performance tracking.
 """
 
 # Re-export the enhanced classes from interfaces for backward compatibility
-from ui.cli.commands.interfaces.command_interface import (
+from src.ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     CommandStatus,
     MiddlewareResult,

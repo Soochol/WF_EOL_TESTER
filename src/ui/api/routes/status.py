@@ -11,7 +11,7 @@ import psutil
 from fastapi import APIRouter, Depends
 from loguru import logger
 
-from ui.api.dependencies import DIContainer, get_container
+from src.ui.api.dependencies import DIContainer, get_container
 
 router = APIRouter()
 

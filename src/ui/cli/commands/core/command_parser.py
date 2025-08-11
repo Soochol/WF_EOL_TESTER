@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
-from ui.cli.commands.interfaces.command_interface import (
+from src.ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,
     ICommandExecutionContext,

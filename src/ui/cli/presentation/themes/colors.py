@@ -8,7 +8,7 @@ to ensure consistent visual styling and easy maintenance.
 
 from typing import Dict
 
-from domain.enums.test_status import TestStatus
+from src.domain.enums.test_status import TestStatus
 
 
 class ColorScheme:

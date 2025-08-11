@@ -7,9 +7,9 @@ test mode management, and status monitoring for LMA controllers.
 
 from typing import Optional
 
-from application.interfaces.hardware.mcu import MCUService
-from domain.enums.mcu_enums import TestMode
-from domain.value_objects.hardware_configuration import MCUConfig
+from src.application.interfaces.hardware.mcu import MCUService
+from src.domain.enums.mcu_enums import TestMode
+from src.domain.value_objects.hardware_configuration import MCUConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

@@ -7,8 +7,8 @@ output management, and safety features for ODA power supplies.
 
 from typing import Optional
 
-from application.interfaces.hardware.power import PowerService
-from domain.value_objects.hardware_configuration import PowerConfig
+from src.application.interfaces.hardware.power import PowerService
+from src.domain.value_objects.hardware_configuration import PowerConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

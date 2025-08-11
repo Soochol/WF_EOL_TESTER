@@ -8,8 +8,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from domain.entities.test_result import TestResult
-from domain.enums.test_status import TestStatus
+from src.domain.entities.test_result import TestResult
+from src.domain.enums.test_status import TestStatus
 
 
 class DashboardTheme(Enum):

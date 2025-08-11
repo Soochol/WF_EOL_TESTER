@@ -12,7 +12,7 @@ The architecture provides:
 """
 
 # Configuration constants (always available)
-from driver.serial.constants import (
+from src.driver.serial.constants import (
     DEFAULT_BAUDRATE,
     DEFAULT_TIMEOUT,
     CONNECT_TIMEOUT,
@@ -31,7 +31,7 @@ from driver.serial.constants import (
 )
 
 # Exception classes (always available)
-from driver.serial.exceptions import (
+from src.driver.serial.exceptions import (
     SerialError,
     SerialConnectionError,
     SerialCommunicationError,

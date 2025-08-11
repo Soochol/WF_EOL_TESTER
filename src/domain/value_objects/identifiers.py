@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Union, Optional
 
-from domain.exceptions.validation_exceptions import (
+from src.domain.exceptions.validation_exceptions import (
     InvalidFormatException,
     ValidationException,
 )

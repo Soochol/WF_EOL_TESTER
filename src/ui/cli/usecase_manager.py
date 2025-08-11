@@ -11,11 +11,11 @@ from typing import Any, Dict, List, Optional, Type
 from loguru import logger
 from rich.console import Console
 
-from application.use_cases.eol_force_test import (
+from src.application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
 )
-from domain.value_objects.dut_command_info import DUTCommandInfo
+from src.domain.value_objects.dut_command_info import DUTCommandInfo
 
 # from .enhanced_input_manager import EnhancedInputManager  # Removed
 from .rich_formatter import RichFormatter

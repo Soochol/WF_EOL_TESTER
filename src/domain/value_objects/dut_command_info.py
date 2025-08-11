@@ -8,7 +8,7 @@ Represents basic DUT data needed for command execution.
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from domain.exceptions.validation_exceptions import (
+from src.domain.exceptions.validation_exceptions import (
     ValidationException,
 )
 

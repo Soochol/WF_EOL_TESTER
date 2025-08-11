@@ -7,8 +7,8 @@ Extracted from EOLForceTestUseCase for better separation of concerns.
 
 from typing import Any, Dict
 
-from domain.enums.measurement_units import MeasurementUnit
-from domain.value_objects.measurements import ForceValue, TestMeasurements
+from src.domain.enums.measurement_units import MeasurementUnit
+from src.domain.value_objects.measurements import ForceValue, TestMeasurements
 
 
 class MeasurementConverter:

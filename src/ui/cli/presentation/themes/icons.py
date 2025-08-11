@@ -8,7 +8,7 @@ consistent visual indicators and improve user experience.
 
 from typing import Dict
 
-from domain.enums.test_status import TestStatus
+from src.domain.enums.test_status import TestStatus
 
 
 class IconSet:

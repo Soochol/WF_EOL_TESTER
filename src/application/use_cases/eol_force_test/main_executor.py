@@ -10,19 +10,19 @@ from typing import Optional
 
 from loguru import logger
 
-from application.services.configuration_service import ConfigurationService
-from application.services.configuration_validator import ConfigurationValidator
-from application.services.exception_handler import ExceptionHandler
-from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.repository_service import RepositoryService
-from application.services.test_result_evaluator import TestResultEvaluator
-from domain.entities.eol_test import EOLTest
-from domain.enums.test_status import TestStatus
-from domain.value_objects.dut_command_info import DUTCommandInfo
-from domain.value_objects.eol_test_result import EOLTestResult
-from domain.value_objects.identifiers import TestId
-from domain.value_objects.measurements import TestMeasurements
-from domain.value_objects.time_values import TestDuration
+from src.application.services.configuration_service import ConfigurationService
+from src.application.services.configuration_validator import ConfigurationValidator
+from src.application.services.exception_handler import ExceptionHandler
+from src.application.services.hardware_service_facade import HardwareServiceFacade
+from src.application.services.repository_service import RepositoryService
+from src.application.services.test_result_evaluator import TestResultEvaluator
+from src.domain.entities.eol_test import EOLTest
+from src.domain.enums.test_status import TestStatus
+from src.domain.value_objects.dut_command_info import DUTCommandInfo
+from src.domain.value_objects.eol_test_result import EOLTestResult
+from src.domain.value_objects.identifiers import TestId
+from src.domain.value_objects.measurements import TestMeasurements
+from src.domain.value_objects.time_values import TestDuration
 
 from .configuration_loader import TestConfigurationLoader
 from .constants import TestExecutionConstants

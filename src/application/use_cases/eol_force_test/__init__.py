@@ -15,7 +15,7 @@ from .test_entity_factory import TestEntityFactory
 from .test_state_manager import TestStateManager
 
 # Import EOLTestResult from its actual location for backward compatibility
-from domain.value_objects.eol_test_result import EOLTestResult
+from src.domain.value_objects.eol_test_result import EOLTestResult
 
 __all__ = [
     "EOLForceTestUseCase",

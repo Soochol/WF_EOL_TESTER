@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Union
 from rich.table import Table
 from rich.text import Text
 
-from domain.value_objects.eol_test_result import EOLTestResult
+from src.domain.value_objects.eol_test_result import EOLTestResult
 
 from .base_formatter import BaseFormatter
 

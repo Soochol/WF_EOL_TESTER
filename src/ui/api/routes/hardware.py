@@ -24,8 +24,8 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
-from ui.api.dependencies import DIContainer, get_container
-from ui.api.models.hardware_models import (
+from src.ui.api.dependencies import DIContainer, get_container
+from src.ui.api.models.hardware_models import (
     DigitalIORequest,
     DigitalIOResponse,
     HardwareConnectionRequest,

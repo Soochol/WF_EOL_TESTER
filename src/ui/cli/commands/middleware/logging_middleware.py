@@ -9,13 +9,13 @@ from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
-from ui.cli.commands.interfaces.command_interface import (
+from src.ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,
     ICommandExecutionContext,
     MiddlewareResult,
 )
-from ui.cli.commands.middleware.base_middleware import BaseMiddleware
+from src.ui.cli.commands.middleware.base_middleware import BaseMiddleware
 
 
 class LoggingMiddleware(BaseMiddleware):

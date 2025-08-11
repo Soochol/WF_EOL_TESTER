@@ -8,19 +8,19 @@ from typing import Dict, List, Optional, Tuple, cast
 
 from loguru import logger
 
-from application.use_cases.eol_force_test import (
+from src.application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
 )
-from domain.value_objects.dut_command_info import DUTCommandInfo
-from ui.cli.commands.core.base_command import BaseCommand
-from ui.cli.commands.interfaces.command_interface import (
+from src.domain.value_objects.dut_command_info import DUTCommandInfo
+from src.ui.cli.commands.core.base_command import BaseCommand
+from src.ui.cli.commands.interfaces.command_interface import (
     CommandMetadata,
     CommandResult,
     ICommandExecutionContext,
 )
-from ui.cli.interfaces.formatter_interface import IFormatter
-from ui.cli.interfaces.validation_interface import IInputValidator
+from src.ui.cli.interfaces.formatter_interface import IFormatter
+from src.ui.cli.interfaces.validation_interface import IInputValidator
 
 
 class TestCommandHandler(BaseCommand):

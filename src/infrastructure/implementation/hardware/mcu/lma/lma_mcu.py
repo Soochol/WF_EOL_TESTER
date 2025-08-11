@@ -11,17 +11,17 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from application.interfaces.hardware.mcu import MCUService
-from domain.enums.mcu_enums import MCUStatus, TestMode
-from domain.exceptions.eol_exceptions import (
+from src.application.interfaces.hardware.mcu import MCUService
+from src.domain.enums.mcu_enums import MCUStatus, TestMode
+from src.domain.exceptions.eol_exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )
-from driver.serial.serial import (
+from src.driver.serial.serial import (
     SerialConnection,
     SerialManager,
 )
-from infrastructure.implementation.hardware.mcu.lma.constants import (
+from src.infrastructure.implementation.hardware.mcu.lma.constants import (
     BOOT_COMPLETE_TIMEOUT,
     CMD_ENTER_TEST_MODE,
     CMD_LMA_INIT,
@@ -52,7 +52,7 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     TEST_MODE_2,
     TEST_MODE_3,
 )
-from infrastructure.implementation.hardware.mcu.lma.error_codes import (
+from src.infrastructure.implementation.hardware.mcu.lma.error_codes import (
     LMACommunicationError,
     LMAError,
     LMAErrorCode,

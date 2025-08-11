@@ -11,8 +11,8 @@ from typing import List, Optional
 from loguru import logger
 from rich.console import Console
 
-from application.services.configuration_service import ConfigurationService
-from application.services.hardware_service_facade import HardwareServiceFacade
+from src.application.services.configuration_service import ConfigurationService
+from src.application.services.hardware_service_facade import HardwareServiceFacade
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

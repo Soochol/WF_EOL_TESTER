@@ -7,7 +7,7 @@ Interface for test result data persistence.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from domain.entities.eol_test import EOLTest
+from src.domain.entities.eol_test import EOLTest
 
 
 class TestResultRepository(ABC):

@@ -6,7 +6,7 @@ Contains exceptions related to domain object validation and constraints.
 
 from typing import Any, Dict, Optional
 
-from domain.exceptions.domain_exceptions import (
+from src.domain.exceptions.domain_exceptions import (
     DomainException,
 )
 

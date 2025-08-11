@@ -10,12 +10,12 @@ from typing import Optional
 
 from loguru import logger
 
-from application.services.repository_service import RepositoryService
-from domain.entities.dut import DUT
-from domain.entities.eol_test import EOLTest
-from domain.value_objects.dut_command_info import DUTCommandInfo
-from domain.value_objects.identifiers import DUTId, OperatorId, TestId
-from domain.value_objects.test_configuration import TestConfiguration
+from src.application.services.repository_service import RepositoryService
+from src.domain.entities.dut import DUT
+from src.domain.entities.eol_test import EOLTest
+from src.domain.value_objects.dut_command_info import DUTCommandInfo
+from src.domain.value_objects.identifiers import DUTId, OperatorId, TestId
+from src.domain.value_objects.test_configuration import TestConfiguration
 
 from .constants import TestExecutionConstants
 

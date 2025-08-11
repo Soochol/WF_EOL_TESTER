@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Callable, Optional, Union, Awaitable
 
 from loguru import logger
 
-from application.interfaces.hardware.digital_io import DigitalIOService
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from src.application.interfaces.hardware.digital_io import DigitalIOService
+from src.domain.value_objects.hardware_configuration import HardwareConfiguration
 
 if TYPE_CHECKING:
     from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase

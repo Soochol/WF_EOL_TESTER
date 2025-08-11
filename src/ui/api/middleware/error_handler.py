@@ -8,16 +8,16 @@ from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from domain.exceptions.configuration_exceptions import (
+from src.domain.exceptions.configuration_exceptions import (
     MissingConfigurationException,
 )
-from domain.exceptions.hardware_exceptions import (
+from src.domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
-from domain.exceptions.test_exceptions import (
+from src.domain.exceptions.test_exceptions import (
     TestExecutionException,
 )
-from domain.exceptions.validation_exceptions import (
+from src.domain.exceptions.validation_exceptions import (
     ValidationException,
 )
 

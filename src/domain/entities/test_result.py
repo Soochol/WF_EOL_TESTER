@@ -6,15 +6,15 @@ Represents the outcome and results of an EOL test execution.
 
 from typing import Any, Dict, List, Optional
 
-from domain.enums.test_status import TestStatus
-from domain.exceptions.validation_exceptions import (
+from src.domain.enums.test_status import TestStatus
+from src.domain.exceptions.validation_exceptions import (
     ValidationException,
 )
-from domain.value_objects.identifiers import (
+from src.domain.value_objects.identifiers import (
     MeasurementId,
     TestId,
 )
-from domain.value_objects.time_values import (
+from src.domain.value_objects.time_values import (
     TestDuration,
     Timestamp,
 )

@@ -19,7 +19,7 @@ from typing import (
     Optional,
 )
 
-from domain.enums.hardware_status import HardwareStatus
+from src.domain.enums.hardware_status import HardwareStatus
 
 
 class AlertSeverity(Enum):
