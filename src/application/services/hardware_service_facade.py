@@ -360,58 +360,89 @@ class HardwareServiceFacade:
         hardware_config: HardwareConfiguration,
     ) -> None:
         """Set LMA standby sequence - coordinate MCU and Robot for LMA standby state"""
-        logger.info("Setting LMA standby sequence...")
+        logger.info("🚀 STARTING LMA standby sequence...")
 
         try:
-            # MCU start standby heating
+            # Step 1: MCU start standby heating
+            logger.info("🔄 Step 1: Starting MCU standby heating...")
+            
             # Calculate standby temperature: minimum of configured standby temp and test temperature list minimum
             if not test_config.temperature_list:
                 raise ValueError("Temperature list cannot be empty")
 
             min_test_temp = min(test_config.temperature_list)
             calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
+            
+            try:
+                await self._mcu.start_standby_heating(
+                    operating_temp=test_config.activation_temperature,
+                    standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
+                )
+                logger.info(
+                    f"✅ Step 1 COMPLETED: MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
+                )
+            except Exception as e:
+                logger.error(f"❌ Step 1 FAILED: MCU standby heating - {e}")
+                raise
 
-            await self._mcu.start_standby_heating(
-                operating_temp=test_config.activation_temperature,
-                standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
-            )
-            logger.info(
-                f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
-            )
+            # Step 2: Robot to max stroke position
+            logger.info("🔄 Step 2: Moving robot to max stroke position...")
+            try:
+                await self._robot.move_absolute(
+                    position=test_config.max_stroke,
+                    axis_id=hardware_config.robot.axis_id,
+                    velocity=hardware_config.robot.velocity,
+                    acceleration=hardware_config.robot.acceleration,
+                    deceleration=hardware_config.robot.deceleration,
+                )
+                logger.info(f"✅ Step 2 COMPLETED: Robot moved to max stroke position: {test_config.max_stroke}μm")
+            except Exception as e:
+                logger.error(f"❌ Step 2 FAILED: Robot move to max stroke - {e}")
+                raise
 
-            # Robot to max stroke position using parameters from hardware config
-            await self._robot.move_absolute(
-                position=test_config.max_stroke,
-                axis_id=hardware_config.robot.axis_id,
-                velocity=hardware_config.robot.velocity,
-                acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration,
-            )
-            logger.info(f"Robot moved to max stroke position: {test_config.max_stroke}μm")
+            # Step 3: Wait for standby heating stabilization
+            stabilization_time = test_config.standby_stabilization
+            logger.info(f"🔄 Step 3: Waiting for standby heating stabilization ({stabilization_time}s)...")
+            
+            if stabilization_time > 300:  # More than 5 minutes seems excessive
+                logger.warning(f"⚠️  Long stabilization time detected: {stabilization_time}s")
+            
+            try:
+                await asyncio.sleep(stabilization_time)
+                logger.info(f"✅ Step 3 COMPLETED: Standby heating stabilized after {stabilization_time}s")
+            except Exception as e:
+                logger.error(f"❌ Step 3 FAILED: Stabilization wait - {e}")
+                raise
 
-            # Wait for standby heating stabilization
-            await asyncio.sleep(test_config.standby_stabilization)
-            logger.info(f"Standby heating stabilized after {test_config.standby_stabilization}s")
+            # Step 4: Robot to initial position
+            logger.info("🔄 Step 4: Moving robot to initial position...")
+            try:
+                await self._robot.move_absolute(
+                    position=test_config.initial_position,
+                    axis_id=hardware_config.robot.axis_id,
+                    velocity=hardware_config.robot.velocity,
+                    acceleration=hardware_config.robot.acceleration,
+                    deceleration=hardware_config.robot.deceleration,
+                )
+                logger.info(f"✅ Step 4 COMPLETED: Robot moved to initial position: {test_config.initial_position}μm")
+            except Exception as e:
+                logger.error(f"❌ Step 4 FAILED: Robot move to initial position - {e}")
+                raise
 
-            # Robot to initial position using test configuration
-            await self._robot.move_absolute(
-                position=test_config.initial_position,
-                axis_id=hardware_config.robot.axis_id,
-                velocity=hardware_config.robot.velocity,
-                acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration,
-            )
-            logger.info(f"Robot moved to initial position: {test_config.initial_position}μm")
+            # Step 5: MCU start standby cooling
+            logger.info("🔄 Step 5: Starting MCU standby cooling...")
+            try:
+                await self._mcu.start_standby_cooling()
+                await asyncio.sleep(1)  # Short delay to ensure mode is set
+                logger.info("✅ Step 5 COMPLETED: MCU standby cooling started")
+            except Exception as e:
+                logger.error(f"❌ Step 5 FAILED: MCU standby cooling - {e}")
+                raise
 
-            # MCU start standby cooling
-            await self._mcu.start_standby_cooling()
-            await asyncio.sleep(1)  # Short delay to ensure mode is set
-            logger.info("MCU standby cooling started")
-
-            logger.info("LMA standby sequence completed successfully")
+            logger.info("🎉 LMA standby sequence completed successfully - ALL STEPS DONE!")
 
         except Exception as e:
-            logger.error(f"LMA standby sequence failed: {e}")
+            logger.error(f"💥 LMA standby sequence FAILED at some step: {e}")
             raise HardwareConnectionException(
                 f"Failed to set LMA standby sequence: {str(e)}",
                 details={"config": test_config.to_dict()},
