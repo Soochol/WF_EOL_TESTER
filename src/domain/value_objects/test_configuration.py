@@ -40,34 +40,23 @@ class TestConfiguration:
 
     # Positioning settings (μm)
     initial_position: float = 10000.0  # μm (10mm)
-    max_stroke: float = 240000.0  # μm (240mm)
+    max_stroke: float = 220000.0  # μm (240mm)
 
     # Test parameters
     temperature_list: List[float] = field(
         default_factory=lambda: [
             38.0,
-            40.0,
-            42.0,
-            44.0,
-            46.0,
-            48.0,
-            50.0,
             52.0,
-            54.0,
-            56.0,
-            58.0,
-            60.0,
+            66.0,
         ]
     )
     stroke_positions: List[float] = field(
         default_factory=lambda: [
             10000.0,  # 10mm in μm
             60000.0,  # 60mm in μm
-            100000.0,  # 100mm in μm
-            140000.0,  # 140mm in μm
+            120000.0,  # 140mm in μm
             180000.0,  # 180mm in μm
             220000.0,  # 220mm in μm
-            240000.0,  # 240mm in μm
         ]
     )
 
@@ -375,24 +364,36 @@ class TestConfiguration:
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary representation"""
         return {
+            # Power settings
             "voltage": self.voltage,
             "current": self.current,
+            "upper_current": self.upper_current,  # Missing field added!
+            # MCU settings
             "upper_temperature": self.upper_temperature,
+            "activation_temperature": self.activation_temperature,  # Missing field added!
+            "standby_temperature": self.standby_temperature,  # Missing field added!
             "fan_speed": self.fan_speed,
+            # Positioning settings
             "max_stroke": self.max_stroke,
             "initial_position": self.initial_position,
+            # Test parameters
             "pass_criteria": self.pass_criteria.to_dict(),
             "temperature_list": self.temperature_list.copy(),
             "stroke_positions": self.stroke_positions.copy(),
+            # Timing settings
             "stabilization_delay": self.stabilization_delay,
             "temperature_stabilization": self.temperature_stabilization,
+            "standby_stabilization": self.standby_stabilization,  # CRITICAL missing field added!
             "power_stabilization": self.power_stabilization,
             "loadcell_zero_delay": self.loadcell_zero_delay,
+            # Measurement settings
             "measurement_tolerance": self.measurement_tolerance,
             "force_precision": self.force_precision,
             "temperature_precision": self.temperature_precision,
+            # Test execution settings
             "retry_attempts": self.retry_attempts,
             "timeout_seconds": self.timeout_seconds,
+            # Safety limits
             "max_voltage": self.max_voltage,
             "max_current": self.max_current,
             "velocity": self.velocity,
