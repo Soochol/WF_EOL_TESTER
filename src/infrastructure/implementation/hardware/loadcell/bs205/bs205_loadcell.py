@@ -10,18 +10,18 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from src.application.interfaces.hardware.loadcell import (
+from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
-from src.domain.enums.measurement_units import MeasurementUnit
-from src.domain.value_objects.measurements import ForceValue
-from src.driver.serial.exceptions import (
+from domain.enums.measurement_units import MeasurementUnit
+from domain.value_objects.measurements import ForceValue
+from driver.serial.exceptions import (
     SerialCommunicationError,
     SerialConnectionError,
     SerialTimeoutError,
 )
-from src.driver.serial.serial import SerialConnection, SerialManager
-from src.infrastructure.implementation.hardware.loadcell.bs205.constants import (
+from driver.serial.serial import SerialConnection, SerialManager
+from infrastructure.implementation.hardware.loadcell.bs205.constants import (
     CMD_HOLD,
     CMD_HOLD_RELEASE,
     CMD_READ_WEIGHT,
@@ -29,7 +29,7 @@ from src.infrastructure.implementation.hardware.loadcell.bs205.constants import 
     STATUS_MESSAGES,
     ZERO_OPERATION_DELAY,
 )
-from src.infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
+from infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
     BS205CommunicationError,
     BS205Error,
     BS205ErrorCode,

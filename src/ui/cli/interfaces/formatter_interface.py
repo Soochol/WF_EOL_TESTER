@@ -17,7 +17,7 @@ from rich.table import Table
 
 # TYPE_CHECKING imports to avoid circular dependencies
 if TYPE_CHECKING:
-    from src.domain.value_objects.eol_test_result import EOLTestResult
+    from domain.value_objects.eol_test_result import EOLTestResult
 
 
 class IFormatter(ABC):

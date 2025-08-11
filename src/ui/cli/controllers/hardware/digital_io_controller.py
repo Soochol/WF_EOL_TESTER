@@ -9,7 +9,7 @@ from typing import Dict, Optional
 
 from loguru import logger
 
-from src.application.interfaces.hardware.digital_io import DigitalIOService
+from application.interfaces.hardware.digital_io import DigitalIOService
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

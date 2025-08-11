@@ -9,15 +9,15 @@ from typing import Any, Dict
 
 from loguru import logger
 
-from src.domain.exceptions import (
+from domain.exceptions import (
     ConfigurationValidationError,
     create_multi_validation_error,
     create_validation_error,
 )
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
-from src.domain.value_objects.test_configuration import (
+from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
 

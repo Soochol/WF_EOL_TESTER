@@ -12,10 +12,10 @@ import asyncio
 
 from loguru import logger
 
-from src.application.interfaces.hardware.digital_io import (
+from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )
-from src.domain.exceptions import (
+from domain.exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )

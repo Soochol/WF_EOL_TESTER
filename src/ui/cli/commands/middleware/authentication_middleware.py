@@ -8,13 +8,13 @@ from typing import List, Optional, Set, Tuple
 
 from loguru import logger
 
-from src.ui.cli.commands.interfaces.command_interface import (
+from ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,
     ICommandExecutionContext,
     MiddlewareResult,
 )
-from src.ui.cli.commands.middleware.base_middleware import BaseMiddleware
+from ui.cli.commands.middleware.base_middleware import BaseMiddleware
 
 
 class AuthenticationMiddleware(BaseMiddleware):

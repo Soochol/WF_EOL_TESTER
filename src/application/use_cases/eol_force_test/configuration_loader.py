@@ -9,12 +9,12 @@ from typing import Optional
 
 from loguru import logger
 
-from src.application.services.configuration_service import ConfigurationService
-from src.application.services.configuration_validator import ConfigurationValidator
-from src.domain.exceptions import MultiConfigurationValidationError
-from src.domain.exceptions.test_exceptions import TestExecutionException
-from src.domain.value_objects.hardware_configuration import HardwareConfiguration
-from src.domain.value_objects.test_configuration import TestConfiguration
+from application.services.configuration_service import ConfigurationService
+from application.services.configuration_validator import ConfigurationValidator
+from domain.exceptions import MultiConfigurationValidationError
+from domain.exceptions.test_exceptions import TestExecutionException
+from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.test_configuration import TestConfiguration
 
 from .constants import TestExecutionConstants
 

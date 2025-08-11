@@ -4,10 +4,10 @@ Domain Exceptions Package
 Contains domain-specific exceptions for EOL Tester application following Exception First principles.
 """
 
-from src.domain.exceptions.domain_exceptions import (
+from domain.exceptions.domain_exceptions import (
     DomainException,
 )
-from src.domain.exceptions.eol_exceptions import (
+from domain.exceptions.eol_exceptions import (
     ConfigurationNotFoundError,
     ConfigurationValidationError,
     create_multi_validation_error,
@@ -26,7 +26,7 @@ from src.domain.exceptions.eol_exceptions import (
     TestSetupError,
     ValidationError,
 )
-from src.domain.exceptions.robot_exceptions import (
+from domain.exceptions.robot_exceptions import (
     AXLConfigurationError,
     AXLConnectionError,
     AXLError,
@@ -37,7 +37,7 @@ from src.domain.exceptions.robot_exceptions import (
     RobotMotionError,
     RobotSafetyError,
 )
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
 

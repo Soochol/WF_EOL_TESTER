@@ -8,12 +8,12 @@ and component integration.
 from typing import Any, Dict, List, Optional, Type, TypeVar
 from loguru import logger
 
-from src.ui.cli.commands.interfaces.command_interface import (
+from ui.cli.commands.interfaces.command_interface import (
     ICommand,
     ICommandMiddleware,
     CommandMetadata,
 )
-from src.ui.cli.container.dependency_container import DependencyContainer
+from ui.cli.container.dependency_container import DependencyContainer
 
 # Type variable for command creation
 T = TypeVar("T", bound=ICommand)

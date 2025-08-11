@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from src.domain.enums.test_status import TestStatus
+from domain.enums.test_status import TestStatus
 
 from ..themes import ColorScheme, IconSet, LayoutConstants
 

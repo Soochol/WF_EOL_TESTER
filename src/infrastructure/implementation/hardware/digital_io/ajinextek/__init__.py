@@ -5,7 +5,7 @@ This module contains the Ajinextek Digital I/O hardware implementation with
 structured constants, error handling, and communication protocols.
 """
 
-from src.infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
     DEFAULT_BOARD_NUMBER,
     DEFAULT_MODULE_POSITION,
     MAX_INPUT_CHANNELS,
@@ -20,7 +20,7 @@ from src.infrastructure.implementation.hardware.digital_io.ajinextek.constants i
     STATUS_MESSAGES,
     COMMAND_DESCRIPTIONS,
 )
-from src.infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
     AjinextekDIOError,
     AjinextekHardwareError,
     AjinextekConfigurationError,
@@ -34,7 +34,7 @@ from src.infrastructure.implementation.hardware.digital_io.ajinextek.error_codes
     create_hardware_error,
 )
 
-from src.infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import AjinextekDIO
+from infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import AjinextekDIO
 
 __all__ = [
     # Main service

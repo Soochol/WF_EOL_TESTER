@@ -11,8 +11,8 @@ from typing import List, Optional
 from loguru import logger
 from rich.console import Console
 
-from src.application.services.configuration_service import ConfigurationService
-from src.application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.configuration_service import ConfigurationService
+from application.services.hardware_service_facade import HardwareServiceFacade
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
@@ -341,7 +341,7 @@ class HardwareControlManager:
         """
         try:
             # Import here to avoid circular imports
-            from src.application.use_cases.robot_home import (
+            from application.use_cases.robot_home import (
                 RobotHomeCommand,
                 RobotHomeUseCase,
             )
@@ -446,16 +446,16 @@ class HardwareControlManager:
             )
 
             # Create a minimal hardware facade for the Robot Home use case
-            from src.infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
+            from infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
                 MockDIO,
             )
-            from src.infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
+            from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
                 MockLoadCell,
             )
-            from src.infrastructure.implementation.hardware.mcu.mock.mock_mcu import (
+            from infrastructure.implementation.hardware.mcu.mock.mock_mcu import (
                 MockMCU,
             )
-            from src.infrastructure.implementation.hardware.power.mock.mock_power import (
+            from infrastructure.implementation.hardware.power.mock.mock_power import (
                 MockPower,
             )
 

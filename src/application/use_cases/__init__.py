@@ -4,7 +4,7 @@ Core Use Cases
 Business use cases for the EOL Tester application.
 """
 
-from src.application.use_cases.eol_force_test import (
+from application.use_cases.eol_force_test import (
     EOLForceTestUseCase,
     EOLForceTestCommand,
     EOLTestResult,

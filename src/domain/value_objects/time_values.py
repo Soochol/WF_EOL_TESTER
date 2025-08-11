@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timezone
 from typing import Union
 
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     InvalidRangeException,
     ValidationException,
 )

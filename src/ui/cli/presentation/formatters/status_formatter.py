@@ -15,7 +15,7 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.text import Text
 
-from src.domain.enums.test_status import TestStatus
+from domain.enums.test_status import TestStatus
 
 from .base_formatter import BaseFormatter
 

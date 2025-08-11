@@ -10,14 +10,14 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from src.domain.exceptions.eol_exceptions import (
+from domain.exceptions.eol_exceptions import (
     ConfigurationValidationError,
     RepositoryAccessError,
 )
-from src.domain.value_objects.hardware_configuration import (
+from domain.value_objects.hardware_configuration import (
     HardwareConfiguration,
 )
-from src.ui.cli.commands.base import Command, CommandResult
+from ui.cli.commands.base import Command, CommandResult
 
 
 class ConfigCommand(Command):

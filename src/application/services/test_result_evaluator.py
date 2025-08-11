@@ -9,11 +9,11 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from src.domain.exceptions import (
+from domain.exceptions import (
     TestEvaluationError,
     create_test_evaluation_error,
 )
-from src.domain.value_objects.pass_criteria import PassCriteria
+from domain.value_objects.pass_criteria import PassCriteria
 
 
 class TestResultEvaluator:

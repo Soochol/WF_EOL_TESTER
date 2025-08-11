@@ -19,59 +19,59 @@ from typing import Optional
 
 from loguru import logger
 
-from src.application.services.configuration_service import (
+from application.services.configuration_service import (
     ConfigurationService,
 )
-from src.application.services.configuration_validator import (
+from application.services.configuration_validator import (
     ConfigurationValidator,
 )
-from src.application.services.exception_handler import (
+from application.services.exception_handler import (
     ExceptionHandler,
 )
-from src.application.services.hardware_service_facade import (
+from application.services.hardware_service_facade import (
     HardwareServiceFacade,
 )
-from src.application.services.repository_service import (
+from application.services.repository_service import (
     RepositoryService,
 )
-from src.application.services.test_result_evaluator import (
+from application.services.test_result_evaluator import (
     TestResultEvaluator,
 )
-from src.domain.entities.dut import DUT
-from src.domain.entities.eol_test import EOLTest
-from src.domain.entities.test_result import TestResult
-from src.domain.enums.measurement_units import MeasurementUnit
+from domain.entities.dut import DUT
+from domain.entities.eol_test import EOLTest
+from domain.entities.test_result import TestResult
+from domain.enums.measurement_units import MeasurementUnit
 
 # Removed unused import: TestResult
-from src.domain.enums.test_status import TestStatus
-from src.domain.exceptions import (
+from domain.enums.test_status import TestStatus
+from domain.exceptions import (
     MultiConfigurationValidationError,
     TestEvaluationError,
 )
-from src.domain.exceptions.test_exceptions import (
+from domain.exceptions.test_exceptions import (
     TestExecutionException,
 )
-from src.domain.value_objects.dut_command_info import (
+from domain.value_objects.dut_command_info import (
     DUTCommandInfo,
 )
-from src.domain.value_objects.eol_test_result import (
+from domain.value_objects.eol_test_result import (
     EOLTestResult,
 )
-from src.domain.value_objects.hardware_configuration import HardwareConfiguration
-from src.domain.value_objects.identifiers import (
+from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.identifiers import (
     DUTId,
     MeasurementId,
     OperatorId,
     TestId,
 )
-from src.domain.value_objects.measurements import (
+from domain.value_objects.measurements import (
     ForceValue,
     TestMeasurements,
 )
-from src.domain.value_objects.test_configuration import (
+from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
-from src.domain.value_objects.time_values import TestDuration, Timestamp
+from domain.value_objects.time_values import TestDuration, Timestamp
 
 
 # Constants for readability and maintainability

@@ -5,14 +5,14 @@ Contains immutable value objects that represent measured values, identifiers, an
 domain concepts without identity.
 """
 
-from src.domain.value_objects.identifiers import TestId, DUTId, OperatorId, MeasurementId
-from src.domain.value_objects.measurements import (
+from domain.value_objects.identifiers import TestId, DUTId, OperatorId, MeasurementId
+from domain.value_objects.measurements import (
     ForceValue,
     VoltageValue,
     CurrentValue,
     ResistanceValue,
 )
-from src.domain.value_objects.time_values import TestDuration, Timestamp
+from domain.value_objects.time_values import TestDuration, Timestamp
 
 __all__ = [
     "TestId",

@@ -9,10 +9,10 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from src.application.interfaces.hardware.digital_io import (
+from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )
-from src.infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
     MAX_INPUT_CHANNELS,
     MAX_OUTPUT_CHANNELS,
     MODULE_ID_PCI_DB16R,
@@ -23,7 +23,7 @@ from src.infrastructure.implementation.hardware.digital_io.ajinextek.constants i
     MODULE_ID_SIO_DO16,
     STATUS_MESSAGES,
 )
-from src.infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
     AjinextekChannelError,
     AjinextekDIOError,
     AjinextekErrorCode,
@@ -32,10 +32,10 @@ from src.infrastructure.implementation.hardware.digital_io.ajinextek.error_codes
     validate_channel_list,
     validate_pin_values,
 )
-from src.infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
+from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
     AXLWrapper,
 )
-from src.infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
     get_error_message,
 )

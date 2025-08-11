@@ -10,15 +10,15 @@ from typing import Any, Dict, List, Optional
 import asyncio
 from loguru import logger
 
-from src.application.interfaces.hardware.loadcell import (
+from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
-from src.domain.enums.measurement_units import MeasurementUnit
-from src.domain.exceptions import HardwareOperationError
-from src.domain.exceptions.hardware_exceptions import (
+from domain.enums.measurement_units import MeasurementUnit
+from domain.exceptions import HardwareOperationError
+from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
-from src.domain.value_objects.measurements import ForceValue
+from domain.value_objects.measurements import ForceValue
 
 
 class MockLoadCell(LoadCellService):

@@ -11,11 +11,11 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from src.application.interfaces.repository.test_result_repository import (
+from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
-from src.domain.entities.eol_test import EOLTest
-from src.domain.exceptions import (
+from domain.entities.eol_test import EOLTest
+from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
 )

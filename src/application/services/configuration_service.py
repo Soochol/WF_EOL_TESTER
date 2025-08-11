@@ -9,21 +9,21 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from src.application.interfaces.configuration.configuration import (
+from application.interfaces.configuration.configuration import (
     Configuration,
 )
-from src.application.interfaces.configuration.profile_preference import (
+from application.interfaces.configuration.profile_preference import (
     ProfilePreference,
 )
-from src.domain.exceptions import (
+from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
 )
-from src.domain.value_objects.hardware_configuration import (
+from domain.value_objects.hardware_configuration import (
     HardwareConfiguration,
 )
-from src.domain.value_objects.hardware_model import HardwareModel
-from src.domain.value_objects.test_configuration import (
+from domain.value_objects.hardware_model import HardwareModel
+from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
 

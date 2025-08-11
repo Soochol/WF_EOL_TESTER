@@ -21,14 +21,14 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports - Application layer
-from src.application.use_cases.eol_force_test import (
+from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
 )
 
 # Local imports - Domain layer
-from src.domain.value_objects.dut_command_info import DUTCommandInfo
-from src.domain.value_objects.eol_test_result import EOLTestResult
+from domain.value_objects.dut_command_info import DUTCommandInfo
+from domain.value_objects.eol_test_result import EOLTestResult
 
 from ..interfaces.execution_interface import ITestExecutor
 

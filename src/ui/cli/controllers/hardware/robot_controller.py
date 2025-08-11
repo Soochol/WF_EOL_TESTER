@@ -10,8 +10,8 @@ from typing import Optional
 
 from rich.status import Status
 
-from src.application.interfaces.hardware.robot import RobotService
-from src.domain.value_objects.hardware_configuration import RobotConfig
+from application.interfaces.hardware.robot import RobotService
+from domain.value_objects.hardware_configuration import RobotConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

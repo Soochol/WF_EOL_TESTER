@@ -9,20 +9,20 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from loguru import logger
 
-from src.application.interfaces.hardware.digital_io import (
+from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )
-from src.application.interfaces.hardware.loadcell import (
+from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
-from src.application.interfaces.hardware.mcu import (
+from application.interfaces.hardware.mcu import (
     MCUService,
     TestMode,
 )
-from src.application.interfaces.hardware.power import (
+from application.interfaces.hardware.power import (
     PowerService,
 )
-from src.application.interfaces.hardware.robot import (
+from application.interfaces.hardware.robot import (
     RobotService,
 )
 
@@ -46,14 +46,14 @@ if TYPE_CHECKING:
 
 # Type checking imports removed as they are no longer needed
 # The constructor now uses interface types instead of concrete types
-from src.domain.exceptions.hardware_exceptions import (
+from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
-from src.domain.value_objects.hardware_configuration import HardwareConfiguration
-from src.domain.value_objects.measurements import (
+from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.measurements import (
     TestMeasurements,
 )
-from src.domain.value_objects.test_configuration import (
+from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
 

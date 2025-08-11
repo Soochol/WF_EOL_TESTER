@@ -6,21 +6,21 @@ Represents an End-of-Line test execution with its configuration and state.
 
 from typing import Any, Dict, Optional, Set
 
-from src.domain.entities.dut import DUT
-from src.domain.entities.test_result import TestResult
-from src.domain.enums.test_status import TestStatus
-from src.domain.exceptions.business_rule_exceptions import (
+from domain.entities.dut import DUT
+from domain.entities.test_result import TestResult
+from domain.enums.test_status import TestStatus
+from domain.exceptions.business_rule_exceptions import (
     InvalidTestStateException,
 )
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
-from src.domain.value_objects.identifiers import (
+from domain.value_objects.identifiers import (
     MeasurementId,
     OperatorId,
     TestId,
 )
-from src.domain.value_objects.time_values import (
+from domain.value_objects.time_values import (
     TestDuration,
     Timestamp,
 )

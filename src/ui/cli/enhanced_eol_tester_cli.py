@@ -25,8 +25,8 @@ from .validation.input_validator import InputValidator, ValidationConstants
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
-    from src.application.services.hardware_service_facade import HardwareServiceFacade
-    from src.application.use_cases.eol_force_test import EOLForceTestUseCase
+    from application.services.hardware_service_facade import HardwareServiceFacade
+    from application.use_cases.eol_force_test import EOLForceTestUseCase
 
 
 # Re-export validation components for backward compatibility

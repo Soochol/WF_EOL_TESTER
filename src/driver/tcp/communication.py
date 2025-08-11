@@ -10,7 +10,7 @@ from typing import Any, cast
 import asyncio
 from loguru import logger
 
-from src.driver.tcp.constants import (
+from driver.tcp.constants import (
     COMMAND_BUFFER_SIZE,
     CONNECT_TIMEOUT,
     DEFAULT_PORT,
@@ -19,7 +19,7 @@ from src.driver.tcp.constants import (
     RECV_BUFFER_SIZE,
     RESPONSE_TERMINATOR,
 )
-from src.driver.tcp.exceptions import (
+from driver.tcp.exceptions import (
     TCPCommunicationError,
     TCPConnectionError,
     TCPTimeoutError,

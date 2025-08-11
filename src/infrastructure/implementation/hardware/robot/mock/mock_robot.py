@@ -10,11 +10,11 @@ from typing import Any, Dict
 
 from loguru import logger
 
-from src.application.interfaces.hardware.robot import (
+from application.interfaces.hardware.robot import (
     RobotService,
 )
-from src.domain.enums.robot_enums import MotionStatus
-from src.domain.exceptions import (
+from domain.enums.robot_enums import MotionStatus
+from domain.exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )

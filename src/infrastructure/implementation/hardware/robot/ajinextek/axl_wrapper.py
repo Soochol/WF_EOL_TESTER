@@ -13,17 +13,17 @@ from ctypes import POINTER, c_char_p, c_double, c_long, c_ulong, wintypes
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
-from src.domain.exceptions.robot_exceptions import (
+from domain.exceptions.robot_exceptions import (
     AXLError,
     AXLMotionError,
 )
 
 
 
-from src.infrastructure.implementation.hardware.robot.ajinextek.constants import (
+from infrastructure.implementation.hardware.robot.ajinextek.constants import (
     DLL_PATH,
 )
-from src.infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
     get_error_message,
 )

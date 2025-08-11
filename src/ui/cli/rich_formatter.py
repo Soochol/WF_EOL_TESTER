@@ -17,8 +17,8 @@ from rich.progress import Progress
 from rich.status import Status
 from rich.table import Table
 
-from src.domain.enums.test_status import TestStatus
-from src.domain.value_objects.eol_test_result import EOLTestResult
+from domain.enums.test_status import TestStatus
+from domain.value_objects.eol_test_result import EOLTestResult
 
 from .interfaces.formatter_interface import IFormatter
 from .presentation.formatters import (

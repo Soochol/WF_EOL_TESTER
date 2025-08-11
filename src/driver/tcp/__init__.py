@@ -5,14 +5,14 @@ Generic TCP/IP communication driver for network-based devices.
 Provides low-level TCP communication primitives for command/response protocols.
 """
 
-from src.driver.tcp.communication import TCPCommunication
-from src.driver.tcp.exceptions import (
+from driver.tcp.communication import TCPCommunication
+from driver.tcp.exceptions import (
     TCPError,
     TCPConnectionError,
     TCPCommunicationError,
     TCPTimeoutError,
 )
-from src.driver.tcp.constants import DEFAULT_PORT, DEFAULT_TIMEOUT
+from driver.tcp.constants import DEFAULT_PORT, DEFAULT_TIMEOUT
 
 __all__ = [
     "TCPCommunication",

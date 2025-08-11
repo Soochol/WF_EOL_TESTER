@@ -6,7 +6,7 @@ Provides help and documentation for all available commands.
 
 from typing import Dict, List
 
-from src.ui.cli.commands.base import Command, CommandResult
+from ui.cli.commands.base import Command, CommandResult
 
 
 class HelpCommand(Command):

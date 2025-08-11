@@ -21,7 +21,7 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports - Application layer
-from src.application.use_cases.eol_force_test import EOLForceTestUseCase
+from application.use_cases.eol_force_test import EOLForceTestUseCase
 
 # Local imports - UI modules
 from ..config_reader import CLIConfigReader
@@ -41,7 +41,7 @@ from ..interfaces.validation_interface import IInputValidator
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
-    from src.application.services.hardware_service_facade import HardwareServiceFacade
+    from application.services.hardware_service_facade import HardwareServiceFacade
 
 
 class CLIApplication(ICLIApplication):

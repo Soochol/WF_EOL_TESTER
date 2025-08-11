@@ -6,12 +6,12 @@ Represents a device being tested in the EOL testing system.
 
 from typing import Any, Dict, Optional
 
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
-from src.domain.value_objects.dut_command_info import DUTCommandInfo
-from src.domain.value_objects.identifiers import DUTId
-from src.domain.value_objects.time_values import Timestamp
+from domain.value_objects.dut_command_info import DUTCommandInfo
+from domain.value_objects.identifiers import DUTId
+from domain.value_objects.time_values import Timestamp
 
 
 class DUT:

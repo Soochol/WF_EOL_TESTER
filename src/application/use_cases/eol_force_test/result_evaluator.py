@@ -9,15 +9,15 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from src.application.services.test_result_evaluator import TestResultEvaluator
-from src.domain.entities.eol_test import EOLTest
-from src.domain.entities.test_result import TestResult
-from src.domain.enums.test_status import TestStatus
-from src.domain.exceptions import TestEvaluationError
-from src.domain.exceptions.test_exceptions import TestExecutionException
-from src.domain.value_objects.measurements import TestMeasurements
-from src.domain.value_objects.test_configuration import TestConfiguration
-from src.domain.value_objects.time_values import Timestamp
+from application.services.test_result_evaluator import TestResultEvaluator
+from domain.entities.eol_test import EOLTest
+from domain.entities.test_result import TestResult
+from domain.enums.test_status import TestStatus
+from domain.exceptions import TestEvaluationError
+from domain.exceptions.test_exceptions import TestExecutionException
+from domain.value_objects.measurements import TestMeasurements
+from domain.value_objects.test_configuration import TestConfiguration
+from domain.value_objects.time_values import Timestamp
 
 from .constants import TestExecutionConstants
 from .measurement_converter import MeasurementConverter

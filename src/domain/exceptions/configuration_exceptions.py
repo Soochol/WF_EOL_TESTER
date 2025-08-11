@@ -1,7 +1,7 @@
 # Configuration Domain Exceptions
 from typing import Any, Dict, List, Optional
 
-from src.domain.exceptions.domain_exceptions import (
+from domain.exceptions.domain_exceptions import (
     DomainException,
 )
 

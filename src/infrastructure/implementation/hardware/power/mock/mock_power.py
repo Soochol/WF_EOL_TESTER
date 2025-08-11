@@ -10,10 +10,10 @@ from typing import Any, Dict, Optional
 import asyncio
 from loguru import logger
 
-from src.application.interfaces.hardware.power import (
+from application.interfaces.hardware.power import (
     PowerService,
 )
-from src.domain.exceptions import (
+from domain.exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )

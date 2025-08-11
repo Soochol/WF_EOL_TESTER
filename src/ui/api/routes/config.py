@@ -10,8 +10,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
-from src.ui.api.dependencies import DIContainer, get_container
-from src.ui.api.models.config_models import (
+from ui.api.dependencies import DIContainer, get_container
+from ui.api.models.config_models import (
     ConfigurationResponse,
     ConfigurationUpdateRequest,
     ConfigurationUpdateResponse,

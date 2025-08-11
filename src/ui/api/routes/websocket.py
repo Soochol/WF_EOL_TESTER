@@ -12,8 +12,8 @@ from typing import Dict, Optional, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 
-from src.ui.api.dependencies import get_container
-from src.ui.api.models.websocket_models import (
+from ui.api.dependencies import get_container
+from ui.api.models.websocket_models import (
     DigitalInputMessage,
     HardwareEventMessage,
     SystemStatusMessage,

@@ -14,21 +14,21 @@ from loguru import logger
 
 # 절대 import 사용 (권장)
 # src가 Python path에 있을 때 최적의 방법
-from src.application.interfaces.hardware.robot import (
+from application.interfaces.hardware.robot import (
     RobotService,
 )
-from src.domain.enums.robot_enums import MotionStatus
-from src.domain.exceptions.hardware_exceptions import (
+from domain.enums.robot_enums import MotionStatus
+from domain.exceptions.hardware_exceptions import (
     HardwareException,
 )
-from src.domain.exceptions.robot_exceptions import (
+from domain.exceptions.robot_exceptions import (
     RobotConnectionError,
     RobotMotionError,
 )
-from src.infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
+from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
     AXLWrapper,
 )
-from src.infrastructure.implementation.hardware.robot.ajinextek.constants import (
+from infrastructure.implementation.hardware.robot.ajinextek.constants import (
     HOME_ERR_AMP_FAULT,
     HOME_ERR_GNT_RANGE,
     HOME_ERR_NEG_LIMIT,
@@ -46,7 +46,7 @@ from src.infrastructure.implementation.hardware.robot.ajinextek.constants import
     print_dll_diagnostic_info,
     verify_dll_installation,
 )
-from src.infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
     get_error_message,
 )

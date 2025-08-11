@@ -8,14 +8,14 @@ from typing import Dict, List, Optional, cast
 
 from loguru import logger
 
-from src.application.use_cases.eol_force_test import (
+from application.use_cases.eol_force_test import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
 )
-from src.domain.value_objects.dut_command_info import (
+from domain.value_objects.dut_command_info import (
     DUTCommandInfo,
 )
-from src.ui.cli.commands.base import Command, CommandResult
+from ui.cli.commands.base import Command, CommandResult
 
 
 class TestCommand(Command):

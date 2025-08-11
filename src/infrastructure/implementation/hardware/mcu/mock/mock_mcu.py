@@ -11,12 +11,12 @@ from typing import Any, Dict, Optional
 import asyncio
 from loguru import logger
 
-from src.application.interfaces.hardware.mcu import MCUService
-from src.domain.exceptions import (
+from application.interfaces.hardware.mcu import MCUService
+from domain.exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )
-from src.domain.enums.mcu_enums import MCUStatus, TestMode
+from domain.enums.mcu_enums import MCUStatus, TestMode
 
 
 class MockMCU(MCUService):

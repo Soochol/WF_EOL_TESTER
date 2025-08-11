@@ -10,26 +10,26 @@ from typing import Optional
 
 from loguru import logger
 
-from src.application.services.configuration_service import ConfigurationService
-from src.application.services.configuration_validator import ConfigurationValidator
-from src.application.services.exception_handler import ExceptionHandler
-from src.application.services.hardware_service_facade import HardwareServiceFacade
-from src.application.services.repository_service import RepositoryService
-from src.application.services.test_result_evaluator import TestResultEvaluator
-from src.application.use_cases.eol_force_test import EOLForceTestUseCase
-from src.application.use_cases.robot_home import RobotHomeUseCase
-from src.infrastructure.configuration.yaml_configuration import (
+from application.services.configuration_service import ConfigurationService
+from application.services.configuration_validator import ConfigurationValidator
+from application.services.exception_handler import ExceptionHandler
+from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.repository_service import RepositoryService
+from application.services.test_result_evaluator import TestResultEvaluator
+from application.use_cases.eol_force_test import EOLForceTestUseCase
+from application.use_cases.robot_home import RobotHomeUseCase
+from infrastructure.configuration.yaml_configuration import (
     YamlConfiguration,
 )
-from src.infrastructure.implementation.hardware.digital_io.mock.mock_digital_io import (
+from infrastructure.implementation.hardware.digital_io.mock.mock_digital_io import (
     MockDigitalIO,
 )
-from src.infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
+from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
     MockLoadCell,
 )
-from src.infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
-from src.infrastructure.implementation.hardware.power.mock.mock_power import MockPower
-from src.infrastructure.implementation.hardware.robot.mock.mock_robot import MockRobot
+from infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
+from infrastructure.implementation.hardware.power.mock.mock_power import MockPower
+from infrastructure.implementation.hardware.robot.mock.mock_robot import MockRobot
 
 
 class DIContainer:

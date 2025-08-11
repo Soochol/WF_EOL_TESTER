@@ -6,7 +6,7 @@ Contains exceptions related to test execution business rules and constraints.
 
 from typing import Any, Dict, List, Optional
 
-from src.domain.exceptions.domain_exceptions import (
+from domain.exceptions.domain_exceptions import (
     DomainException,
 )
 

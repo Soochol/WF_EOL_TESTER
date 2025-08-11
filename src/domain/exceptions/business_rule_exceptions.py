@@ -1,7 +1,7 @@
 # Business Rule Exceptions
 from typing import Any, Dict, Optional
 
-from src.domain.exceptions.domain_exceptions import (
+from domain.exceptions.domain_exceptions import (
     DomainException,
 )
 

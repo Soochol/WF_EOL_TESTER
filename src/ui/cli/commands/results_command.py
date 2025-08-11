@@ -11,13 +11,13 @@ from typing import Any, Dict, List, Optional, cast
 
 from loguru import logger
 
-from src.application.interfaces.repository.test_result_repository import (
+from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
-from src.application.services.repository_service import (
+from application.services.repository_service import (
     RepositoryService,
 )
-from src.ui.cli.commands.base import Command, CommandResult
+from ui.cli.commands.base import Command, CommandResult
 
 
 class ResultsCommand(Command):

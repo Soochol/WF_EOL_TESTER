@@ -7,10 +7,10 @@ Immutable configuration object containing all test parameters and settings.
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List
 
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
-from src.domain.value_objects.pass_criteria import PassCriteria
+from domain.value_objects.pass_criteria import PassCriteria
 
 
 @dataclass(frozen=True)

@@ -10,12 +10,12 @@ from typing import Dict
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from loguru import logger
 
-from src.application.use_cases.eol_force_test import EOLForceTestCommand
-from src.application.use_cases.robot_home import RobotHomeCommand
-from src.domain.entities.dut import DUT
-from src.domain.value_objects.dut_command_info import DUTCommandInfo
-from src.ui.api.dependencies import DIContainer, get_container
-from src.ui.api.models.test_models import (
+from application.use_cases.eol_force_test import EOLForceTestCommand
+from application.use_cases.robot_home import RobotHomeCommand
+from domain.entities.dut import DUT
+from domain.value_objects.dut_command_info import DUTCommandInfo
+from ui.api.dependencies import DIContainer, get_container
+from ui.api.models.test_models import (
     RobotHomeRequest,
     RobotHomeResponse,
     TestCancellationRequest,

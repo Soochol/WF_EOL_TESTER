@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 from scipy.interpolate import griddata
 
-from src.domain.exceptions.validation_exceptions import (
+from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
 

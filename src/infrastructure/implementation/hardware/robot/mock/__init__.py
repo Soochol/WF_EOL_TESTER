@@ -1,3 +1,3 @@
-from src.infrastructure.implementation.hardware.robot.mock.mock_robot import MockRobot
+from infrastructure.implementation.hardware.robot.mock.mock_robot import MockRobot
 
 __all__ = ["MockRobot"]

@@ -5,10 +5,10 @@ Hardware implementation for AJINEXTEK robot controllers using AXL library.
 """
 
 try:
-    from src.infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import AjinextekRobot
-    from src.infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
-    from src.infrastructure.implementation.hardware.robot.ajinextek.constants import *
-    from src.infrastructure.implementation.hardware.robot.ajinextek.error_codes import *
+    from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import AjinextekRobot
+    from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
+    from infrastructure.implementation.hardware.robot.ajinextek.constants import *
+    from infrastructure.implementation.hardware.robot.ajinextek.error_codes import *
 
     _AJINEXTEK_AVAILABLE = True
 except ImportError as e:

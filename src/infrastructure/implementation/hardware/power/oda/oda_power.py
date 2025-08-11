@@ -10,15 +10,15 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from src.application.interfaces.hardware.power import (
+from application.interfaces.hardware.power import (
     PowerService,
 )
-from src.domain.exceptions import (
+from domain.exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )
-from src.driver.tcp.communication import TCPCommunication
-from src.driver.tcp.exceptions import TCPError
+from driver.tcp.communication import TCPCommunication
+from driver.tcp.exceptions import TCPError
 
 
 class OdaPower(PowerService):
