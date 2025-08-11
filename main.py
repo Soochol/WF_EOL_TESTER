@@ -21,32 +21,32 @@ if str(src_path) not in sys.path:
 from loguru import logger
 
 # Local application imports - Services
-from src.application.services.button_monitoring_service import ButtonMonitoringService
-from src.application.services.configuration_service import ConfigurationService
-from src.application.services.configuration_validator import ConfigurationValidator
-from src.application.services.emergency_stop_service import EmergencyStopService
-from src.application.services.exception_handler import ExceptionHandler
-from src.application.services.hardware_service_facade import HardwareServiceFacade
-from src.application.services.repository_service import RepositoryService
-from src.application.services.test_result_evaluator import TestResultEvaluator
+from application.services.button_monitoring_service import ButtonMonitoringService
+from application.services.configuration_service import ConfigurationService
+from application.services.configuration_validator import ConfigurationValidator
+from application.services.emergency_stop_service import EmergencyStopService
+from application.services.exception_handler import ExceptionHandler
+from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.repository_service import RepositoryService
+from application.services.test_result_evaluator import TestResultEvaluator
 
 # Local application imports - Use Cases
-from src.application.use_cases.eol_force_test import EOLForceTestUseCase
-from src.infrastructure.configuration.json_profile_preference import (
+from application.use_cases.eol_force_test import EOLForceTestUseCase
+from infrastructure.configuration.json_profile_preference import (
     JsonProfilePreference,
 )
-from src.infrastructure.configuration.yaml_configuration import (
+from infrastructure.configuration.yaml_configuration import (
     YamlConfiguration,
 )
 
 # Local infrastructure imports
-from src.infrastructure.factory import ServiceFactory
-from src.infrastructure.implementation.repositories.json_result_repository import (
+from infrastructure.factory import ServiceFactory
+from infrastructure.implementation.repositories.json_result_repository import (
     JsonResultRepository,
 )
 
 # Local UI imports
-from src.ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
+from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
 
 # Application configuration constants
 DEFAULT_LOG_ROTATION_SIZE = "10 MB"
@@ -152,10 +152,10 @@ async def main() -> None:
 
                 try:
                     # Create DUT command info for test execution
-                    from src.application.use_cases.eol_force_test.main_executor import (
+                    from application.use_cases.eol_force_test.main_executor import (
                         EOLForceTestCommand,
                     )
-                    from src.domain.value_objects.dut_command_info import DUTCommandInfo
+                    from domain.value_objects.dut_command_info import DUTCommandInfo
 
                     # Default DUT info for button-triggered tests
                     dut_info = DUTCommandInfo(
