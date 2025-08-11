@@ -5,6 +5,7 @@ Facade pattern implementation to group and simplify hardware service interaction
 """
 
 import asyncio
+from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from loguru import logger
@@ -341,7 +342,7 @@ class HardwareServiceFacade:
     async def _ensure_robot_homed(self, axis_id: int) -> None:
         """
         Ensure robot is homed (only perform homing on first call)
-        
+
         Args:
             axis_id: Robot axis ID to home
         """
@@ -374,6 +375,8 @@ class HardwareServiceFacade:
                 operating_temp=test_config.activation_temperature,
                 standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
             )
+            await asyncio.sleep(1)  # Short delay to ensure mode is set
+
             logger.info(
                 f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
             )
@@ -404,6 +407,7 @@ class HardwareServiceFacade:
 
             # MCU start standby cooling
             await self._mcu.start_standby_cooling()
+            await asyncio.sleep(1)  # Short delay to ensure mode is set
             logger.info("MCU standby cooling started")
 
             logger.info("LMA standby sequence completed successfully")
@@ -442,6 +446,7 @@ class HardwareServiceFacade:
 
             # Enter test mode 1 (always executed)
             await self._mcu.set_test_mode(TestMode.MODE_1)
+            await asyncio.sleep(1)  # Short delay to ensure mode is set
             logger.info("MCU set to test mode 1")
 
             # MCU configuration (upper temperature, fan speed)
@@ -449,7 +454,11 @@ class HardwareServiceFacade:
             fan_speed = test_config.fan_speed
 
             await self._mcu.set_upper_temperature(upper_temp)
+            await asyncio.sleep(1)  # Short delay to ensure mode is set
+
             await self._mcu.set_fan_speed(fan_speed)
+            await asyncio.sleep(1)  # Short delay to ensure mode is set
+
             logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}")
 
             # Set LMA standby sequence
@@ -570,9 +579,7 @@ class HardwareServiceFacade:
                 logger.info(f"Robot returned to initial position: {test_config.initial_position}μm")
 
                 await self._mcu.start_standby_cooling()
-                logger.info(
-                    f"MCU standby cooling started - standby: {calculated_standby_temp}°C"
-                )
+                logger.info(f"MCU standby cooling started - standby: {calculated_standby_temp}°C")
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
 
