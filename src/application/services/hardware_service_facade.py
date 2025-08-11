@@ -478,11 +478,13 @@ class HardwareServiceFacade:
                 self._mcu.wait_boot_complete(),
                 timeout=test_config.timeout_seconds,
             )
+            await asyncio.sleep(3)  # Short delay to ensure mode is set
+
             logger.info("MCU boot complete signal received")
 
             # Enter test mode 1 (always executed)
             await self._mcu.set_test_mode(TestMode.MODE_1)
-            # await asyncio.sleep(1)  # Short delay to ensure mode is set
+            await asyncio.sleep(3)  # Short delay to ensure mode is set
             logger.info("MCU set to test mode 1")
 
             # MCU configuration (upper temperature, fan speed)
@@ -490,10 +492,10 @@ class HardwareServiceFacade:
             fan_speed = test_config.fan_speed
 
             await self._mcu.set_upper_temperature(upper_temp)
-            await asyncio.sleep(1)  # Short delay to ensure mode is set
+            await asyncio.sleep(3)  # Short delay to ensure mode is set
 
             await self._mcu.set_fan_speed(fan_speed)
-            await asyncio.sleep(1)  # Short delay to ensure mode is set
+            await asyncio.sleep(3)  # Short delay to ensure mode is set
 
             logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}")
 
