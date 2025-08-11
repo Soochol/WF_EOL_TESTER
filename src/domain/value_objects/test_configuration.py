@@ -66,6 +66,7 @@ class TestConfiguration:
     standby_stabilization: float = 1.0  # Time to stabilize after lma stanby heating
     power_stabilization: float = 0.5  # Time to stabilize after power on
     loadcell_zero_delay: float = 0.1  # Time to zero loadcell after power on
+    mcu_stabilization: float = 3.0  # Time to stabilize after MCU operations
 
     # Measurement settings
     measurement_tolerance: float = 0.001
@@ -386,6 +387,7 @@ class TestConfiguration:
             "standby_stabilization": self.standby_stabilization,  # CRITICAL missing field added!
             "power_stabilization": self.power_stabilization,
             "loadcell_zero_delay": self.loadcell_zero_delay,
+            "mcu_stabilization": self.mcu_stabilization,
             # Measurement settings
             "measurement_tolerance": self.measurement_tolerance,
             "force_precision": self.force_precision,
