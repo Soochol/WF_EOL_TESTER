@@ -34,7 +34,7 @@ from src.infrastructure.implementation.hardware.digital_io.ajinextek.error_codes
     create_hardware_error,
 )
 
-from .ajinextek_dio import AjinextekDIO
+from src.infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import AjinextekDIO
 
 __all__ = [
     # Main service

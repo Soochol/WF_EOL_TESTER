@@ -1,3 +1,3 @@
-from .mock_loadcell import MockLoadCell
+from src.infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import MockLoadCell
 
 __all__ = ["MockLoadCell"]
