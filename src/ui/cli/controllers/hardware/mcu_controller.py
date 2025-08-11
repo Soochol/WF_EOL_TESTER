@@ -148,6 +148,7 @@ class MCUController(HardwareController):
             "7": "Start Standby Heating",
             "8": "Start Standby Cooling",
             "9": "Set Upper Temperature",
+            "10": "Set Fan Speed (0-10)",
             "b": "Back to Hardware Menu",
         }
 
@@ -155,7 +156,7 @@ class MCUController(HardwareController):
         enhanced_title = (
             f"MCU Control System\n"
             f"Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]Use numbers 1-9 to select options, or 'b' to go back[/dim]"
+            f"[dim]Use numbers 1-10 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -189,6 +190,8 @@ class MCUController(HardwareController):
                 await self._start_standby_cooling()
             elif cmd == "9":
                 await self._set_upper_temperature()
+            elif cmd == "10":
+                await self._set_fan_speed()
             else:
                 return False
             return True
@@ -394,4 +397,41 @@ class MCUController(HardwareController):
         except Exception as e:
             self.formatter.print_message(
                 f"Failed to set upper temperature: {str(e)}", message_type="error"
+            )
+
+    async def _set_fan_speed(self) -> None:
+        """Set fan speed level (0-10)"""
+        try:
+            # Get fan speed from user (0-10 range)
+            fan_speed_input = self._get_user_input_with_validation(
+                "Enter fan speed level (0-10):",
+                input_type=int,
+                validator=lambda x: 0 <= x <= 10,  # User input range 0-10
+            )
+
+            if fan_speed_input is None:
+                self.formatter.print_message("Fan speed setting cancelled", message_type="info")
+                return
+
+            user_fan_speed = int(fan_speed_input)
+            
+            # Convert user input (0-10) to service interface range (1-10)
+            # User input 0 maps to service level 1 (minimum speed)
+            # User input 1-10 maps to service level 1-10
+            if user_fan_speed == 0:
+                service_fan_speed = 1  # Minimum service level for "off/minimum"
+            else:
+                service_fan_speed = user_fan_speed  # Direct mapping for 1-10
+
+            # Call service with converted range
+            await self.mcu_service.set_fan_speed(service_fan_speed)
+
+            self.formatter.print_message(
+                f"Fan speed set to level {user_fan_speed} (service level: {service_fan_speed})", 
+                message_type="success"
+            )
+
+        except Exception as e:
+            self.formatter.print_message(
+                f"Failed to set fan speed: {str(e)}", message_type="error"
             )
