@@ -35,6 +35,7 @@ from infrastructure.implementation.hardware.mcu.lma.constants import (
     FRAME_CMD_SIZE,
     FRAME_ETX_SIZE,
     FRAME_LEN_SIZE,
+    MAX_DATA_SIZE,
     STATUS_BOOT_COMPLETE,
     STATUS_FAN_SPEED_OK,
     STATUS_LMA_INIT_OK,
@@ -621,7 +622,11 @@ class LMAMCU(MCUService):
                     if current_byte == 0xFF:
                         if waiting_for_second_ff:
                             # Found second FF - STX complete!
-                            logger.debug("STX pattern found in stream")
+                            logger.debug(f"STX pattern found in stream at position {bytes_searched}")
+                            # Log some context bytes before STX for analysis
+                            if len(noise_buffer) > 0:
+                                recent_bytes = noise_buffer[-10:] if len(noise_buffer) >= 10 else noise_buffer
+                                logger.debug(f"Bytes before STX: {bytes(recent_bytes).hex().upper()}")
                             return True
                         else:
                             # Found first FF - wait for second
@@ -709,6 +714,119 @@ class LMAMCU(MCUService):
         except Exception as e:
             logger.error(f"Error during STX sync search: {e}")
             return False
+
+    async def _validate_complete_packet_structure(self, timeout: float) -> Optional[Dict[str, Any]]:
+        """
+        Validate complete LMA packet structure after finding STX candidate
+        
+        Args:
+            timeout: Timeout for reading packet components
+            
+        Returns:
+            Dictionary with packet data if valid, None if invalid
+        """
+        try:
+            # Read STATUS and LEN (header)
+            header = await self._connection.read(FRAME_CMD_SIZE + FRAME_LEN_SIZE, timeout)
+            if len(header) < 2:
+                logger.debug("Invalid header length in packet validation")
+                return None
+                
+            status = header[0]
+            data_len = header[1]
+            
+            # Validate STATUS field (must be 0x00-0x0E for LMA)
+            if not (0 <= status <= 0x0E):
+                logger.debug(f"Invalid STATUS in packet validation: 0x{status:02X}")
+                return None
+                
+            # Validate data length (must be 0-12 for LMA)
+            if not (0 <= data_len <= MAX_DATA_SIZE):
+                logger.debug(f"Invalid data length in packet validation: {data_len}")
+                return None
+            
+            # Read data payload if present
+            data = b""
+            if data_len > 0:
+                data = await self._connection.read(data_len, timeout)
+                if len(data) != data_len:
+                    logger.debug(f"Data length mismatch in packet validation: expected {data_len}, got {len(data)}")
+                    return None
+            
+            # Read and validate ETX
+            etx_data = await self._connection.read(FRAME_ETX_SIZE, timeout)
+            if len(etx_data) != FRAME_ETX_SIZE or etx_data != ETX:
+                logger.debug(f"Invalid ETX in packet validation: {etx_data.hex().upper()}")
+                return None
+                
+            # Complete valid packet found!
+            logger.debug(f"Valid packet found: STATUS=0x{status:02X}, LEN={data_len}")
+            return {
+                "status": status,
+                "data": data,
+                "message": STATUS_MESSAGES.get(status, f"Unknown status: 0x{status:02X}"),
+            }
+            
+        except asyncio.TimeoutError:
+            logger.debug("Timeout during packet validation")
+            return None
+        except Exception as e:
+            logger.debug(f"Error during packet validation: {e}")
+            return None
+
+    async def _find_and_validate_complete_packet(self, timeout: float) -> Optional[Dict[str, Any]]:
+        """
+        Find and validate complete LMA packet with robust STX synchronization
+        
+        This method searches for STX patterns and validates the entire packet structure
+        to prevent false STX detection in noisy environments.
+        
+        Args:
+            timeout: Total timeout for finding valid packet
+            
+        Returns:
+            Dictionary with packet data if valid packet found, None otherwise
+        """
+        if not self._connection:
+            raise LMACommunicationError("No connection available")
+
+        start_time = asyncio.get_event_loop().time()
+        stx_candidates_checked = 0
+        
+        logger.debug(f"Searching for complete valid LMA packet (timeout: {timeout}s)")
+        
+        try:
+            while (asyncio.get_event_loop().time() - start_time) < timeout:
+                # Step 1: Find STX candidate
+                if not await self._find_stx_in_stream(timeout=min(timeout/4, 15.0)):
+                    logger.debug("No STX candidate found")
+                    continue
+                    
+                stx_candidates_checked += 1
+                logger.debug(f"STX candidate #{stx_candidates_checked} found, validating packet structure...")
+                
+                # Step 2: Validate complete packet structure
+                remaining_timeout = timeout - (asyncio.get_event_loop().time() - start_time)
+                packet_data = await self._validate_complete_packet_structure(
+                    timeout=min(remaining_timeout, 5.0)
+                )
+                
+                if packet_data is not None:
+                    # Complete valid packet found!
+                    logger.debug(f"Valid packet found after checking {stx_candidates_checked} STX candidates")
+                    return packet_data
+                else:
+                    # Invalid packet, continue searching for next STX
+                    logger.debug(f"STX candidate #{stx_candidates_checked} failed validation, continuing search...")
+                    continue
+                    
+            # Timeout reached without finding valid packet
+            logger.debug(f"Packet search timeout after checking {stx_candidates_checked} STX candidates")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error during complete packet search: {e}")
+            return None
 
     async def _wait_for_boot_complete(self) -> None:
         """Wait for MCU boot complete message"""
@@ -898,7 +1016,7 @@ class LMAMCU(MCUService):
         self, timeout: float, enable_sync: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
-        Receive response from LMA MCU with noise-resistant protocol handling
+        Receive response from LMA MCU with robust packet validation
 
         Args:
             timeout: Response timeout in seconds (required)
@@ -910,124 +1028,55 @@ class LMAMCU(MCUService):
         if not self._connection:
             raise LMACommunicationError("No connection available")
 
-        response_timeout = timeout
-        sync_attempted = False
-
-        while True:
-            try:
-                # Search for STX pattern in stream (handles noise automatically) - skip if sync was just performed
-                if not sync_attempted:
-                    if not await self._find_stx_in_stream(response_timeout):
-                        raise LMACommunicationError("STX pattern not found in data stream")
-                    logger.debug("Valid STX found in stream")
-                else:
-                    # STX already found by sync recovery, stream is positioned after STX
-                    logger.debug("STX already positioned by sync recovery")
-
-                # Read status and length (header)
-                header = await self._connection.read(
-                    FRAME_CMD_SIZE + FRAME_LEN_SIZE,
-                    response_timeout,
-                )
-                if len(header) < 2:
-                    raise LMACommunicationError(
-                        f"Invalid packet header after STX: received {len(header)} bytes, expected 2"
-                    )
-
-                status = header[0]
-                data_len = header[1]
-
-                # Validate data length (STX 이후이므로 프로토콜 위반은 즉시 에러)
-                if data_len > 255:  # Reasonable maximum for LMA protocol
-                    raise LMACommunicationError(f"Invalid packet data length after STX: {data_len}")
-
-                # Read data payload if present
-                data = b""
-                if data_len > 0:
-                    data = await self._connection.read(data_len, response_timeout)
-                    if len(data) != data_len:
-                        raise LMACommunicationError(
-                            f"Invalid packet data after STX: received {len(data)} bytes, expected {data_len}"
-                        )
-
-                # Read ETX (end of frame) - STX 이후이므로 프로토콜 위반은 즉시 에러
-                etx_data = await self._connection.read(FRAME_ETX_SIZE, response_timeout)
-                if not etx_data:
-                    raise LMACommunicationError(
-                        "Invalid packet termination after STX: No ETX received"
-                    )
-
-                if etx_data != ETX:
-                    logger.debug(f"Invalid ETX received: {etx_data.hex()} (expected: {ETX.hex()})")
-                    raise LMACommunicationError(
-                        f"Invalid packet termination after STX: received {etx_data.hex()}, expected {ETX.hex()}"
-                    )
-
-                # Successful packet reception - format hex display with spaces: STX STATUS LEN DATA ETX
-                hex_parts = [STX.hex().upper(), f"{status:02X}", f"{data_len:02X}"]
+        try:
+            # Use new complete packet validation method
+            logger.debug(f"Receiving MCU response with complete packet validation (timeout: {timeout}s)")
+            
+            packet_data = await self._find_and_validate_complete_packet(timeout)
+            
+            if packet_data is not None:
+                # Log successful packet reception with details
+                status = packet_data["status"]
+                data = packet_data["data"]
+                message = packet_data["message"]
+                
+                # Format hex display with spaces: STX STATUS LEN DATA ETX
+                hex_parts = [STX.hex().upper(), f"{status:02X}", f"{len(data):02X}"]
                 if data:
                     hex_parts.append(data.hex().upper())
                 hex_parts.append(ETX.hex().upper())
                 packet_hex = " ".join(hex_parts)
-
-                # Get status description and parse data
-                status_name = STATUS_MESSAGES.get(status, f"Unknown STATUS 0x{status:02X}")
+                
+                # Parse data based on status type for enhanced logging
                 parsed_info = ""
-
-                # Parse data based on status type
                 if status == STATUS_TEMP_RESPONSE and len(data) >= 2:
                     max_temp, ambient_temp = self._decode_temperature(data)
                     if len(data) >= 8:
                         parsed_info = f": max {max_temp:.1f}°C, ambient {ambient_temp:.1f}°C"
                     else:
                         parsed_info = f": {max_temp:.1f}°C"
-                elif status == STATUS_BOOT_COMPLETE:
-                    parsed_info = ""
-                elif status in [
-                    STATUS_TEST_MODE_COMPLETE,
-                    STATUS_OPERATING_TEMP_OK,
-                    STATUS_FAN_SPEED_OK,
-                ]:
-                    parsed_info = ""
-
-                logger.info(f"PC <- MCU: {packet_hex} ({status_name}{parsed_info})")
-
-                return {
-                    "status": status,
-                    "data": data,
-                    "message": STATUS_MESSAGES.get(
-                        status,
-                        f"Unknown status: 0x{status:02X}",
-                    ),
-                }
-
-            except LMACommunicationError as e:
-                # STX 검색 실패만 sync 재시도 가능 (STX 이후 패킷 오류는 즉시 실패)
-                if "STX pattern not found" in str(e) and not sync_attempted and enable_sync:
-                    logger.debug(f"STX search failed, attempting sync recovery: {e}")
-                    if await self._find_stx_sync(timeout=response_timeout):
-                        logger.info("STX sync recovery successful, retrying response")
-                        sync_attempted = True
-                        continue
-                    else:
-                        logger.warning("STX sync recovery failed")
-                        raise LMACommunicationError(
-                            "STX sync failed after noise removal attempt"
-                        ) from e
+                
+                logger.info(f"PC <- MCU: {packet_hex} ({message}{parsed_info})")
+                return packet_data
+            else:
+                # No valid packet found within timeout
+                raise LMACommunicationError(f"No valid packet received within {timeout}s")
+                
+        except LMACommunicationError as e:
+            # Handle sync recovery if enabled
+            if enable_sync and "No valid packet received" in str(e):
+                logger.debug("Attempting STX sync recovery for robust packet detection...")
+                if await self._find_stx_sync(timeout=timeout):
+                    logger.info("STX sync recovery successful, retrying with validation")
+                    return await self._receive_response(timeout, enable_sync=False)  # Avoid infinite recursion
                 else:
-                    # STX 이후 프로토콜 오류는 노이즈 처리 없이 즉시 에러 발생
-                    if sync_attempted or not enable_sync:
-                        logger.error(f"❌ PROTOCOL ERROR: {e}")
-                    else:
-                        logger.error(f"❌ PROTOCOL ERROR after valid STX: {e}")
-                    raise e
-
-            except asyncio.TimeoutError as e:
-                raise LMACommunicationError(
-                    f"Response receive timeout after {response_timeout}s"
-                ) from e
-            except Exception as e:
-                raise LMACommunicationError(f"Response receive failed: {e}") from e
+                    logger.warning("STX sync recovery failed")
+                    
+            logger.error(f"❌ PROTOCOL ERROR: {e}")
+            raise e
+        except Exception as e:
+            logger.error(f"❌ COMMUNICATION ERROR: {e}")
+            raise LMACommunicationError(f"Response receive failed: {e}") from e
 
     def _encode_temperature(self, temperature: float) -> bytes:
         """Encode temperature for LMA protocol"""
