@@ -1,9 +1,22 @@
+# Power settings
 voltage: 18.0
 current: 20.0
+upper_current: 30.0
+
+# MCU settings
 upper_temperature: 80.0
+activation_temperature: 60.0
+standby_temperature: 40.0
 fan_speed: 10
-max_stroke: 240000.0
+
+# Motion control settings (μm/s, μm/s²)
+velocity: 80000.0
+acceleration: 80000.0
+deceleration: 80000.0
+
+# Positioning settings (μm)
 initial_position: 10000.0
+max_stroke: 240000.0
 pass_criteria:
   force_limit_min: 0.0
   force_limit_max: 100.0
@@ -28,26 +41,28 @@ stroke_positions:
 - 100000.0
 - 180000.0
 - 240000.0
+# Timing settings (in seconds) - Optimized for faster automated testing
 stabilization_delay: 0.05
 temperature_stabilization: 0.05
+standby_stabilization: 0.5  # Shorter stabilization for automated testing
 power_stabilization: 0.3
 loadcell_zero_delay: 0.05
+
+# Measurement settings
 measurement_tolerance: 0.001
 force_precision: 2
 temperature_precision: 1
+
+# Test execution settings
 retry_attempts: 3
 timeout_seconds: 60.0
+
+# Safety limits
 max_voltage: 30.0
 max_current: 30.0
-velocity: 80000.0
-acceleration: 80000.0
-deceleration: 80000.0
 max_velocity: 100000.0
 max_acceleration: 100000.0
 max_deceleration: 100000.0
-activation_temperature: 60.0
-standby_temperature: 40.0
-standby_stabilization: 20.0
 metadata:
   profile_name: test_auto
   description: Automated test profile template - copy to test_auto.yaml and modify for automated testing

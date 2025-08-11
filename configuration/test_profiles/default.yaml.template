@@ -1,9 +1,22 @@
+# Power settings
 voltage: 18.0
 current: 20.0
+upper_current: 30.0
+
+# MCU settings
 upper_temperature: 80.0
+activation_temperature: 60.0
+standby_temperature: 40.0
 fan_speed: 10
-max_stroke: 240000.0
+
+# Motion control settings (μm/s, μm/s²)
+velocity: 60000.0
+acceleration: 60000.0
+deceleration: 60000.0
+
+# Positioning settings (μm)
 initial_position: 10000.0
+max_stroke: 240000.0
 pass_criteria:
   force_limit_min: 0.0
   force_limit_max: 100.0
@@ -37,26 +50,28 @@ stroke_positions:
 - 180000.0
 - 220000.0
 - 240000.0
+# Timing settings (in seconds)
 stabilization_delay: 0.1
 temperature_stabilization: 0.1
+standby_stabilization: 1.0  # Time to stabilize after LMA standby heating
 power_stabilization: 0.5
 loadcell_zero_delay: 0.1
+
+# Measurement settings
 measurement_tolerance: 0.001
 force_precision: 2
 temperature_precision: 1
+
+# Test execution settings
 retry_attempts: 3
 timeout_seconds: 60.0
+
+# Safety limits
 max_voltage: 30.0
 max_current: 30.0
-velocity: 60000.0
-acceleration: 60000.0
-deceleration: 60000.0
 max_velocity: 100000.0
 max_acceleration: 100000.0
 max_deceleration: 100000.0
-activation_temperature: 60.0
-standby_temperature: 40.0
-standby_stabilization: 30.0
 metadata:
   profile_name: default
   description: Default test profile template - copy to default.yaml and modify for your test requirements
