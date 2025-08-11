@@ -71,7 +71,7 @@ class OdaPower(PowerService):
 
             # 연결 테스트 및 초기화
             response = await self._send_command("*IDN?")
-            logger.info("*IDN? response received: %r", response)  # 상세 응답 로깅
+            logger.info(f"*IDN? response received: {response!r}")  # 상세 응답 로깅
             
             if response and len(response.strip()) > 0:
                 self._is_connected = True
@@ -84,21 +84,21 @@ class OdaPower(PowerService):
                 # Small delay before next command
                 await asyncio.sleep(0.2)
 
-                logger.info("Power Supply connected successfully: %s", response)
+                logger.info(f"Power Supply connected successfully: {response}")
             else:
                 logger.warning("Power Supply identification failed - no valid *IDN? response")
-                logger.debug("Raw *IDN? response: %r", response)
+                logger.debug(f"Raw *IDN? response: {response!r}")
                 raise HardwareConnectionError(
                     "oda_power",
                     "Device identification failed - no valid *IDN? response",
                 )
 
         except TCPError as e:
-            logger.error("Failed to connect to ODA Power Supply: %s", str(e))
+            logger.error(f"Failed to connect to ODA Power Supply: {e}")
             self._is_connected = False
             raise HardwareConnectionError("oda_power", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error during ODA connection: %s", str(e))
+            logger.error(f"Unexpected error during ODA connection: {e}")
             self._is_connected = False
             raise HardwareConnectionError("oda_power", str(e)) from e
 
@@ -120,7 +120,7 @@ class OdaPower(PowerService):
             logger.info("ODA Power Supply disconnected")
 
         except Exception as e:
-            logger.error("Error disconnecting ODA Power Supply: %s", str(e))
+            logger.error(f"Error disconnecting ODA Power Supply: {e}")
             raise HardwareOperationError("oda_power", "disconnect", str(e)) from e
 
     async def is_connected(self) -> bool:
@@ -147,7 +147,7 @@ class OdaPower(PowerService):
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
         try:
-            logger.info("Setting ODA voltage: %sV", voltage)
+            logger.info(f"Setting ODA voltage: {voltage}V")
 
             # 전압 설정
             voltage_response = await self._send_command(f"VOLT {voltage:.2f}")
@@ -156,13 +156,13 @@ class OdaPower(PowerService):
                 # For commands that don't return responses, None is expected success
                 logger.info("ODA voltage setting applied successfully")
             else:
-                logger.info("ODA voltage setting response: %s", voltage_response)
+                logger.info(f"ODA voltage setting response: {voltage_response}")
 
         except TCPError as e:
-            logger.error("Failed to set ODA voltage: %s", str(e))
+            logger.error(f"Failed to set ODA voltage: {e}")
             raise HardwareOperationError("oda_power", "set_voltage", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error setting ODA voltage: %s", str(e))
+            logger.error(f"Unexpected error setting ODA voltage: {e}")
             raise HardwareOperationError("oda_power", "set_voltage", str(e)) from e
 
     async def get_voltage(self) -> float:
@@ -220,7 +220,7 @@ class OdaPower(PowerService):
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
         try:
-            logger.info("Setting ODA current: %.2fA", current)
+            logger.info(f"Setting ODA current: {current:.2f}A")
 
             response = await self._send_command(f"CURR {current:.2f}")
 
@@ -228,13 +228,13 @@ class OdaPower(PowerService):
                 # For commands that don't return responses, None is expected success
                 logger.info("ODA current setting applied successfully")
             else:
-                logger.info("ODA current setting response: %s", response)
+                logger.info(f"ODA current setting response: {response}")
 
         except TCPError as e:
-            logger.error("Failed to set ODA current: %s", str(e))
+            logger.error(f"Failed to set ODA current: {e}")
             raise HardwareOperationError("oda_power", "set_current", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error setting ODA current: %s", str(e))
+            logger.error(f"Unexpected error setting ODA current: {e}")
             raise HardwareOperationError("oda_power", "set_current", str(e)) from e
 
     async def enable_output(self) -> None:
@@ -256,10 +256,10 @@ class OdaPower(PowerService):
             logger.info("ODA output enabled")
 
         except TCPError as e:
-            logger.error("Failed to enable ODA output: %s", str(e))
+            logger.error(f"Failed to enable ODA output: {e}")
             raise HardwareOperationError("oda_power", "enable_output", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error enabling ODA output: %s", str(e))
+            logger.error(f"Unexpected error enabling ODA output: {e}")
             raise HardwareOperationError("oda_power", "enable_output", str(e)) from e
 
     async def disable_output(self) -> None:
@@ -281,10 +281,10 @@ class OdaPower(PowerService):
             logger.info("ODA output disabled")
 
         except TCPError as e:
-            logger.error("Failed to disable ODA output: %s", str(e))
+            logger.error(f"Failed to disable ODA output: {e}")
             raise HardwareOperationError("oda_power", "disable_output", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error disabling ODA output: %s", str(e))
+            logger.error(f"Unexpected error disabling ODA output: {e}")
             raise HardwareOperationError("oda_power", "disable_output", str(e)) from e
 
     async def is_output_enabled(self) -> bool:
@@ -315,7 +315,7 @@ class OdaPower(PowerService):
                 logger.warning("No response from OUTP? query, using cached state")
                 return self._output_enabled
         except Exception as e:
-            logger.error("Failed to query ODA output state: %s", str(e))
+            logger.error(f"Failed to query ODA output state: {e}")
             return self._output_enabled  # Return cached state on error
 
     async def get_device_identity(self) -> Optional[str]:
@@ -383,7 +383,7 @@ class OdaPower(PowerService):
             # 명령 전송 및 응답 수신 (SCPI 형식)
             # Always add LF terminator for SCPI compatibility
             command_with_terminator = f"{command}\n"
-            logger.debug("Adding LF terminator to command: %s", repr(command))
+            logger.debug(f"Adding LF terminator to command: {command!r}")
 
             logger.info(f"Sending command: {command}")
 
@@ -406,7 +406,7 @@ class OdaPower(PowerService):
             return response
 
         except Exception as e:
-            logger.error("ODA command '%s' failed: %s", command, str(e))
+            logger.error(f"ODA command '{command}' failed: {e}")
             raise TCPError(f"Communication failed: {e}") from e
 
     async def set_current_limit(self, current: float) -> None:
@@ -424,7 +424,7 @@ class OdaPower(PowerService):
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
         try:
-            logger.info("Setting ODA current limit: %sA", current)
+            logger.info(f"Setting ODA current limit: {current}A")
 
             response = await self._send_command(f"CURR {current:.2f}")
 
@@ -432,13 +432,13 @@ class OdaPower(PowerService):
                 # For commands that don't return responses, None is expected success
                 logger.info("ODA current limit setting applied successfully")
             else:
-                logger.info("ODA current limit setting response: %s", response)
+                logger.info(f"ODA current limit setting response: {response}")
 
         except TCPError as e:
-            logger.error("Failed to set ODA current limit: %s", str(e))
+            logger.error(f"Failed to set ODA current limit: {e}")
             raise HardwareOperationError("oda_power", "set_current_limit", str(e)) from e
         except Exception as e:
-            logger.error("Unexpected error setting ODA current limit: %s", str(e))
+            logger.error(f"Unexpected error setting ODA current limit: {e}")
             raise HardwareOperationError("oda_power", "set_current_limit", str(e)) from e
 
     async def get_current(self) -> float:

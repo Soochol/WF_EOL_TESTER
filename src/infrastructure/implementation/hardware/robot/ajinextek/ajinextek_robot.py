@@ -90,7 +90,7 @@ class AjinextekRobot(RobotService):
 
         try:
             logger.info(
-                "Connecting to AJINEXTEK robot controller (IRQ: %s, Axis: %s)", irq_no, axis_id
+                f"Connecting to AJINEXTEK robot controller (IRQ: {irq_no}, Axis: {axis_id})"
             )
 
             # Verify DLL installation before attempting to load
@@ -380,7 +380,7 @@ class AjinextekRobot(RobotService):
 
         try:
             logger.info(
-                "Moving axis %s to absolute position: %smm at %smm/s", axis_id, position, vel
+                f"Moving axis {axis_id} to absolute position: {position}mm at {vel}mm/s"
             )
 
             self._motion_status = MotionStatus.MOVING
@@ -456,7 +456,7 @@ class AjinextekRobot(RobotService):
 
         try:
             logger.info(
-                "Moving axis %s by relative distance: %smm at %smm/s", axis_id, distance, vel
+                f"Moving axis {axis_id} by relative distance: {distance}mm at {vel}mm/s"
             )
 
             self._motion_status = MotionStatus.MOVING
@@ -602,7 +602,7 @@ class AjinextekRobot(RobotService):
 
         try:
             # Stop specific axis
-            logger.warning("EMERGENCY STOP activated for axis %d", axis)
+            logger.warning(f"EMERGENCY STOP activated for axis {axis}")
 
             # Use true emergency stop (immediate stop without deceleration)
             result = self._axl.move_emergency_stop(axis)
@@ -622,7 +622,7 @@ class AjinextekRobot(RobotService):
             except Exception as e:
                 logger.warning(f"Failed to turn off servo {axis} during emergency stop: {e}")
 
-            logger.warning("Emergency stop completed for axis %d", axis)
+            logger.warning(f"Emergency stop completed for axis {axis}")
 
         except Exception as e:
             logger.error(f"Emergency stop failed for axis {axis}: {e}")
@@ -1002,8 +1002,7 @@ class AjinextekRobot(RobotService):
                 )
 
             logger.info(
-                "Loading robot motion settings from %s using AxmMotLoadParaAll",
-                robot_motion_settings_file,
+                f"Loading robot motion settings from {robot_motion_settings_file} using AxmMotLoadParaAll"
             )
 
             # Load parameters for all axes using AJINEXTEK standard function
@@ -1021,8 +1020,7 @@ class AjinextekRobot(RobotService):
                 )
 
             logger.info(
-                "Robot motion settings loaded successfully from %s for all axes",
-                robot_motion_settings_file,
+                f"Robot motion settings loaded successfully from {robot_motion_settings_file} for all axes"
             )
 
         except RobotConnectionError:
