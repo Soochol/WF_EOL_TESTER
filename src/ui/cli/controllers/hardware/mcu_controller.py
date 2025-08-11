@@ -147,6 +147,7 @@ class MCUController(HardwareController):
             "6": "Wait Boot Complete",
             "7": "Start Standby Heating",
             "8": "Start Standby Cooling",
+            "9": "Set Upper Temperature",
             "b": "Back to Hardware Menu",
         }
 
@@ -154,7 +155,7 @@ class MCUController(HardwareController):
         enhanced_title = (
             f"MCU Control System\n"
             f"Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]Use numbers 1-8 to select options, or 'b' to go back[/dim]"
+            f"[dim]Use numbers 1-9 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -186,6 +187,8 @@ class MCUController(HardwareController):
                 await self._start_standby_heating()
             elif cmd == "8" or cmd == "cool":
                 await self._start_standby_cooling()
+            elif cmd == "9":
+                await self._set_upper_temperature()
             else:
                 return False
             return True
@@ -362,4 +365,33 @@ class MCUController(HardwareController):
         except Exception as e:
             self.formatter.print_message(
                 f"Failed to start standby cooling: {str(e)}", message_type="error"
+            )
+
+    async def _set_upper_temperature(self) -> None:
+        """Set upper temperature limit"""
+        try:
+            # Get upper temperature from user
+            upper_temp = self._get_user_input_with_validation(
+                "Enter upper temperature limit (°C):",
+                input_type=float,
+                validator=lambda x: 0 <= x <= 200,  # Reasonable upper temperature range
+            )
+
+            if upper_temp is None:
+                self.formatter.print_message("Upper temperature setting cancelled", message_type="info")
+                return
+
+            # Type check temperature value
+            if isinstance(upper_temp, (int, float)):
+                await self.mcu_service.set_upper_temperature(float(upper_temp))
+            else:
+                raise ValueError("Invalid upper temperature type")
+
+            self.formatter.print_message(
+                f"Upper temperature limit set to {upper_temp:.2f}°C", message_type="success"
+            )
+
+        except Exception as e:
+            self.formatter.print_message(
+                f"Failed to set upper temperature: {str(e)}", message_type="error"
             )
