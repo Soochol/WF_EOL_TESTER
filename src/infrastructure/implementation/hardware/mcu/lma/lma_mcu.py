@@ -429,6 +429,7 @@ class LMAMCU(MCUService):
         Raises:
             HardwareOperationError: If heating start fails
         """
+        logger.debug(f"🚀 ENTER start_standby_heating: op_temp={operating_temp}°C, standby_temp={standby_temp}°C, hold_time={hold_time_ms}ms")
         await self._ensure_connected()
 
         try:
@@ -445,7 +446,7 @@ class LMAMCU(MCUService):
             )
 
             # LMA 초기화 명령 전송 및 순차적 응답 대기 (2개의 ACK 패킷)
-            logger.debug("Sending CMD_LMA_INIT with sequential response handling")
+            logger.debug("🚀 CALLING _send_and_wait_for_sequence for CMD_LMA_INIT")
             await self._send_and_wait_for_sequence(
                 CMD_LMA_INIT,
                 data,

@@ -60,6 +60,10 @@ class MockMCU(MCUService):
         self._temperature_task: Optional[asyncio.Task[None]] = None
         self._heating_enabled = False
         self._cooling_enabled = False
+        
+        # Timeout simulation for testing retry logic
+        self._simulate_timeout = False
+        self._timeout_counter = 0
 
     async def connect(
         self,
@@ -522,7 +526,14 @@ class MockMCU(MCUService):
             )
 
         try:
-            # Simulate response delay
+            # Simulate timeout on every 2nd call to test retry logic
+            self._timeout_counter += 1
+            if self._timeout_counter % 2 == 1:  # First call, third call, etc. will timeout
+                logger.debug(f"🔄 Mock MCU simulating timeout (call #{self._timeout_counter})")
+                # Simulate the same timeout error as real LMA MCU
+                raise asyncio.TimeoutError("Error during STX stream search: Read timeout")
+            
+            # Simulate response delay for successful calls
             await asyncio.sleep(self._response_delay)
 
             # Set target temperatures for simulation
@@ -536,6 +547,9 @@ class MockMCU(MCUService):
                 f"standby:{standby_temp}°C, hold:{hold_time_ms}ms"
             )
 
+        except asyncio.TimeoutError:
+            # Re-raise timeout error to trigger retry logic
+            raise
         except Exception as e:
             logger.error(f"Failed to start Mock MCU standby heating: {e}")
             raise HardwareOperationError("mock_mcu", "start_standby_heating", str(e)) from e
