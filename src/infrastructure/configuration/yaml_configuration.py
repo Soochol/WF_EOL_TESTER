@@ -25,10 +25,36 @@ class YamlConfiguration:
     
     async def load_profile(self, profile_name: str) -> TestConfiguration:
         """Load test configuration profile"""
-        profile_path = self.config_dir / f"{profile_name}.yaml"
+        # Use test_profiles subdirectory for better organization
+        profiles_dir = self.config_dir / "test_profiles"
+        profile_path = profiles_dir / f"{profile_name}.yaml"
         
         if not profile_path.exists():
-            raise FileNotFoundError(f"Profile not found: {profile_path}")
+            # Create default test configuration when profile is missing
+            from datetime import datetime
+            
+            # Create test_profiles directory if it doesn't exist
+            profiles_dir.mkdir(exist_ok=True)
+            
+            # Create default TestConfiguration with all default values
+            default_test_config = TestConfiguration()
+            
+            # Convert to structured dictionary format
+            config_data = default_test_config.to_dict()
+            
+            # Add metadata
+            config_data["metadata"] = {
+                "profile_name": profile_name,
+                "created_at": datetime.now().isoformat(),
+                "note": f"Auto-generated default test profile '{profile_name}'",
+                "created_by": "YamlConfiguration (auto-generated)"
+            }
+            
+            # Save the default profile for future use
+            with open(profile_path, "w", encoding="utf-8") as f:
+                yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
+            
+            return default_test_config
         
         with open(profile_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -53,9 +79,10 @@ class YamlConfiguration:
         """List available configuration profiles"""
         profiles = []
         
-        for yaml_file in self.config_dir.glob("*.yaml"):
-            # Skip special configuration files
-            if yaml_file.name not in ["hardware_configuration.yaml", "hardware_model.yaml", "dut_defaults.yaml"]:
+        # Look in test_profiles subdirectory
+        profiles_dir = self.config_dir / "test_profiles"
+        if profiles_dir.exists():
+            for yaml_file in profiles_dir.glob("*.yaml"):
                 profiles.append(yaml_file.stem)
         
         return sorted(profiles)
@@ -120,7 +147,10 @@ class YamlConfiguration:
     
     async def save_profile(self, profile_name: str, test_config: TestConfiguration) -> None:
         """Save test configuration profile"""
-        profile_path = self.config_dir / f"{profile_name}.yaml"
+        # Use test_profiles subdirectory for consistency
+        profiles_dir = self.config_dir / "test_profiles"
+        profiles_dir.mkdir(exist_ok=True)
+        profile_path = profiles_dir / f"{profile_name}.yaml"
         
         # Convert TestConfiguration to dictionary
         config_data = test_config.to_dict()
