@@ -958,11 +958,15 @@ class LMAMCU(MCUService):
                 
             except (asyncio.TimeoutError, LMACommunicationError) as e:
                 error_msg = str(e)
-                is_stx_timeout = "Read timeout" in error_msg or "STX" in error_msg
+                # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
+                is_timeout_error = (isinstance(e, asyncio.TimeoutError) or 
+                                   "timeout" in error_msg.lower() or 
+                                   "Read timeout" in error_msg or 
+                                   "STX" in error_msg)
                 
-                if is_stx_timeout and retry_count < max_retries - 1:
+                if is_timeout_error and retry_count < max_retries - 1:
                     logger.warning(
-                        f"STX read timeout (retry {retry_count + 1}/{max_retries}) "
+                        f"Communication timeout (retry {retry_count + 1}/{max_retries}) "
                         f"for command 0x{command:02X}, clearing buffer and retrying..."
                     )
                     
@@ -1047,11 +1051,15 @@ class LMAMCU(MCUService):
 
             except (asyncio.TimeoutError, LMACommunicationError) as e:
                 error_msg = str(e)
-                is_stx_timeout = "Read timeout" in error_msg or "STX" in error_msg
+                # Check for any timeout-related error (including asyncio.TimeoutError and STX timeouts)
+                is_timeout_error = (isinstance(e, asyncio.TimeoutError) or 
+                                   "timeout" in error_msg.lower() or 
+                                   "Read timeout" in error_msg or 
+                                   "STX" in error_msg)
                 
-                if is_stx_timeout and retry_count < max_retries - 1:
+                if is_timeout_error and retry_count < max_retries - 1:
                     logger.warning(
-                        f"STX read timeout in sequence (retry {retry_count + 1}/{max_retries}) "
+                        f"Communication timeout in sequence (retry {retry_count + 1}/{max_retries}) "
                         f"for command 0x{command:02X}, clearing buffer and retrying..."
                     )
                     
