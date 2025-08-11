@@ -52,68 +52,82 @@ class ServiceFactory:
             Dictionary containing hardware configurations or None if loading fails
         """
         try:
-            import asyncio
+            from pathlib import Path
 
-            from infrastructure.implementation.configuration.yaml_configuration import (
-                YamlConfiguration,
-            )
+            import yaml
 
-            config = YamlConfiguration()
+            # Try to directly load hardware configuration file
+            config_path = Path("configuration/hardware_configuration.yaml")
 
-            # Try to load hardware config synchronously
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # We're in an async context, log warning and use defaults
-                    logger.warning("Cannot load YAML config in running event loop, using defaults")
-                    return None
-                else:
-                    hw_config = loop.run_until_complete(config.load_hardware_config())
-            except RuntimeError:
-                # No event loop running, create one
-                hw_config = asyncio.run(config.load_hardware_config())
+            if not config_path.exists():
+                logger.warning(f"Hardware configuration file not found: {config_path}")
+                return None
 
-            # Convert HardwareConfiguration object to dictionary format
+            with open(config_path, "r", encoding="utf-8") as f:
+                yaml_content = yaml.safe_load(f)
+
+            # Extract hardware_config section
+            hw_config_data = yaml_content.get("hardware_config", {})
+            if not hw_config_data:
+                logger.warning("No 'hardware_config' section found in YAML file")
+                return None
+
+            # Convert YAML dictionary to standardized format with model information
+            robot_data = hw_config_data.get("robot", {})
+            loadcell_data = hw_config_data.get("loadcell", {})
+            mcu_data = hw_config_data.get("mcu", {})
+            power_data = hw_config_data.get("power", {})
+            digital_io_data = hw_config_data.get("digital_io", {})
+
             configs = {
                 "robot": {
                     "model": "ajinextek",
-                    "axis_id": hw_config.robot.axis_id,
-                    "irq_no": hw_config.robot.irq_no,
+                    "axis_id": robot_data.get("axis_id", 0),
+                    "irq_no": robot_data.get("irq_no", 7),
+                    **robot_data,  # Include any additional robot configuration
                 },
                 "loadcell": {
                     "model": "bs205",
-                    "port": hw_config.loadcell.port,
-                    "baudrate": hw_config.loadcell.baudrate,
-                    "timeout": hw_config.loadcell.timeout,
-                    "bytesize": hw_config.loadcell.bytesize,
-                    "stopbits": hw_config.loadcell.stopbits,
-                    "parity": hw_config.loadcell.parity,
-                    "indicator_id": hw_config.loadcell.indicator_id,
+                    "port": loadcell_data.get("port", "COM1"),
+                    "baudrate": loadcell_data.get("baudrate", 9600),
+                    "timeout": loadcell_data.get("timeout", 1.0),
+                    "bytesize": loadcell_data.get("bytesize", 8),
+                    "stopbits": loadcell_data.get("stopbits", 1),
+                    "parity": loadcell_data.get("parity", "N"),
+                    "indicator_id": loadcell_data.get("indicator_id", 1),
+                    **loadcell_data,  # Include any additional loadcell configuration
                 },
                 "mcu": {
                     "model": "lma",
-                    "port": hw_config.mcu.port,
-                    "baudrate": hw_config.mcu.baudrate,
-                    "timeout": hw_config.mcu.timeout,
-                    "bytesize": hw_config.mcu.bytesize,
-                    "stopbits": hw_config.mcu.stopbits,
-                    "parity": hw_config.mcu.parity,
+                    "port": mcu_data.get("port", "COM2"),
+                    "baudrate": mcu_data.get("baudrate", 115200),
+                    "timeout": mcu_data.get("timeout", 1.0),
+                    "bytesize": mcu_data.get("bytesize", 8),
+                    "stopbits": mcu_data.get("stopbits", 1),
+                    "parity": mcu_data.get("parity", "N"),
+                    **mcu_data,  # Include any additional MCU configuration
                 },
                 "power": {
                     "model": "oda",
-                    "host": hw_config.power.host,
-                    "port": hw_config.power.port,
-                    "timeout": hw_config.power.timeout,
-                    "channel": hw_config.power.channel,
+                    "host": power_data.get("host", "localhost"),
+                    "port": power_data.get("port", 8080),
+                    "timeout": power_data.get("timeout", 5.0),
+                    "channel": power_data.get("channel", 1),
+                    **power_data,  # Include any additional power configuration
                 },
                 "digital_io": {
                     "model": "ajinextek",
-                    "operator_start_button_left": hw_config.digital_io.operator_start_button_left,
-                    "operator_start_button_right": hw_config.digital_io.operator_start_button_right,
-                    "tower_lamp_red": hw_config.digital_io.tower_lamp_red,
-                    "tower_lamp_yellow": hw_config.digital_io.tower_lamp_yellow,
-                    "tower_lamp_green": hw_config.digital_io.tower_lamp_green,
-                    "beep": hw_config.digital_io.beep,
+                    "operator_start_button_left": digital_io_data.get(
+                        "operator_start_button_left", 0
+                    ),
+                    "operator_start_button_right": digital_io_data.get(
+                        "operator_start_button_right", 1
+                    ),
+                    "tower_lamp_red": digital_io_data.get("tower_lamp_red", 2),
+                    "tower_lamp_yellow": digital_io_data.get("tower_lamp_yellow", 3),
+                    "tower_lamp_green": digital_io_data.get("tower_lamp_green", 4),
+                    "beep": digital_io_data.get("beep", 5),
+                    **digital_io_data,  # Include any additional digital I/O configuration
                 },
             }
 

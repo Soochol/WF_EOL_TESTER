@@ -10,7 +10,7 @@ from .websocket import router as websocket_router
 
 __all__ = [
     "hardware_router",
-    "test_router", 
+    "test_router",
     "config_router",
     "status_router",
     "websocket_router",

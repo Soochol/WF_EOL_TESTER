@@ -6,9 +6,17 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+__all__ = [
+    "TestExecutionRequest",
+    "TestExecutionResponse",
+    "RobotHomeRequest",
+    "RobotHomeResponse",
+]
+
 
 class TestExecutionRequest(BaseModel):
     """Request model for test execution"""
+
     profile_name: Optional[str] = Field(None, description="Configuration profile to use")
     dut_serial_number: str = Field(..., description="DUT serial number")
     dut_part_number: str = Field(..., description="DUT part number")
@@ -18,8 +26,11 @@ class TestExecutionRequest(BaseModel):
 
 class TestExecutionResponse(BaseModel):
     """Response model for test execution"""
+
     test_id: str = Field(..., description="Unique test execution ID")
-    status: str = Field(..., description="Test status: 'running', 'completed', 'failed', 'cancelled'")
+    status: str = Field(
+        ..., description="Test status: 'running', 'completed', 'failed', 'cancelled'"
+    )
     dut_serial_number: str
     dut_part_number: str
     start_time: Optional[str] = Field(None, description="Test start timestamp")
@@ -33,11 +44,13 @@ class TestExecutionResponse(BaseModel):
 
 class RobotHomeRequest(BaseModel):
     """Request model for robot homing"""
+
     operator_id: str = Field("system", description="Operator ID")
 
 
 class RobotHomeResponse(BaseModel):
     """Response model for robot homing"""
+
     operation_id: str = Field(..., description="Unique operation ID")
     status: str = Field(..., description="Operation status")
     duration_seconds: float = Field(..., description="Operation duration")
@@ -47,6 +60,7 @@ class RobotHomeResponse(BaseModel):
 
 class TestProgressResponse(BaseModel):
     """Response model for test progress updates"""
+
     test_id: str
     status: str
     progress_percentage: float
@@ -58,6 +72,7 @@ class TestProgressResponse(BaseModel):
 
 class TestResultsResponse(BaseModel):
     """Response model for detailed test results"""
+
     test_id: str
     dut_serial_number: str
     dut_part_number: str
@@ -74,6 +89,7 @@ class TestResultsResponse(BaseModel):
 
 class TestListResponse(BaseModel):
     """Response model for test history list"""
+
     tests: List[TestResultsResponse]
     total_count: int
     page: int
@@ -82,5 +98,6 @@ class TestListResponse(BaseModel):
 
 class TestCancellationRequest(BaseModel):
     """Request model for test cancellation"""
+
     reason: Optional[str] = Field(None, description="Reason for cancellation")
     emergency_stop: bool = Field(False, description="Whether this is an emergency stop")

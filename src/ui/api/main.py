@@ -5,18 +5,17 @@ Main FastAPI application that provides REST API endpoints and WebSocket support
 for the WF EOL Tester web interface. Integrates with Clean Architecture.
 """
 
-import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
-from starlette.requests import Request
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from starlette.requests import Request
 
 from ui.api.dependencies import get_container
 from ui.api.middleware.error_handler import add_error_handlers
@@ -33,21 +32,23 @@ from ui.api.routes import (
 class NoCacheStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope) -> Response:
         response = await super().get_response(path, scope)
-        
+
         # ULTRA STRONG no-cache headers - DISABLE ALL CACHING
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
+        response.headers["Cache-Control"] = (
+            "no-cache, no-store, must-revalidate, max-age=0, private"
+        )
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         response.headers["Last-Modified"] = "Thu, 01 Jan 1970 00:00:00 GMT"
         response.headers["ETag"] = f"nocache-{hash(path)}-{hash(str(__import__('time').time()))}"
         response.headers["X-Cache-Disabled"] = "true"
         response.headers["Vary"] = "Accept-Encoding, User-Agent"
-        
+
         return response
 
 
 # Global application state
-app_state: Dict[str, any] = {
+app_state: Dict[str, Any] = {
     "hardware_connected": False,
     "test_running": False,
     "emergency_stop": False,
@@ -58,24 +59,24 @@ app_state: Dict[str, any] = {
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
     logger.info("Starting WF EOL Tester API server...")
-    
+
     try:
         # Initialize dependency container
         container = get_container()
-        
+
         # Store container in app state for access in routes
         app.state.container = container
         app.state.app_state = app_state
-        
+
         logger.info("API server started successfully")
         yield
-        
+
     except Exception as e:
         logger.error(f"Failed to start API server: {e}")
         raise
     finally:
         logger.info("Shutting down API server...")
-        
+
         # Cleanup resources
         try:
             if hasattr(app.state, "container"):
@@ -86,7 +87,7 @@ async def lifespan(app: FastAPI):
                     logger.info("Hardware services shutdown completed")
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
-        
+
         logger.info("API server shutdown completed")
 
 
@@ -113,15 +114,13 @@ app.add_middleware(
 # Add error handling middleware
 add_error_handlers(app)
 
+
 # Add health endpoint before routers
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "WF EOL Tester API",
-        "version": "1.0.0"
-    }
+    return {"status": "healthy", "service": "WF EOL Tester API", "version": "1.0.0"}
+
 
 # Include API routers
 app.include_router(hardware_router, prefix="/api/hardware", tags=["Hardware Control"])
@@ -147,7 +146,7 @@ if web_path.exists() and (web_path / "index.html").exists():
         logger.info(f"Static files served from: {static_path}")
     else:
         logger.warning(f"Static files directory not found: {static_path}")
-    
+
     # Mount templates directory
     templates_path = web_path / "templates"
     if templates_path.exists():
@@ -155,7 +154,7 @@ if web_path.exists() and (web_path / "index.html").exists():
         logger.info(f"Templates served from: {templates_path}")
     else:
         logger.warning(f"Templates directory not found: {templates_path}")
-    
+
     # Mount web interface at root (must be last mount)
     app.mount("/", NoCacheStaticFiles(directory=str(web_path), html=True), name="web")
     logger.info(f"Web interface served from: {web_path}")
@@ -171,28 +170,22 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Configure logging
     logger.add(
         "logs/api_server.log",
         rotation="1 day",
         retention="30 days",
         level="INFO",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
     )
-    
+
     # Run the server (use environment variables for consistency)
     host = os.getenv("WF_HOST", "127.0.0.1")
     port = int(os.getenv("WF_PORT", "8080"))  # Changed to match your previous usage
-    
+
     print(f"Server configuration: {host}:{port}, reload=True")
     print(f"Static files served from: {static_path}")
     print(f"Web interface served from: {web_path}")
-    
-    uvicorn.run(
-        "ui.api.main:app",
-        host=host,
-        port=port,
-        reload=True,
-        log_level="info"
-    )
+
+    uvicorn.run("ui.api.main:app", host=host, port=port, reload=True, log_level="info")

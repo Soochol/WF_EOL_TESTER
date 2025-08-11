@@ -2,25 +2,25 @@
 """
 Hardware API Routes - WF EOL Tester Web API
 
-This module provides REST API endpoints for hardware control and monitoring:
+This module provides REST API endpoints for hardware control and monitoring organized by hardware test sequence:
+1. System-wide control endpoints
+2. Power supply control  
+3. LoadCell monitoring and control
+4. MCU communication and control
+5. Robot movement and positioning
+6. Digital I/O control and monitoring
+7. Real-time WebSocket updates
+
+System-wide endpoints:
 - GET /hardware/status - Get all hardware component status
-- GET /hardware/{component}/status - Get specific component status
-- POST /hardware/{component}/control - Send control commands
 - GET /hardware/configuration - Get hardware configuration
-- PUT /hardware/configuration - Update hardware configuration
+- PUT /hardware/configuration - Update hardware configuration  
 - POST /hardware/emergency-stop - Execute emergency stop
 - GET /hardware/health - Get hardware health check
-- WebSocket /hardware/status - Real-time hardware status updates
 
-Digital I/O specific endpoints:
-- GET /hardware/digital-io/status - Get all digital I/O channel states
-- POST /hardware/digital-io/input/{channel}/config - Configure input channel
-- POST /hardware/digital-io/output/{channel}/config - Configure output channel
-- POST /hardware/digital-io/output/control - Control individual output channel
-- POST /hardware/digital-io/output/bulk - Bulk output operations
-- GET /hardware/digital-io/statistics - Get I/O statistics and metrics
-- POST /hardware/digital-io/reset - Reset digital I/O system
-- WebSocket /hardware/digital-io/updates - Real-time I/O updates (100ms polling)
+Component-specific endpoints follow pattern:
+- GET /hardware/{component}/status - Get specific component status
+- POST /hardware/{component}/control - Send control commands
 """
 
 from fastapi import APIRouter, WebSocket, HTTPException, Depends
@@ -28,25 +28,17 @@ from typing import Dict, Any, Optional
 
 router = APIRouter()
 
+# =============================================================================
+# SYSTEM-WIDE CONTROL ENDPOINTS
+# =============================================================================
+
 @router.get("/status")
 async def get_hardware_status():
     """Get status of all hardware components"""
     # Implementation will interact with hardware service facade
     pass
 
-@router.get("/{component}/status")
-async def get_component_status(component: str):
-    """Get status of specific hardware component"""
-    # Implementation will get specific component status
-    pass
-
-@router.post("/{component}/control")
-async def control_hardware(component: str, action: str, parameters: Optional[Dict[str, Any]] = None):
-    """Send control commands to hardware component"""
-    # Implementation will send commands to hardware
-    pass
-
-@router.get("/configuration")
+@router.get("/configuration") 
 async def get_hardware_configuration():
     """Get current hardware configuration"""
     # Implementation will return hardware configuration
@@ -64,15 +56,78 @@ async def emergency_stop():
     # Implementation will trigger emergency stop
     pass
 
-@router.websocket("/status")
-async def hardware_status_websocket(websocket: WebSocket):
-    """WebSocket endpoint for real-time hardware status updates"""
-    await websocket.accept()
-    # Implementation will send real-time updates
+@router.get("/health")
+async def get_hardware_health():
+    """Get hardware health check and diagnostics"""
+    # Implementation will return health information
     pass
 
 # =============================================================================
-# DIGITAL I/O SPECIFIC ENDPOINTS
+# POWER SUPPLY CONTROL ENDPOINTS
+# =============================================================================
+
+@router.get("/power/status")
+async def get_power_status():
+    """Get power supply status and measurements"""
+    # Implementation will get power supply status
+    pass
+
+@router.post("/power/control")
+async def control_power(action: str, parameters: Optional[Dict[str, Any]] = None):
+    """Control power supply operations (on/off, voltage/current settings)"""
+    # Implementation will control power supply
+    pass
+
+# =============================================================================
+# LOADCELL MONITORING AND CONTROL ENDPOINTS  
+# =============================================================================
+
+@router.get("/loadcell/status")
+async def get_loadcell_status():
+    """Get loadcell status and force measurements"""
+    # Implementation will get loadcell readings
+    pass
+
+@router.post("/loadcell/control")
+async def control_loadcell(action: str, parameters: Optional[Dict[str, Any]] = None):
+    """Control loadcell operations (calibration, zero, etc.)"""
+    # Implementation will control loadcell
+    pass
+
+# =============================================================================
+# MCU COMMUNICATION AND CONTROL ENDPOINTS
+# =============================================================================
+
+@router.get("/mcu/status")
+async def get_mcu_status():
+    """Get MCU status and sensor readings"""
+    # Implementation will get MCU status
+    pass
+
+@router.post("/mcu/control")
+async def control_mcu(action: str, parameters: Optional[Dict[str, Any]] = None):
+    """Control MCU operations (fan speed, temperature monitoring, etc.)"""
+    # Implementation will control MCU
+    pass
+
+# =============================================================================
+# ROBOT MOVEMENT AND POSITIONING ENDPOINTS
+# =============================================================================
+
+@router.get("/robot/status")
+async def get_robot_status():
+    """Get robot status and position information"""
+    # Implementation will get robot status
+    pass
+
+@router.post("/robot/control")
+async def control_robot(action: str, parameters: Optional[Dict[str, Any]] = None):
+    """Control robot operations (move, home, positioning, etc.)"""
+    # Implementation will control robot
+    pass
+
+# =============================================================================
+# DIGITAL I/O CONTROL AND MONITORING ENDPOINTS
 # =============================================================================
 
 @router.get("/digital-io/status")
@@ -304,6 +359,17 @@ async def reset_emergency_stop():
             "timestamp": 1234567890
         }
     }
+
+# =============================================================================
+# REAL-TIME WEBSOCKET COMMUNICATION ENDPOINTS
+# =============================================================================
+
+@router.websocket("/status")
+async def hardware_status_websocket(websocket: WebSocket):
+    """WebSocket endpoint for real-time hardware status updates"""
+    await websocket.accept()
+    # Implementation will send real-time updates
+    pass
 
 @router.websocket("/digital-io/updates")
 async def digital_io_updates_websocket(websocket: WebSocket):

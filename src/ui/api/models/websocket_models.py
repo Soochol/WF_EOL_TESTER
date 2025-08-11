@@ -6,9 +6,22 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+__all__ = [
+    "WebSocketMessage",
+    "DigitalInputMessage",
+    "TestLogMessage",
+    "SystemStatusMessage",
+    "TestProgressMessage",
+    "HardwareEventMessage",
+    "ErrorMessage",
+    "WebSocketSubscription",
+    "WebSocketResponse",
+]
+
 
 class WebSocketMessage(BaseModel):
     """Base WebSocket message model"""
+
     type: str = Field(..., description="Message type")
     timestamp: str = Field(..., description="Message timestamp")
     data: Dict[str, Any] = Field(..., description="Message payload")
@@ -16,6 +29,7 @@ class WebSocketMessage(BaseModel):
 
 class DigitalInputMessage(BaseModel):
     """WebSocket message for digital input updates"""
+
     type: str = Field("digital_input", description="Message type")
     timestamp: str = Field(..., description="Update timestamp")
     inputs: Dict[int, bool] = Field(..., description="Digital input states (channel -> state)")
@@ -24,6 +38,7 @@ class DigitalInputMessage(BaseModel):
 
 class TestLogMessage(BaseModel):
     """WebSocket message for test execution logs"""
+
     type: str = Field("test_log", description="Message type")
     timestamp: str = Field(..., description="Log timestamp")
     test_id: str = Field(..., description="Test execution ID")
@@ -35,6 +50,7 @@ class TestLogMessage(BaseModel):
 
 class SystemStatusMessage(BaseModel):
     """WebSocket message for system status updates"""
+
     type: str = Field("system_status", description="Message type")
     timestamp: str = Field(..., description="Status timestamp")
     hardware_status: Dict[str, bool] = Field(..., description="Hardware connection status")
@@ -46,6 +62,7 @@ class SystemStatusMessage(BaseModel):
 
 class TestProgressMessage(BaseModel):
     """WebSocket message for test progress updates"""
+
     type: str = Field("test_progress", description="Message type")
     timestamp: str = Field(..., description="Update timestamp")
     test_id: str = Field(..., description="Test execution ID")
@@ -54,13 +71,16 @@ class TestProgressMessage(BaseModel):
     current_step: str = Field(..., description="Current test step description")
     measurements_completed: int = Field(..., description="Number of measurements completed")
     total_measurements: int = Field(..., description="Total number of measurements")
-    estimated_remaining_seconds: Optional[float] = Field(None, description="Estimated time remaining")
+    estimated_remaining_seconds: Optional[float] = Field(
+        None, description="Estimated time remaining"
+    )
     current_temperature: Optional[float] = Field(None, description="Current test temperature")
     current_position: Optional[float] = Field(None, description="Current robot position")
 
 
 class HardwareEventMessage(BaseModel):
     """WebSocket message for hardware events"""
+
     type: str = Field("hardware_event", description="Message type")
     timestamp: str = Field(..., description="Event timestamp")
     hardware_type: str = Field(..., description="Hardware type (robot, mcu, power, etc.)")
@@ -71,6 +91,7 @@ class HardwareEventMessage(BaseModel):
 
 class ErrorMessage(BaseModel):
     """WebSocket message for error notifications"""
+
     type: str = Field("error", description="Message type")
     timestamp: str = Field(..., description="Error timestamp")
     error_code: Optional[str] = Field(None, description="Error code if available")
@@ -82,6 +103,7 @@ class ErrorMessage(BaseModel):
 
 class WebSocketSubscription(BaseModel):
     """WebSocket subscription request model"""
+
     action: str = Field(..., description="Subscription action (subscribe, unsubscribe)")
     channels: List[str] = Field(..., description="Channels to subscribe/unsubscribe")
     filters: Optional[Dict[str, Any]] = Field(None, description="Message filters")
@@ -89,6 +111,7 @@ class WebSocketSubscription(BaseModel):
 
 class WebSocketResponse(BaseModel):
     """WebSocket response model"""
+
     type: str = Field("response", description="Message type")
     timestamp: str = Field(..., description="Response timestamp")
     success: bool = Field(..., description="Whether the operation succeeded")

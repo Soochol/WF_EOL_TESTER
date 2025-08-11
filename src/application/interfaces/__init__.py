@@ -15,7 +15,7 @@ from application.interfaces.repository.test_result_repository import TestResultR
 
 __all__ = [
     "LoadCellService",
-    "PowerService",
+    "PowerService", 
     "RobotService",
     "MCUService",
     "DigitalIOService",

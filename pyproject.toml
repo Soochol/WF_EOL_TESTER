@@ -13,7 +13,6 @@ dependencies = [
     "asyncio-mqtt>=0.11.0",
     "pyserial>=3.5",
     "pyserial-asyncio>=0.6",
-    "superclaude>=3.0.0.1",
     "numpy>=1.21.0",
     "scipy>=1.7.0",
     "pyyaml>=6.0",
@@ -60,7 +59,7 @@ enable-unstable-features = []
 string-normalization = true
 experimental-string-processing = true
 
-# Advanced formatting features  
+# Advanced formatting features
 force-exclude = '''
 /(
   # Build directories
@@ -81,18 +80,18 @@ force-exclude = '''
   | \.build
   | \.dist-info
   | \.egg-info
-  
+
   # Generated files
   | migrations
   | _pb2\.py
   | _pb2_grpc\.py
-  
+
   # Test coverage and reports
   | htmlcov
   | \.coverage
   | coverage\.xml
   | \.pytest_cache
-  
+
   # IDE and editor directories
   | \.vscode
   | \.idea
@@ -116,17 +115,17 @@ skip = ["__pycache__", ".git", ".mypy_cache", ".pytest_cache", "build", "dist"]
 
 # Import classification for clean architecture
 known_first_party = [
-    "application", 
-    "domain", 
-    "infrastructure", 
-    "ui", 
+    "application",
+    "domain",
+    "infrastructure",
+    "ui",
     "driver"
 ]
 known_third_party = [
-    "loguru", 
-    "asyncio", 
-    "numpy", 
-    "scipy", 
+    "loguru",
+    "asyncio",
+    "numpy",
+    "scipy",
     "yaml",
     "pytest",
     "mypy",
@@ -137,7 +136,7 @@ known_third_party = [
 # Professional import organization
 sections = [
     "FUTURE",
-    "STDLIB", 
+    "STDLIB",
     "THIRDPARTY",
     "FIRSTPARTY",
     "LOCALFOLDER"
@@ -178,7 +177,7 @@ skip_glob = [
 
 # Format for different import types
 import_heading_future = "Future imports"
-import_heading_stdlib = "Standard library imports"  
+import_heading_stdlib = "Standard library imports"
 import_heading_thirdparty = "Third-party imports"
 import_heading_firstparty = "Local application imports"
 import_heading_localfolder = "Local folder imports"

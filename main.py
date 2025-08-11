@@ -26,15 +26,15 @@ from src.application.services.test_result_evaluator import TestResultEvaluator
 
 # Local application imports - Use Cases
 from src.application.use_cases.eol_force_test import EOLForceTestUseCase
+from src.infrastructure.configuration.json_profile_preference import (
+    JsonProfilePreference,
+)
+from src.infrastructure.configuration.yaml_configuration import (
+    YamlConfiguration,
+)
 
 # Local infrastructure imports
 from src.infrastructure.factory import ServiceFactory
-from src.infrastructure.implementation.configuration.json_profile_preference import (
-    JsonProfilePreference,
-)
-from src.infrastructure.implementation.configuration.yaml_configuration import (
-    YamlConfiguration,
-)
 from src.infrastructure.implementation.repositories.json_result_repository import (
     JsonResultRepository,
 )
@@ -70,7 +70,7 @@ async def main() -> None:
         digital_io_service = ServiceFactory.create_digital_io_service(
             {"model": hw_model_dict["digital_io"]}
         )
-        
+
         # Connect digital I/O service if not already connected (needed for button monitoring)
         try:
             if not await digital_io_service.is_connected():
@@ -88,13 +88,15 @@ async def main() -> None:
         try:
             # Create hardware services based on hardware model specifications
             hw_model_dict = hardware_model.to_dict()
-            
+
             # Create services directly using model dictionary
             robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
             mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
-            loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
+            loadcell_service = ServiceFactory.create_loadcell_service(
+                {"model": hw_model_dict["loadcell"]}
+            )
             power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
-            
+
             hardware_services = HardwareServiceFacade(
                 robot_service=robot_service,
                 mcu_service=mcu_service,
@@ -131,7 +133,7 @@ async def main() -> None:
             hardware_facade=hardware_services,
             eol_use_case=eol_force_test_use_case,
         )
-        
+
         # Create button monitoring service for dual button triggering and emergency stop
         button_monitoring_service = None
         try:
@@ -141,36 +143,38 @@ async def main() -> None:
             async def button_press_callback():
                 """Execute EOL test when both buttons are pressed"""
                 logger.info("Button press callback triggered - Starting EOL test...")
-                
+
                 try:
                     # Create DUT command info for test execution
+                    from src.application.use_cases.eol_force_test.main_executor import (
+                        EOLForceTestCommand,
+                    )
                     from src.domain.value_objects.dut_command_info import DUTCommandInfo
-                    from src.application.use_cases.eol_force_test.main_executor import EOLForceTestCommand
-                    
+
                     # Default DUT info for button-triggered tests
                     dut_info = DUTCommandInfo(
                         dut_id="BUTTON_TEST_001",
-                        model_number="AUTO_TRIGGER", 
-                        serial_number="BTN_" + str(int(__import__('time').time())),
-                        manufacturer="Button Trigger"
+                        model_number="AUTO_TRIGGER",
+                        serial_number="BTN_" + str(int(__import__("time").time())),
+                        manufacturer="Button Trigger",
                     )
-                    
+
                     # Create command
-                    command = EOLForceTestCommand(
-                        dut_info=dut_info,
-                        operator_id="BUTTON_OPERATOR"
-                    )
-                    
+                    command = EOLForceTestCommand(dut_info=dut_info, operator_id="BUTTON_OPERATOR")
+
                     # Execute test
                     logger.info(f"Starting EOL test for DUT: {dut_info.dut_id}")
                     result = await eol_force_test_use_case.execute(command)
-                    
-                    logger.info(f"EOL test completed - Status: {result.test_status}, Passed: {result.is_passed}")
-                    
+
+                    logger.info(
+                        f"EOL test completed - Status: {result.test_status}, Passed: {result.is_passed}"
+                    )
+
                 except Exception as e:
                     logger.error(f"Failed to execute EOL test via button press: {e}")
                     # More specific error handling could be added here based on exception types
                     import traceback
+
                     logger.debug(f"Button test execution traceback: {traceback.format_exc()}")
 
             # Create emergency stop callback
@@ -183,6 +187,7 @@ async def main() -> None:
                     logger.error(f"Emergency stop execution failed: {e}")
                     # Emergency stop failures should not prevent system safety
                     import traceback
+
                     logger.debug(f"Emergency stop traceback: {traceback.format_exc()}")
 
             button_monitoring_service = ButtonMonitoringService(
@@ -191,7 +196,7 @@ async def main() -> None:
                 eol_use_case=eol_force_test_use_case,
                 callback=button_press_callback,
             )
-            
+
             # Set emergency stop callback
             button_monitoring_service.set_emergency_stop_callback(emergency_stop_callback)
 
@@ -244,6 +249,7 @@ def setup_logging(debug: bool = False) -> None:
 
     # Console logging setup
     log_level = "DEBUG" if debug else "INFO"
+
     # Custom formatter for noise detection warnings
     def noise_formatter(record):
         if "🔧 NOISE" in record["message"]:
@@ -256,7 +262,7 @@ def setup_logging(debug: bool = False) -> None:
                 "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
                 "<cyan>{name}</cyan> - <level>{message}</level>\n"
             )
-    
+
     logger.add(
         sys.stderr,
         level=log_level,
@@ -296,7 +302,6 @@ async def create_repositories() -> JsonResultRepository:
     """
     test_result_repository = JsonResultRepository()
     return test_result_repository
-
 
 
 async def create_business_services(

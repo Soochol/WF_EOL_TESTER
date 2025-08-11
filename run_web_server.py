@@ -53,9 +53,9 @@ def main():
 
     # Configuration - Force hardcoded settings (ignore environment variables)
     host = "0.0.0.0"  # Allow external access - HARDCODED
-    port = 8004       # Use port 8004 to avoid conflicts - HARDCODED  
-    reload = True     # Enable reload for development - HARDCODED
-    
+    port = 8004  # Use port 8004 to avoid conflicts - HARDCODED
+    reload = True  # Enable reload for development - HARDCODED
+
     # Force environment variables for consistency
     os.environ["WF_HOST"] = host
     os.environ["WF_PORT"] = str(port)

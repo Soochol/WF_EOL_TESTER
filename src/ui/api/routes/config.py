@@ -5,7 +5,7 @@ Provides REST endpoints for configuration and profile management.
 """
 
 from datetime import datetime
-from typing import List
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
@@ -23,7 +23,6 @@ from ui.api.models.config_models import (
     HardwareModelConfiguration,
     ProfileListResponse,
     ProfileUsageResponse,
-    TestProfileConfiguration,
 )
 
 router = APIRouter()
@@ -34,22 +33,22 @@ async def list_profiles(container: DIContainer = Depends(get_container)):
     """List all available configuration profiles"""
     try:
         config_service = container.configuration_service()
-        
+
         available_profiles = await config_service.list_available_profiles()
         current_profile = await config_service.get_active_profile_name()
-        
+
         return ProfileListResponse(
             profiles=available_profiles,
             current_profile=current_profile,
-            total_count=len(available_profiles)
+            total_count=len(available_profiles),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to list profiles: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list profiles: {str(e)}"
-        )
+            detail=f"Failed to list profiles: {str(e)}",
+        ) from e
 
 
 @router.get("/profiles/usage", response_model=ProfileUsageResponse)
@@ -58,35 +57,34 @@ async def get_profile_usage(container: DIContainer = Depends(get_container)):
     try:
         config_service = container.configuration_service()
         usage_info = await config_service.get_profile_usage_info()
-        
+
         return ProfileUsageResponse(**usage_info)
-        
+
     except Exception as e:
         logger.error(f"Failed to get profile usage: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get profile usage: {str(e)}"
-        )
+            detail=f"Failed to get profile usage: {str(e)}",
+        ) from e
 
 
 @router.get("/profiles/{profile_name}", response_model=ConfigurationResponse)
 async def get_profile_configuration(
-    profile_name: str,
-    container: DIContainer = Depends(get_container)
+    profile_name: str, container: DIContainer = Depends(get_container)
 ):
     """Get configuration for a specific profile"""
     try:
         config_service = container.configuration_service()
-        
+
         # Load test configuration
         test_config = await config_service.load_configuration(profile_name)
-        
+
         # Load hardware configuration
         hardware_config = await config_service.load_hardware_config()
-        
+
         # Mark profile as used
         await config_service.mark_profile_as_used(profile_name)
-        
+
         return ConfigurationResponse(
             profile_name=profile_name,
             test_configuration=test_config.to_dict(),
@@ -94,67 +92,66 @@ async def get_profile_configuration(
             metadata={
                 "loaded_at": datetime.now().isoformat(),
                 "test_duration_estimate_seconds": test_config.estimate_test_duration_seconds(),
-                "total_measurements": test_config.get_total_measurement_points()
-            }
+                "total_measurements": test_config.get_total_measurement_points(),
+            },
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get profile configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration: {str(e)}"
-        )
+            detail=f"Failed to get configuration: {str(e)}",
+        ) from e
 
 
 @router.get("/profiles/{profile_name}/validate", response_model=ConfigurationValidationResponse)
 async def validate_profile_configuration(
-    profile_name: str,
-    container: DIContainer = Depends(get_container)
+    profile_name: str, container: DIContainer = Depends(get_container)
 ):
     """Validate a configuration profile"""
     try:
         config_service = container.configuration_service()
-        
+
         validation_errors = []
         validation_warnings = []
         is_valid = True
-        
+
         try:
             # Load and validate test configuration
             test_config = await config_service.load_configuration(profile_name)
-            
+
             # The TestConfiguration.__post_init__ will validate the configuration
             if not test_config.is_valid():
                 is_valid = False
                 validation_errors.append("Test configuration validation failed")
-                
+
         except Exception as test_error:
             is_valid = False
             validation_errors.append(f"Test configuration error: {str(test_error)}")
-        
+
         try:
             # Load and validate hardware configuration
             hardware_config = await config_service.load_hardware_config()
-            
+
             if not hardware_config.is_valid():
                 is_valid = False
                 validation_errors.append("Hardware configuration validation failed")
-                
+
         except Exception as hw_error:
             is_valid = False
             validation_errors.append(f"Hardware configuration error: {str(hw_error)}")
-        
+
         # Add some additional validation warnings
         if is_valid:
             test_config = await config_service.load_configuration(profile_name)
-            
+
             # Check for potentially long test durations
             estimated_duration = test_config.estimate_test_duration_seconds()
             if estimated_duration > 1800:  # 30 minutes
                 validation_warnings.append(
                     f"Test duration estimated at {estimated_duration/60:.1f} minutes - consider reducing measurement points"
                 )
-            
+
             # Check temperature range
             if test_config.temperature_list:
                 temp_range = max(test_config.temperature_list) - min(test_config.temperature_list)
@@ -162,21 +159,21 @@ async def validate_profile_configuration(
                     validation_warnings.append(
                         f"Large temperature range ({temp_range}°C) may require longer stabilization times"
                     )
-        
+
         return ConfigurationValidationResponse(
             is_valid=is_valid,
             profile_name=profile_name,
             validation_errors=validation_errors,
             validation_warnings=validation_warnings,
-            validated_at=datetime.now().isoformat()
+            validated_at=datetime.now().isoformat(),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to validate profile configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate configuration: {str(e)}"
-        )
+            detail=f"Failed to validate configuration: {str(e)}",
+        ) from e
 
 
 @router.get("/hardware", response_model=dict)
@@ -185,52 +182,49 @@ async def get_hardware_configuration(container: DIContainer = Depends(get_contai
     try:
         config_service = container.configuration_service()
         hardware_config = await config_service.load_hardware_config()
-        
+
         return {
             "hardware_configuration": hardware_config.to_dict(),
-            "metadata": {
-                "loaded_at": datetime.now().isoformat()
-            }
+            "metadata": {"loaded_at": datetime.now().isoformat()},
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get hardware configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get hardware configuration: {str(e)}"
-        )
+            detail=f"Failed to get hardware configuration: {str(e)}",
+        ) from e
 
 
 @router.get("/dut-defaults", response_model=DUTDefaultsResponse)
 async def get_dut_defaults(
-    profile_name: str = None,
-    container: DIContainer = Depends(get_container)
+    profile_name: Optional[str] = None, container: DIContainer = Depends(get_container)
 ):
     """Get DUT default values"""
     try:
         config_service = container.configuration_service()
-        
+
         # Use provided profile or get active profile
         if not profile_name:
             profile_name = await config_service.get_active_profile_name()
-        
+
         # Load DUT defaults
         dut_defaults = await config_service.load_dut_defaults(profile_name)
-        
+
         return DUTDefaultsResponse(
             serial_number=dut_defaults.get("serial_number", "WF-EOL-001"),
             part_number=dut_defaults.get("part_number", "WF-PART-001"),
             defaults=dut_defaults,
             profile_name=profile_name,
-            loaded_at=datetime.now().isoformat()
+            loaded_at=datetime.now().isoformat(),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get DUT defaults: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get DUT defaults: {str(e)}"
-        )
+            detail=f"Failed to get DUT defaults: {str(e)}",
+        ) from e
 
 
 @router.post("/profiles/clear-preferences")
@@ -239,53 +233,54 @@ async def clear_profile_preferences(container: DIContainer = Depends(get_contain
     try:
         config_service = container.configuration_service()
         await config_service.clear_profile_preferences()
-        
+
         logger.info("Profile preferences cleared")
         return {
             "message": "Profile preferences cleared successfully",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to clear profile preferences: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear preferences: {str(e)}"
-        )
+            detail=f"Failed to clear preferences: {str(e)}",
+        ) from e
 
 
 @router.put("/profiles/{profile_name}")
 async def update_profile_configuration(
     profile_name: str,
     request: ConfigurationUpdateRequest,
-    container: DIContainer = Depends(get_container)
+    container: DIContainer = Depends(get_container),
 ):
     """Update test profile configuration"""
     try:
         config_service = container.configuration_service()
-        
+
         # Validate configuration data if provided
         validation_errors = []
         validation_warnings = []
         backup_created = False
         backup_path = None
-        
+
         if request.test_configuration:
             try:
                 # Create backup if requested
                 if request.create_backup:
-                    from pathlib import Path
                     import shutil
+                    from pathlib import Path
+
                     source_file = Path(f"configuration/test_profiles/{profile_name}.yaml")
                     if source_file.exists():
                         backup_path = f"configuration/test_profiles/backup_{profile_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml"
                         shutil.copy2(source_file, backup_path)
                         backup_created = True
                         logger.info(f"Created backup: {backup_path}")
-                
+
                 # Save the updated configuration
                 await config_service.save_test_profile(profile_name, request.test_configuration)
-                
+
                 return ConfigurationUpdateResponse(
                     success=True,
                     message=f"Test profile '{profile_name}' updated successfully",
@@ -295,9 +290,9 @@ async def update_profile_configuration(
                     backup_path=backup_path,
                     updated_at=datetime.now().isoformat(),
                     validation_errors=validation_errors,
-                    validation_warnings=validation_warnings
+                    validation_warnings=validation_warnings,
                 )
-                
+
             except Exception as save_error:
                 validation_errors.append(f"Failed to save configuration: {str(save_error)}")
                 return ConfigurationUpdateResponse(
@@ -309,20 +304,20 @@ async def update_profile_configuration(
                     backup_path=backup_path,
                     updated_at=datetime.now().isoformat(),
                     validation_errors=validation_errors,
-                    validation_warnings=validation_warnings
+                    validation_warnings=validation_warnings,
                 )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No test configuration data provided"
+                detail="No test configuration data provided",
             )
-                
+
     except Exception as e:
         logger.error(f"Failed to update profile configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration: {str(e)}"
-        )
+            detail=f"Failed to update configuration: {str(e)}",
+        ) from e
 
 
 @router.post("/backup")
@@ -331,7 +326,7 @@ async def backup_configurations():
     # This would require implementation of configuration backup
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Configuration backup not yet implemented"
+        detail="Configuration backup not yet implemented",
     )
 
 
@@ -341,11 +336,12 @@ async def restore_configurations():
     # This would require implementation of configuration restore
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Configuration restore not yet implemented"
+        detail="Configuration restore not yet implemented",
     )
 
 
 # Hardware Configuration Endpoints
+
 
 @router.get("/hardware-config", response_model=HardwareConfigurationModel)
 async def get_hardware_config(container: DIContainer = Depends(get_container)):
@@ -353,43 +349,40 @@ async def get_hardware_config(container: DIContainer = Depends(get_container)):
     try:
         config_service = container.configuration_service()
         hardware_config = await config_service.load_hardware_config()
-        
+
         return HardwareConfigurationModel(
             hardware_config=hardware_config.to_dict(),
-            metadata={
-                "loaded_at": datetime.now().isoformat()
-            }
+            metadata={"loaded_at": datetime.now().isoformat()},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get hardware configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get hardware configuration: {str(e)}"
-        )
+            detail=f"Failed to get hardware configuration: {str(e)}",
+        ) from e
 
 
 @router.put("/hardware-config")
 async def update_hardware_config(
-    config: HardwareConfigurationModel,
-    container: DIContainer = Depends(get_container)
+    config: HardwareConfigurationModel, container: DIContainer = Depends(get_container)
 ):
     """Update hardware configuration"""
     try:
         config_service = container.configuration_service()
-        
+
         # Save the updated configuration
         await config_service.save_hardware_configuration(config.hardware_config)
-        
+
         return ConfigurationUpdateResponse(
             success=True,
             message="Hardware configuration updated successfully",
             profile_name="hardware_configuration",
             config_type="hardware_config",
             backup_created=True,  # Automatic backup is created
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to update hardware configuration: {e}")
         return ConfigurationUpdateResponse(
@@ -398,11 +391,12 @@ async def update_hardware_config(
             profile_name="hardware_configuration",
             config_type="hardware_config",
             updated_at=datetime.now().isoformat(),
-            validation_errors=[str(e)]
+            validation_errors=[str(e)],
         )
 
 
 # Hardware Model Endpoints
+
 
 @router.get("/hardware-model", response_model=HardwareModelConfiguration)
 async def get_hardware_model(container: DIContainer = Depends(get_container)):
@@ -411,43 +405,40 @@ async def get_hardware_model(container: DIContainer = Depends(get_container)):
         config_service = container.configuration_service()
         # Load hardware model from the YAML configuration
         hardware_model = await config_service._configuration.load_hardware_model()
-        
+
         return HardwareModelConfiguration(
             hardware_model=hardware_model.to_dict(),
-            metadata={
-                "loaded_at": datetime.now().isoformat()
-            }
+            metadata={"loaded_at": datetime.now().isoformat()},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get hardware model: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get hardware model: {str(e)}"
-        )
+            detail=f"Failed to get hardware model: {str(e)}",
+        ) from e
 
 
 @router.put("/hardware-model")
 async def update_hardware_model(
-    config: HardwareModelConfiguration,
-    container: DIContainer = Depends(get_container)
+    config: HardwareModelConfiguration, container: DIContainer = Depends(get_container)
 ):
     """Update hardware model configuration"""
     try:
         config_service = container.configuration_service()
-        
+
         # Save the updated configuration
         await config_service.save_hardware_model(config.hardware_model)
-        
+
         return ConfigurationUpdateResponse(
             success=True,
             message="Hardware model configuration updated successfully",
             profile_name="hardware_model",
             config_type="hardware_model",
             backup_created=True,  # Automatic backup is created
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to update hardware model: {e}")
         return ConfigurationUpdateResponse(
@@ -456,33 +447,31 @@ async def update_hardware_model(
             profile_name="hardware_model",
             config_type="hardware_model",
             updated_at=datetime.now().isoformat(),
-            validation_errors=[str(e)]
+            validation_errors=[str(e)],
         )
 
 
 # DUT Defaults Endpoints
 
+
 @router.get("/dut-defaults-config", response_model=DUTDefaultsConfiguration)
 async def get_dut_defaults_config(container: DIContainer = Depends(get_container)):
     """Get DUT defaults configuration"""
     try:
-        config_service = container.configuration_service()
-        
         # Load the full DUT defaults file structure
         from pathlib import Path
+
         import yaml
-        
+
         dut_defaults_path = Path("configuration") / "dut_defaults.yaml"
         if dut_defaults_path.exists():
             with open(dut_defaults_path, "r", encoding="utf-8") as file:
                 dut_config = yaml.safe_load(file)
-                
+
             return DUTDefaultsConfiguration(
                 active_profile=dut_config.get("active_profile", "default"),
                 default=dut_config.get("default", {}),
-                metadata=dut_config.get("metadata", {
-                    "loaded_at": datetime.now().isoformat()
-                })
+                metadata=dut_config.get("metadata", {"loaded_at": datetime.now().isoformat()}),
             )
         else:
             # Return default structure
@@ -496,45 +485,41 @@ async def get_dut_defaults_config(container: DIContainer = Depends(get_container
                 },
                 metadata={
                     "loaded_at": datetime.now().isoformat(),
-                    "note": "Default configuration - file not found"
-                }
+                    "note": "Default configuration - file not found",
+                },
             )
-        
+
     except Exception as e:
         logger.error(f"Failed to get DUT defaults configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get DUT defaults configuration: {str(e)}"
-        )
+            detail=f"Failed to get DUT defaults configuration: {str(e)}",
+        ) from e
 
 
 @router.put("/dut-defaults-config")
 async def update_dut_defaults_config(
-    config: DUTDefaultsConfiguration,
-    container: DIContainer = Depends(get_container)
+    config: DUTDefaultsConfiguration, container: DIContainer = Depends(get_container)
 ):
     """Update DUT defaults configuration"""
     try:
         config_service = container.configuration_service()
-        
+
         # Prepare data for saving
-        dut_data = {
-            "active_profile": config.active_profile,
-            "default": config.default
-        }
-        
+        dut_data = {"active_profile": config.active_profile, "default": config.default}
+
         # Save the updated configuration
         await config_service.save_dut_defaults_configuration(dut_data)
-        
+
         return ConfigurationUpdateResponse(
             success=True,
             message="DUT defaults configuration updated successfully",
             profile_name="dut_defaults",
             config_type="dut_defaults",
             backup_created=True,  # Automatic backup is created
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to update DUT defaults configuration: {e}")
         return ConfigurationUpdateResponse(
@@ -543,85 +528,91 @@ async def update_dut_defaults_config(
             profile_name="dut_defaults",
             config_type="dut_defaults",
             updated_at=datetime.now().isoformat(),
-            validation_errors=[str(e)]
+            validation_errors=[str(e)],
         )
 
 
 # Configuration Validation Endpoint
 
+
 @router.post("/validate")
 async def validate_configuration(
-    request: ConfigurationValidationRequest,
-    container: DIContainer = Depends(get_container)
+    request: ConfigurationValidationRequest, container: DIContainer = Depends(get_container)
 ):
     """Validate a configuration"""
     try:
         validation_errors = []
         validation_warnings = []
         is_valid = True
-        
+
         # Validate based on configuration type
         if request.config_type == "test_profile":
             try:
                 from domain.value_objects.test_configuration import TestConfiguration
+
                 test_config = TestConfiguration.from_structured_dict(request.configuration)
-                
+
                 # Basic validation - TestConfiguration will validate itself
                 if not test_config.is_valid():
                     is_valid = False
                     validation_errors.append("Test configuration validation failed")
-                    
+
             except Exception as e:
                 is_valid = False
                 validation_errors.append(f"Test configuration error: {str(e)}")
-                
+
         elif request.config_type == "hardware_config":
             try:
-                from domain.value_objects.hardware_configuration import HardwareConfiguration
+                from domain.value_objects.hardware_configuration import (
+                    HardwareConfiguration,
+                )
+
                 hardware_config = HardwareConfiguration.from_dict(request.configuration)
-                
+
                 if not hardware_config.is_valid():
                     is_valid = False
                     validation_errors.append("Hardware configuration validation failed")
-                    
+
             except Exception as e:
                 is_valid = False
                 validation_errors.append(f"Hardware configuration error: {str(e)}")
-                
+
         elif request.config_type == "hardware_model":
             try:
                 from domain.value_objects.hardware_model import HardwareModel
-                hardware_model = HardwareModel.from_dict(request.configuration)
+
+                # Validate that hardware model can be created from configuration
+                HardwareModel.from_dict(request.configuration)
                 # Hardware model doesn't have complex validation currently
-                
+
             except Exception as e:
                 is_valid = False
                 validation_errors.append(f"Hardware model error: {str(e)}")
-                
+
         elif request.config_type == "dut_defaults":
             # Basic DUT defaults validation
             required_fields = ["dut_id", "model", "operator_id", "manufacturer"]
             default_section = request.configuration.get("default", {})
-            
+
             for field in required_fields:
                 if field not in default_section or not default_section[field]:
                     validation_warnings.append(f"Missing or empty required field: {field}")
-                    
+
         else:
             validation_errors.append(f"Unknown configuration type: {request.config_type}")
             is_valid = False
-        
+
         return ConfigurationValidationResponse(
             is_valid=is_valid,
             profile_name=request.config_type,
             validation_errors=validation_errors,
             validation_warnings=validation_warnings,
-            validated_at=datetime.now().isoformat()
+            validated_at=datetime.now().isoformat(),
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to validate configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate configuration: {str(e)}"
-        )
+            detail=f"Failed to validate configuration: {str(e)}",
+        ) from e
