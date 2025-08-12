@@ -143,7 +143,7 @@ class LMAMCU(MCUService):
                     logger.info(f"📥 RX_CHUNK: {chunk_formatted} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms")
 
                     # Check for complete packet (ends with FEFE)
-                    if response_data.endswith(b"\\xfe\\xfe") and len(response_data) >= 6:
+                    if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
                         # Extract valid packet from potentially noisy buffer
                         valid_packet = self._extract_valid_packet(response_data)
                         
