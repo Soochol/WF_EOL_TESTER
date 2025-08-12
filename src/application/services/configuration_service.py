@@ -311,12 +311,12 @@ class ConfigurationService:
         try:
             # Convert dict to TestConfiguration object
             test_config = TestConfiguration.from_structured_dict(config_data)
-            
+
             # Save using the configuration repository
             await self._configuration.save_profile(profile_name, test_config)
-            
+
             logger.info(f"Successfully saved test profile: {profile_name}")
-            
+
         except Exception as e:
             logger.error(f"Failed to save test profile {profile_name}: {e}")
             raise RepositoryAccessError(
@@ -338,15 +338,15 @@ class ConfigurationService:
         try:
             # Extract hardware_config section if present, otherwise use the whole dict
             config_data = hardware_config_data.get("hardware_config", hardware_config_data)
-            
+
             # Convert dict to HardwareConfiguration object
             hardware_config = HardwareConfiguration.from_dict(config_data)
-            
+
             # Save using the configuration repository
             await self._configuration.save_hardware_config(hardware_config)
-            
+
             logger.info("Successfully saved hardware configuration")
-            
+
         except Exception as e:
             logger.error(f"Failed to save hardware configuration: {e}")
             raise RepositoryAccessError(
@@ -368,15 +368,15 @@ class ConfigurationService:
         try:
             # Extract hardware_model section if present, otherwise use the whole dict
             model_data = hardware_model_data.get("hardware_model", hardware_model_data)
-            
+
             # Convert dict to HardwareModel object
             hardware_model = HardwareModel.from_dict(model_data)
-            
+
             # Save using the configuration repository
             await self._configuration.save_hardware_model(hardware_model)
-            
+
             logger.info("Successfully saved hardware model configuration")
-            
+
         except Exception as e:
             logger.error(f"Failed to save hardware model configuration: {e}")
             raise RepositoryAccessError(
@@ -398,12 +398,12 @@ class ConfigurationService:
         try:
             # Extract profile name if present
             profile_name = dut_defaults_data.get("active_profile", "default")
-            
+
             # Save using the configuration repository
             await self._configuration.save_dut_defaults(dut_defaults_data, profile_name)
-            
+
             logger.info("Successfully saved DUT defaults configuration")
-            
+
         except Exception as e:
             logger.error(f"Failed to save DUT defaults configuration: {e}")
             raise RepositoryAccessError(

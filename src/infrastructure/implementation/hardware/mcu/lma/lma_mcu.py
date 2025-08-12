@@ -102,7 +102,7 @@ class LMAMCU(MCUService):
 
     async def is_connected(self) -> bool:
         """Check connection status"""
-        return self._is_connected and self.serial_conn and self.serial_conn.is_open
+        return bool(self._is_connected and self.serial_conn and self.serial_conn.is_open)
 
     def _ensure_connected(self) -> None:
         """Ensure MCU is connected (synchronous version)"""
@@ -121,57 +121,66 @@ class LMAMCU(MCUService):
             packet_bytes = bytes.fromhex(packet_hex.replace(" ", ""))
             start_time = time.time()
 
-            self.serial_conn.write(packet_bytes)
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
             logger.info(f"PC -> MCU: {packet_hex} ({description})")
 
             # Wait for response
             response_data = b""
             last_data_time = start_time
             data_chunks = []
-            
+
             while time.time() - start_time < self._timeout:
-                if self.serial_conn.in_waiting > 0:
+                if self.serial_conn and self.serial_conn.in_waiting > 0:
                     new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                     response_data += new_data
                     last_data_time = time.time()
-                    
+
                     # Log each data chunk for debugging
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (last_data_time - start_time) * 1000
                     data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
-                    logger.info(f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms")
+                    logger.info(
+                        f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
+                    )
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
                         # Extract valid packet from potentially noisy buffer
                         valid_packet = self._extract_valid_packet(response_data)
-                        
+
                         if valid_packet:
                             response_hex = valid_packet.hex().upper()
 
                             response_time = (time.time() - start_time) * 1000
                             logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
-                            
+
                             # Detailed packet analysis on clean packet
                             self._analyze_response_packet(valid_packet, description)
 
                             return valid_packet
                         else:
                             # Buffer ends with FEFE but no valid packet found - continue waiting
-                            logger.warning("BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing...")
+                            logger.warning(
+                                "BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
+                            )
 
                 time.sleep(0.001)  # 1ms wait
 
             # Timeout occurred - log what we received
             if response_data:
                 partial_hex = response_data.hex().upper()
-                logger.warning(f"TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}")
+                logger.warning(
+                    f"TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}"
+                )
                 logger.warning(f"Data chunks received: {len(data_chunks)}")
                 for i, chunk in enumerate(data_chunks):
                     logger.warning(f"   [{i+1}] {chunk}")
             else:
                 logger.warning(f"TIMEOUT with NO response data received ({self._timeout}s)")
-                
+
             return None
 
         except Exception as e:
@@ -181,47 +190,55 @@ class LMAMCU(MCUService):
     def _extract_valid_packet(self, buffer: bytes) -> Optional[bytes]:
         """
         Extract the first valid FFFF packet from buffer, handling initial noise.
-        
+
         Searches for FFFF (STX) patterns and validates each packet structure.
         Returns the first packet that passes validation (correct length, ETX).
-        
+
         Args:
             buffer: Raw received data that may contain noise + valid packet(s)
-            
+
         Returns:
             First valid packet bytes, or None if no valid packet found
         """
         if len(buffer) < 6:
             return None  # Too short for any valid packet
-            
+
         i = 0
         while i <= len(buffer) - 6:  # Minimum packet size is 6 bytes
             # Find next FFFF pattern
-            ffff_pos = buffer.find(b'\xff\xff', i)
+            ffff_pos = buffer.find(b"\xff\xff", i)
             if ffff_pos == -1:
                 break  # No more FFFF patterns found
-                
+
             # Check if we have enough bytes for packet header
             if ffff_pos + 3 >= len(buffer):
                 break  # Not enough bytes for header
-                
+
             # Extract packet structure info
             length = buffer[ffff_pos + 3]  # Data length field
-            expected_packet_end = ffff_pos + 4 + length + 2  # STX(2) + CMD(1) + LEN(1) + DATA(length) + ETX(2)
-            
+            expected_packet_end = (
+                ffff_pos + 4 + length + 2
+            )  # STX(2) + CMD(1) + LEN(1) + DATA(length) + ETX(2)
+
             # Validate packet completeness and structure
-            if (expected_packet_end <= len(buffer) and 
-                buffer[expected_packet_end-2:expected_packet_end] == b'\xfe\xfe'):
-                
+            if (
+                expected_packet_end <= len(buffer)
+                and buffer[expected_packet_end - 2 : expected_packet_end] == b"\xfe\xfe"
+            ):
+
                 valid_packet = buffer[ffff_pos:expected_packet_end]
-                logger.info(f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}")
+                logger.info(
+                    f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}"
+                )
                 return valid_packet
             else:
-                logger.debug(f"INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}")
-                
+                logger.debug(
+                    f"INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}"
+                )
+
             # Move to next potential FFFF position
             i = ffff_pos + 2
-            
+
         logger.warning(f"NO_VALID_PACKET found in buffer ({len(buffer)} bytes)")
         return None
 
@@ -231,40 +248,48 @@ class LMAMCU(MCUService):
             if len(response_data) < 6:
                 logger.warning(f"PACKET_TOO_SHORT: {len(response_data)} bytes (minimum 6 expected)")
                 return
-            
+
             # Parse packet structure: FFFF [CMD] [LEN] [DATA...] FEFE
             stx = response_data[:2]  # Should be FFFF
-            cmd = response_data[2]   # Command/Status code
-            length = response_data[3] # Data length
-            
-            expected_stx = b'\xff\xff'
-            expected_etx = b'\xfe\xfe'
-            
+            cmd = response_data[2]  # Command/Status code
+            length = response_data[3]  # Data length
+
+            expected_stx = b"\xff\xff"
+            expected_etx = b"\xfe\xfe"
+
             logger.info(f"PACKET_ANALYSIS for '{description}':")
             logger.info(f"   Total Length: {len(response_data)} bytes")
-            logger.info(f"   STX: {stx.hex().upper()} {'OK' if stx == expected_stx else 'ERROR (expected FFFF)'}")
+            logger.info(
+                f"   STX: {stx.hex().upper()} {'OK' if stx == expected_stx else 'ERROR (expected FFFF)'}"
+            )
             logger.info(f"   Command/Status: 0x{cmd:02X} ({cmd})")
             logger.info(f"   Data Length: {length} bytes")
-            
+
             if len(response_data) >= 4 + length + 2:
-                data_bytes = response_data[4:4+length] if length > 0 else b""
-                etx = response_data[4+length:4+length+2]
-                
+                data_bytes = response_data[4 : 4 + length] if length > 0 else b""
+                etx = response_data[4 + length : 4 + length + 2]
+
                 if data_bytes:
                     data_hex = data_bytes.hex().upper()
                     logger.info(f"   Data: {data_hex}")
                 else:
                     logger.info("   Data: (none)")
-                    
-                logger.info(f"   ETX: {etx.hex().upper()} {'OK' if etx == expected_etx else 'ERROR (expected FEFE)'}")
-                
+
+                logger.info(
+                    f"   ETX: {etx.hex().upper()} {'OK' if etx == expected_etx else 'ERROR (expected FEFE)'}"
+                )
+
                 # Check expected status codes for commands
                 if description.startswith("CMD_ENTER_TEST_MODE"):
                     expected_status = 0x01  # STATUS_TEST_MODE_COMPLETE
-                    logger.info(f"   Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'OK' if cmd == expected_status else 'ERROR'}")
+                    logger.info(
+                        f"   Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'OK' if cmd == expected_status else 'ERROR'}"
+                    )
                 elif description.startswith("CMD_SET_OPERATING_TEMP"):
                     expected_status = 0x05  # STATUS_OPERATING_TEMP_OK
-                    logger.info(f"   Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'OK' if cmd == expected_status else 'ERROR'}")
+                    logger.info(
+                        f"   Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'OK' if cmd == expected_status else 'ERROR'}"
+                    )
                 elif description.startswith("CMD_REQUEST_TEMP") and length == 8:
                     # Parse temperature data for display
                     if len(data_bytes) >= 8:
@@ -274,10 +299,12 @@ class LMAMCU(MCUService):
                         outside_temp = outside_temp_scaled / 10.0
                         logger.info(f"   IR Temp Max: {ir_temp:.1f}°C")
                         logger.info(f"   Outside Air Temp: {outside_temp:.1f}°C")
-                    
+
             else:
-                logger.warning(f"PACKET_INCOMPLETE: Expected {4 + length + 2} bytes, got {len(response_data)}")
-                
+                logger.warning(
+                    f"PACKET_INCOMPLETE: Expected {4 + length + 2} bytes, got {len(response_data)}"
+                )
+
         except Exception as e:
             logger.error(f"PACKET_ANALYSIS_ERROR: {e}")
 
@@ -291,7 +318,7 @@ class LMAMCU(MCUService):
         """
         Wait for additional response (temperature reached signals, etc.)
         Used for operations that require two-phase responses
-        
+
         Args:
             timeout: Maximum wait time in seconds
             description: Description of what we're waiting for
@@ -302,55 +329,63 @@ class LMAMCU(MCUService):
         start_time = time.time()
         response_data = b""
         data_chunks = []
-        expected_etx = b'\xfe\xfe'
+        expected_etx = b"\xfe\xfe"
 
         if not quiet:
             logger.info(f"WAITING for additional response: {description} (timeout: {timeout}s)")
 
         while time.time() - start_time < timeout:
-            if self.serial_conn.in_waiting > 0:
+            if self.serial_conn and self.serial_conn.in_waiting > 0:
                 new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                 response_data += new_data
-                
+
                 # Log each data chunk for debugging (only if not quiet)
                 chunk_hex = new_data.hex().upper()
                 elapsed_ms = (time.time() - start_time) * 1000
                 data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
-                
+
                 if not quiet:
-                    logger.info(f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms")
+                    logger.info(
+                        f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
+                    )
 
                 # Check for complete packet
                 if response_data.endswith(expected_etx) and len(response_data) >= 6:
                     # Extract valid packet from potentially noisy buffer
                     valid_packet = self._extract_valid_packet(response_data)
-                    
+
                     if valid_packet:
                         response_hex = valid_packet.hex().upper()
 
                         response_time = (time.time() - start_time) * 1000
                         logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
-                        
+
                         # Detailed packet analysis on clean packet
                         self._analyze_response_packet(valid_packet, f"ADDITIONAL_{description}")
 
                         return valid_packet
                     else:
                         # Buffer ends with FEFE but no valid additional packet found - continue waiting
-                        logger.warning("ADDITIONAL_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing...")
+                        logger.warning(
+                            "ADDITIONAL_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
+                        )
 
             time.sleep(0.01)  # 10ms wait
 
         # Timeout occurred - log what we received for additional response
         if response_data:
             partial_hex = response_data.hex().upper()
-            logger.warning(f"ADDITIONAL_TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}")
+            logger.warning(
+                f"ADDITIONAL_TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}"
+            )
             logger.warning(f"Additional data chunks received: {len(data_chunks)}")
             for i, chunk in enumerate(data_chunks):
                 logger.warning(f"   [{i+1}] {chunk}")
         else:
-            logger.warning(f"ADDITIONAL_TIMEOUT with NO additional response data received ({timeout}s)")
-            
+            logger.warning(
+                f"ADDITIONAL_TIMEOUT with NO additional response data received ({timeout}s)"
+            )
+
         return None
 
     # ===== MCUService Interface Implementation =====
@@ -368,10 +403,10 @@ class LMAMCU(MCUService):
             response_data = b""
 
             while time.time() - start_time < boot_timeout:
-                if self.serial_conn.in_waiting > 0:
+                if self.serial_conn and self.serial_conn.in_waiting > 0:
                     new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                     response_data += new_data
-                    
+
                     # Log received data for debugging
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (time.time() - start_time) * 1000
@@ -381,24 +416,26 @@ class LMAMCU(MCUService):
                     if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
                         # Extract valid packet from potentially noisy buffer
                         valid_packet = self._extract_valid_packet(response_data)
-                        
+
                         if valid_packet:
                             # Check for STATUS_BOOT_COMPLETE (0x00)
                             if len(valid_packet) >= 6 and valid_packet[2] == 0x00:
                                 response_hex = valid_packet.hex().upper()
                                 logger.info(f"PC <- MCU: {response_hex} (boot complete confirmed)")
-                                
+
                                 # Detailed packet analysis
                                 self._analyze_response_packet(valid_packet, "BOOT_COMPLETE")
-                                
+
                                 logger.info("MCU boot complete confirmed")
                                 return
                             else:
                                 # Log other valid packets received during boot
                                 response_hex = valid_packet.hex().upper()
                                 status_code = valid_packet[2]
-                                logger.info(f"PC <- MCU: {response_hex} (status: 0x{status_code:02X}, not boot complete)")
-                        
+                                logger.info(
+                                    f"PC <- MCU: {response_hex} (status: 0x{status_code:02X}, not boot complete)"
+                                )
+
                         # Reset buffer if we processed a packet
                         response_data = b""
 
@@ -410,7 +447,7 @@ class LMAMCU(MCUService):
                 logger.warning(f"Boot timeout with partial data: {partial_hex}")
             else:
                 logger.warning("Boot timeout with no data received")
-                
+
             logger.warning("Boot complete signal timeout (continuing)")
 
         except Exception as e:
@@ -430,20 +467,23 @@ class LMAMCU(MCUService):
             response = await self._send_packet(packet, f"CMD_SET_OPERATING_TEMP ({target_temp}°C)")
 
             if not response or len(response) < 6 or response[2] != 0x05:
-                raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", "Invalid ACK response")
+                raise HardwareOperationError(
+                    "fast_lma_mcu", "set_operating_temperature", "Invalid ACK response"
+                )
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
-                timeout=15.0, 
-                description="Operating temperature reached signal"
+                timeout=15.0, description="Operating temperature reached signal"
             )
-            
+
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
                 logger.info("Operating temperature reached confirmed")
             else:
                 # 타임아웃 또는 잘못된 응답을 에러로 처리
                 if temp_response:
-                    error_msg = f"Invalid operating temperature response: {temp_response.hex().upper()}"
+                    error_msg = (
+                        f"Invalid operating temperature response: {temp_response.hex().upper()}"
+                    )
                 else:
                     error_msg = "Operating temperature reached signal not received within timeout"
                 logger.error(error_msg)
@@ -455,7 +495,9 @@ class LMAMCU(MCUService):
         except Exception as e:
             error_msg = f"Operating temperature setting failed: {e}"
             logger.error(error_msg)
-            raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", error_msg) from e
+            raise HardwareOperationError(
+                "fast_lma_mcu", "set_operating_temperature", error_msg
+            ) from e
 
     async def get_temperature(self) -> float:
         """Get current temperature reading from MCU"""
@@ -473,17 +515,19 @@ class LMAMCU(MCUService):
                 # Next 4 bytes: outside_air_temp (little endian)
                 ir_temp_data = response[4:8]
                 outside_temp_data = response[8:12]
-                
+
                 ir_temp_scaled = struct.unpack("<I", ir_temp_data)[0]
                 outside_temp_scaled = struct.unpack("<I", outside_temp_data)[0]
-                
+
                 # Convert to actual temperature (divide by 10)
                 ir_temp_celsius = ir_temp_scaled / 10.0
                 outside_temp_celsius = outside_temp_scaled / 10.0
 
                 # Use ir_temp_max as the primary temperature
                 self._current_temperature = ir_temp_celsius
-                logger.info(f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C")
+                logger.info(
+                    f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C"
+                )
                 return ir_temp_celsius
             else:
                 logger.warning("Temperature read failed, returning cached value")
@@ -504,8 +548,8 @@ class LMAMCU(MCUService):
             if mode in mode_mapping:
                 mode_value = mode_mapping[mode]
             else:
-                # Fallback for integer values
-                mode_value = int(mode) if not hasattr(mode, "value") else 1
+                # Fallback using enum value or default
+                mode_value = getattr(mode, "value", 1)
 
             packet = f"FFFF0104{mode_value:08X}FEFE"
 
@@ -607,7 +651,9 @@ class LMAMCU(MCUService):
             else:
                 # 타임아웃 또는 잘못된 응답을 에러로 처리
                 if temp_response:
-                    error_msg = f"Invalid temperature reached response: {temp_response.hex().upper()}"
+                    error_msg = (
+                        f"Invalid temperature reached response: {temp_response.hex().upper()}"
+                    )
                 else:
                     error_msg = "Temperature reached signal not received within timeout"
                 logger.error(error_msg)
@@ -648,7 +694,9 @@ class LMAMCU(MCUService):
             else:
                 # 타임아웃 또는 잘못된 응답을 에러로 처리
                 if cooling_response:
-                    error_msg = f"Invalid cooling complete response: {cooling_response.hex().upper()}"
+                    error_msg = (
+                        f"Invalid cooling complete response: {cooling_response.hex().upper()}"
+                    )
                 else:
                     error_msg = "Cooling complete signal not received within timeout"
                 logger.error(error_msg)

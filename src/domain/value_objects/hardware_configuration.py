@@ -590,7 +590,7 @@ class HardwareConfiguration:
             if config_name in data_copy and isinstance(data_copy[config_name], dict):
                 # Special handling for DigitalIOConfig which has a custom from_dict method
                 if config_name == "digital_io":
-                    data_copy[config_name] = config_class.from_dict(data_copy[config_name])
+                    data_copy[config_name] = DigitalIOConfig.from_dict(data_copy[config_name])
                 else:
                     data_copy[config_name] = config_class(**data_copy[config_name])
 

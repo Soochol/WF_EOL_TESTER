@@ -6,24 +6,28 @@ simple_serial_test.py의 성능을 기반으로 한 빠른 LMAMCU 클래스 구�
 기존 LMAMCU와 동일한 인터페이스를 제공하면서 성능 최적화
 """
 
-import serial
-import time
-import struct
 import asyncio
 import json
 import os
+import struct
 import sys
+import time
 from datetime import datetime
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import serial
 
 # 프로젝트 루트를 경로에 추가
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 try:
-    from src.domain.enums.mcu_enums import TestMode, MCUStatus
-    from src.domain.exceptions.eol_exceptions import HardwareConnectionError, HardwareOperationError
+    from src.domain.enums.mcu_enums import MCUStatus, TestMode
+    from src.domain.exceptions.eol_exceptions import (
+        HardwareConnectionError,
+        HardwareOperationError,
+    )
 except ImportError as e:
     print(f"⚠️ 프로젝트 모듈 임포트 실패: {e}")
     print("Mock enums 사용")

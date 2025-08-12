@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from application.services.hardware_service_facade import HardwareServiceFacade
-from domain.enums.test_status import TestStatus
 from domain.enums.mcu_enums import TestMode
+from domain.enums.test_status import TestStatus
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration
 
@@ -92,14 +92,21 @@ class SimpleMCUTestUseCase:
         logger.info(f"Test parameters - Port: {command.port}, Baudrate: {command.baudrate}")
 
         try:
-            # Get MCU service
-            mcu_service = self._hardware_services._mcu
+            # Get MCU service using public property
+            mcu_service = self._hardware_services.mcu_service
             if not mcu_service:
-                raise Exception("MCU service not available")
+                raise RuntimeError("MCU service not available")
 
             # Connect to MCU
             logger.info("Connecting to MCU...")
-            await mcu_service.connect(port=command.port, baudrate=command.baudrate, timeout=5.0)
+            await mcu_service.connect(
+                port=command.port,
+                baudrate=command.baudrate,
+                timeout=5.0,
+                bytesize=8,
+                stopbits=1,
+                parity=None,
+            )
 
             # Wait for boot complete
             logger.info("Waiting for MCU boot complete...")
@@ -199,8 +206,9 @@ class SimpleMCUTestUseCase:
 
             # Try to disconnect on error
             try:
-                if self._hardware_services._mcu:
-                    await self._hardware_services._mcu.disconnect()
+                mcu_service = self._hardware_services.mcu_service
+                if mcu_service:
+                    await mcu_service.disconnect()
             except Exception as disconnect_error:
                 logger.warning(f"Failed to disconnect MCU after error: {disconnect_error}")
 

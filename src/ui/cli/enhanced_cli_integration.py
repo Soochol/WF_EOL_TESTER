@@ -63,9 +63,10 @@ class EnhancedInputIntegrator:
         self.menu_options = {
             "main_menu": {
                 "1": "Execute EOL Test",
-                "2": "Robot Home",
-                "3": "Hardware Control Center",
-                "4": "Exit",
+                "2": "Execute Simple MCU Test",
+                "3": "Robot Home",
+                "4": "Hardware Control Center",
+                "5": "Exit",
             },
             "hardware_menu": {
                 "1": "Robot Control",
@@ -261,14 +262,16 @@ class EnhancedMenuSystem:
         menu_text.append("1.", style="bold cyan")
         menu_text.append(" Execute EOL Test\n")
         menu_text.append("2.", style="bold cyan")
-        menu_text.append(" Robot Home\n")
+        menu_text.append(" Execute Simple MCU Test\n")
         menu_text.append("3.", style="bold cyan")
-        menu_text.append(" Hardware Control Center\n")
+        menu_text.append(" Robot Home\n")
         menu_text.append("4.", style="bold cyan")
+        menu_text.append(" Hardware Control Center\n")
+        menu_text.append("5.", style="bold cyan")
         menu_text.append(" Exit\n")
         menu_text.append("help", style="bold cyan")
         menu_text.append(" Show input help\n\n")
-        menu_text.append("Please select an option (1-4) or type 'help':")
+        menu_text.append("Please select an option (1-5) or type 'help':")
 
         # Create panel with properly styled content
         self.console.print("\n")
