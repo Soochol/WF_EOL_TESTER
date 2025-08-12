@@ -148,16 +148,16 @@ class MockMCU(MCUService):
         """
         return self._is_connected
 
-    async def set_temperature(self, target_temp: float) -> None:
+    async def set_operating_temperature(self, target_temp: float) -> None:
         """
-        Set target temperature for the MCU (시뮬레이션)
+        Set operating temperature for the MCU (시뮬레이션)
 
         Args:
-            target_temp: Target temperature in Celsius
+            target_temp: Operating temperature in Celsius
 
         Raises:
             HardwareConnectionError: If not connected
-            HardwareOperationError: If temperature setting fails
+            HardwareOperationError: If operating temperature setting fails
         """
         if not await self.is_connected():
             raise HardwareConnectionError("mock_mcu", "MCU is not connected")

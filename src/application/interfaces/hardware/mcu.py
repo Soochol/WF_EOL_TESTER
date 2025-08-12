@@ -79,15 +79,15 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_temperature(self, target_temp: float) -> None:
+    async def set_operating_temperature(self, target_temp: float) -> None:
         """
-        Set target temperature for the MCU
+        Set operating temperature for the MCU
 
         Args:
-            target_temp: Target temperature in Celsius
+            target_temp: Operating temperature in Celsius
 
         Raises:
-            HardwareOperationError: If temperature setting fails
+            HardwareOperationError: If operating temperature setting fails
         """
         ...
 

@@ -418,8 +418,8 @@ class LMAMCU(MCUService):
             logger.error(error_msg)
             raise HardwareOperationError("fast_lma_mcu", "wait_boot_complete", error_msg) from e
 
-    async def set_temperature(self, target_temp: float) -> None:
-        """Set target temperature (operating temperature)"""
+    async def set_operating_temperature(self, target_temp: float) -> None:
+        """Set operating temperature"""
         self._ensure_connected()
 
         try:
@@ -430,7 +430,7 @@ class LMAMCU(MCUService):
             response = await self._send_packet(packet, f"CMD_SET_OPERATING_TEMP ({target_temp}°C)")
 
             if not response or len(response) < 6 or response[2] != 0x05:
-                raise HardwareOperationError("fast_lma_mcu", "set_temperature", "Invalid ACK response")
+                raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", "Invalid ACK response")
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
@@ -444,12 +444,12 @@ class LMAMCU(MCUService):
                 logger.warning("Operating temperature reached signal not confirmed (continuing)")
 
             self._target_temperature = target_temp
-            logger.info(f"Target temperature set: {target_temp}°C")
+            logger.info(f"Operating temperature set: {target_temp}°C")
 
         except Exception as e:
-            error_msg = f"Target temperature setting failed: {e}"
+            error_msg = f"Operating temperature setting failed: {e}"
             logger.error(error_msg)
-            raise HardwareOperationError("fast_lma_mcu", "set_temperature", error_msg) from e
+            raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", error_msg) from e
 
     async def get_temperature(self) -> float:
         """Get current temperature reading from MCU"""

@@ -102,7 +102,7 @@ class MCUControlRequest(BaseModel):
     """Request model for MCU control operations"""
 
     operation: str = Field(
-        ..., description="Operation: 'set_temperature', 'set_fan_speed', 'test_mode'"
+        ..., description="Operation: 'set_operating_temperature', 'set_fan_speed', 'test_mode'"
     )
     temperature: Optional[float] = Field(None, description="Target temperature")
     fan_speed: Optional[int] = Field(None, description="Fan speed (0-10)")

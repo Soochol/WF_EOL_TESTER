@@ -203,15 +203,15 @@ class LMAMCU(MCUService):
         if not await self.is_connected():
             raise HardwareConnectionError("lma_mcu", "LMA MCU is not connected")
 
-    async def set_temperature(self, target_temp: float) -> None:
+    async def set_operating_temperature(self, target_temp: float) -> None:
         """
-        목표 온도 설정
+        동작 온도 설정
 
         Args:
-            target_temp: 목표 온도 (°C)
+            target_temp: 동작 온도 (°C)
 
         Raises:
-            HardwareOperationError: If temperature setting fails
+            HardwareOperationError: If operating temperature setting fails
         """
         await self._ensure_connected()
 

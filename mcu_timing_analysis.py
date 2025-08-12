@@ -105,7 +105,7 @@ class MCUTimingAnalysis:
             "flexible_response_handling": {
                 "purpose": "MCU 응답 패턴의 불일치 해결",
                 "mechanism": "첫 번째 응답이 중간 응답인지 최종 응답인지 판단",
-                "implementation": "lma_mcu.py의 set_temperature(), start_standby_heating()에 적용",
+                "implementation": "lma_mcu.py의 set_operating_temperature(), start_standby_heating()에 적용",
                 "retry_count": "최대 3회",
                 "timeout_handling": "응답별 개별 타임아웃 + 전체 시퀀스 타임아웃"
             },

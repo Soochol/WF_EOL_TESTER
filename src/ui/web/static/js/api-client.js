@@ -164,8 +164,8 @@ class APIClient {
         return this._request('POST', '/hardware/mcu/control', payload);
     }
 
-    async setMCUTemperature(temperature) {
-        return this.controlMCU('set_temperature', { temperature: temperature });
+    async setMCUOperatingTemperature(temperature) {
+        return this.controlMCU('set_operating_temperature', { temperature: temperature });
     }
 
     async setMCUFanSpeed(fanSpeed) {

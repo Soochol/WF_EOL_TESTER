@@ -390,14 +390,14 @@ async def control_mcu(request: MCUControlRequest, container: DIContainer = Depen
         hardware_services = container.hardware_service_facade()
         mcu_service = hardware_services.mcu_service
 
-        if request.operation == "set_temperature":
+        if request.operation == "set_operating_temperature":
             if request.temperature is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Temperature is required for set_temperature operation",
+                    detail="Temperature is required for set_operating_temperature operation",
                 )
-            await mcu_service.set_temperature(request.temperature)
-            message = f"MCU temperature set to {request.temperature}°C"
+            await mcu_service.set_operating_temperature(request.temperature)
+            message = f"MCU operating temperature set to {request.temperature}°C"
 
         elif request.operation == "set_fan_speed":
             if request.fan_speed is None:
@@ -1150,8 +1150,8 @@ async def set_mcu_temperature(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Temperature is required"
             )
 
-        await mcu_service.set_temperature(temperature)
-        message = f"MCU temperature set to {temperature}°C"
+        await mcu_service.set_operating_temperature(temperature)
+        message = f"MCU operating temperature set to {temperature}°C"
 
         logger.info(message)
         return {"success": True, "message": message, "data": {"target_temperature": temperature}}

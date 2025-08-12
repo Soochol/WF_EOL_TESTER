@@ -554,7 +554,7 @@ class HardwareServiceFacade:
                 logger.info(f"Upper temperature set to {test_config.upper_temperature}°C")
 
                 # MCU heat up
-                await self._mcu.set_temperature(temperature)
+                await self._mcu.set_operating_temperature(temperature)
                 logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info(f"Temperature set to {temperature}°C, waiting for stabilization...")

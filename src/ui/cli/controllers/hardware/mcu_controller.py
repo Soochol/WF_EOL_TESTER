@@ -243,7 +243,7 @@ class MCUController(HardwareController):
 
             # Type check temperature value
             if isinstance(temperature, (int, float)):
-                await self.mcu_service.set_temperature(float(temperature))
+                await self.mcu_service.set_operating_temperature(float(temperature))
             else:
                 raise ValueError("Invalid temperature type")
 

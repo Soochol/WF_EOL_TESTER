@@ -116,9 +116,9 @@ class TestConfiguration:
     # ========================================================================
     max_voltage: float = 30.0  # Maximum allowed voltage (V)
     max_current: float = 30.0  # Maximum allowed current (A)
-    max_velocity: float = 60000.0  # Maximum allowed velocity (μm/s)
-    max_acceleration: float = 60000.0  # Maximum allowed acceleration (μm/s²)
-    max_deceleration: float = 60000.0  # Maximum allowed deceleration (μm/s²)
+    max_velocity: float = 100000.0  # Maximum allowed velocity (μm/s)
+    max_acceleration: float = 100000.0  # Maximum allowed acceleration (μm/s²)
+    max_deceleration: float = 100000.0  # Maximum allowed deceleration (μm/s²)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization
