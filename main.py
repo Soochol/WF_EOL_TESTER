@@ -290,14 +290,30 @@ def setup_logging(debug: bool = False) -> None:
     # Console logging setup
     log_level = "DEBUG" if debug else "INFO"
 
-    # Custom formatter for noise detection warnings
-    def noise_formatter(record):
-        if "🔧 NOISE" in record["message"]:
+    # Custom formatter for noise detection warnings and MCU packet logs
+    def custom_formatter(record):
+        message = record["message"]
+        
+        if "🔧 NOISE" in message:
+            # Noise detection warnings - yellow bold
             return (
                 "<green>{time:HH:mm:ss}</green> | <yellow><bold>WARNING </bold></yellow> | "
                 "<cyan>{name}</cyan> - <yellow><bold>{message}</bold></yellow>\n"
             )
+        elif "PC -> MCU:" in message:
+            # MCU transmission packets - blue bold
+            return (
+                "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
+                "<cyan>{name}</cyan> - <blue><bold>{message}</bold></blue>\n"
+            )
+        elif "PC <- MCU:" in message:
+            # MCU reception packets - green
+            return (
+                "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
+                "<cyan>{name}</cyan> - <green>{message}</green>\n"
+            )
         else:
+            # Default format
             return (
                 "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
                 "<cyan>{name}</cyan> - <level>{message}</level>\n"
@@ -306,7 +322,7 @@ def setup_logging(debug: bool = False) -> None:
     logger.add(
         sys.stderr,
         level=log_level,
-        format=noise_formatter,
+        format=custom_formatter,
     )
 
     # File logging setup

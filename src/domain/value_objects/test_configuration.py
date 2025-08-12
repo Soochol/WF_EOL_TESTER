@@ -199,11 +199,11 @@ class TestConfiguration:
             )
 
         # Logical temperature relationships
-        if self.activation_temperature >= self.upper_temperature:
+        if self.activation_temperature > self.upper_temperature:
             raise ValidationException(
                 "activation_temperature",
                 self.activation_temperature,
-                f"Activation temperature must be less than upper temperature ({self.upper_temperature}°C)",
+                f"Activation temperature must be less than or equal to upper temperature ({self.upper_temperature}°C)",
             )
 
         if self.standby_temperature >= self.activation_temperature:

@@ -441,7 +441,13 @@ class LMAMCU(MCUService):
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
                 logger.info("Operating temperature reached confirmed")
             else:
-                logger.warning("Operating temperature reached signal not confirmed (continuing)")
+                # 타임아웃 또는 잘못된 응답을 에러로 처리
+                if temp_response:
+                    error_msg = f"Invalid operating temperature response: {temp_response.hex().upper()}"
+                else:
+                    error_msg = "Operating temperature reached signal not received within timeout"
+                logger.error(error_msg)
+                raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", error_msg)
 
             self._target_temperature = target_temp
             logger.info(f"Operating temperature set: {target_temp}°C")
@@ -599,7 +605,13 @@ class LMAMCU(MCUService):
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
                 logger.info("Operating temperature reached confirmed")
             else:
-                logger.warning("Temperature reached signal not confirmed (continuing)")
+                # 타임아웃 또는 잘못된 응답을 에러로 처리
+                if temp_response:
+                    error_msg = f"Invalid temperature reached response: {temp_response.hex().upper()}"
+                else:
+                    error_msg = "Temperature reached signal not received within timeout"
+                logger.error(error_msg)
+                raise HardwareOperationError("fast_lma_mcu", "start_standby_heating", error_msg)
 
             self._mcu_status = MCUStatus.HEATING
             logger.info(
@@ -634,7 +646,13 @@ class LMAMCU(MCUService):
             if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
                 logger.info("Standby temperature reached confirmed")
             else:
-                logger.warning("Cooling complete signal not confirmed (continuing)")
+                # 타임아웃 또는 잘못된 응답을 에러로 처리
+                if cooling_response:
+                    error_msg = f"Invalid cooling complete response: {cooling_response.hex().upper()}"
+                else:
+                    error_msg = "Cooling complete signal not received within timeout"
+                logger.error(error_msg)
+                raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg)
 
             self._mcu_status = MCUStatus.COOLING
             logger.info("Standby cooling started")
