@@ -122,14 +122,25 @@ class LMAMCU(MCUService):
             start_time = time.time()
 
             self.serial_conn.write(packet_bytes)
-            logger.debug(f"TX: {packet_hex} ({description})")
+            logger.info(f"🔄 TX: {packet_hex} ({description})")
 
             # Wait for response
             response_data = b""
+            last_data_time = start_time
+            data_chunks = []
+            
             while time.time() - start_time < self._timeout:
                 if self.serial_conn.in_waiting > 0:
                     new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                     response_data += new_data
+                    last_data_time = time.time()
+                    
+                    # Log each data chunk for debugging
+                    chunk_hex = new_data.hex().upper()
+                    chunk_formatted = " ".join([chunk_hex[i:i+2] for i in range(0, len(chunk_hex), 2)])
+                    elapsed_ms = (last_data_time - start_time) * 1000
+                    data_chunks.append(f"{chunk_formatted} @ +{elapsed_ms:.1f}ms")
+                    logger.info(f"📥 RX_CHUNK: {chunk_formatted} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms")
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\\xfe\\xfe") and len(response_data) >= 6:
@@ -139,18 +150,78 @@ class LMAMCU(MCUService):
                         )
 
                         response_time = (time.time() - start_time) * 1000
-                        logger.debug(f"RX: {formatted_hex} (+{response_time:.1f}ms)")
+                        logger.info(f"✅ RX_COMPLETE: {formatted_hex} (+{response_time:.1f}ms)")
+                        
+                        # Detailed packet analysis
+                        self._analyze_response_packet(response_data, description)
 
                         return response_data
 
                 time.sleep(0.001)  # 1ms wait
 
-            logger.warning(f"Response timeout ({self._timeout}s)")
+            # Timeout occurred - log what we received
+            if response_data:
+                partial_hex = response_data.hex().upper()
+                partial_formatted = " ".join([partial_hex[i:i+2] for i in range(0, len(partial_hex), 2)])
+                logger.warning(f"⏰ TIMEOUT with partial data ({len(response_data)} bytes): {partial_formatted}")
+                logger.warning(f"📊 Data chunks received: {len(data_chunks)}")
+                for i, chunk in enumerate(data_chunks):
+                    logger.warning(f"   [{i+1}] {chunk}")
+            else:
+                logger.warning(f"⏰ TIMEOUT with NO response data received ({self._timeout}s)")
+                
             return None
 
         except Exception as e:
             logger.error(f"Communication error: {e}")
             raise HardwareOperationError("fast_lma_mcu", "_send_packet_sync", str(e)) from e
+
+    def _analyze_response_packet(self, response_data: bytes, description: str = "") -> None:
+        """Analyze and log detailed response packet information"""
+        try:
+            if len(response_data) < 6:
+                logger.warning(f"🔍 PACKET_TOO_SHORT: {len(response_data)} bytes (minimum 6 expected)")
+                return
+            
+            # Parse packet structure: FFFF [CMD] [LEN] [DATA...] FEFE
+            stx = response_data[:2]  # Should be FFFF
+            cmd = response_data[2]   # Command/Status code
+            length = response_data[3] # Data length
+            
+            expected_stx = b'\xff\xff'
+            expected_etx = b'\xfe\xfe'
+            
+            logger.info(f"🔍 PACKET_ANALYSIS for '{description}':")
+            logger.info(f"   📋 Total Length: {len(response_data)} bytes")
+            logger.info(f"   🏁 STX: {stx.hex().upper()} {'✅' if stx == expected_stx else '❌ (expected FFFF)'}")
+            logger.info(f"   📨 Command/Status: 0x{cmd:02X} ({cmd})")
+            logger.info(f"   📏 Data Length: {length} bytes")
+            
+            if len(response_data) >= 4 + length + 2:
+                data_bytes = response_data[4:4+length] if length > 0 else b""
+                etx = response_data[4+length:4+length+2]
+                
+                if data_bytes:
+                    data_hex = " ".join([f"{b:02X}" for b in data_bytes])
+                    logger.info(f"   📦 Data: {data_hex}")
+                else:
+                    logger.info("   📦 Data: (none)")
+                    
+                logger.info(f"   🏁 ETX: {etx.hex().upper()} {'✅' if etx == expected_etx else '❌ (expected FEFE)'}")
+                
+                # Check expected status codes for commands
+                if description.startswith("CMD_ENTER_TEST_MODE"):
+                    expected_status = 0x01  # STATUS_TEST_MODE_COMPLETE
+                    logger.info(f"   🎯 Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'✅' if cmd == expected_status else '❌'}")
+                elif description.startswith("CMD_SET_OPERATING_TEMP"):
+                    expected_status = 0x05  # STATUS_OPERATING_TEMP_OK
+                    logger.info(f"   🎯 Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'✅' if cmd == expected_status else '❌'}")
+                    
+            else:
+                logger.warning(f"🔍 PACKET_INCOMPLETE: Expected {4 + length + 2} bytes, got {len(response_data)}")
+                
+        except Exception as e:
+            logger.error(f"🔍 PACKET_ANALYSIS_ERROR: {e}")
 
     async def _send_packet(self, packet_hex: str, description: str = "") -> Optional[bytes]:
         """Async wrapper for packet transmission"""
@@ -167,29 +238,51 @@ class LMAMCU(MCUService):
 
         start_time = time.time()
         response_data = b""
+        data_chunks = []
+        expected_etx = b'\xfe\xfe'
 
-        logger.debug(f"Waiting for additional response... ({description})")
+        logger.info(f"⏳ WAITING for additional response: {description} (timeout: {timeout}s)")
 
         while time.time() - start_time < timeout:
             if self.serial_conn.in_waiting > 0:
                 new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                 response_data += new_data
+                
+                # Log each data chunk for debugging
+                chunk_hex = new_data.hex().upper()
+                chunk_formatted = " ".join([chunk_hex[i:i+2] for i in range(0, len(chunk_hex), 2)])
+                elapsed_ms = (time.time() - start_time) * 1000
+                data_chunks.append(f"{chunk_formatted} @ +{elapsed_ms:.1f}ms")
+                logger.info(f"📥 ADDITIONAL_RX_CHUNK: {chunk_formatted} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms")
 
                 # Check for complete packet
-                if response_data.endswith(b"\\xfe\\xfe") and len(response_data) >= 6:
+                if response_data.endswith(expected_etx) and len(response_data) >= 6:
                     response_hex = response_data.hex().upper()
                     formatted_hex = " ".join(
                         [response_hex[i : i + 2] for i in range(0, len(response_hex), 2)]
                     )
 
                     response_time = (time.time() - start_time) * 1000
-                    logger.debug(f"Additional response: {formatted_hex} (+{response_time:.1f}ms)")
+                    logger.info(f"✅ ADDITIONAL_RX_COMPLETE: {formatted_hex} (+{response_time:.1f}ms)")
+                    
+                    # Detailed packet analysis
+                    self._analyze_response_packet(response_data, f"ADDITIONAL_{description}")
 
                     return response_data
 
             time.sleep(0.01)  # 10ms wait
 
-        logger.debug(f"Additional response timeout ({timeout}s)")
+        # Timeout occurred - log what we received for additional response
+        if response_data:
+            partial_hex = response_data.hex().upper()
+            partial_formatted = " ".join([partial_hex[i:i+2] for i in range(0, len(partial_hex), 2)])
+            logger.warning(f"⏰ ADDITIONAL_TIMEOUT with partial data ({len(response_data)} bytes): {partial_formatted}")
+            logger.warning(f"📊 Additional data chunks received: {len(data_chunks)}")
+            for i, chunk in enumerate(data_chunks):
+                logger.warning(f"   [{i+1}] {chunk}")
+        else:
+            logger.warning(f"⏰ ADDITIONAL_TIMEOUT with NO additional response data received ({timeout}s)")
+            
         return None
 
     # ===== MCUService Interface Implementation =====
