@@ -26,13 +26,12 @@ TEMP_SCALE_FACTOR = 10
 DEFAULT_TIMEOUT = 5.0
 
 
-class LMAMCU(MCUService):
+class FastLMAMCU(MCUService):
     """
-    LMA MCU Implementation (Fast & Optimized)
+    Fast LMA MCU Implementation
     
     High-performance MCU service with direct serial communication.
     Optimized for minimal latency while maintaining reliability.
-    Achieves 99.5% performance improvement over legacy implementation.
     """
     
     def __init__(self):
