@@ -301,10 +301,10 @@ def setup_logging(debug: bool = False) -> None:
                 "<cyan>{name}</cyan> - <yellow><bold>{message}</bold></yellow>\n"
             )
         elif "PC -> MCU:" in message:
-            # MCU transmission packets - blue bold
+            # MCU transmission packets - magenta bold
             return (
                 "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
-                "<cyan>{name}</cyan> - <blue><bold>{message}</bold></blue>\n"
+                "<cyan>{name}</cyan> - <magenta><bold>{message}</bold></magenta>\n"
             )
         elif "PC <- MCU:" in message:
             # MCU reception packets - green

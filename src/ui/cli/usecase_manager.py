@@ -11,11 +11,10 @@ from typing import Any, Dict, List, Optional, Type
 from loguru import logger
 from rich.console import Console
 
-from application.use_cases.eol_force_test import (
-    EOLForceTestCommand,
-    EOLForceTestUseCase,
+from application.use_cases.simple_mcu_test import (
+    SimpleMCUTestCommand,
+    SimpleMCUTestUseCase,
 )
-from domain.value_objects.dut_command_info import DUTCommandInfo
 
 # from .enhanced_input_manager import EnhancedInputManager  # Removed
 from .rich_formatter import RichFormatter
@@ -54,16 +53,16 @@ class UseCaseExecutor(ABC):
         """Collect parameters needed for UseCase execution"""
 
 
-class EOLForceTestExecutor(UseCaseExecutor):
-    """Executor for EOL Force Test UseCase"""
+class SimpleMCUTestExecutor(UseCaseExecutor):
+    """Executor for Simple MCU Test UseCase"""
 
     def __init__(self, configuration_service: Optional[Any] = None):
         self.configuration_service = configuration_service
 
     async def execute(
-        self, use_case_instance: EOLForceTestUseCase, formatter: RichFormatter
+        self, use_case_instance: SimpleMCUTestUseCase, formatter: RichFormatter
     ) -> Any:
-        """Execute EOL Force Test with Rich UI feedback"""
+        """Execute Simple MCU Test with Rich UI feedback"""
         # Get test parameters from user
         command = await self.get_parameters(formatter)
         if not command:
@@ -71,19 +70,16 @@ class EOLForceTestExecutor(UseCaseExecutor):
 
         # Show test initiation status
         formatter.print_status(
-            "Test Initialization",
+            "MCU Test Initialization",
             "PREPARING",
             details={
-                "DUT ID": command.dut_info.dut_id,
-                "Model": command.dut_info.model_number,
+                "Port": command.port,
+                "Baudrate": str(command.baudrate),
                 "Operator": command.operator_id,
             },
         )
 
-        # Store command for use in result display
-        self._current_command = command
-
-        # Execute test without additional spinner (managed by enhanced_eol_tester_cli)
+        # Execute test
         try:
             result = await use_case_instance.execute(command)
 
@@ -92,67 +88,51 @@ class EOLForceTestExecutor(UseCaseExecutor):
             return result
 
         except Exception as e:
-            formatter.print_message(f"Test execution failed: {str(e)}", message_type="error")
+            formatter.print_message(f"MCU test execution failed: {str(e)}", message_type="error")
             raise
 
-    async def get_parameters(self, formatter: RichFormatter) -> Optional[EOLForceTestCommand]:
-        """Collect DUT information for EOL test using simple input (enhanced functionality removed)"""
+    async def get_parameters(self, formatter: RichFormatter) -> Optional[SimpleMCUTestCommand]:
+        """Collect MCU test parameters using simple input"""
         try:
-            formatter.console.print("[bold cyan]DUT Information Collection[/bold cyan]")
+            formatter.console.print("[bold cyan]MCU Test Configuration[/bold cyan]")
 
-            # Load default values from configuration if available
-            defaults = {}
-            if self.configuration_service:
+            # Get port (default COM4)
+            port = input("MCU Port [COM4]: ").strip()
+            if not port:
+                port = "COM4"
+
+            # Get baudrate (default 115200)
+            baudrate_input = input("Baudrate [115200]: ").strip()
+            if not baudrate_input:
+                baudrate = 115200
+            else:
                 try:
-                    defaults = await self.configuration_service.load_dut_defaults()
-                    formatter.console.print(
-                        f"[dim]Loaded defaults: DUT ID: {defaults.get('dut_id', 'None')}, Model: {defaults.get('model', 'None')}[/dim]"
-                    )
-                except Exception as e:
-                    formatter.console.print(f"[dim red]Could not load defaults: {e}[/dim]")
+                    baudrate = int(baudrate_input)
+                except ValueError:
+                    formatter.console.print("[red]Invalid baudrate, using default 115200[/red]")
+                    baudrate = 115200
 
-            # Collect DUT information with default support
-            dut_id = input(f"DUT ID [{defaults.get('dut_id', '')}]: ").strip()
-            if not dut_id:
-                dut_id = defaults.get("dut_id", "")
-                if not dut_id:
-                    return None
-
-            model = input(f"Model [{defaults.get('model', '')}]: ").strip()
-            if not model:
-                model = defaults.get("model", "Unknown")
-
-            serial = input("Serial Number: ").strip()
-            if not serial:
-                serial = "Unknown"
-
-            operator = input(f"Operator ID [{defaults.get('operator_id', '')}]: ").strip()
+            # Get operator ID
+            operator = input("Operator ID [cli_user]: ").strip()
             if not operator:
-                operator = defaults.get("operator_id", "Unknown")
-
-            # Create DUT command info
-            dut_command_info = DUTCommandInfo(
-                dut_id=dut_id,
-                model_number=model,
-                serial_number=serial,
-                manufacturer=defaults.get("manufacturer", "Unknown"),
-            )
+                operator = "cli_user"
 
             # Create and return command
-            command = EOLForceTestCommand(
-                dut_info=dut_command_info,
+            command = SimpleMCUTestCommand(
+                port=port,
+                baudrate=baudrate,
                 operator_id=operator,
             )
 
             return command
 
         except (KeyboardInterrupt, EOFError):
-            formatter.print_message("DUT information collection cancelled by user", "info")
+            formatter.print_message("MCU test configuration cancelled by user", "info")
             return None
 
     def _display_test_result(self, result: Any, formatter: RichFormatter) -> None:
-        """Display test result with Rich formatting"""
-        formatter.print_header("Test Results")
+        """Display MCU test result with Rich formatting"""
+        formatter.print_header("MCU Test Results")
 
         # Main result status
         status_text = "PASSED" if result.is_passed else "FAILED"
@@ -160,26 +140,27 @@ class EOLForceTestExecutor(UseCaseExecutor):
             "Test ID": str(result.test_id),
             "Status": result.test_status.value.upper(),
             "Duration": result.format_duration(),
-            "Measurements": str(result.measurement_count),
+            "Successful Steps": str(result.measurement_count),
+            "Total Steps": str(len(result.test_results)),
         }
 
         if result.error_message:
             status_details["Error"] = result.error_message
 
-        formatter.print_status("Test Execution Result", status_text, details=status_details)
+        formatter.print_status("MCU Test Result", status_text, details=status_details)
 
-        # Create test results table with DUT info
-        dut_info = None
-        if hasattr(self, "_current_command") and self._current_command:
-            dut_info = {
-                "id": self._current_command.dut_info.dut_id,
-                "model": self._current_command.dut_info.model_number,
-            }
-
-        results_table = formatter.create_test_results_table(
-            [result], title="Detailed Test Results", show_details=True, dut_info=dut_info
-        )
-        formatter.print_table(results_table)
+        # Display individual test steps
+        formatter.console.print("\n[bold]Test Steps Detail:[/bold]")
+        for test_result in result.test_results:
+            step_status = "✅ PASS" if test_result["success"] else "❌ FAIL"
+            response_time = test_result["response_time_ms"]
+            
+            formatter.console.print(
+                f"  [{test_result['step']}] {test_result['description']} - {step_status} ({response_time:.1f}ms)"
+            )
+            
+            if test_result["error"]:
+                formatter.console.print(f"      Error: {test_result['error']}", style="red")
 
 
 class UseCaseManager:
@@ -200,16 +181,16 @@ class UseCaseManager:
 
     def _initialize_usecases(self) -> None:
         """Initialize known UseCases and their executors"""
-        # EOL Force Test UseCase
-        eol_usecase_info = UseCaseInfo(
-            name="EOL Force Test",
-            description="Execute End-of-Line force testing on Device Under Test",
-            use_case_class=EOLForceTestUseCase,
-            command_class=EOLForceTestCommand,
+        # Simple MCU Test UseCase
+        simple_mcu_usecase_info = UseCaseInfo(
+            name="Simple MCU Test",
+            description="Execute direct MCU communication testing sequence",
+            use_case_class=SimpleMCUTestUseCase,
+            command_class=SimpleMCUTestCommand,
         )
 
-        self.discovered_usecases.append(eol_usecase_info)
-        self.executors[eol_usecase_info.name] = EOLForceTestExecutor(self.configuration_service)
+        self.discovered_usecases.append(simple_mcu_usecase_info)
+        self.executors[simple_mcu_usecase_info.name] = SimpleMCUTestExecutor(self.configuration_service)
 
         logger.info(f"Initialized {len(self.discovered_usecases)} UseCases")
 
