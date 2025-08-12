@@ -208,9 +208,20 @@ class FastLMAMCU:
         self._ensure_connected()
         
         try:
-            # 테스트 모드 매핑
-            mode_value = mode.value if hasattr(mode, 'value') else int(mode)
-            packet = f"FF FF 01 04 {mode_value:08X} FE FE"
+            # 테스트 모드 매핑 (문자열 값을 정수로 변환)
+            mode_mapping = {
+                TestMode.MODE_1: 1,
+                TestMode.MODE_2: 2, 
+                TestMode.MODE_3: 3
+            }
+            
+            if mode in mode_mapping:
+                mode_value = mode_mapping[mode]
+            else:
+                # Fallback for integer values
+                mode_value = int(mode) if not hasattr(mode, 'value') else 1
+                
+            packet = f"FFFF0104{mode_value:08X}FEFE"
             
             response = await self._send_packet(packet, f"CMD_ENTER_TEST_MODE (모드 {mode_value})")
             
@@ -231,7 +242,7 @@ class FastLMAMCU:
         
         try:
             temp_scaled = int(upper_temp * TEMP_SCALE_FACTOR)
-            packet = f"FF FF 02 04 {temp_scaled:08X} FE FE"
+            packet = f"FFFF0204{temp_scaled:08X}FEFE"
             
             response = await self._send_packet(packet, f"CMD_SET_UPPER_TEMP ({upper_temp}°C)")
             
@@ -250,7 +261,7 @@ class FastLMAMCU:
         self._ensure_connected()
         
         try:
-            packet = f"FF FF 03 04 {fan_level:08X} FE FE"
+            packet = f"FFFF0304{fan_level:08X}FEFE"
             
             response = await self._send_packet(packet, f"CMD_SET_FAN_SPEED (레벨 {fan_level})")
             
@@ -281,7 +292,7 @@ class FastLMAMCU:
             
             # 12바이트 데이터 패킹
             data = f"{op_temp_scaled:08X}{standby_temp_scaled:08X}{hold_time_ms:08X}"
-            packet = f"FF FF 04 0C {data} FE FE"
+            packet = f"FFFF040C{data}FEFE"
             
             # 첫 번째 응답 (즉시 ACK)
             response = await self._send_packet(
@@ -316,7 +327,7 @@ class FastLMAMCU:
         self._ensure_connected()
         
         try:
-            packet = "FF FF 08 00 FE FE"
+            packet = "FFFF0800FEFE"
             
             # 첫 번째 응답 (즉시 ACK)
             response = await self._send_packet(packet, "CMD_STROKE_INIT_COMPLETE")
