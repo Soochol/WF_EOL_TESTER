@@ -206,9 +206,9 @@ async def control_robot(
             await robot_service.move_absolute(
                 position=request.position,
                 axis_id=axis_id,
-                velocity=request.velocity or hardware_config.robot.velocity,
-                acceleration=request.acceleration or hardware_config.robot.acceleration,
-                deceleration=request.deceleration or hardware_config.robot.deceleration,
+                velocity=request.velocity,
+                acceleration=request.acceleration,
+                deceleration=request.deceleration,
             )
             message = f"Robot move initiated to position {request.position}μm"
 
@@ -690,14 +690,31 @@ async def move_robot_absolute(
         axis_id = request.get("axis_id", 0)
         position = request.get("position")
 
-        # Use provided values or fall back to hardware configuration defaults
-        velocity = float(request.get("velocity") or hardware_config.robot.velocity or 100.0)
-        acceleration = float(
-            request.get("acceleration") or hardware_config.robot.acceleration or 1000.0
-        )
-        deceleration = float(
-            request.get("deceleration") or hardware_config.robot.deceleration or 1000.0
-        )
+        # Use provided values (should be provided by client after loading from config)
+        velocity = request.get("velocity")
+        acceleration = request.get("acceleration")
+        deceleration = request.get("deceleration")
+        
+        # Validate required motion parameters
+        if velocity is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Velocity parameter is required"
+            )
+        if acceleration is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Acceleration parameter is required"
+            )
+        if deceleration is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Deceleration parameter is required"
+            )
+        
+        velocity = float(velocity)
+        acceleration = float(acceleration)
+        deceleration = float(deceleration)
 
         if position is None:
             raise HTTPException(
@@ -737,14 +754,31 @@ async def move_robot_relative(
         axis_id = request.get("axis_id", 0)
         distance = request.get("distance")
 
-        # Use provided values or fall back to hardware configuration defaults
-        velocity = float(request.get("velocity") or hardware_config.robot.velocity or 100.0)
-        acceleration = float(
-            request.get("acceleration") or hardware_config.robot.acceleration or 1000.0
-        )
-        deceleration = float(
-            request.get("deceleration") or hardware_config.robot.deceleration or 1000.0
-        )
+        # Use provided values (should be provided by client after loading from config)
+        velocity = request.get("velocity")
+        acceleration = request.get("acceleration")
+        deceleration = request.get("deceleration")
+        
+        # Validate required motion parameters
+        if velocity is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Velocity parameter is required"
+            )
+        if acceleration is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Acceleration parameter is required"
+            )
+        if deceleration is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Deceleration parameter is required"
+            )
+        
+        velocity = float(velocity)
+        acceleration = float(acceleration)
+        deceleration = float(deceleration)
 
         if distance is None:
             raise HTTPException(

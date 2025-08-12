@@ -91,23 +91,11 @@ class HardwareConfigurationEditor extends ConfigurationEditor {
                                data-path="hardware_config.robot.axis_id" class="form-control" min="0" max="31" required>
                         <div class="form-help">Axis identifier for the robot motion</div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Velocity (mm/s)</label>
-                        <input type="number" step="0.1" value="${robot.velocity || 200.0}" 
-                               data-path="hardware_config.robot.velocity" class="form-control" min="0" required>
-                        <div class="form-help">Default robot velocity</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Acceleration (mm/s²)</label>
-                        <input type="number" step="0.1" value="${robot.acceleration || 1000.0}" 
-                               data-path="hardware_config.robot.acceleration" class="form-control" min="0" required>
-                        <div class="form-help">Robot acceleration rate</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Deceleration (mm/s²)</label>
-                        <input type="number" step="0.1" value="${robot.deceleration || 1000.0}" 
-                               data-path="hardware_config.robot.deceleration" class="form-control" min="0" required>
-                        <div class="form-help">Robot deceleration rate</div>
+                    <!-- Motion parameters moved to test configuration -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Motion parameters (velocity, acceleration, deceleration) are now configured in 
+                        <strong>Test Profiles</strong> for greater flexibility per test.
                     </div>
                 </div>
             </div>

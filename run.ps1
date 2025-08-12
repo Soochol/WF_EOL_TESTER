@@ -168,17 +168,13 @@ function Test-MainPyFile {
 function Set-EnvironmentVariables {
     Write-ColoredOutput "Setting up environment variables..." "DEBUG"
     
-    # Set Python path to include src directory
-    $srcPath = Join-Path $PWD "src"
-    $env:PYTHONPATH = $srcPath
-    
     if ($Debug) {
         $env:DEBUG_MODE = "1"
         $env:LOGLEVEL = "DEBUG"
         Write-ColoredOutput "Debug environment variables set" "DEBUG"
     }
     
-    Write-ColoredOutput "Environment setup complete" "SUCCESS"
+    Write-ColoredOutput "Environment setup complete (using installed package)" "SUCCESS"
 }
 
 function Start-Application {

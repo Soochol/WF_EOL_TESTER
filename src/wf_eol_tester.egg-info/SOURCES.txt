@@ -215,15 +215,6 @@ src/ui/cli/validation/input_validator.py
 src/ui/components/hardware_monitor.py
 src/ui/components/settings_form.py
 src/ui/components/test_dashboard.py
-src/ui/web/api/__init__.py
-src/ui/web/api/main.py
-src/ui/web/api/controllers/__init__.py
-src/ui/web/api/controllers/hardware_controller.py
-src/ui/web/api/models/__init__.py
-src/ui/web/api/models/hardware_models.py
-src/ui/web/api/routes/__init__.py
-src/ui/web/api/routes/hardware.py
-src/ui/web/api/routes/tests.py
 src/wf_eol_tester.egg-info/PKG-INFO
 src/wf_eol_tester.egg-info/SOURCES.txt
 src/wf_eol_tester.egg-info/dependency_links.txt

@@ -11,42 +11,32 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
-# Add src to Python path for consistent imports
-current_dir = Path(__file__).parent
-src_path = current_dir / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
 # Third-party imports
-from loguru import logger  # noqa: E402
+from loguru import logger
 
-# Local application imports - Services (bypassing __init__.py files for Windows compatibility)
-from application.services.button_monitoring_service import ButtonMonitoringService  # noqa: E402
-from application.services.configuration_service import ConfigurationService  # noqa: E402
-from application.services.configuration_validator import ConfigurationValidator  # noqa: E402
-from application.services.emergency_stop_service import EmergencyStopService  # noqa: E402
-from application.services.exception_handler import ExceptionHandler  # noqa: E402
-from application.services.hardware_service_facade import HardwareServiceFacade  # noqa: E402
-from application.services.repository_service import RepositoryService  # noqa: E402
-from application.services.test_result_evaluator import TestResultEvaluator  # noqa: E402
+# Local application imports - Services
+from application.services.button_monitoring_service import DIOMonitoringService
+from application.services.configuration_service import ConfigurationService
+from application.services.configuration_validator import ConfigurationValidator
+from application.services.emergency_stop_service import EmergencyStopService
+from application.services.exception_handler import ExceptionHandler
+from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.repository_service import RepositoryService
+from application.services.test_result_evaluator import TestResultEvaluator
 
 # Local application imports - Use Cases
-from application.use_cases.eol_force_test import EOLForceTestUseCase  # noqa: E402
-from infrastructure.configuration.json_profile_preference import (
-    JsonProfilePreference,  # noqa: E402
-)
-from infrastructure.configuration.yaml_configuration import (
-    YamlConfiguration,  # noqa: E402
-)
+from application.use_cases.eol_force_test import EOLForceTestUseCase
 
 # Local infrastructure imports
-from infrastructure.factory import ServiceFactory  # noqa: E402
+from infrastructure.configuration.json_profile_preference import JsonProfilePreference
+from infrastructure.configuration.yaml_configuration import YamlConfiguration
+from infrastructure.factory import ServiceFactory
 from infrastructure.implementation.repositories.json_result_repository import (
-    JsonResultRepository,  # noqa: E402
+    JsonResultRepository,
 )
 
 # Local UI imports
-from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI  # noqa: E402
+from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
 
 # Application configuration constants
 DEFAULT_LOG_ROTATION_SIZE = "10 MB"
@@ -79,14 +69,26 @@ async def main() -> None:
 
         # Connect digital I/O service if not already connected (needed for button monitoring)
         try:
-            if not await digital_io_service.is_connected():
+            connection_status = await digital_io_service.is_connected()
+            logger.info(f"🔧 VERIFICATION: Digital I/O service connection status: {connection_status}")
+            
+            if not connection_status:
                 logger.info("Connecting Digital I/O service for button monitoring...")
                 await digital_io_service.connect()
-                logger.info("Digital I/O service connected successfully")
+                connection_status = await digital_io_service.is_connected()
+                logger.info(f"Digital I/O service connected successfully. Final status: {connection_status}")
             else:
                 logger.info("Digital I/O service already connected")
+                
+            # Verify I/O capabilities
+            try:
+                input_count = await digital_io_service.get_input_count()
+                logger.info(f"🔧 VERIFICATION: Available input channels: {input_count}")
+            except Exception as cap_e:
+                logger.warning(f"Could not verify I/O capabilities: {cap_e}")
+                
         except Exception as e:
-            logger.warning(f"Failed to connect Digital I/O service: {e}")
+            logger.error(f"❌ VERIFICATION: Failed to connect Digital I/O service: {e}")
             logger.warning("Button monitoring may not work properly without Digital I/O connection")
 
         # Create services
@@ -143,20 +145,37 @@ async def main() -> None:
         # Create button monitoring service for dual button triggering and emergency stop
         button_monitoring_service = None
         try:
+            logger.info("🔧 VERIFICATION: Loading hardware configuration for button monitoring...")
             hardware_config = await configuration_service.load_hardware_config()
+            
+            # Verify hardware configuration details
+            logger.info(f"🔧 VERIFICATION: Hardware config loaded successfully")
+            logger.info(f"  - Emergency stop button: pin {hardware_config.digital_io.emergency_stop_button.pin_number}, "
+                       f"type {hardware_config.digital_io.emergency_stop_button.contact_type}, "
+                       f"edge {hardware_config.digital_io.emergency_stop_button.edge_type}")
+            logger.info(f"  - Left button: pin {hardware_config.digital_io.operator_start_button_left.pin_number}, "
+                       f"type {hardware_config.digital_io.operator_start_button_left.contact_type}, "
+                       f"edge {hardware_config.digital_io.operator_start_button_left.edge_type}")
+            logger.info(f"  - Right button: pin {hardware_config.digital_io.operator_start_button_right.pin_number}, "
+                       f"type {hardware_config.digital_io.operator_start_button_right.contact_type}, "
+                       f"edge {hardware_config.digital_io.operator_start_button_right.edge_type}")
+            logger.info(f"  - Safety sensors: door pin {hardware_config.digital_io.safety_door_closed_sensor.pin_number}, "
+                       f"clamp pin {hardware_config.digital_io.dut_clamp_safety_sensor.pin_number}, "
+                       f"chain pin {hardware_config.digital_io.dut_chain_safety_sensor.pin_number}")
 
             # Create callback function for button press
-            async def button_press_callback():
+            async def start_button_callback():
                 """Execute EOL test when both buttons are pressed"""
-                logger.info("Button press callback triggered - Starting EOL test...")
+                logger.info("🎯 VERIFICATION: Button press callback triggered - Starting EOL test...")
+                logger.info("🎯 VERIFICATION: Callback function successfully invoked")
 
                 try:
                     # Create DUT command info for test execution
-                    from application.use_cases.eol_force_test.main_executor import (  # noqa: E402
+                    from application.use_cases.eol_force_test.main_executor import (
                         EOLForceTestCommand,
                     )
                     from domain.value_objects.dut_command_info import (
-                        DUTCommandInfo,  # noqa: E402
+                        DUTCommandInfo,
                     )
 
                     # Default DUT info for button-triggered tests
@@ -188,7 +207,8 @@ async def main() -> None:
             # Create emergency stop callback
             async def emergency_stop_callback():
                 """Execute emergency stop procedure when emergency button is pressed"""
-                logger.critical("Emergency stop callback triggered!")
+                logger.critical("🚨 VERIFICATION: Emergency stop callback triggered!")
+                logger.critical("🚨 VERIFICATION: Emergency callback function successfully invoked")
                 try:
                     await emergency_stop_service.execute_emergency_stop()
                 except Exception as e:
@@ -198,19 +218,31 @@ async def main() -> None:
 
                     logger.debug(f"Emergency stop traceback: {traceback.format_exc()}")
 
-            button_monitoring_service = ButtonMonitoringService(
+            logger.info("🔧 VERIFICATION: Creating DIOMonitoringService...")
+            logger.info("🔧 VERIFICATION: Callback functions prepared - start_button_callback, emergency_stop_callback")
+            
+            button_monitoring_service = DIOMonitoringService(
                 digital_io_service=digital_io_service,
                 hardware_config=hardware_config,
                 eol_use_case=eol_force_test_use_case,
-                callback=button_press_callback,
+                callback=start_button_callback,
+                emergency_stop_callback=emergency_stop_callback,
             )
-
-            # Set emergency stop callback
-            button_monitoring_service.set_emergency_stop_callback(emergency_stop_callback)
+            
+            logger.info("🔧 VERIFICATION: DIOMonitoringService instance created successfully")
 
             # Start button monitoring in background
+            logger.info("🔧 VERIFICATION: Starting button monitoring in background...")
             await button_monitoring_service.start_monitoring()
-            logger.info("Button monitoring service created and started successfully")
+            logger.info("✅ VERIFICATION: Button monitoring service created and started successfully")
+            
+            # Verify monitoring status
+            is_monitoring = button_monitoring_service.is_monitoring()
+            logger.info(f"🔧 VERIFICATION: Monitoring active status: {is_monitoring}")
+            
+            # Run comprehensive verification report
+            logger.info("🔍 VERIFICATION: Running comprehensive verification report...")
+            await button_monitoring_service.print_verification_report()
         except Exception as e:
             logger.warning(f"Failed to create button monitoring service: {e}")
             button_monitoring_service = None

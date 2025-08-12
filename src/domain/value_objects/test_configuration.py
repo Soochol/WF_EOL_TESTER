@@ -2,6 +2,8 @@
 Test Configuration Value Object
 
 Immutable configuration object containing all test parameters and settings.
+This value object defines the complete test execution configuration including
+hardware settings, motion parameters, timing, and validation criteria.
 """
 
 from dataclasses import dataclass, field, replace
@@ -18,85 +20,126 @@ class TestConfiguration:
     """
     Test configuration value object containing all test parameters
 
-    This is an immutable value object that represents test configuration settings.
-    Two configurations with same values are considered identical.
+    This immutable value object represents complete test execution configuration.
+    It includes hardware settings, motion parameters, timing configurations,
+    test points, and validation criteria. Two configurations with identical
+    values are considered equal.
+
+    All measurements use consistent units:
+    - Distances: micrometers (μm)
+    - Velocities: micrometers per second (μm/s)
+    - Accelerations: micrometers per second squared (μm/s²)
+    - Times: seconds (s)
+    - Temperatures: degrees Celsius (°C)
+    - Forces: Newtons (N)
+    - Electrical: Volts (V), Amperes (A)
     """
 
-    # Power settings
-    voltage: float = 18.0
-    current: float = 20.0
-    upper_current: float = 30.0
+    # ========================================================================
+    # POWER SUPPLY SETTINGS
+    # ========================================================================
+    voltage: float = 18.0  # Operating voltage (V)
+    current: float = 20.0  # Operating current (A)
+    upper_current: float = 30.0  # Maximum current limit (A)
 
-    # MCU settings
-    upper_temperature: float = 80.0
-    activation_temperature: float = 60.0
-    standby_temperature: float = 40.0
-    fan_speed: int = 10
+    # ========================================================================
+    # MCU/TEMPERATURE CONTROLLER SETTINGS
+    # ========================================================================
+    upper_temperature: float = 80.0  # Maximum temperature limit (°C)
+    activation_temperature: float = 60.0  # Temperature activation threshold (°C)
+    standby_temperature: float = 40.0  # Standby temperature setting (°C)
+    fan_speed: int = 10  # Fan speed setting (0-10)
 
-    # Motion control settings (μm/s, μm/s²)
-    velocity: float = 60000.0  # μm/s
-    acceleration: float = 60000.0  # μm/s²
-    deceleration: float = 60000.0  # μm/s²
+    # ========================================================================
+    # MOTION CONTROL SETTINGS
+    # ========================================================================
+    velocity: float = 60000.0  # Operating velocity (μm/s)
+    acceleration: float = 60000.0  # Operating acceleration (μm/s²)
+    deceleration: float = 60000.0  # Operating deceleration (μm/s²)
 
-    # Positioning settings (μm)
-    initial_position: float = 10000.0  # μm (10mm)
-    max_stroke: float = 220000.0  # μm (240mm)
+    # ========================================================================
+    # POSITIONING SETTINGS
+    # ========================================================================
+    initial_position: float = 10000.0  # Starting position (μm)
+    max_stroke: float = 220000.0  # Maximum stroke length (μm)
 
-    # Test parameters
+    # ========================================================================
+    # TEST PARAMETERS
+    # ========================================================================
     temperature_list: List[float] = field(
         default_factory=lambda: [
-            38.0,
-            52.0,
-            66.0,
+            38.0,  # Low temperature test point (°C)
+            52.0,  # Medium temperature test point (°C)
+            66.0,  # High temperature test point (°C)
         ]
     )
     stroke_positions: List[float] = field(
         default_factory=lambda: [
-            10000.0,  # 10mm in μm
-            60000.0,  # 60mm in μm
-            120000.0,  # 140mm in μm
-            180000.0,  # 180mm in μm
-            220000.0,  # 220mm in μm
+            10000.0,  # 10mm position (μm)
+            60000.0,  # 60mm position (μm)
+            120000.0,  # 120mm position (μm)
+            180000.0,  # 180mm position (μm)
+            220000.0,  # 220mm position (μm)
         ]
     )
 
-    # Timing settings (in seconds)
-    stabilization_delay: float = 0.1  # Time to stabilize after hardware power on
-    temperature_stabilization: float = 0.1  # Time to stabilize after temperature change
-    standby_stabilization: float = 1.0  # Time to stabilize after lma stanby heating
-    power_stabilization: float = 0.5  # Time to stabilize after power on
-    loadcell_zero_delay: float = 0.1  # Time to zero loadcell after power on
-    mcu_stabilization: float = 3.0  # Time to stabilize after MCU operations
+    # ========================================================================
+    # TIMING/STABILIZATION SETTINGS
+    # ========================================================================
+    robot_move_stabilization: float = 0.1  # Post-movement stabilization time (s)
+    robot_standby_stabilization: float = 1.0  # Standby heating stabilization time (s)
+    mcu_temperature_stabilization: float = 0.1  # Temperature change stabilization time (s)
+    mcu_command_stabilization: float = 3.0  # MCU command stabilization time (s)
+    poweron_stabilization: float = 0.5  # Power-on stabilization time (s)
+    loadcell_zero_delay: float = 0.1  # Load cell zeroing delay (s)
 
-    # Measurement settings
-    measurement_tolerance: float = 0.001
-    force_precision: int = 2
-    temperature_precision: int = 1
+    # ========================================================================
+    # MEASUREMENT SETTINGS
+    # ========================================================================
+    measurement_tolerance: float = 0.001  # Measurement precision tolerance
+    force_precision: int = 2  # Force measurement decimal places
+    temperature_precision: int = 1  # Temperature measurement decimal places
 
-    # Test execution settings
-    retry_attempts: int = 3
-    timeout_seconds: float = 60.0
+    # ========================================================================
+    # TEST EXECUTION SETTINGS
+    # ========================================================================
+    retry_attempts: int = 3  # Number of retry attempts on failure
+    timeout_seconds: float = 60.0  # Test operation timeout (s)
 
-    # Pass/Fail criteria configuration
+    # ========================================================================
+    # PASS/FAIL CRITERIA
+    # ========================================================================
     pass_criteria: PassCriteria = field(default_factory=PassCriteria)
 
-    # Safety limits
-    max_voltage: float = 30.0
-    max_current: float = 30.0
-    max_velocity: float = 100000.0  # μm/s
-    max_acceleration: float = 100000.0  # μm/s²
-    max_deceleration: float = 100000.0  # μm/s²
+    # ========================================================================
+    # SAFETY LIMITS
+    # ========================================================================
+    max_voltage: float = 30.0  # Maximum allowed voltage (V)
+    max_current: float = 30.0  # Maximum allowed current (A)
+    max_velocity: float = 60000.0  # Maximum allowed velocity (μm/s)
+    max_acceleration: float = 60000.0  # Maximum allowed acceleration (μm/s²)
+    max_deceleration: float = 60000.0  # Maximum allowed deceleration (μm/s²)
 
     def __post_init__(self) -> None:
-        """Validate configuration after initialization"""
-        self._validate_hardware_settings()
-        self._validate_test_parameters()
-        self._validate_safety_limits()
-        self._validate_motion_parameters()
-        self._validate_timing_settings()
+        """Validate configuration after initialization
 
-    def _validate_hardware_settings(self) -> None:
-        """Validate hardware configuration parameters"""
+        Performs comprehensive validation of all configuration parameters
+        to ensure they are within valid ranges and logically consistent.
+
+        Raises:
+            ValidationException: If any parameter is invalid
+        """
+        self._validate_power_settings()
+        self._validate_mcu_settings()
+        self._validate_motion_parameters()
+        self._validate_positioning_settings()
+        self._validate_test_parameters()
+        self._validate_timing_settings()
+        self._validate_measurement_settings()
+        self._validate_safety_limits()
+
+    def _validate_power_settings(self) -> None:
+        """Validate power supply configuration parameters"""
         if self.voltage <= 0:
             raise ValidationException(
                 "voltage",
@@ -111,6 +154,22 @@ class TestConfiguration:
                 "Current must be positive",
             )
 
+        if self.upper_current <= 0:
+            raise ValidationException(
+                "upper_current",
+                self.upper_current,
+                "Upper current limit must be positive",
+            )
+
+        if self.upper_current <= self.current:
+            raise ValidationException(
+                "upper_current",
+                self.upper_current,
+                f"Upper current limit must be greater than operating current ({self.current}A)",
+            )
+
+    def _validate_mcu_settings(self) -> None:
+        """Validate MCU/temperature controller configuration parameters"""
         if self.upper_temperature <= 0:
             raise ValidationException(
                 "upper_temperature",
@@ -118,13 +177,44 @@ class TestConfiguration:
                 "Upper temperature must be positive",
             )
 
+        if self.activation_temperature <= 0:
+            raise ValidationException(
+                "activation_temperature",
+                self.activation_temperature,
+                "Activation temperature must be positive",
+            )
+
+        if self.standby_temperature <= 0:
+            raise ValidationException(
+                "standby_temperature",
+                self.standby_temperature,
+                "Standby temperature must be positive",
+            )
+
         if not 0 <= self.fan_speed <= 10:
             raise ValidationException(
                 "fan_speed",
                 self.fan_speed,
-                "Fan speed must be between 0 and 100",
+                "Fan speed must be between 0 and 10",
             )
 
+        # Logical temperature relationships
+        if self.activation_temperature >= self.upper_temperature:
+            raise ValidationException(
+                "activation_temperature",
+                self.activation_temperature,
+                f"Activation temperature must be less than upper temperature ({self.upper_temperature}°C)",
+            )
+
+        if self.standby_temperature >= self.activation_temperature:
+            raise ValidationException(
+                "standby_temperature",
+                self.standby_temperature,
+                f"Standby temperature must be less than activation temperature ({self.activation_temperature}°C)",
+            )
+
+    def _validate_positioning_settings(self) -> None:
+        """Validate positioning configuration parameters"""
         if self.max_stroke <= 0:
             raise ValidationException(
                 "max_stroke",
@@ -137,6 +227,13 @@ class TestConfiguration:
                 "initial_position",
                 self.initial_position,
                 "Initial position cannot be negative",
+            )
+
+        if self.initial_position >= self.max_stroke:
+            raise ValidationException(
+                "initial_position",
+                self.initial_position,
+                f"Initial position must be less than max stroke ({self.max_stroke}μm)",
             )
 
     def _validate_test_parameters(self) -> None:
@@ -167,6 +264,23 @@ class TestConfiguration:
                 "stroke_positions",
                 self.stroke_positions,
                 "All stroke positions must be non-negative",
+            )
+
+        # Validate stroke positions are within max_stroke
+        invalid_positions = [pos for pos in self.stroke_positions if pos > self.max_stroke]
+        if invalid_positions:
+            raise ValidationException(
+                "stroke_positions",
+                invalid_positions,
+                f"All stroke positions must be within max stroke ({self.max_stroke}μm)",
+            )
+
+        # Validate temperature test points are reasonable
+        if any(temp < -50 or temp > 150 for temp in self.temperature_list):
+            raise ValidationException(
+                "temperature_list",
+                self.temperature_list,
+                "Temperature test points should be between -50°C and 150°C",
             )
 
     def _validate_safety_limits(self) -> None:
@@ -231,24 +345,14 @@ class TestConfiguration:
             )
 
     def _validate_timing_settings(self) -> None:
-        """Validate timing configuration parameters"""
+        """Validate timing/stabilization configuration parameters"""
         timing_fields = [
-            (
-                "stabilization_delay",
-                self.stabilization_delay,
-            ),
-            (
-                "temperature_stabilization",
-                self.temperature_stabilization,
-            ),
-            (
-                "power_stabilization",
-                self.power_stabilization,
-            ),
-            (
-                "loadcell_zero_delay",
-                self.loadcell_zero_delay,
-            ),
+            ("robot_move_stabilization", self.robot_move_stabilization),
+            ("robot_standby_stabilization", self.robot_standby_stabilization),
+            ("mcu_temperature_stabilization", self.mcu_temperature_stabilization),
+            ("mcu_command_stabilization", self.mcu_command_stabilization),
+            ("poweron_stabilization", self.poweron_stabilization),
+            ("loadcell_zero_delay", self.loadcell_zero_delay),
             ("timeout_seconds", self.timeout_seconds),
         ]
 
@@ -260,6 +364,14 @@ class TestConfiguration:
                     f"{field_name} must be positive",
                 )
 
+        # Validate reasonable timing ranges
+        if self.timeout_seconds > 3600:  # 1 hour
+            raise ValidationException(
+                "timeout_seconds",
+                self.timeout_seconds,
+                "Timeout should not exceed 1 hour (3600 seconds)",
+            )
+
         if self.retry_attempts < 0:
             raise ValidationException(
                 "retry_attempts",
@@ -267,6 +379,15 @@ class TestConfiguration:
                 "Retry attempts cannot be negative",
             )
 
+        if self.retry_attempts > 10:
+            raise ValidationException(
+                "retry_attempts",
+                self.retry_attempts,
+                "Retry attempts should not exceed 10",
+            )
+
+    def _validate_measurement_settings(self) -> None:
+        """Validate measurement precision and tolerance parameters"""
         if self.measurement_tolerance <= 0:
             raise ValidationException(
                 "measurement_tolerance",
@@ -288,6 +409,20 @@ class TestConfiguration:
                 "Temperature precision cannot be negative",
             )
 
+        if self.force_precision > 10:
+            raise ValidationException(
+                "force_precision",
+                self.force_precision,
+                "Force precision should not exceed 10 decimal places",
+            )
+
+        if self.temperature_precision > 5:
+            raise ValidationException(
+                "temperature_precision",
+                self.temperature_precision,
+                "Temperature precision should not exceed 5 decimal places",
+            )
+
     def is_valid(self) -> bool:
         """
         Check if configuration is valid
@@ -302,38 +437,67 @@ class TestConfiguration:
             return False
 
     def get_temperature_count(self) -> int:
-        """Get number of temperature test points"""
+        """Get number of temperature test points
+
+        Returns:
+            Number of temperature points in the test sequence
+        """
         return len(self.temperature_list)
 
     def get_position_count(self) -> int:
-        """Get number of stroke position test points"""
+        """Get number of stroke position test points
+
+        Returns:
+            Number of position points in the test sequence
+        """
         return len(self.stroke_positions)
 
     def get_total_measurement_points(self) -> int:
-        """Get total number of measurement points (temperature × position)"""
+        """Get total number of measurement points (temperature × position)
+
+        Returns:
+            Total measurement points in the complete test matrix
+        """
         return self.get_temperature_count() * self.get_position_count()
 
     def estimate_test_duration_seconds(self) -> float:
         """
         Estimate total test duration in seconds
 
+        Calculates expected test duration based on:
+        - Setup and cleanup time
+        - Temperature stabilization time
+        - Robot movement time
+        - Measurement acquisition time
+
         Returns:
-            Estimated duration based on stabilization times and measurement points
+            Estimated total test duration in seconds
         """
-        setup_time = 30.0  # Estimated setup time
-        cleanup_time = 15.0  # Estimated cleanup time
+        # Fixed overhead times
+        setup_time = 30.0  # Initial hardware setup
+        cleanup_time = 15.0  # Final cleanup and shutdown
 
-        # Time per temperature change
-        temp_change_time = self.temperature_stabilization * self.get_temperature_count()
+        # Temperature-related timing
+        temp_change_time = self.mcu_temperature_stabilization * self.get_temperature_count()
+        temp_command_time = self.mcu_command_stabilization * self.get_temperature_count()
 
-        # Time per position change
-        position_change_time = self.stabilization_delay * self.get_total_measurement_points()
+        # Movement-related timing
+        position_change_time = self.robot_move_stabilization * self.get_total_measurement_points()
 
-        # Measurement time (estimated 1 second per measurement)
+        # Power and setup timing
+        power_setup_time = self.poweron_stabilization + self.loadcell_zero_delay
+
+        # Measurement acquisition time (estimated 1 second per measurement)
         measurement_time = self.get_total_measurement_points() * 1.0
 
         return (
-            setup_time + temp_change_time + position_change_time + measurement_time + cleanup_time
+            setup_time
+            + cleanup_time
+            + power_setup_time
+            + temp_change_time
+            + temp_command_time
+            + position_change_time
+            + measurement_time
         )
 
     def with_overrides(self, **overrides) -> "TestConfiguration":
@@ -362,6 +526,37 @@ class TestConfiguration:
         # Create new instance using dataclasses.replace
         return replace(self, **processed_overrides)
 
+    def get_safety_violations(self) -> List[str]:
+        """Check for any safety limit violations
+
+        Returns:
+            List of safety violation messages, empty if no violations
+        """
+        violations = []
+
+        if self.voltage > self.max_voltage:
+            violations.append(f"Voltage {self.voltage}V exceeds safety limit {self.max_voltage}V")
+
+        if self.current > self.max_current:
+            violations.append(f"Current {self.current}A exceeds safety limit {self.max_current}A")
+
+        if self.velocity > self.max_velocity:
+            violations.append(
+                f"Velocity {self.velocity}μm/s exceeds safety limit {self.max_velocity}μm/s"
+            )
+
+        if self.acceleration > self.max_acceleration:
+            violations.append(
+                f"Acceleration {self.acceleration}μm/s² exceeds safety limit {self.max_acceleration}μm/s²"
+            )
+
+        if self.deceleration > self.max_deceleration:
+            violations.append(
+                f"Deceleration {self.deceleration}μm/s² exceeds safety limit {self.max_deceleration}μm/s²"
+            )
+
+        return violations
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary representation"""
         return {
@@ -382,12 +577,14 @@ class TestConfiguration:
             "temperature_list": self.temperature_list.copy(),
             "stroke_positions": self.stroke_positions.copy(),
             # Timing settings
-            "stabilization_delay": self.stabilization_delay,
-            "temperature_stabilization": self.temperature_stabilization,
-            "standby_stabilization": self.standby_stabilization,  # CRITICAL missing field added!
-            "power_stabilization": self.power_stabilization,
+            "robot_move_stabilization": self.robot_move_stabilization,
+            "mcu_temperature_stabilization": self.mcu_temperature_stabilization,
+            "robot_standby_stabilization": (
+                self.robot_standby_stabilization
+            ),  # CRITICAL missing field added!
+            "poweron_stabilization": self.poweron_stabilization,
             "loadcell_zero_delay": self.loadcell_zero_delay,
-            "mcu_stabilization": self.mcu_stabilization,
+            "mcu_command_stabilization": self.mcu_command_stabilization,
             # Measurement settings
             "measurement_tolerance": self.measurement_tolerance,
             "force_precision": self.force_precision,
@@ -428,6 +625,64 @@ class TestConfiguration:
             data_copy["pass_criteria"] = PassCriteria.from_dict(data_copy["pass_criteria"])
 
         return cls(**data_copy)
+
+    def to_structured_dict(self) -> Dict[str, Any]:
+        """Convert configuration to structured (nested) dictionary representation for better YAML readability"""
+        return {
+            # Hardware section
+            "hardware": {
+                "voltage": self.voltage,
+                "current": self.current,
+                "upper_current": self.upper_current,
+                "upper_temperature": self.upper_temperature,
+                "activation_temperature": self.activation_temperature,
+                "standby_temperature": self.standby_temperature,
+                "fan_speed": self.fan_speed,
+                "max_stroke": self.max_stroke,
+                "initial_position": self.initial_position,
+            },
+            # Motion control section
+            "motion_control": {
+                "velocity": self.velocity,
+                "acceleration": self.acceleration,
+                "deceleration": self.deceleration,
+            },
+            # Timing section
+            "timing": {
+                "robot_move_stabilization": self.robot_move_stabilization,
+                "mcu_temperature_stabilization": self.mcu_temperature_stabilization,
+                "robot_standby_stabilization": self.robot_standby_stabilization,
+                "poweron_stabilization": self.poweron_stabilization,
+                "loadcell_zero_delay": self.loadcell_zero_delay,
+                "mcu_command_stabilization": self.mcu_command_stabilization,
+            },
+            # Test parameters section
+            "test_parameters": {
+                "temperature_list": self.temperature_list.copy(),
+                "stroke_positions": self.stroke_positions.copy(),
+            },
+            # Safety section
+            "safety": {
+                "max_voltage": self.max_voltage,
+                "max_current": self.max_current,
+                "max_velocity": self.max_velocity,
+                "max_acceleration": self.max_acceleration,
+                "max_deceleration": self.max_deceleration,
+            },
+            # Execution section
+            "execution": {
+                "retry_attempts": self.retry_attempts,
+                "timeout_seconds": self.timeout_seconds,
+            },
+            # Tolerances section
+            "tolerances": {
+                "measurement_tolerance": self.measurement_tolerance,
+                "force_precision": self.force_precision,
+                "temperature_precision": self.temperature_precision,
+            },
+            # Pass criteria (keep as nested object)
+            "pass_criteria": self.pass_criteria.to_dict(),
+        }
 
     @classmethod
     def from_structured_dict(cls, structured_data: Dict[str, Any]) -> "TestConfiguration":
@@ -518,11 +773,14 @@ class TestConfiguration:
             timing = structured_data["timing"]
             flattened.update(
                 {
-                    "stabilization_delay": timing.get("stabilization_delay", 0.1),
-                    "temperature_stabilization": timing.get("temperature_stabilization", 0.1),
-                    "standby_stabilization": timing.get("standby_stabilization", 1.0),
-                    "power_stabilization": timing.get("power_stabilization", 0.5),
+                    "robot_move_stabilization": timing.get("robot_move_stabilization", 0.1),
+                    "mcu_temperature_stabilization": timing.get(
+                        "mcu_temperature_stabilization", 0.1
+                    ),
+                    "robot_standby_stabilization": timing.get("robot_standby_stabilization", 1.0),
+                    "poweron_stabilization": timing.get("poweron_stabilization", 0.5),
                     "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
+                    "mcu_command_stabilization": timing.get("mcu_command_stabilization", 3.0),
                 }
             )
 
@@ -554,9 +812,9 @@ class TestConfiguration:
                 {
                     "max_voltage": safety.get("max_voltage", 30.0),
                     "max_current": safety.get("max_current", 30.0),
-                    "max_velocity": safety.get("max_velocity", 100000.0),
-                    "max_acceleration": safety.get("max_acceleration", 100000.0),
-                    "max_deceleration": safety.get("max_deceleration", 100000.0),
+                    "max_velocity": safety.get("max_velocity", 60000.0),
+                    "max_acceleration": safety.get("max_acceleration", 60000.0),
+                    "max_deceleration": safety.get("max_deceleration", 60000.0),
                 }
             )
 
@@ -610,12 +868,16 @@ class TestConfiguration:
         return cls.from_dict(flattened)
 
     def __str__(self) -> str:
+        """Human-readable string representation"""
         duration = self.estimate_test_duration_seconds()
         points = self.get_total_measurement_points()
-        return f"TestConfiguration({self.voltage}V, {self.current}A, {points} points, ~{duration:.0f}s)"
+        mode = "SAFE" if not self.get_safety_violations() else "UNSAFE"
+        return f"TestConfiguration({self.voltage}V, {self.current}A, {points} points, ~{duration:.0f}s, {mode})"
 
     def __repr__(self) -> str:
+        """Debug representation"""
         return (
             f"TestConfiguration(voltage={self.voltage}, current={self.current}, "
-            f"temperatures={len(self.temperature_list)}, positions={len(self.stroke_positions)})"
+            f"temperatures={len(self.temperature_list)}, positions={len(self.stroke_positions)}, "
+            f"max_stroke={self.max_stroke}, pass_criteria={self.pass_criteria!r})"
         )

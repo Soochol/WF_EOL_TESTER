@@ -218,26 +218,34 @@ class LMAMCU(MCUService):
         try:
             # Send operating temperature command with flexible response handling
             logger.debug("🚀 Sending CMD_SET_OPERATING_TEMP with flexible response handling")
-            
+
             max_retries = 3
             for retry_count in range(max_retries):
                 try:
-                    logger.debug(f"🔄 Attempt {retry_count + 1}/{max_retries} for complete CMD_SET_OPERATING_TEMP sequence")
-                    await self._send_command(CMD_SET_OPERATING_TEMP, self._encode_temperature(target_temp))
-                    
+                    logger.debug(
+                        f"🔄 Attempt {retry_count + 1}/{max_retries} for complete CMD_SET_OPERATING_TEMP sequence"
+                    )
+                    await self._send_command(
+                        CMD_SET_OPERATING_TEMP, self._encode_temperature(target_temp)
+                    )
+
                     # Wait for first response - could be either STATUS_OPERATING_TEMP_OK or STATUS_OPERATING_TEMP_REACHED
                     first_response = await self._receive_response(timeout=self._timeout)
-                    
+
                     if not first_response:
                         raise LMACommunicationError("No response received")
-                    
+
                     if first_response["status"] == STATUS_OPERATING_TEMP_REACHED:
                         # Case 2: Final response received directly
-                        logger.info("✅ Temperature setting completed - direct final response received")
+                        logger.info(
+                            "✅ Temperature setting completed - direct final response received"
+                        )
                         break
                     elif first_response["status"] == STATUS_OPERATING_TEMP_OK:
                         # Case 1: Intermediate response, wait for final response
-                        logger.debug("📨 Intermediate response (STATUS_OPERATING_TEMP_OK) received, waiting for final response")
+                        logger.debug(
+                            "📨 Intermediate response (STATUS_OPERATING_TEMP_OK) received, waiting for final response"
+                        )
                         await asyncio.wait_for(
                             self._wait_for_response(STATUS_OPERATING_TEMP_REACHED),
                             timeout=self._timeout,
@@ -245,18 +253,24 @@ class LMAMCU(MCUService):
                         logger.info("✅ Temperature setting completed - both responses received")
                         break
                     else:
-                        raise LMACommunicationError(f"Unexpected first response: 0x{first_response['status']:02X}, expected 0x{STATUS_OPERATING_TEMP_OK:02X} or 0x{STATUS_OPERATING_TEMP_REACHED:02X}")
-                        
+                        raise LMACommunicationError(
+                            f"Unexpected first response: 0x{first_response['status']:02X}, expected 0x{STATUS_OPERATING_TEMP_OK:02X} or 0x{STATUS_OPERATING_TEMP_REACHED:02X}"
+                        )
+
                 except (asyncio.TimeoutError, LMACommunicationError) as e:
                     error_msg = str(e)
-                    logger.error(f"🚨 Complete sequence failed in attempt {retry_count + 1}/{max_retries}: {type(e).__name__}: {error_msg}")
-                    
+                    logger.error(
+                        f"🚨 Complete sequence failed in attempt {retry_count + 1}/{max_retries}: {type(e).__name__}: {error_msg}"
+                    )
+
                     if retry_count < max_retries - 1:
                         logger.warning("⚠️ Retrying complete sequence from beginning...")
                         await asyncio.sleep(0.1)  # Brief delay before retry
                         continue
                     else:
-                        logger.error(f"💥 All {max_retries} attempts failed for CMD_SET_OPERATING_TEMP complete sequence")
+                        logger.error(
+                            f"💥 All {max_retries} attempts failed for CMD_SET_OPERATING_TEMP complete sequence"
+                        )
                         raise
             self._target_temperature = target_temp
 
@@ -864,6 +878,10 @@ class LMAMCU(MCUService):
         Returns:
             Dictionary with packet data if valid, None if invalid
         """
+        if not self._connection:
+            logger.error("Connection not available for packet validation")
+            return None
+
         try:
             # Read STATUS and LEN (header)
             header = await self._connection.read(FRAME_CMD_SIZE + FRAME_LEN_SIZE, timeout)

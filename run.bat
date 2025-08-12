@@ -33,8 +33,53 @@ if not exist "main.py" (
     exit /b 1
 )
 
-REM Start maximized console window and run the application
-start "WF EOL Tester" /max cmd /k "cd /d %~dp0 && if exist venv\Scripts\activate.bat (echo [INFO] Activating virtual environment... && call venv\Scripts\activate.bat && echo [INFO] Virtual environment activated) else (echo [WARNING] Using system Python...) && echo. && echo ======================================================================== && echo WF EOL Tester - Starting Application && echo ======================================================================== && echo. && python main.py && echo. && echo ======================================================================== && if errorlevel 1 (echo [ERROR] Application exited with error) else (echo [INFO] Application exited normally) && echo ======================================================================== && echo. && echo Press any key to close this window... && pause >nul"
+REM Create temporary batch file for execution
+echo @echo off > temp_runner.bat
+echo setlocal >> temp_runner.bat
+echo. >> temp_runner.bat
+echo REM Change to application directory >> temp_runner.bat
+echo cd /d "%~dp0" >> temp_runner.bat
+echo. >> temp_runner.bat
+echo REM Check and activate virtual environment >> temp_runner.bat
+echo if exist venv\Scripts\activate.bat ^( >> temp_runner.bat
+echo     echo [INFO] Activating virtual environment... >> temp_runner.bat
+echo     call venv\Scripts\activate.bat >> temp_runner.bat
+echo     echo [INFO] Virtual environment activated >> temp_runner.bat
+echo ^) else ^( >> temp_runner.bat
+echo     echo [WARNING] Using system Python... >> temp_runner.bat
+echo ^) >> temp_runner.bat
+echo. >> temp_runner.bat
+echo echo. >> temp_runner.bat
+echo echo ======================================================================== >> temp_runner.bat
+echo echo WF EOL Tester - Starting Application >> temp_runner.bat
+echo echo ======================================================================== >> temp_runner.bat
+echo echo. >> temp_runner.bat
+echo. >> temp_runner.bat
+echo REM Run the main application >> temp_runner.bat
+echo python main.py >> temp_runner.bat
+echo. >> temp_runner.bat
+echo REM Check exit status >> temp_runner.bat
+echo if errorlevel 1 ^( >> temp_runner.bat
+echo     echo. >> temp_runner.bat
+echo     echo ======================================================================== >> temp_runner.bat
+echo     echo [ERROR] Application exited with error >> temp_runner.bat
+echo     echo ======================================================================== >> temp_runner.bat
+echo ^) else ^( >> temp_runner.bat
+echo     echo. >> temp_runner.bat
+echo     echo ======================================================================== >> temp_runner.bat
+echo     echo [INFO] Application exited normally >> temp_runner.bat
+echo     echo ======================================================================== >> temp_runner.bat
+echo ^) >> temp_runner.bat
+echo. >> temp_runner.bat
+echo echo. >> temp_runner.bat
+echo echo Press any key to close this window... >> temp_runner.bat
+echo pause ^>nul >> temp_runner.bat
+echo. >> temp_runner.bat
+echo REM Clean up temporary file >> temp_runner.bat
+echo del "%~dp0temp_runner.bat" 2^>nul >> temp_runner.bat
+
+REM Execute the temporary batch file in maximized window
+start "WF EOL Tester" /max cmd /c temp_runner.bat
 
 REM Exit the launcher batch file
 exit

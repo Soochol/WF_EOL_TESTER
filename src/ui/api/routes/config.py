@@ -51,6 +51,37 @@ async def list_profiles(container: DIContainer = Depends(get_container)):
         ) from e
 
 
+@router.get("/current")
+async def get_current_configuration(container: DIContainer = Depends(get_container)):
+    """Get current active test configuration with motion parameters"""
+    try:
+        config_service = container.configuration_service()
+        
+        # Get current active profile name
+        profile_name = await config_service.get_active_profile_name()
+        
+        # Load current test configuration
+        test_config = await config_service.load_configuration(profile_name)
+        
+        # Return motion parameters for UI
+        return {
+            "profile_name": profile_name,
+            "velocity": test_config.velocity,
+            "acceleration": test_config.acceleration,
+            "deceleration": test_config.deceleration,
+            "max_velocity": test_config.max_velocity,
+            "max_acceleration": test_config.max_acceleration,
+            "max_deceleration": test_config.max_deceleration
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get current configuration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get current configuration: {str(e)}",
+        ) from e
+
+
 @router.get("/profiles/usage", response_model=ProfileUsageResponse)
 async def get_profile_usage(container: DIContainer = Depends(get_container)):
     """Get profile usage information"""

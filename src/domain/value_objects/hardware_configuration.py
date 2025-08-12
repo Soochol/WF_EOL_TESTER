@@ -25,91 +25,212 @@ SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {
 
 
 @dataclass(frozen=True)
+class DigitalPin:
+    """Configuration for a single digital I/O pin with contact type and edge detection"""
+
+    pin_number: int  # Hardware pin number
+    contact_type: str  # "A" (Normally Open) or "B" (Normally Closed)
+    edge_type: str  # "rising", "falling", "both"
+    name: str  # Human-readable name for logging/identification
+
+    def __post_init__(self) -> None:
+        """Validate pin configuration after initialization"""
+        if self.pin_number < 0:
+            raise ValidationException(
+                "pin_number", self.pin_number, "Pin number cannot be negative"
+            )
+
+        if self.contact_type not in ["A", "B"]:
+            raise ValidationException(
+                "contact_type",
+                self.contact_type,
+                "Contact type must be 'A' (Normally Open) or 'B' (Normally Closed)",
+            )
+
+        if self.edge_type not in ["rising", "falling", "both"]:
+            raise ValidationException(
+                "edge_type", self.edge_type, "Edge type must be 'rising', 'falling', or 'both'"
+            )
+
+        if not self.name or not self.name.strip():
+            raise ValidationException("name", self.name, "Pin name cannot be empty")
+
+
+@dataclass(frozen=True)
 class RobotConfig:
-    """Robot motion configuration"""
+    """Robot controller configuration (AJINEXTEK)
 
-    # Connection parameters (AJINEXTEK specific)
-    irq_no: int = 7
+    Configures connection parameters for the AJINEXTEK robot controller.
+    Motion parameters are configured separately in TestConfiguration.
+    """
 
-    # Motion control parameters
-    axis_id: int = 0
-
-    # Motion parameters
-    velocity: float = 200.0
-    acceleration: float = 1000.0
-    deceleration: float = 1000.0
+    # Hardware connection parameters
+    irq_no: int = 7  # Hardware interrupt number for AJINEXTEK controller
+    axis_id: int = 0  # Robot axis identifier (typically 0 for single-axis systems)
 
 
 @dataclass(frozen=True)
 class LoadCellConfig:
-    """LoadCell device configuration (BS205)"""
+    """Load Cell / Force Sensor configuration (BS205)
 
-    # Connection parameters
-    port: str = "COM8"
-    baudrate: int = 9600
-    timeout: float = 1.0
-    bytesize: int = 8
-    stopbits: int = 1
-    parity: Optional[str] = "even"  # None, 'even', 'odd', 'mark', 'space'
-    indicator_id: int = 0
+    Configures serial communication parameters and device settings
+    for the BS205 load cell indicator.
+    """
+
+    # Serial communication parameters
+    port: str = "COM8"  # Serial port (Windows: COMx, Linux: /dev/ttyUSBx)
+    baudrate: int = 9600  # Communication speed (9600 bps for BS205)
+    timeout: float = 1.0  # Read timeout in seconds
+
+    # Serial protocol settings
+    bytesize: int = 8  # Data bits (8-bit data)
+    stopbits: int = 1  # Stop bits (1 stop bit)
+    parity: Optional[str] = "even"  # Parity checking (even parity for BS205)
+
+    # Device configuration
+    indicator_id: int = 0  # Load cell indicator ID
 
 
 @dataclass(frozen=True)
 class MCUConfig:
-    """MCU device configuration (LMA)"""
+    """MCU / Temperature Controller configuration (LMA)
 
-    # Connection parameters
-    port: str = "COM9"
-    baudrate: int = 115200
-    timeout: float = 60.0
-    bytesize: int = 8
-    stopbits: int = 1
-    parity: Optional[str] = None  # None, 'even', 'odd', 'mark', 'space'
+    Configures serial communication parameters for the LMA
+    temperature controller MCU.
+    """
+
+    # Serial communication parameters
+    port: str = "COM9"  # Serial port (Windows: COMx, Linux: /dev/ttyUSBx)
+    baudrate: int = 115200  # Communication speed (115200 bps for LMA)
+    timeout: float = 60.0  # Read timeout in seconds (longer for complex operations)
+
+    # Serial protocol settings
+    bytesize: int = 8  # Data bits (8-bit data)
+    stopbits: int = 1  # Stop bits (1 stop bit)
+    parity: Optional[str] = None  # Parity checking (no parity for LMA)
 
 
 @dataclass(frozen=True)
 class PowerConfig:
-    """Power supply configuration (ODA)"""
+    """Power Supply System configuration (ODA)
 
-    # Connection parameters
-    host: str = "192.168.11.1"
-    port: int = 5000
-    timeout: float = 5.0
-    channel: int = 1
+    Configures network connection parameters and device settings
+    for the ODA power supply system.
+    """
 
-    # Communication parameters
+    # Network connection parameters
+    host: str = "192.168.11.1"  # IP address of the power supply
+    port: int = 5000  # TCP port for communication
+    timeout: float = 5.0  # Connection timeout in seconds
+
+    # Device configuration
+    channel: int = 1  # Power supply channel to use
+
+    # Communication protocol settings
     delimiter: Optional[str] = "\n"  # Command terminator (None = TCP driver handles)
 
 
 @dataclass(frozen=True)
 class DigitalIOConfig:
-    """Digital Input configuration (AJINEXTEK)"""
+    """Digital I/O Interface configuration (AJINEXTEK)
 
-    # Digital Input connection parameters
+    Configures digital input and output pin assignments for the
+    AJINEXTEK digital I/O interface board using structured DigitalPin objects.
+    """
 
-    # Operator start buttons (B-contact/Normally Closed)
-    operator_start_button_left: int = 8
-    operator_start_button_right: int = 9
+    # ========================================================================
+    # DIGITAL INPUT PINS (Structured with contact type and edge detection)
+    # ========================================================================
 
-    # Safety sensor parameters
-    # Sensor to verify product is safely clamped
-    dut_clamp_safety_sensor: int = 10
-    # Sensor to verify product is properly chained for safe operation
-    dut_chain_safety_sensor: int = 11
+    # Safety System Inputs
+    emergency_stop_button: DigitalPin = field(
+        default=DigitalPin(3, "A", "rising", "emergency_stop")
+    )  # Emergency stop button (A-contact, rising edge = pressed)
 
-    # Sensor to verify that safety door is closed
-    safety_door_closed_sensor: int = 12
+    safety_door_closed_sensor: DigitalPin = field(
+        default=DigitalPin(10, "B", "rising", "door_sensor")
+    )  # Safety door closed verification sensor (A-contact, rising = closed)
 
-    # emergency stop button
-    emergency_stop_button: int = 3
+    dut_clamp_safety_sensor: DigitalPin = field(
+        default=DigitalPin(14, "A", "rising", "clamp_sensor")
+    )  # DUT clamping safety verification sensor (A-contact, rising = clamped)
 
-    # Digital Output parameters
+    dut_chain_safety_sensor: DigitalPin = field(
+        default=DigitalPin(15, "A", "rising", "chain_sensor")
+    )  # DUT chain safety verification sensor (A-contact, rising = chained)
 
-    servo1_brake_release: int = 0
-    tower_lamp_red: int = 4
-    tower_lamp_yellow: int = 5
-    tower_lamp_green: int = 6
-    beep: int = 7
+    # Operator Control Inputs (B-contact/Normally Closed)
+    operator_start_button_left: DigitalPin = field(
+        default=DigitalPin(8, "B", "falling", "left_button")
+    )  # Left operator start button (B-contact, falling edge = pressed)
+
+    operator_start_button_right: DigitalPin = field(
+        default=DigitalPin(9, "B", "falling", "right_button")
+    )  # Right operator start button (B-contact, falling edge = pressed)
+
+    # ========================================================================
+    # DIGITAL OUTPUT PINS (Simple pin numbers - outputs don't need edge detection)
+    # ========================================================================
+
+    # Motion Control Outputs
+    servo1_brake_release: int = 0  # Servo brake release control
+
+    # Status Indicator Outputs
+    tower_lamp_red: int = 4  # Red warning/error light
+    tower_lamp_yellow: int = 5  # Yellow caution/processing light
+    tower_lamp_green: int = 6  # Green ready/success light
+    beep: int = 7  # Audio signal output
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DigitalIOConfig":
+        """
+        Create DigitalIOConfig from dictionary
+        
+        Args:
+            data: Dictionary containing digital I/O configuration
+            
+        Returns:
+            DigitalIOConfig instance
+        """
+        # Helper function to create DigitalPin from dict or use default
+        def create_digital_pin(pin_data: Any, default_pin: DigitalPin) -> DigitalPin:
+            if isinstance(pin_data, dict):
+                return DigitalPin(
+                    pin_number=pin_data.get("pin_number", default_pin.pin_number),
+                    contact_type=pin_data.get("contact_type", default_pin.contact_type),
+                    edge_type=pin_data.get("edge_type", default_pin.edge_type),
+                    name=pin_data.get("name", default_pin.name),
+                )
+            return default_pin
+
+        # Create default instance to get default values
+        defaults = cls()
+
+        return cls(
+            emergency_stop_button=create_digital_pin(
+                data.get("emergency_stop_button"), defaults.emergency_stop_button
+            ),
+            safety_door_closed_sensor=create_digital_pin(
+                data.get("safety_door_closed_sensor"), defaults.safety_door_closed_sensor
+            ),
+            dut_clamp_safety_sensor=create_digital_pin(
+                data.get("dut_clamp_safety_sensor"), defaults.dut_clamp_safety_sensor
+            ),
+            dut_chain_safety_sensor=create_digital_pin(
+                data.get("dut_chain_safety_sensor"), defaults.dut_chain_safety_sensor
+            ),
+            operator_start_button_left=create_digital_pin(
+                data.get("operator_start_button_left"), defaults.operator_start_button_left
+            ),
+            operator_start_button_right=create_digital_pin(
+                data.get("operator_start_button_right"), defaults.operator_start_button_right
+            ),
+            servo1_brake_release=data.get("servo1_brake_release", defaults.servo1_brake_release),
+            tower_lamp_red=data.get("tower_lamp_red", defaults.tower_lamp_red),
+            tower_lamp_yellow=data.get("tower_lamp_yellow", defaults.tower_lamp_yellow),
+            tower_lamp_green=data.get("tower_lamp_green", defaults.tower_lamp_green),
+            beep=data.get("beep", defaults.beep),
+        )
 
 
 @dataclass(frozen=True)
@@ -117,8 +238,12 @@ class HardwareConfiguration:
     """
     Hardware configuration value object containing all device connection parameters
 
-    This is an immutable value object that represents hardware device configurations.
-    Each hardware device has its own configuration section with connection parameters.
+    This immutable value object represents the complete hardware system configuration,
+    including connection parameters for all devices: robot controller, load cell,
+    MCU temperature controller, power supply, and digital I/O interface.
+
+    Each hardware device has its own configuration section with device-specific
+    connection and communication parameters.
     """
 
     robot: RobotConfig = field(default_factory=RobotConfig)
@@ -151,7 +276,12 @@ class HardwareConfiguration:
 
     def _validate_communication_configs(self) -> None:
         """Validate communication configuration parameters"""
-        # LoadCell validation
+        self._validate_loadcell_config()
+        self._validate_mcu_config()
+        # Digital IO validation - pin assignments are validated implicitly by dataclass
+
+    def _validate_loadcell_config(self) -> None:
+        """Validate LoadCell configuration parameters"""
         if not self.loadcell.port:
             raise ValidationException(
                 "loadcell.port",
@@ -181,34 +311,12 @@ class HardwareConfiguration:
             )
 
         # Validate LoadCell serial parameters
-        if self.loadcell.bytesize not in [5, 6, 7, 8]:
-            raise ValidationException(
-                "loadcell.bytesize",
-                self.loadcell.bytesize,
-                "LoadCell bytesize must be 5, 6, 7, or 8",
-            )
+        self._validate_serial_params(
+            "loadcell", self.loadcell.bytesize, self.loadcell.stopbits, self.loadcell.parity
+        )
 
-        if self.loadcell.stopbits not in [1, 2]:
-            raise ValidationException(
-                "loadcell.stopbits",
-                self.loadcell.stopbits,
-                "LoadCell stopbits must be 1 or 2",
-            )
-
-        if self.loadcell.parity is not None and self.loadcell.parity.lower() not in [
-            "none",
-            "even",
-            "odd",
-            "mark",
-            "space",
-        ]:
-            raise ValidationException(
-                "loadcell.parity",
-                self.loadcell.parity,
-                "LoadCell parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
-            )
-
-        # MCU validation
+    def _validate_mcu_config(self) -> None:
+        """Validate MCU configuration parameters"""
         if not self.mcu.port:
             raise ValidationException(
                 "mcu.port",
@@ -231,21 +339,27 @@ class HardwareConfiguration:
             )
 
         # Validate MCU serial parameters
-        if self.mcu.bytesize not in [5, 6, 7, 8]:
+        self._validate_serial_params("mcu", self.mcu.bytesize, self.mcu.stopbits, self.mcu.parity)
+
+    def _validate_serial_params(
+        self, device_name: str, bytesize: int, stopbits: int, parity: Optional[str]
+    ) -> None:
+        """Validate serial communication parameters"""
+        if bytesize not in [5, 6, 7, 8]:
             raise ValidationException(
-                "mcu.bytesize",
-                self.mcu.bytesize,
-                "MCU bytesize must be 5, 6, 7, or 8",
+                f"{device_name}.bytesize",
+                bytesize,
+                "Bytesize must be 5, 6, 7, or 8",
             )
 
-        if self.mcu.stopbits not in [1, 2]:
+        if stopbits not in [1, 2]:
             raise ValidationException(
-                "mcu.stopbits",
-                self.mcu.stopbits,
-                "MCU stopbits must be 1 or 2",
+                f"{device_name}.stopbits",
+                stopbits,
+                "Stopbits must be 1 or 2",
             )
 
-        if self.mcu.parity is not None and self.mcu.parity.lower() not in [
+        if parity is not None and parity.lower() not in [
             "none",
             "even",
             "odd",
@@ -253,12 +367,10 @@ class HardwareConfiguration:
             "space",
         ]:
             raise ValidationException(
-                "mcu.parity",
-                self.mcu.parity,
-                "MCU parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
+                f"{device_name}.parity",
+                parity,
+                "Parity must be None, 'none', 'even', 'odd', 'mark', or 'space'",
             )
-
-        # Digital IO validation - no additional validation needed for pin assignments
 
     def _validate_power_config(self) -> None:
         """Validate power supply configuration parameters"""
@@ -329,23 +441,16 @@ class HardwareConfiguration:
         current_values.update(overrides)
 
         # Handle nested config overrides
-        for config_name in [
-            "robot",
-            "loadcell",
-            "mcu",
-            "power",
-            "digital_io",
-        ]:
-            if config_name in overrides and isinstance(overrides[config_name], dict):
-                # Get the appropriate config class
-                config_class = {
-                    "robot": RobotConfig,
-                    "loadcell": LoadCellConfig,
-                    "mcu": MCUConfig,
-                    "power": PowerConfig,
-                    "digital_io": DigitalIOConfig,
-                }[config_name]
+        config_classes = {
+            "robot": RobotConfig,
+            "loadcell": LoadCellConfig,
+            "mcu": MCUConfig,
+            "power": PowerConfig,
+            "digital_io": DigitalIOConfig,
+        }
 
+        for config_name, config_class in config_classes.items():
+            if config_name in overrides and isinstance(overrides[config_name], dict):
                 # Create new config instance from dict
                 current_values[config_name] = config_class(**overrides[config_name])
 
@@ -379,9 +484,6 @@ class HardwareConfiguration:
             "robot": {
                 "axis_id": self.robot.axis_id,
                 "irq_no": self.robot.irq_no,
-                "velocity": self.robot.velocity,
-                "acceleration": self.robot.acceleration,
-                "deceleration": self.robot.deceleration,
             },
             "loadcell": {
                 "port": self.loadcell.port,
@@ -408,12 +510,44 @@ class HardwareConfiguration:
                 "delimiter": self.power.delimiter,
             },
             "digital_io": {
-                "operator_start_button_left": self.digital_io.operator_start_button_left,
-                "operator_start_button_right": self.digital_io.operator_start_button_right,
-                "dut_clamp_safety_sensor": self.digital_io.dut_clamp_safety_sensor,
-                "dut_chain_safety_sensor": self.digital_io.dut_chain_safety_sensor,
-                "safety_door_closed_sensor": self.digital_io.safety_door_closed_sensor,
-                "emergency_stop_button": self.digital_io.emergency_stop_button,
+                # Input pins with structured configuration
+                "emergency_stop_button": {
+                    "pin_number": self.digital_io.emergency_stop_button.pin_number,
+                    "contact_type": self.digital_io.emergency_stop_button.contact_type,
+                    "edge_type": self.digital_io.emergency_stop_button.edge_type,
+                    "name": self.digital_io.emergency_stop_button.name,
+                },
+                "operator_start_button_left": {
+                    "pin_number": self.digital_io.operator_start_button_left.pin_number,
+                    "contact_type": self.digital_io.operator_start_button_left.contact_type,
+                    "edge_type": self.digital_io.operator_start_button_left.edge_type,
+                    "name": self.digital_io.operator_start_button_left.name,
+                },
+                "operator_start_button_right": {
+                    "pin_number": self.digital_io.operator_start_button_right.pin_number,
+                    "contact_type": self.digital_io.operator_start_button_right.contact_type,
+                    "edge_type": self.digital_io.operator_start_button_right.edge_type,
+                    "name": self.digital_io.operator_start_button_right.name,
+                },
+                "safety_door_closed_sensor": {
+                    "pin_number": self.digital_io.safety_door_closed_sensor.pin_number,
+                    "contact_type": self.digital_io.safety_door_closed_sensor.contact_type,
+                    "edge_type": self.digital_io.safety_door_closed_sensor.edge_type,
+                    "name": self.digital_io.safety_door_closed_sensor.name,
+                },
+                "dut_clamp_safety_sensor": {
+                    "pin_number": self.digital_io.dut_clamp_safety_sensor.pin_number,
+                    "contact_type": self.digital_io.dut_clamp_safety_sensor.contact_type,
+                    "edge_type": self.digital_io.dut_clamp_safety_sensor.edge_type,
+                    "name": self.digital_io.dut_clamp_safety_sensor.name,
+                },
+                "dut_chain_safety_sensor": {
+                    "pin_number": self.digital_io.dut_chain_safety_sensor.pin_number,
+                    "contact_type": self.digital_io.dut_chain_safety_sensor.contact_type,
+                    "edge_type": self.digital_io.dut_chain_safety_sensor.edge_type,
+                    "name": self.digital_io.dut_chain_safety_sensor.name,
+                },
+                # Output pins (simple pin numbers)
                 "servo1_brake_release": self.digital_io.servo1_brake_release,
                 "tower_lamp_red": self.digital_io.tower_lamp_red,
                 "tower_lamp_yellow": self.digital_io.tower_lamp_yellow,
@@ -421,6 +555,10 @@ class HardwareConfiguration:
                 "beep": self.digital_io.beep,
             },
         }
+
+    def to_structured_dict(self) -> Dict[str, Any]:
+        """Convert configuration to structured dictionary representation for better YAML readability"""
+        return {"hardware_config": self.to_dict()}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HardwareConfiguration":
@@ -448,14 +586,13 @@ class HardwareConfiguration:
             "digital_io": DigitalIOConfig,
         }
 
-        for (
-            config_name,
-            config_class,
-        ) in config_classes.items():
+        for config_name, config_class in config_classes.items():
             if config_name in data_copy and isinstance(data_copy[config_name], dict):
-                # Handle special nested configs
-
-                data_copy[config_name] = config_class(**data_copy[config_name])
+                # Special handling for DigitalIOConfig which has a custom from_dict method
+                if config_name == "digital_io":
+                    data_copy[config_name] = config_class.from_dict(data_copy[config_name])
+                else:
+                    data_copy[config_name] = config_class(**data_copy[config_name])
 
         # Create instance with properly typed config objects
         return cls(

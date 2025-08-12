@@ -217,20 +217,20 @@ class TestProfilesEditor extends ConfigurationEditor {
                 <h3>Motion Control Parameters</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Velocity (mm/s)</label>
-                        <input type="number" step="0.1" value="${motion.velocity || 100.0}" 
+                        <label class="form-label">Velocity (μm/s)</label>
+                        <input type="number" step="0.1" value="${motion.velocity || 60000.0}" 
                                data-path="motion_control.velocity" class="form-control">
                         <div class="form-help">Movement velocity</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Acceleration (mm/s²)</label>
-                        <input type="number" step="0.1" value="${motion.acceleration || 100.0}" 
+                        <label class="form-label">Acceleration (μm/s²)</label>
+                        <input type="number" step="0.1" value="${motion.acceleration || 60000.0}" 
                                data-path="motion_control.acceleration" class="form-control">
                         <div class="form-help">Acceleration rate</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Deceleration (mm/s²)</label>
-                        <input type="number" step="0.1" value="${motion.deceleration || 100.0}" 
+                        <label class="form-label">Deceleration (μm/s²)</label>
+                        <input type="number" step="0.1" value="${motion.deceleration || 60000.0}" 
                                data-path="motion_control.deceleration" class="form-control">
                         <div class="form-help">Deceleration rate</div>
                     </div>
@@ -273,28 +273,28 @@ class TestProfilesEditor extends ConfigurationEditor {
                 <h3>Timing Settings</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Stabilization Delay (s)</label>
-                        <input type="number" step="0.01" value="${timing.stabilization_delay || 0.1}" 
-                               data-path="timing.stabilization_delay" class="form-control">
-                        <div class="form-help">General stabilization delay</div>
+                        <label class="form-label">Robot Move Stabilization (s)</label>
+                        <input type="number" step="0.01" value="${timing.robot_move_stabilization || 0.1}" 
+                               data-path="timing.robot_move_stabilization" class="form-control">
+                        <div class="form-help">Stabilization delay after robot movement</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Temperature Stabilization (s)</label>
-                        <input type="number" step="0.01" value="${timing.temperature_stabilization || 0.1}" 
-                               data-path="timing.temperature_stabilization" class="form-control">
-                        <div class="form-help">Time to wait for temperature stabilization</div>
+                        <label class="form-label">MCU Temperature Stabilization (s)</label>
+                        <input type="number" step="0.01" value="${timing.mcu_temperature_stabilization || 0.1}" 
+                               data-path="timing.mcu_temperature_stabilization" class="form-control">
+                        <div class="form-help">Time to wait for MCU temperature stabilization</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Standby Stabilization (s)</label>
-                        <input type="number" step="0.01" value="${timing.standby_stabilization || 1.0}" 
-                               data-path="timing.standby_stabilization" class="form-control">
-                        <div class="form-help">Time to wait in standby mode</div>
+                        <label class="form-label">Robot Standby Stabilization (s)</label>
+                        <input type="number" step="0.01" value="${timing.robot_standby_stabilization || 1.0}" 
+                               data-path="timing.robot_standby_stabilization" class="form-control">
+                        <div class="form-help">Time to wait for robot standby heating stabilization</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Power Stabilization (s)</label>
-                        <input type="number" step="0.01" value="${timing.power_stabilization || 0.5}" 
-                               data-path="timing.power_stabilization" class="form-control">
-                        <div class="form-help">Time to wait for power stabilization</div>
+                        <label class="form-label">Power On Stabilization (s)</label>
+                        <input type="number" step="0.01" value="${timing.poweron_stabilization || 0.5}" 
+                               data-path="timing.poweron_stabilization" class="form-control">
+                        <div class="form-help">Time to wait for power on stabilization</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Loadcell Zero Delay (s)</label>
@@ -358,20 +358,20 @@ class TestProfilesEditor extends ConfigurationEditor {
                         <div class="form-help">Maximum safe current</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Max Velocity (mm/s)</label>
-                        <input type="number" step="0.1" value="${safety.max_velocity || 500.0}" 
+                        <label class="form-label">Max Velocity (μm/s)</label>
+                        <input type="number" step="0.1" value="${safety.max_velocity || 60000.0}" 
                                data-path="safety.max_velocity" class="form-control">
                         <div class="form-help">Maximum safe velocity</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Max Acceleration (mm/s²)</label>
-                        <input type="number" step="0.1" value="${safety.max_acceleration || 1000.0}" 
+                        <label class="form-label">Max Acceleration (μm/s²)</label>
+                        <input type="number" step="0.1" value="${safety.max_acceleration || 60000.0}" 
                                data-path="safety.max_acceleration" class="form-control">
                         <div class="form-help">Maximum safe acceleration</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Max Deceleration (mm/s²)</label>
-                        <input type="number" step="0.1" value="${safety.max_deceleration || 1000.0}" 
+                        <label class="form-label">Max Deceleration (μm/s²)</label>
+                        <input type="number" step="0.1" value="${safety.max_deceleration || 60000.0}" 
                                data-path="safety.max_deceleration" class="form-control">
                         <div class="form-help">Maximum safe deceleration</div>
                     </div>

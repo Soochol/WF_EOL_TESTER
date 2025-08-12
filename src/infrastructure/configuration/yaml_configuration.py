@@ -39,8 +39,8 @@ class YamlConfiguration:
             # Create default TestConfiguration with all default values
             default_test_config = TestConfiguration()
             
-            # Convert to structured dictionary format
-            config_data = default_test_config.to_dict()
+            # Convert to structured dictionary format for better readability
+            config_data = default_test_config.to_structured_dict()
             
             # Add metadata
             config_data["metadata"] = {
@@ -152,8 +152,8 @@ class YamlConfiguration:
         profiles_dir.mkdir(exist_ok=True)
         profile_path = profiles_dir / f"{profile_name}.yaml"
         
-        # Convert TestConfiguration to dictionary
-        config_data = test_config.to_dict()
+        # Convert TestConfiguration to structured dictionary for better readability
+        config_data = test_config.to_structured_dict()
         
         with open(profile_path, "w", encoding="utf-8") as f:
             yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
@@ -164,10 +164,8 @@ class YamlConfiguration:
         """Save hardware configuration"""
         config_path = self.config_dir / "hardware_configuration.yaml"
         
-        # Convert to dictionary and wrap in hardware_config section
-        config_data = {
-            "hardware_config": hardware_config.to_dict()
-        }
+        # Convert to structured dictionary for better readability
+        config_data = hardware_config.to_structured_dict()
         
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
@@ -178,10 +176,8 @@ class YamlConfiguration:
         """Save hardware model configuration"""
         model_path = self.config_dir / "hardware_model.yaml"
         
-        # Convert to dictionary and wrap in hardware_model section
-        model_data = {
-            "hardware_model": hardware_model.to_dict()
-        }
+        # Convert to structured dictionary for better readability
+        model_data = hardware_model.to_structured_dict()
         
         with open(model_path, "w", encoding="utf-8") as f:
             yaml.dump(model_data, f, default_flow_style=False, sort_keys=False)

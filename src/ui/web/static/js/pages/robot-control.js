@@ -82,6 +82,9 @@ export class RobotControlPageManager {
             // Load initial status
             await this.refreshStatus();
             
+            // Load default motion parameters from current configuration
+            await this.loadDefaultMotionParameters();
+            
             // Start periodic updates
             this.startPeriodicUpdates();
             
@@ -92,6 +95,57 @@ export class RobotControlPageManager {
         } catch (error) {
             console.error('❌ Failed to initialize Robot Control Page:', error);
             this.uiManager.showNotification('Failed to initialize Robot Control Panel', 'error');
+        }
+    }
+
+    /**
+     * Load default motion parameters from current test configuration
+     * @private
+     */
+    async loadDefaultMotionParameters() {
+        try {
+            console.log('📥 Loading default motion parameters...');
+            
+            // Get current configuration
+            const response = await this.apiClient.get('/config/current');
+            
+            // Set default values in the UI
+            const velocityInput = document.getElementById('absolute-velocity');
+            const accelerationInput = document.getElementById('absolute-acceleration');
+            const decelerationInput = document.getElementById('absolute-deceleration');
+            
+            if (velocityInput) velocityInput.value = response.velocity || 60000;
+            if (accelerationInput) accelerationInput.value = response.acceleration || 60000;
+            if (decelerationInput) decelerationInput.value = response.deceleration || 60000;
+            
+            // Also set relative motion defaults
+            const relVelocityInput = document.getElementById('relative-velocity');
+            const relAccelerationInput = document.getElementById('relative-acceleration');
+            const relDecelerationInput = document.getElementById('relative-deceleration');
+            
+            if (relVelocityInput) relVelocityInput.value = response.velocity || 60000;
+            if (relAccelerationInput) relAccelerationInput.value = response.acceleration || 60000;
+            if (relDecelerationInput) relDecelerationInput.value = response.deceleration || 60000;
+            
+            this.addLogEntry('info', `Motion parameters loaded from profile: ${response.profile_name}`);
+            console.log('✅ Default motion parameters loaded successfully');
+            
+        } catch (error) {
+            console.error('❌ Failed to load default motion parameters:', error);
+            this.addLogEntry('error', 'Failed to load default motion parameters from configuration');
+            
+            // Set fallback defaults if config loading fails
+            const fallbackValues = { velocity: 60000, acceleration: 60000, deceleration: 60000 };
+            
+            ['absolute', 'relative'].forEach(type => {
+                const velocityInput = document.getElementById(`${type}-velocity`);
+                const accelerationInput = document.getElementById(`${type}-acceleration`);
+                const decelerationInput = document.getElementById(`${type}-deceleration`);
+                
+                if (velocityInput) velocityInput.value = fallbackValues.velocity;
+                if (accelerationInput) accelerationInput.value = fallbackValues.acceleration;
+                if (decelerationInput) decelerationInput.value = fallbackValues.deceleration;
+            });
         }
     }
 
@@ -772,18 +826,18 @@ export class RobotControlPageManager {
             return false;
         }
         
-        if (velocity < 1 || velocity > 100000) {
-            this.uiManager.showNotification('Velocity must be between 1 and 100,000 μm/s', 'error');
+        if (velocity < 1 || velocity > 60000) {
+            this.uiManager.showNotification('Velocity must be between 1 and 60,000 μm/s', 'error');
             return false;
         }
         
-        if (acceleration < 100 || acceleration > 100000) {
-            this.uiManager.showNotification('Acceleration must be between 100 and 100,000 μm/s²', 'error');
+        if (acceleration < 100 || acceleration > 60000) {
+            this.uiManager.showNotification('Acceleration must be between 100 and 60,000 μm/s²', 'error');
             return false;
         }
         
-        if (deceleration < 100 || deceleration > 100000) {
-            this.uiManager.showNotification('Deceleration must be between 100 and 100,000 μm/s²', 'error');
+        if (deceleration < 100 || deceleration > 60000) {
+            this.uiManager.showNotification('Deceleration must be between 100 and 60,000 μm/s²', 'error');
             return false;
         }
         

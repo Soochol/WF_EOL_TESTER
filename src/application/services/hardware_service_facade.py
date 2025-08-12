@@ -297,16 +297,16 @@ class HardwareServiceFacade:
 
             # Initialize power settings
             await self._power.disable_output()
-            await asyncio.sleep(test_config.power_stabilization)
+            await asyncio.sleep(test_config.poweron_stabilization)
 
             await self._power.set_voltage(test_config.voltage)
-            await asyncio.sleep(test_config.power_stabilization)
+            await asyncio.sleep(test_config.poweron_stabilization)
 
             await self._power.set_current(test_config.current)
-            await asyncio.sleep(test_config.power_stabilization)
+            await asyncio.sleep(test_config.poweron_stabilization)
 
             await self._power.set_current_limit(test_config.upper_current)
-            await asyncio.sleep(test_config.power_stabilization)
+            await asyncio.sleep(test_config.poweron_stabilization)
 
             # Initialize robot - enable servo, ensure homed, then move to initial position
             logger.info(f"Enabling servo for axis {hardware_config.robot.axis_id}...")
@@ -320,11 +320,11 @@ class HardwareServiceFacade:
             await self._robot.move_absolute(
                 position=test_config.initial_position,
                 axis_id=hardware_config.robot.axis_id,
-                velocity=hardware_config.robot.velocity,
-                acceleration=hardware_config.robot.acceleration,
-                deceleration=hardware_config.robot.deceleration,
+                velocity=test_config.velocity,
+                acceleration=test_config.acceleration,
+                deceleration=test_config.deceleration,
             )
-            await asyncio.sleep(test_config.stabilization_delay)
+            await asyncio.sleep(test_config.robot_move_stabilization)
             logger.info("Robot initialized at initial position successfully")
 
             # Zero the load cell
@@ -376,19 +376,19 @@ class HardwareServiceFacade:
             try:
                 # MCU configuration before standby heating
                 await self._mcu.set_upper_temperature(test_config.upper_temperature)
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 await self._mcu.set_fan_speed(test_config.fan_speed)
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 await self._mcu.start_standby_heating(
                     operating_temp=test_config.activation_temperature,
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
                 )
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info(
                     f"✅ Step 1 COMPLETED: MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
                 )
@@ -402,9 +402,9 @@ class HardwareServiceFacade:
                 await self._robot.move_absolute(
                     position=test_config.max_stroke,
                     axis_id=hardware_config.robot.axis_id,
-                    velocity=hardware_config.robot.velocity,
-                    acceleration=hardware_config.robot.acceleration,
-                    deceleration=hardware_config.robot.deceleration,
+                    velocity=test_config.velocity,
+                    acceleration=test_config.acceleration,
+                    deceleration=test_config.deceleration,
                 )
                 logger.info(
                     f"✅ Step 2 COMPLETED: Robot moved to max stroke position: {test_config.max_stroke}μm"
@@ -414,7 +414,7 @@ class HardwareServiceFacade:
                 raise
 
             # Step 3: Wait for standby heating stabilization
-            stabilization_time = test_config.standby_stabilization
+            stabilization_time = test_config.robot_standby_stabilization
             logger.info(
                 f"🔄 Step 3: Waiting for standby heating stabilization ({stabilization_time}s)..."
             )
@@ -426,9 +426,9 @@ class HardwareServiceFacade:
                 await self._robot.move_absolute(
                     position=test_config.initial_position,
                     axis_id=hardware_config.robot.axis_id,
-                    velocity=hardware_config.robot.velocity,
-                    acceleration=hardware_config.robot.acceleration,
-                    deceleration=hardware_config.robot.deceleration,
+                    velocity=test_config.velocity,
+                    acceleration=test_config.acceleration,
+                    deceleration=test_config.deceleration,
                 )
                 logger.info(
                     f"✅ Step 4 COMPLETED: Robot moved to initial position: {test_config.initial_position}μm"
@@ -441,8 +441,8 @@ class HardwareServiceFacade:
             logger.info("🔄 Step 5: Starting MCU standby cooling...")
             try:
                 await self._mcu.start_standby_cooling()
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info("✅ Step 5 COMPLETED: MCU standby cooling started")
             except Exception as e:
                 logger.error(f"❌ Step 5 FAILED: MCU standby cooling - {e}")
@@ -480,15 +480,15 @@ class HardwareServiceFacade:
                 self._mcu.wait_boot_complete(),
                 timeout=test_config.timeout_seconds,
             )
-            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-            await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+            await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
 
             logger.info("MCU boot complete signal received")
 
             # Enter test mode 1 (always executed)
             await self._mcu.set_test_mode(TestMode.MODE_1)
-            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-            await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+            await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
             logger.info("MCU set to test mode 1")
 
             # MCU configuration (upper temperature, fan speed)
@@ -496,12 +496,12 @@ class HardwareServiceFacade:
             fan_speed = test_config.fan_speed
 
             await self._mcu.set_upper_temperature(upper_temp)
-            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-            await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+            await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
 
             await self._mcu.set_fan_speed(fan_speed)
-            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-            await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+            logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+            await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
 
             logger.info(f"MCU configured: upper_temp={upper_temp}°C, fan_speed={fan_speed}")
 
@@ -549,18 +549,18 @@ class HardwareServiceFacade:
 
                 # MCU set upper temperature
                 await self._mcu.set_upper_temperature(test_config.upper_temperature)
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info(f"Upper temperature set to {test_config.upper_temperature}°C")
 
                 # MCU heat up
                 await self._mcu.set_temperature(temperature)
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info(f"Temperature set to {temperature}°C, waiting for stabilization...")
 
                 # Wait for temperature stabilization
-                await asyncio.sleep(test_config.temperature_stabilization)
+                await asyncio.sleep(test_config.mcu_temperature_stabilization)
                 logger.info(f"Temperature stabilized at {temperature}°C")
 
                 # Inner loop: Iterate through stroke positions
@@ -573,11 +573,11 @@ class HardwareServiceFacade:
                     await self._robot.move_absolute(
                         position=position,
                         axis_id=hardware_config.robot.axis_id,
-                        velocity=hardware_config.robot.velocity,
-                        acceleration=hardware_config.robot.acceleration,
-                        deceleration=hardware_config.robot.deceleration,
+                        velocity=test_config.velocity,
+                        acceleration=test_config.acceleration,
+                        deceleration=test_config.deceleration,
                     )
-                    await asyncio.sleep(test_config.stabilization_delay)
+                    await asyncio.sleep(test_config.robot_move_stabilization)
 
                     # Take measurements
                     force = await self._loadcell.read_force()
@@ -607,20 +607,20 @@ class HardwareServiceFacade:
 
                 # MCU configuration before standby heating
                 await self._mcu.set_upper_temperature(test_config.upper_temperature)
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 await self._mcu.set_fan_speed(test_config.fan_speed)
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 # MCU start standby heating
                 await self._mcu.start_standby_heating(
                     operating_temp=test_config.activation_temperature,
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
                 )
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info(
                     f"MCU standby heating started - operating: {test_config.activation_temperature}°C"
                 )
@@ -629,17 +629,17 @@ class HardwareServiceFacade:
                 await self._robot.move_absolute(
                     position=test_config.initial_position,
                     axis_id=hardware_config.robot.axis_id,
-                    velocity=hardware_config.robot.velocity,
-                    acceleration=hardware_config.robot.acceleration,
-                    deceleration=hardware_config.robot.deceleration,
+                    velocity=test_config.velocity,
+                    acceleration=test_config.acceleration,
+                    deceleration=test_config.deceleration,
                 )
 
-                await asyncio.sleep(test_config.stabilization_delay)
+                await asyncio.sleep(test_config.robot_move_stabilization)
                 logger.info(f"Robot returned to initial position: {test_config.initial_position}μm")
 
                 await self._mcu.start_standby_cooling()
-                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_stabilization)  # MCU stabilization delay
+                logger.info(f"⏳ MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)  # MCU stabilization delay
                 logger.info(f"MCU standby cooling started - standby: {calculated_standby_temp}°C")
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
