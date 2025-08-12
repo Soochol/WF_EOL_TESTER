@@ -1,0 +1,178 @@
+{
+  "session_info": {
+    "start_time": 1754974981.44182,
+    "total_commands": 9,
+    "monitoring_duration": 3.900184154510498
+  },
+  "command_timings": [
+    {
+      "command_name": "set_upper_temperature",
+      "start_time": 1754974981.4432828,
+      "send_time": 1754974981.4435449,
+      "response_time": 1754974981.456531,
+      "completion_time": 1754974981.5610733,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 05 04 00000320 FEFE",
+      "packet_received": "FFFF 0A 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "set_fan_speed",
+      "start_time": 1754974981.5616071,
+      "send_time": 1754974981.5616734,
+      "response_time": 1754974981.5765204,
+      "completion_time": 1754974981.6815853,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 06 04 0000000A FEFE",
+      "packet_received": "FFFF 0B 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "start_standby_heating",
+      "start_time": 1754974981.682018,
+      "send_time": 1754974981.682098,
+      "response_time": 1754974983.154594,
+      "completion_time": 1754974983.256689,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 02 0C 000002BC000001F400002710 FEFE",
+      "packet_received": "FFFF 0C 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "set_upper_temperature",
+      "start_time": 1754974983.257169,
+      "send_time": 1754974983.257217,
+      "response_time": 1754974983.2868838,
+      "completion_time": 1754974983.38782,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 05 04 00000320 FEFE",
+      "packet_received": "FFFF 0A 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "set_fan_speed",
+      "start_time": 1754974983.3882535,
+      "send_time": 1754974983.3883376,
+      "response_time": 1754974983.4295263,
+      "completion_time": 1754974983.53462,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 06 04 0000000A FEFE",
+      "packet_received": "FFFF 0B 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "start_standby_heating",
+      "start_time": 1754974983.5350528,
+      "send_time": 1754974983.535143,
+      "response_time": 1754974984.2362065,
+      "completion_time": 1754974984.341067,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 02 0C 000002BC000001F400002710 FEFE",
+      "packet_received": "FFFF 0C 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "set_upper_temperature",
+      "start_time": 1754974984.341406,
+      "send_time": 1754974984.3414643,
+      "response_time": 1754974984.3604908,
+      "completion_time": 1754974984.4628358,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 05 04 00000320 FEFE",
+      "packet_received": "FFFF 0A 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "set_fan_speed",
+      "start_time": 1754974984.4631639,
+      "send_time": 1754974984.4632087,
+      "response_time": 1754974984.5026977,
+      "completion_time": 1754974984.6077888,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 06 04 0000000A FEFE",
+      "packet_received": "FFFF 0B 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    },
+    {
+      "command_name": "start_standby_heating",
+      "start_time": 1754974984.6081088,
+      "send_time": 1754974984.6081696,
+      "response_time": 1754974985.237239,
+      "completion_time": 1754974985.340283,
+      "wait_time": 3.0,
+      "success": true,
+      "error_message": null,
+      "packet_sent": "FFFF 02 0C 000002BC000001F400002710 FEFE",
+      "packet_received": "FFFF 0C 00 FEFE",
+      "mcu_status_before": null,
+      "mcu_status_after": null
+    }
+  ],
+  "analysis": {
+    "total_commands": 9,
+    "successful_commands": 9,
+    "failed_commands": 0,
+    "command_analysis": {
+      "set_upper_temperature": {
+        "count": 3,
+        "success_rate": 1.0,
+        "avg_duration": 0.12329037984212239,
+        "min_duration": 0.11779046058654785,
+        "max_duration": 0.13065099716186523,
+        "avg_response_time": 0.02055986722310384,
+        "total_wait_time": 9.0,
+        "unnecessary_wait_potential": 8.979440132776896
+      },
+      "set_fan_speed": {
+        "count": 3,
+        "success_rate": 1.0,
+        "avg_duration": 0.1369899113972982,
+        "min_duration": 0.11997818946838379,
+        "max_duration": 0.14636659622192383,
+        "avg_response_time": 0.03184159596761068,
+        "total_wait_time": 9.0,
+        "unnecessary_wait_potential": 8.968158404032389
+      },
+      "start_standby_heating": {
+        "count": 3,
+        "success_rate": 1.0,
+        "avg_duration": 1.0376198291778564,
+        "min_duration": 0.7321741580963135,
+        "max_duration": 1.5746710300445557,
+        "avg_response_time": 0.9342096646626791,
+        "total_wait_time": 9.0,
+        "unnecessary_wait_potential": 0
+      }
+    },
+    "timing_summary": {
+      "total_session_time": 3.898463010787964,
+      "total_wait_time": 27.0,
+      "wait_percentage": 692.5806381972754,
+      "potential_time_savings": 21.6
+    }
+  }
+}
