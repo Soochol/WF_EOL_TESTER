@@ -144,18 +144,25 @@ class LMAMCU(MCUService):
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\\xfe\\xfe") and len(response_data) >= 6:
-                        response_hex = response_data.hex().upper()
-                        formatted_hex = " ".join(
-                            [response_hex[i : i + 2] for i in range(0, len(response_hex), 2)]
-                        )
-
-                        response_time = (time.time() - start_time) * 1000
-                        logger.info(f"✅ RX_COMPLETE: {formatted_hex} (+{response_time:.1f}ms)")
+                        # Extract valid packet from potentially noisy buffer
+                        valid_packet = self._extract_valid_packet(response_data)
                         
-                        # Detailed packet analysis
-                        self._analyze_response_packet(response_data, description)
+                        if valid_packet:
+                            response_hex = valid_packet.hex().upper()
+                            formatted_hex = " ".join(
+                                [response_hex[i : i + 2] for i in range(0, len(response_hex), 2)]
+                            )
 
-                        return response_data
+                            response_time = (time.time() - start_time) * 1000
+                            logger.info(f"✅ RX_COMPLETE: {formatted_hex} (+{response_time:.1f}ms)")
+                            
+                            # Detailed packet analysis on clean packet
+                            self._analyze_response_packet(valid_packet, description)
+
+                            return valid_packet
+                        else:
+                            # Buffer ends with FEFE but no valid packet found - continue waiting
+                            logger.warning("⚠️ BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing...")
 
                 time.sleep(0.001)  # 1ms wait
 
@@ -175,6 +182,53 @@ class LMAMCU(MCUService):
         except Exception as e:
             logger.error(f"Communication error: {e}")
             raise HardwareOperationError("fast_lma_mcu", "_send_packet_sync", str(e)) from e
+
+    def _extract_valid_packet(self, buffer: bytes) -> Optional[bytes]:
+        """
+        Extract the first valid FFFF packet from buffer, handling initial noise.
+        
+        Searches for FFFF (STX) patterns and validates each packet structure.
+        Returns the first packet that passes validation (correct length, ETX).
+        
+        Args:
+            buffer: Raw received data that may contain noise + valid packet(s)
+            
+        Returns:
+            First valid packet bytes, or None if no valid packet found
+        """
+        if len(buffer) < 6:
+            return None  # Too short for any valid packet
+            
+        i = 0
+        while i <= len(buffer) - 6:  # Minimum packet size is 6 bytes
+            # Find next FFFF pattern
+            ffff_pos = buffer.find(b'\xff\xff', i)
+            if ffff_pos == -1:
+                break  # No more FFFF patterns found
+                
+            # Check if we have enough bytes for packet header
+            if ffff_pos + 3 >= len(buffer):
+                break  # Not enough bytes for header
+                
+            # Extract packet structure info
+            length = buffer[ffff_pos + 3]  # Data length field
+            expected_packet_end = ffff_pos + 4 + length + 2  # STX(2) + CMD(1) + LEN(1) + DATA(length) + ETX(2)
+            
+            # Validate packet completeness and structure
+            if (expected_packet_end <= len(buffer) and 
+                buffer[expected_packet_end-2:expected_packet_end] == b'\xfe\xfe'):
+                
+                valid_packet = buffer[ffff_pos:expected_packet_end]
+                logger.info(f"🎯 VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}")
+                return valid_packet
+            else:
+                logger.debug(f"🔍 INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}")
+                
+            # Move to next potential FFFF position
+            i = ffff_pos + 2
+            
+        logger.warning(f"❌ NO_VALID_PACKET found in buffer ({len(buffer)} bytes)")
+        return None
 
     def _analyze_response_packet(self, response_data: bytes, description: str = "") -> None:
         """Analyze and log detailed response packet information"""
@@ -257,18 +311,25 @@ class LMAMCU(MCUService):
 
                 # Check for complete packet
                 if response_data.endswith(expected_etx) and len(response_data) >= 6:
-                    response_hex = response_data.hex().upper()
-                    formatted_hex = " ".join(
-                        [response_hex[i : i + 2] for i in range(0, len(response_hex), 2)]
-                    )
-
-                    response_time = (time.time() - start_time) * 1000
-                    logger.info(f"✅ ADDITIONAL_RX_COMPLETE: {formatted_hex} (+{response_time:.1f}ms)")
+                    # Extract valid packet from potentially noisy buffer
+                    valid_packet = self._extract_valid_packet(response_data)
                     
-                    # Detailed packet analysis
-                    self._analyze_response_packet(response_data, f"ADDITIONAL_{description}")
+                    if valid_packet:
+                        response_hex = valid_packet.hex().upper()
+                        formatted_hex = " ".join(
+                            [response_hex[i : i + 2] for i in range(0, len(response_hex), 2)]
+                        )
 
-                    return response_data
+                        response_time = (time.time() - start_time) * 1000
+                        logger.info(f"✅ ADDITIONAL_RX_COMPLETE: {formatted_hex} (+{response_time:.1f}ms)")
+                        
+                        # Detailed packet analysis on clean packet
+                        self._analyze_response_packet(valid_packet, f"ADDITIONAL_{description}")
+
+                        return valid_packet
+                    else:
+                        # Buffer ends with FEFE but no valid additional packet found - continue waiting
+                        logger.warning("⚠️ ADDITIONAL_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing...")
 
             time.sleep(0.01)  # 10ms wait
 
