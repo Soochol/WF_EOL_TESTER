@@ -89,7 +89,7 @@ class TestConfiguration:
     robot_move_stabilization: float = 0.1  # Post-movement stabilization time (s)
     robot_standby_stabilization: float = 1.0  # Standby heating stabilization time (s)
     mcu_temperature_stabilization: float = 0.1  # Temperature change stabilization time (s)
-    mcu_command_stabilization: float = 3.0  # MCU command stabilization time (s)
+    mcu_command_stabilization: float = 0.1  # MCU command stabilization time (s)
     poweron_stabilization: float = 0.5  # Power-on stabilization time (s)
     loadcell_zero_delay: float = 0.1  # Load cell zeroing delay (s)
 
@@ -780,7 +780,7 @@ class TestConfiguration:
                     "robot_standby_stabilization": timing.get("robot_standby_stabilization", 1.0),
                     "poweron_stabilization": timing.get("poweron_stabilization", 0.5),
                     "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
-                    "mcu_command_stabilization": timing.get("mcu_command_stabilization", 3.0),
+                    "mcu_command_stabilization": timing.get("mcu_command_stabilization", 0.1),
                 }
             )
 
