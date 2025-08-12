@@ -59,7 +59,7 @@ class SimpleMCUTestResult:
 class SimpleMCUTestUseCase:
     """
     Simple MCU Communication Test Use Case
-    
+
     Performs direct MCU communication testing with the same sequence
     as simple_serial_test.py but integrated into the UseCase framework.
     """
@@ -76,10 +76,10 @@ class SimpleMCUTestUseCase:
     async def execute(self, command: SimpleMCUTestCommand) -> SimpleMCUTestResult:
         """
         Execute Simple MCU Communication Test
-        
+
         Args:
             command: Test command with port and baudrate settings
-            
+
         Returns:
             SimpleMCUTestResult with test outcomes and timing information
         """
@@ -99,11 +99,7 @@ class SimpleMCUTestUseCase:
 
             # Connect to MCU
             logger.info("Connecting to MCU...")
-            await mcu_service.connect(
-                port=command.port,
-                baudrate=command.baudrate,
-                timeout=5.0
-            )
+            await mcu_service.connect(port=command.port, baudrate=command.baudrate, timeout=5.0)
 
             # Wait for boot complete
             logger.info("Waiting for MCU boot complete...")
@@ -114,60 +110,60 @@ class SimpleMCUTestUseCase:
                 {
                     "name": "set_test_mode",
                     "description": "CMD_ENTER_TEST_MODE (모드 1)",
-                    "command": lambda: mcu_service.set_test_mode(TestMode.MODE_1)
+                    "command": lambda: mcu_service.set_test_mode(TestMode.MODE_1),
                 },
                 {
-                    "name": "set_upper_temperature", 
+                    "name": "set_upper_temperature",
                     "description": "CMD_SET_UPPER_TEMP (52°C)",
-                    "command": lambda: mcu_service.set_upper_temperature(52.0)
+                    "command": lambda: mcu_service.set_upper_temperature(52.0),
                 },
                 {
                     "name": "set_fan_speed",
-                    "description": "CMD_SET_FAN_SPEED (레벨 10)", 
-                    "command": lambda: mcu_service.set_fan_speed(10)
+                    "description": "CMD_SET_FAN_SPEED (레벨 10)",
+                    "command": lambda: mcu_service.set_fan_speed(10),
                 },
                 {
                     "name": "start_standby_heating",
                     "description": "CMD_LMA_INIT (동작:52°C, 대기:35°C)",
-                    "command": lambda: mcu_service.start_standby_heating(52.0, 35.0, 10000)
+                    "command": lambda: mcu_service.start_standby_heating(52.0, 35.0, 10000),
                 },
                 {
-                    "name": "start_standby_cooling", 
+                    "name": "start_standby_cooling",
                     "description": "CMD_STROKE_INIT_COMPLETE",
-                    "command": lambda: mcu_service.start_standby_cooling()
-                }
+                    "command": lambda: mcu_service.start_standby_cooling(),
+                },
             ]
 
             # Execute test sequence
             for i, test_step in enumerate(test_sequence, 1):
                 step_start_time = time.time()
                 logger.info(f"[{i}/{len(test_sequence)}] {test_step['description']}")
-                
+
                 try:
                     await test_step["command"]()
                     step_duration = (time.time() - step_start_time) * 1000
-                    
-                    result = {
-                        "step": i,
-                        "name": test_step["name"], 
-                        "description": test_step["description"],
-                        "success": True,
-                        "response_time_ms": step_duration,
-                        "error": None
-                    }
-                    test_results.append(result)
-                    logger.info(f"✅ Step {i} completed successfully ({step_duration:.1f}ms)")
-                    
-                except Exception as step_error:
-                    step_duration = (time.time() - step_start_time) * 1000
-                    
+
                     result = {
                         "step": i,
                         "name": test_step["name"],
-                        "description": test_step["description"], 
+                        "description": test_step["description"],
+                        "success": True,
+                        "response_time_ms": step_duration,
+                        "error": None,
+                    }
+                    test_results.append(result)
+                    logger.info(f"✅ Step {i} completed successfully ({step_duration:.1f}ms)")
+
+                except Exception as step_error:
+                    step_duration = (time.time() - step_start_time) * 1000
+
+                    result = {
+                        "step": i,
+                        "name": test_step["name"],
+                        "description": test_step["description"],
                         "success": False,
                         "response_time_ms": step_duration,
-                        "error": str(step_error)
+                        "error": str(step_error),
                     }
                     test_results.append(result)
                     logger.error(f"❌ Step {i} failed: {step_error}")
@@ -184,23 +180,23 @@ class SimpleMCUTestUseCase:
             execution_duration = TestDuration.from_seconds(end_time - start_time)
 
             logger.info(f"Simple MCU Test completed - Success: {successful_steps}/{total_steps}")
-            
+
             return SimpleMCUTestResult(
                 test_id=test_id,
                 test_status=TestStatus.COMPLETED if is_passed else TestStatus.FAILED,
                 execution_duration=execution_duration,
                 is_passed=is_passed,
                 test_results=test_results,
-                error_message=None
+                error_message=None,
             )
 
         except Exception as e:
             # Handle test failure
             end_time = asyncio.get_event_loop().time()
             execution_duration = TestDuration.from_seconds(end_time - start_time)
-            
+
             logger.error(f"Simple MCU Test failed: {e}")
-            
+
             # Try to disconnect on error
             try:
                 if self._hardware_services._mcu:
@@ -214,7 +210,7 @@ class SimpleMCUTestUseCase:
                 execution_duration=execution_duration,
                 is_passed=False,
                 test_results=test_results,
-                error_message=str(e)
+                error_message=str(e),
             )
 
         finally:
