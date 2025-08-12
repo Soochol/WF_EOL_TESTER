@@ -74,7 +74,7 @@ class EnhancedInputIntegrator:
                 "4": "Power Control",
                 "b": "Back to Main Menu",
             },
-            "usecase_menu": {"1": "EOL Force Test", "b": "Back to Main Menu"},
+            "usecase_menu": {"1": "Simple MCU Test", "b": "Back to Main Menu"},
         }
 
         logger.info("Enhanced CLI Integration initialized")
