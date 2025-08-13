@@ -8,11 +8,15 @@ Standalone script to run the FastAPI web server for development and production.
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     import uvicorn
-except ImportError:
-    uvicorn = None
+else:
+    try:
+        import uvicorn
+    except ImportError:
+        uvicorn = None
 
 from loguru import logger
 

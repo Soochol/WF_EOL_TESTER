@@ -191,30 +191,28 @@ class MenuSystem(IMenuSystem):
 
             # Create Simple MCU Test UseCase instance
             from application.use_cases.simple_mcu_test import SimpleMCUTestUseCase
-            
+
             # Try to get hardware services from the test executor's use case
             hardware_services = None
             if self._test_executor:
                 # Access the use case from test executor (if available)
                 try:
                     # Get hardware services from the test executor
-                    # This assumes the test executor has access to hardware services
-                    if hasattr(self._test_executor, 'get_hardware_services'):
-                        hardware_services = self._test_executor.get_hardware_services()
-                    elif hasattr(self._test_executor, '_use_case'):
-                        use_case = getattr(self._test_executor, '_use_case')
-                        if hasattr(use_case, '_hardware_services'):
-                            hardware_services = getattr(use_case, '_hardware_services')
+                    # Access hardware services through the use case
+                    if hasattr(self._test_executor, "_use_case"):
+                        use_case = getattr(self._test_executor, "_use_case")
+                        if hasattr(use_case, "_hardware_services"):
+                            hardware_services = getattr(use_case, "_hardware_services")
                 except AttributeError:
                     pass
-            
+
             # Try to get hardware services from hardware manager
             if not hardware_services and self._hardware_manager:
                 try:
-                    if hasattr(self._hardware_manager, 'get_hardware_services'):
+                    if hasattr(self._hardware_manager, "get_hardware_services"):
                         hardware_services = self._hardware_manager.get_hardware_services()
-                    elif hasattr(self._hardware_manager, '_hardware_facade'):
-                        hardware_services = getattr(self._hardware_manager, '_hardware_facade')
+                    elif hasattr(self._hardware_manager, "_hardware_facade"):
+                        hardware_services = getattr(self._hardware_manager, "_hardware_facade")
                 except AttributeError:
                     pass
 
@@ -241,13 +239,14 @@ class MenuSystem(IMenuSystem):
                 self._formatter.print_message(
                     "Simple MCU Test was cancelled or failed.",
                     message_type="info",
-                    title="Test Cancelled"
+                    title="Test Cancelled",
                 )
 
         except Exception as e:
             self._formatter.print_message(
-                f"Simple MCU Test execution failed: {str(e)}", message_type="error",
-                title="Simple MCU Test Failed"
+                f"Simple MCU Test execution failed: {str(e)}",
+                message_type="error",
+                title="Simple MCU Test Failed",
             )
             logger.error(f"Simple MCU Test execution error: {e}")
 
@@ -307,9 +306,7 @@ class MenuSystem(IMenuSystem):
             return
 
         try:
-            self._formatter.print_header(
-                "Robot Home Operation", "Moving robot to home position"
-            )
+            self._formatter.print_header("Robot Home Operation", "Moving robot to home position")
 
             # Execute robot home operation and get result
             success = await self._hardware_manager.execute_robot_home()
@@ -318,13 +315,13 @@ class MenuSystem(IMenuSystem):
                 self._formatter.print_message(
                     "Robot home operation completed successfully.",
                     message_type="success",
-                    title="Robot Home Complete"
+                    title="Robot Home Complete",
                 )
             else:
                 self._formatter.print_message(
                     "Robot home operation failed. Check the logs for details.",
                     message_type="error",
-                    title="Robot Home Failed"
+                    title="Robot Home Failed",
                 )
 
             # Wait for user acknowledgment
@@ -332,8 +329,9 @@ class MenuSystem(IMenuSystem):
 
         except Exception as e:
             self._formatter.print_message(
-                f"Robot home operation failed: {str(e)}", message_type="error",
-                title="Robot Home Failed"
+                f"Robot home operation failed: {str(e)}",
+                message_type="error",
+                title="Robot Home Failed",
             )
             logger.error(f"Robot home execution error: {e}")
 
