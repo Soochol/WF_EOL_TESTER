@@ -454,7 +454,6 @@ class LMAMCU(MCUService):
             return packet
         
         logger.info(f"WAITING for cooling complete signal (timeout: {timeout}s)")
-        logger.info(f"Target temperature: {target_temp}°C")
         
         start_time = time.time()
         response_data = b""
