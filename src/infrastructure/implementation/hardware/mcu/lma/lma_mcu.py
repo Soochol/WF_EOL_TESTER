@@ -267,26 +267,17 @@ class LMAMCU(MCUService):
                 i = ffff_pos + 1
 
         if packets_found:
-            # Return first packet, store additional packets in buffer
+            # Return first packet, but error if multiple packets received
             first_packet = packets_found[0]
             if len(packets_found) > 1:
-                # Check for duplicate packets - this indicates a system error
-                for i, packet in enumerate(packets_found):
-                    for j, other_packet in enumerate(packets_found[i+1:], i+1):
-                        if packet == other_packet:
-                            duplicate_hex = packet.hex().upper()
-                            logger.error(f"DUPLICATE_RESPONSE_DETECTED: {duplicate_hex} found at positions {i} and {j}")
-                            raise HardwareOperationError(
-                                "fast_lma_mcu", 
-                                "_extract_valid_packet", 
-                                f"Duplicate MCU response detected: {duplicate_hex}. This indicates a system-level communication error."
-                            )
-                
-                additional_packets = packets_found[1:]
-                self._packet_buffer.extend(additional_packets)
-                logger.info(f"Stored {len(additional_packets)} additional packets in buffer:")
-                for j, packet in enumerate(additional_packets):
-                    logger.info(f"  [{j+1}] {packet.hex().upper()}")
+                # Multiple packets in single response - this indicates system error
+                packet_list = [p.hex().upper() for p in packets_found]
+                logger.error(f"MULTIPLE_PACKETS_RECEIVED: {packet_list}")
+                raise HardwareOperationError(
+                    "fast_lma_mcu",
+                    "_extract_valid_packet", 
+                    f"Multiple packets received in single response: {packet_list}. System expects one packet per command."
+                )
             return first_packet
 
         # Debug: Log the buffer content when no valid packet found
@@ -447,7 +438,7 @@ class LMAMCU(MCUService):
 
         return None
 
-    def _wait_for_cooling_complete_with_monitoring(
+    async def _wait_for_cooling_complete_with_monitoring(
         self, target_temp: float, timeout: float = 120.0
     ) -> Optional[bytes]:
         """
@@ -482,9 +473,7 @@ class LMAMCU(MCUService):
             # Check temperature every 1 second
             if current_time - last_temp_check >= 1.0:
                 try:
-                    # Use synchronous temperature read to avoid async issues
-                    import asyncio
-                    current_temp = asyncio.run(self.get_temperature())
+                    current_temp = await self.get_temperature()
                     temp_diff = abs(current_temp - target_temp)
                     logger.info(f"Current temp: {current_temp:.1f}°C → {target_temp}°C (target), diff: {temp_diff:.1f}°C")
                     last_temp_check = current_time
@@ -517,7 +506,7 @@ class LMAMCU(MCUService):
                             "COOLING_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
                         )
             
-            time.sleep(0.1)  # 100ms wait between checks
+            await asyncio.sleep(0.1)  # 100ms wait between checks
         
         # Timeout occurred
         if response_data:
@@ -832,7 +821,7 @@ class LMAMCU(MCUService):
 
             # Second response (cooling complete) with temperature monitoring
             standby_target_temp = 35.0  # Standard standby temperature
-            cooling_response = self._wait_for_cooling_complete_with_monitoring(
+            cooling_response = await self._wait_for_cooling_complete_with_monitoring(
                 target_temp=standby_target_temp, timeout=120.0
             )
 
