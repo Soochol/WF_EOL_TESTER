@@ -432,11 +432,11 @@ class LMAMCU(MCUService):
 
         return None
 
-    async def _wait_for_cooling_complete_with_monitoring(
+    async def _wait_for_cooling_complete(
         self, target_temp: float, timeout: float = 120.0
     ) -> Optional[bytes]:
         """
-        Wait for cooling complete signal while monitoring temperature every second
+        Wait for cooling complete signal
         
         Args:
             target_temp: Target temperature for cooling
@@ -457,24 +457,10 @@ class LMAMCU(MCUService):
         logger.info(f"Target temperature: {target_temp}°C")
         
         start_time = time.time()
-        last_temp_check = 0
         response_data = b""
         expected_etx = b"\xfe\xfe"
         
         while time.time() - start_time < timeout:
-            current_time = time.time()
-            
-            # Check temperature every 1 second
-            if current_time - last_temp_check >= 1.0:
-                try:
-                    current_temp = await self.get_temperature()
-                    temp_diff = abs(current_temp - target_temp)
-                    logger.debug(f"Cooling progress: {current_temp:.1f}°C → {target_temp}°C (diff: {temp_diff:.1f}°C)")
-                    last_temp_check = current_time
-                except Exception as e:
-                    logger.warning(f"Failed to read temperature during cooling: {e}")
-                    last_temp_check = current_time
-            
             # Check for incoming data
             if self.serial_conn and self.serial_conn.in_waiting > 0:
                 new_data = self.serial_conn.read(self.serial_conn.in_waiting)
@@ -811,9 +797,9 @@ class LMAMCU(MCUService):
                     "fast_lma_mcu", "start_standby_cooling", "Invalid ACK response"
                 )
 
-            # Second response (cooling complete) with temperature monitoring
+            # Second response (cooling complete)
             standby_target_temp = 35.0  # Standard standby temperature
-            cooling_response = await self._wait_for_cooling_complete_with_monitoring(
+            cooling_response = await self._wait_for_cooling_complete(
                 target_temp=standby_target_temp, timeout=120.0
             )
 
