@@ -586,7 +586,7 @@ class LMAMCU(MCUService):
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
-                timeout=15.0, description="Operating temperature reached signal"
+                timeout=10.0, description="Operating temperature reached signal"
             )
 
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
