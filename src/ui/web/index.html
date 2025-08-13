@@ -850,6 +850,7 @@
                                     this.disabled = true;
                                     
                                     try {
+                                        console.log('🚀 Starting API call to /api/hardware/robot/servo/enable');
                                         const response = await fetch('/api/hardware/robot/servo/enable', {
                                             method: 'POST',
                                             headers: {
@@ -860,7 +861,9 @@
                                             })
                                         });
                                         
+                                        console.log('📡 API response received, status:', response.status);
                                         const result = await response.json();
+                                        console.log('📄 API response data:', result);
                                         
                                         if (result.success) {
                                             // 성공 시 UI 업데이트
@@ -900,6 +903,11 @@
                                         
                                     } catch (error) {
                                         console.error('⚡ Servo enable error:', error);
+                                        console.error('⚡ Error details:', {
+                                            message: error.message,
+                                            stack: error.stack,
+                                            name: error.name
+                                        });
                                         this.innerHTML = '<div>🟢 Enable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn ON motor power</small>';
                                         this.disabled = false;
                                         addLogEntry('ERROR', `Servo enable error: ${error.message}`);
