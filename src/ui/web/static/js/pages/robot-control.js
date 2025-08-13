@@ -348,6 +348,12 @@ export class RobotControlPageManager {
                 this.updateConnectionStatus(true);
                 this.addLogEntry('success', 'Robot connected successfully');
                 this.uiManager.showNotification('Robot connected successfully', 'success');
+                
+                // Guide user to enable servo
+                setTimeout(() => {
+                    this.addLogEntry('info', 'Next step: Enable servo to unlock movement controls');
+                    this.uiManager.showNotification('Connected! Please enable servo to control robot movement', 'info');
+                }, 1000);
             } else {
                 throw new Error(response.error || 'Connection failed');
             }
@@ -430,16 +436,43 @@ export class RobotControlPageManager {
      * @param {boolean} connected - Connection state
      */
     updateControlButtonStates(connected) {
-        const buttons = [
-            'robot-servo-on-btn', 'robot-servo-off-btn',
-            'robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn',
-            'robot-get-position-btn', 'robot-stop-motion-btn'
-        ];
-        
-        buttons.forEach(id => {
+        // Servo control buttons - only depend on connection
+        const servoButtons = ['robot-servo-on-btn', 'robot-servo-off-btn'];
+        servoButtons.forEach(id => {
             const button = document.getElementById(id);
             if (button) {
                 button.disabled = !connected;
+            }
+        });
+        
+        // Position and monitoring buttons - only depend on connection
+        const monitoringButtons = ['robot-get-position-btn'];
+        monitoringButtons.forEach(id => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.disabled = !connected;
+            }
+        });
+        
+        // Movement buttons - depend on both connection AND servo state
+        this.updateMovementButtonStates(connected && this.servoEnabled);
+    }
+
+    /**
+     * Update movement button states based on connection and servo state
+     * @private
+     * @param {boolean} enabled - Whether movement should be enabled
+     */
+    updateMovementButtonStates(enabled) {
+        const movementButtons = [
+            'robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn',
+            'robot-stop-motion-btn'
+        ];
+        
+        movementButtons.forEach(id => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.disabled = !enabled;
             }
         });
     }
@@ -545,6 +578,9 @@ export class RobotControlPageManager {
             statusDot.className = `status-dot status-${enabled ? 'success' : 'warning'}`;
             statusSpan.textContent = enabled ? 'Enabled' : 'Disabled';
         }
+        
+        // Update movement button states when servo status changes
+        this.updateMovementButtonStates(this.isConnected && enabled);
     }
 
     // =========================
