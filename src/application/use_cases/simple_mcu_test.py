@@ -175,10 +175,10 @@ class SimpleMCUTestUseCase:
                     test_results.append(result)
                     logger.error(f"❌ Step {i} failed: {step_error}")
 
-                # Add 0.5 second delay between commands
+                # Add 0.2 second delay between commands
                 if i < len(test_sequence):  # Don't delay after the last command
-                    logger.info(f"Waiting 0.5s before next command... (step {i}/{len(test_sequence)})")
-                    await asyncio.sleep(0.5)
+                    logger.info(f"Waiting 0.2s before next command... (step {i}/{len(test_sequence)})")
+                    await asyncio.sleep(0.2)
                 else:
                     logger.info(f"Last command completed (step {i}/{len(test_sequence)}), no delay needed")
 
