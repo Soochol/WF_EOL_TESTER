@@ -163,7 +163,7 @@ class LMAMCU(MCUService):
                             response_hex = valid_packet.hex().upper()
 
                             response_time = (time.time() - start_time) * 1000
-                            logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
+                            logger.debug(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
 
                             # Detailed packet analysis on clean packet
                             self._analyze_response_packet(valid_packet, description)
@@ -334,14 +334,8 @@ class LMAMCU(MCUService):
                         f"   Expected Status: 0x{expected_status:02X}, Received: 0x{cmd:02X} {'OK' if cmd == expected_status else 'ERROR'}"
                     )
                 elif description.startswith("CMD_REQUEST_TEMP") and length == 8:
-                    # Parse temperature data for display
-                    if len(data_bytes) >= 8:
-                        ir_temp_scaled = struct.unpack(">I", data_bytes[0:4])[0]
-                        outside_temp_scaled = struct.unpack(">I", data_bytes[4:8])[0]
-                        ir_temp = ir_temp_scaled / 10.0
-                        outside_temp = outside_temp_scaled / 10.0
-                        logger.info(f"   IR Temp Max: {ir_temp:.1f}°C")
-                        logger.info(f"   Outside Air Temp: {outside_temp:.1f}°C")
+                    # Temperature data parsing handled in get_temperature method
+                    pass
 
             else:
                 logger.warning(
@@ -475,7 +469,7 @@ class LMAMCU(MCUService):
                 try:
                     current_temp = await self.get_temperature()
                     temp_diff = abs(current_temp - target_temp)
-                    logger.info(f"Current temp: {current_temp:.1f}°C → {target_temp}°C (target), diff: {temp_diff:.1f}°C")
+                    logger.debug(f"Cooling progress: {current_temp:.1f}°C → {target_temp}°C (diff: {temp_diff:.1f}°C)")
                     last_temp_check = current_time
                 except Exception as e:
                     logger.warning(f"Failed to read temperature during cooling: {e}")
@@ -658,9 +652,7 @@ class LMAMCU(MCUService):
 
                 # Use ir_temp_max as the primary temperature
                 self._current_temperature = ir_temp_celsius
-                logger.info(
-                    f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C"
-                )
+                logger.info(f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C")
                 return ir_temp_celsius
             else:
                 error_msg = "Invalid temperature response or timeout"
