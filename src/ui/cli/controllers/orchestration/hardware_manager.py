@@ -385,8 +385,15 @@ class HardwareControlManager:
                         message_type="warning"
                     )
                     
-                    # Attempt to connect
-                    await robot_service.connect()
+                    # Attempt to connect with required parameters
+                    if not self.hardware_config:
+                        logger.error("Hardware configuration not available for robot connection")
+                        raise ValueError("Hardware configuration required for robot connection")
+                    
+                    await robot_service.connect(
+                        axis_id=self.axis_id,
+                        irq_no=self.hardware_config.robot.irq_no
+                    )
                     
                     # Verify connection was successful
                     is_connected = await robot_service.is_connected()
