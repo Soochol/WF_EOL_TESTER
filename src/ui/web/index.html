@@ -408,6 +408,22 @@
                         </div>
 
                         <script>
+                            // Notification function for user messages
+                            function showNotification(message, type = 'info') {
+                                // Simple notification using browser alert for now
+                                // Can be enhanced with toast notifications later
+                                console.log(`[${type.toUpperCase()}] ${message}`);
+                                
+                                // Show as a temporary alert - can be replaced with better UI
+                                if (type === 'error') {
+                                    alert(`❌ Error: ${message}`);
+                                } else if (type === 'success') {
+                                    alert(`✅ Success: ${message}`);
+                                } else {
+                                    alert(`ℹ️ Info: ${message}`);
+                                }
+                            }
+                            
                             // Tab switching functionality
                             document.addEventListener('DOMContentLoaded', function() {
                                 const tabButtons = document.querySelectorAll('.tab-btn');
