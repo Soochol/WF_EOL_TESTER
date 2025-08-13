@@ -163,7 +163,7 @@ class LMAMCU(MCUService):
                             response_hex = valid_packet.hex().upper()
 
                             response_time = (time.time() - start_time) * 1000
-                            logger.debug(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
+                            logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
 
                             # Detailed packet analysis on clean packet
                             self._analyze_response_packet(valid_packet, description)
