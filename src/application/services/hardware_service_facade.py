@@ -334,9 +334,10 @@ class HardwareServiceFacade:
             logger.info("Hardware initialization completed")
 
         except Exception as e:
+            logger.debug(f"Hardware initialization failed with config: {test_config.to_dict()}")
             raise HardwareConnectionException(
                 f"Failed to initialize hardware: {str(e)}",
-                details={"config": test_config.to_dict()},
+                details={"voltage": test_config.voltage, "current": test_config.current},
             ) from e
 
     async def _ensure_robot_homed(self, axis_id: int) -> None:
@@ -452,9 +453,10 @@ class HardwareServiceFacade:
 
         except Exception as e:
             logger.error(f"💥 LMA standby sequence FAILED at some step: {e}")
+            logger.debug(f"LMA standby sequence failed with config: {test_config.to_dict()}")
             raise HardwareConnectionException(
                 f"Failed to set LMA standby sequence: {str(e)}",
-                details={"config": test_config.to_dict()},
+                details={"temperature_range": f"{min(test_config.temperature_list)}-{max(test_config.temperature_list)}°C"},
             ) from e
 
     # ============================================================================
@@ -519,9 +521,10 @@ class HardwareServiceFacade:
                 details={"timeout": test_config.timeout_seconds},
             ) from e
         except Exception as e:
+            logger.debug(f"Test setup failed with config: {test_config.to_dict()}")
             raise HardwareConnectionException(
                 f"Failed to setup test: {str(e)}",
-                details={"config": test_config.to_dict()},
+                details={"test_mode": "MODE_1", "temperature_count": len(test_config.temperature_list)},
             ) from e
 
     async def perform_force_test_sequence(
