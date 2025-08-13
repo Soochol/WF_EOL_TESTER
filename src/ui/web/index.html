@@ -736,7 +736,7 @@
                                         if (positionElement && data.current_position !== undefined) {
                                             const valueSpan = positionElement.querySelector('.value');
                                             if (valueSpan) {
-                                                valueSpan.textContent = data.current_position.toFixed(3);
+                                                valueSpan.textContent = data.current_position !== null ? data.current_position.toFixed(3) : '---.---';
                                             }
                                         }
                                         
@@ -1227,7 +1227,7 @@
                                             if (positionElement && data.current_position !== undefined) {
                                                 const valueSpan = positionElement.querySelector('.value');
                                                 if (valueSpan) {
-                                                    valueSpan.textContent = data.current_position.toFixed(3);
+                                                    valueSpan.textContent = data.current_position !== null ? data.current_position.toFixed(3) : '---.---';
                                                 }
                                             }
                                             
