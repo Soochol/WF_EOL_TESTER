@@ -91,6 +91,7 @@ class TestConfiguration:
     mcu_temperature_stabilization: float = 0.1  # Temperature change stabilization time (s)
     mcu_command_stabilization: float = 0.1  # MCU command stabilization time (s)
     poweron_stabilization: float = 0.5  # Power-on stabilization time (s)
+    power_command_stabilization: float = 0.2  # Power command stabilization time (s)
     loadcell_zero_delay: float = 0.1  # Load cell zeroing delay (s)
 
     # ========================================================================
@@ -352,6 +353,7 @@ class TestConfiguration:
             ("mcu_temperature_stabilization", self.mcu_temperature_stabilization),
             ("mcu_command_stabilization", self.mcu_command_stabilization),
             ("poweron_stabilization", self.poweron_stabilization),
+            ("power_command_stabilization", self.power_command_stabilization),
             ("loadcell_zero_delay", self.loadcell_zero_delay),
             ("timeout_seconds", self.timeout_seconds),
         ]
@@ -583,6 +585,7 @@ class TestConfiguration:
                 self.robot_standby_stabilization
             ),  # CRITICAL missing field added!
             "poweron_stabilization": self.poweron_stabilization,
+            "power_command_stabilization": self.power_command_stabilization,
             "loadcell_zero_delay": self.loadcell_zero_delay,
             "mcu_command_stabilization": self.mcu_command_stabilization,
             # Measurement settings
@@ -653,6 +656,7 @@ class TestConfiguration:
                 "mcu_temperature_stabilization": self.mcu_temperature_stabilization,
                 "robot_standby_stabilization": self.robot_standby_stabilization,
                 "poweron_stabilization": self.poweron_stabilization,
+                "power_command_stabilization": self.power_command_stabilization,
                 "loadcell_zero_delay": self.loadcell_zero_delay,
                 "mcu_command_stabilization": self.mcu_command_stabilization,
             },
@@ -779,6 +783,7 @@ class TestConfiguration:
                     ),
                     "robot_standby_stabilization": timing.get("robot_standby_stabilization", 1.0),
                     "poweron_stabilization": timing.get("poweron_stabilization", 0.5),
+                    "power_command_stabilization": timing.get("power_command_stabilization", 0.2),
                     "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
                     "mcu_command_stabilization": timing.get("mcu_command_stabilization", 0.1),
                 }

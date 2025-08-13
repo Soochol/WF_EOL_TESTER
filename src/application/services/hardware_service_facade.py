@@ -297,16 +297,16 @@ class HardwareServiceFacade:
 
             # Initialize power settings
             await self._power.disable_output()
-            await asyncio.sleep(test_config.poweron_stabilization)
+            await asyncio.sleep(test_config.power_command_stabilization)
 
             await self._power.set_voltage(test_config.voltage)
-            await asyncio.sleep(test_config.poweron_stabilization)
+            await asyncio.sleep(test_config.power_command_stabilization)
 
             await self._power.set_current(test_config.current)
-            await asyncio.sleep(test_config.poweron_stabilization)
+            await asyncio.sleep(test_config.power_command_stabilization)
 
             await self._power.set_current_limit(test_config.upper_current)
-            await asyncio.sleep(test_config.poweron_stabilization)
+            await asyncio.sleep(test_config.power_command_stabilization)
 
             # Initialize robot - enable servo, ensure homed, then move to initial position
             logger.info(f"Enabling servo for axis {hardware_config.robot.axis_id}...")
@@ -473,6 +473,8 @@ class HardwareServiceFacade:
             # Enable power output
             await self._power.enable_output()
             logger.info(f"Power enabled: {test_config.voltage}V, {test_config.current}A")
+            logger.info(f"⏳ Power stabilization delay: {test_config.poweron_stabilization}s...")
+            await asyncio.sleep(test_config.poweron_stabilization)
 
             # Wait for MCU boot complete signal (directly using MCU service)
             logger.info("Waiting for MCU boot complete signal...")

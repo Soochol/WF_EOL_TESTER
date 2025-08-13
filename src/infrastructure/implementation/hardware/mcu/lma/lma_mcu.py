@@ -150,7 +150,7 @@ class LMAMCU(MCUService):
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (last_data_time - start_time) * 1000
                     data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
-                    logger.info(
+                    logger.debug(
                         f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
                     )
 
@@ -270,6 +270,18 @@ class LMAMCU(MCUService):
             # Return first packet, store additional packets in buffer
             first_packet = packets_found[0]
             if len(packets_found) > 1:
+                # Check for duplicate packets - this indicates a system error
+                for i, packet in enumerate(packets_found):
+                    for j, other_packet in enumerate(packets_found[i+1:], i+1):
+                        if packet == other_packet:
+                            duplicate_hex = packet.hex().upper()
+                            logger.error(f"DUPLICATE_RESPONSE_DETECTED: {duplicate_hex} found at positions {i} and {j}")
+                            raise HardwareOperationError(
+                                "fast_lma_mcu", 
+                                "_extract_valid_packet", 
+                                f"Duplicate MCU response detected: {duplicate_hex}. This indicates a system-level communication error."
+                            )
+                
                 additional_packets = packets_found[1:]
                 self._packet_buffer.extend(additional_packets)
                 logger.info(f"Stored {len(additional_packets)} additional packets in buffer:")
@@ -392,7 +404,7 @@ class LMAMCU(MCUService):
                 data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
 
                 if not quiet:
-                    logger.info(
+                    logger.debug(
                         f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
                     )
 
@@ -435,6 +447,89 @@ class LMAMCU(MCUService):
 
         return None
 
+    def _wait_for_cooling_complete_with_monitoring(
+        self, target_temp: float, timeout: float = 120.0
+    ) -> Optional[bytes]:
+        """
+        Wait for cooling complete signal while monitoring temperature every second
+        
+        Args:
+            target_temp: Target temperature for cooling
+            timeout: Maximum wait time in seconds
+            
+        Returns:
+            Cooling complete response packet or None if timeout
+        """
+        self._ensure_connected()
+        
+        # First check if we have packets in the buffer from previous receive
+        if self._packet_buffer:
+            packet = self._packet_buffer.pop(0)
+            logger.info(f"Using buffered packet: {packet.hex().upper()}")
+            return packet
+        
+        logger.info(f"WAITING for cooling complete signal (timeout: {timeout}s)")
+        logger.info(f"Target temperature: {target_temp}°C")
+        
+        start_time = time.time()
+        last_temp_check = 0
+        response_data = b""
+        expected_etx = b"\xfe\xfe"
+        
+        while time.time() - start_time < timeout:
+            current_time = time.time()
+            
+            # Check temperature every 1 second
+            if current_time - last_temp_check >= 1.0:
+                try:
+                    # Use synchronous temperature read to avoid async issues
+                    import asyncio
+                    current_temp = asyncio.run(self.get_temperature())
+                    temp_diff = abs(current_temp - target_temp)
+                    logger.info(f"Current temp: {current_temp:.1f}°C → {target_temp}°C (target), diff: {temp_diff:.1f}°C")
+                    last_temp_check = current_time
+                except Exception as e:
+                    logger.warning(f"Failed to read temperature during cooling: {e}")
+                    last_temp_check = current_time
+            
+            # Check for incoming data
+            if self.serial_conn and self.serial_conn.in_waiting > 0:
+                new_data = self.serial_conn.read(self.serial_conn.in_waiting)
+                response_data += new_data
+                
+                # Check for complete packet
+                if response_data.endswith(expected_etx) and len(response_data) >= 6:
+                    # Extract valid packet from potentially noisy buffer
+                    valid_packet = self._extract_valid_packet(response_data)
+                    
+                    if valid_packet:
+                        response_hex = valid_packet.hex().upper()
+                        response_time = (time.time() - start_time) * 1000
+                        logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
+                        
+                        # Detailed packet analysis on clean packet
+                        self._analyze_response_packet(valid_packet, "COOLING_COMPLETE")
+                        
+                        return valid_packet
+                    else:
+                        # Buffer ends with FEFE but no valid packet found - continue waiting
+                        logger.warning(
+                            "COOLING_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
+                        )
+            
+            time.sleep(0.1)  # 100ms wait between checks
+        
+        # Timeout occurred
+        if response_data:
+            partial_hex = response_data.hex().upper()
+            logger.warning(
+                f"COOLING_TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}"
+            )
+        else:
+            logger.warning(f"COOLING_TIMEOUT with NO response data received ({timeout}s)")
+        
+        return None
+
     # ===== MCUService Interface Implementation =====
 
     async def wait_boot_complete(self) -> None:
@@ -457,7 +552,7 @@ class LMAMCU(MCUService):
                     # Log received data for debugging
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (time.time() - start_time) * 1000
-                    logger.info(f"PC <- MCU: {chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms")
+                    logger.debug(f"PC <- MCU: {chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms")
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
@@ -735,9 +830,10 @@ class LMAMCU(MCUService):
                     "fast_lma_mcu", "start_standby_cooling", "Invalid ACK response"
                 )
 
-            # Second response (cooling complete)
-            cooling_response = self._wait_for_additional_response(
-                timeout=60.0, description="Cooling complete signal"
+            # Second response (cooling complete) with temperature monitoring
+            standby_target_temp = 35.0  # Standard standby temperature
+            cooling_response = self._wait_for_cooling_complete_with_monitoring(
+                target_temp=standby_target_temp, timeout=120.0
             )
 
             if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
