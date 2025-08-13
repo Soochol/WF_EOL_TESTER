@@ -64,7 +64,7 @@ class RepositoryService:
             await self._update_test_summary(test)
 
         except Exception as e:
-            logger.error("Failed to save test result: %s", e)
+            logger.error(f"Failed to save test result: {e}")
             raise RepositoryAccessError(operation="save_test_result", reason=str(e)) from e
 
     async def _save_measurement_raw_data(self, test: EOLTest) -> None:
@@ -94,15 +94,15 @@ class RepositoryService:
 
             # Extract measurement data
             if not test.test_result or not test.test_result.actual_results:
-                logger.warning("No measurement data found for test %s", test.test_id)
+                logger.warning(f"No measurement data found for test {test.test_id}")
                 return
 
             measurements_dict = test.test_result.actual_results.get("measurements", {})
             if not measurements_dict:
-                logger.warning("No measurements data found for test %s", test.test_id)
+                logger.warning(f"No measurements data found for test {test.test_id}")
                 return
 
-            logger.debug("Extracting force data for test %s", test.test_id)
+            logger.debug(f"Extracting force data for test {test.test_id}")
 
             # Write CSV file
             with open(filepath, "w", newline="", encoding="utf-8") as csvfile:
@@ -148,15 +148,15 @@ class RepositoryService:
                             else:
                                 row.append("")
                         else:
-                            logger.debug("Position %s not found in temperature %s", pos_str, temp)
+                            logger.debug(f"Position {pos_str} not found in temperature {temp}")
                             row.append("")  # Empty cell for missing measurements
 
                     writer.writerow(row)
 
-            logger.debug("Measurement raw data saved to %s", filepath)
+            logger.debug(f"Measurement raw data saved to {filepath}")
 
         except Exception as e:
-            logger.error("Failed to save measurement raw data: %s", e)
+            logger.error(f"Failed to save measurement raw data: {e}")
             # Don't raise exception as this is supplementary to main save operation
 
     def _extract_force_value(self, position_data, temp: str, pos_str: str):
@@ -252,10 +252,10 @@ class RepositoryService:
                 ]
                 writer.writerow(row)
 
-            logger.debug("Test summary updated for test %s", test.test_id)
+            logger.debug(f"Test summary updated for test {test.test_id}")
 
         except Exception as e:
-            logger.error("Failed to update test summary: %s", e)
+            logger.error(f"Failed to update test summary: {e}")
             # Don't raise exception as this is supplementary to main save operation
 
     def get_all_repositories(self) -> dict:
