@@ -335,7 +335,7 @@ class MCUController(HardwareController):
                 return True
 
             await self._show_progress_with_message(
-                f"Starting standby heating (op:{operating_temp}°C, standby:{standby_temp}°C, hold:{hold_time}ms)...",
+                f"Standby heating in progress (op:{operating_temp}°C, standby:{standby_temp}°C)...",
                 heating_operation,
                 "Standby heating started successfully",
                 "Failed to start standby heating",
