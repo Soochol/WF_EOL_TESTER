@@ -11,6 +11,9 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
+# Add src directory to Python path for module imports
+sys.path.append("src")
+
 # Third-party imports
 from loguru import logger
 
