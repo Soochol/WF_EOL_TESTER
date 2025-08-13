@@ -483,15 +483,20 @@
                                                 disconnectBtn.style.opacity = '1';
                                             }
                                             
-                                            // 다른 컨트롤 버튼들 활성화
-                                            ['robot-servo-on-btn', 'robot-servo-off-btn', 'robot-home-axis-btn', 
-                                             'robot-move-absolute-btn', 'robot-move-relative-btn', 'robot-stop-motion-btn'].forEach(btnId => {
+                                            // 서보 컨트롤 버튼들만 활성화 (움직임 버튼은 서보 활성화 후)
+                                            ['robot-servo-on-btn', 'robot-servo-off-btn'].forEach(btnId => {
                                                 const btn = document.getElementById(btnId);
                                                 if (btn) {
                                                     btn.disabled = false;
                                                     btn.style.opacity = '1';
                                                 }
                                             });
+                                            
+                                            // 사용자 가이드 메시지 표시
+                                            setTimeout(() => {
+                                                addLogEntry('INFO', 'Next step: Enable servo to unlock movement controls');
+                                                showNotification('Connected! Please enable servo to control robot movement', 'info');
+                                            }, 1000);
                                             
                                             // 상태 표시 업데이트
                                             if (statusDot && statusText) {
@@ -857,7 +862,18 @@
                                                 }
                                             }
                                             
+                                            // 움직임 제어 버튼들 활성화
+                                            ['robot-home-axis-btn', 'robot-move-absolute-btn', 
+                                             'robot-move-relative-btn', 'robot-stop-motion-btn'].forEach(btnId => {
+                                                const btn = document.getElementById(btnId);
+                                                if (btn) {
+                                                    btn.disabled = false;
+                                                    btn.style.opacity = '1';
+                                                }
+                                            });
+                                            
                                             addLogEntry('SUCCESS', result.message || 'Servo enabled successfully');
+                                            addLogEntry('INFO', 'Movement controls are now active');
                                             
                                         } else {
                                             // 실패 시
@@ -911,8 +927,9 @@
                                                 }
                                             }
                                             
-                                            // 움직임 버튼들 비활성화 (안전)
-                                            ['robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn'].forEach(btnId => {
+                                            // 움직임 제어 버튼들 비활성화
+                                            ['robot-home-axis-btn', 'robot-move-absolute-btn', 
+                                             'robot-move-relative-btn', 'robot-stop-motion-btn'].forEach(btnId => {
                                                 const btn = document.getElementById(btnId);
                                                 if (btn) {
                                                     btn.disabled = true;
@@ -1175,17 +1192,28 @@
                                 });
                                 
                                 // UI 상태 관리 개선 함수
-                                function updateUIBasedOnConnectionState(isConnected) {
-                                    const controlButtons = [
-                                        'robot-servo-on-btn', 'robot-servo-off-btn', 'robot-home-axis-btn',
-                                        'robot-move-absolute-btn', 'robot-move-relative-btn', 'robot-stop-motion-btn'
-                                    ];
-                                    
-                                    controlButtons.forEach(btnId => {
+                                function updateUIBasedOnConnectionState(isConnected, servoEnabled = false) {
+                                    // 서보 제어 버튼 - 연결 상태에만 의존
+                                    const servoButtons = ['robot-servo-on-btn', 'robot-servo-off-btn'];
+                                    servoButtons.forEach(btnId => {
                                         const btn = document.getElementById(btnId);
                                         if (btn) {
                                             btn.disabled = !isConnected;
                                             btn.style.opacity = isConnected ? '1' : '0.5';
+                                        }
+                                    });
+                                    
+                                    // 움직임 제어 버튼 - 연결 상태 AND 서보 활성화 상태에 의존
+                                    const movementButtons = [
+                                        'robot-home-axis-btn', 'robot-move-absolute-btn', 
+                                        'robot-move-relative-btn', 'robot-stop-motion-btn'
+                                    ];
+                                    movementButtons.forEach(btnId => {
+                                        const btn = document.getElementById(btnId);
+                                        if (btn) {
+                                            const enabled = isConnected && servoEnabled;
+                                            btn.disabled = !enabled;
+                                            btn.style.opacity = enabled ? '1' : '0.5';
                                         }
                                     });
                                     
@@ -1218,8 +1246,8 @@
                                         const response = await fetch('/api/hardware/robot/status');
                                         const data = await response.json();
                                         
-                                        // 연결 상태에 따른 UI 업데이트
-                                        updateUIBasedOnConnectionState(data.connected);
+                                        // 연결 상태와 서보 상태에 따른 UI 업데이트
+                                        updateUIBasedOnConnectionState(data.connected, data.servo_enabled);
                                         
                                         if (data.connected) {
                                             // 현재 위치 업데이트
