@@ -487,11 +487,8 @@ class RobotController(HardwareController):
             primary_axis = self.axis_id
 
             async def stop_operation():
-                # Use deceleration from config or default
-                if self.robot_config:
-                    deceleration = self.robot_config.deceleration
-                else:
-                    deceleration = 1000.0  # μm/s²
+                # Use default deceleration for emergency stop
+                deceleration = 5000.0  # μm/s² - conservative default for emergency stop
                 await self.robot_service.stop_motion(primary_axis, deceleration)
                 return True
 

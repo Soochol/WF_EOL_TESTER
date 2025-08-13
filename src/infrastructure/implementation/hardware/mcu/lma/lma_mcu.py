@@ -231,19 +231,35 @@ class LMAMCU(MCUService):
             )  # STX(2) + CMD(1) + LEN(1) + DATA(length) + ETX(2)
 
             # Validate packet completeness and structure
-            if (
-                expected_packet_end <= len(buffer)
-                and buffer[expected_packet_end - 2 : expected_packet_end] == b"\xfe\xfe"
-            ):
-                valid_packet = buffer[ffff_pos:expected_packet_end]
-                packets_found.append(valid_packet)
-                logger.info(
-                    f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}"
-                )
-                i = expected_packet_end  # Move past this packet
+            if expected_packet_end <= len(buffer):
+                # Check if ETX is at the expected position
+                if buffer[expected_packet_end - 2 : expected_packet_end] == b"\xfe\xfe":
+                    valid_packet = buffer[ffff_pos:expected_packet_end]
+                    packets_found.append(valid_packet)
+                    logger.info(
+                        f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}"
+                    )
+                    i = expected_packet_end  # Move past this packet
+                else:
+                    # Check if we have extra bytes after a valid 6-byte boot packet
+                    if (length == 0 and ffff_pos + 6 <= len(buffer) and 
+                        buffer[ffff_pos + 4:ffff_pos + 6] == b"\xfe\xfe"):
+                        # This is a valid 6-byte packet (FFFF + CMD + LEN + FEFE)
+                        valid_packet = buffer[ffff_pos:ffff_pos + 6]
+                        packets_found.append(valid_packet)
+                        logger.info(
+                            f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos} (6-byte)"
+                        )
+                        i = ffff_pos + 6  # Move past this packet
+                    else:
+                        logger.debug(
+                            f"INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}"
+                        )
+                        # Move to next potential FFFF position
+                        i = ffff_pos + 2
             else:
                 logger.debug(
-                    f"INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}"
+                    f"INCOMPLETE_PACKET at position {ffff_pos}: need {expected_packet_end} bytes, have {len(buffer)}"
                 )
                 # Move to next potential FFFF position
                 i = ffff_pos + 2
@@ -259,7 +275,9 @@ class LMAMCU(MCUService):
                     logger.info(f"  [{j+1}] {packet.hex().upper()}")
             return first_packet
 
-        logger.warning(f"NO_VALID_PACKET found in buffer ({len(buffer)} bytes)")
+        # Debug: Log the buffer content when no valid packet found
+        buffer_hex = buffer.hex().upper()
+        logger.warning(f"NO_VALID_PACKET found in buffer ({len(buffer)} bytes): {buffer_hex}")
         return None
 
     def _analyze_response_packet(self, response_data: bytes, description: str = "") -> None:
@@ -313,8 +331,8 @@ class LMAMCU(MCUService):
                 elif description.startswith("CMD_REQUEST_TEMP") and length == 8:
                     # Parse temperature data for display
                     if len(data_bytes) >= 8:
-                        ir_temp_scaled = struct.unpack("<I", data_bytes[0:4])[0]
-                        outside_temp_scaled = struct.unpack("<I", data_bytes[4:8])[0]
+                        ir_temp_scaled = struct.unpack(">I", data_bytes[0:4])[0]
+                        outside_temp_scaled = struct.unpack(">I", data_bytes[4:8])[0]
                         ir_temp = ir_temp_scaled / 10.0
                         outside_temp = outside_temp_scaled / 10.0
                         logger.info(f"   IR Temp Max: {ir_temp:.1f}°C")
@@ -468,14 +486,16 @@ class LMAMCU(MCUService):
 
                 await asyncio.sleep(0.1)
 
-            # Boot timeout - log what we received
+            # Boot timeout - log what we received and raise exception
             if response_data:
                 partial_hex = response_data.hex().upper()
-                logger.warning(f"Boot timeout with partial data: {partial_hex}")
+                logger.error(f"Boot timeout with partial data: {partial_hex}")
             else:
-                logger.warning("Boot timeout with no data received")
+                logger.error("Boot timeout with no data received")
 
-            logger.warning("Boot complete signal timeout (continuing)")
+            error_msg = "MCU boot complete signal timeout - no valid boot complete packet received"
+            logger.error(error_msg)
+            raise HardwareOperationError("fast_lma_mcu", "wait_boot_complete", error_msg)
 
         except Exception as e:
             error_msg = f"MCU boot wait failed: {e}"
@@ -538,13 +558,13 @@ class LMAMCU(MCUService):
 
             if response and len(response) >= 14 and response[2] == 0x07:
                 # Extract temperature data (8 bytes total)
-                # First 4 bytes: ir_temp_max (little endian)
-                # Next 4 bytes: outside_air_temp (little endian)
+                # First 4 bytes: ir_temp_max (big endian)
+                # Next 4 bytes: outside_air_temp (big endian)
                 ir_temp_data = response[4:8]
                 outside_temp_data = response[8:12]
 
-                ir_temp_scaled = struct.unpack("<I", ir_temp_data)[0]
-                outside_temp_scaled = struct.unpack("<I", outside_temp_data)[0]
+                ir_temp_scaled = struct.unpack(">I", ir_temp_data)[0]
+                outside_temp_scaled = struct.unpack(">I", outside_temp_data)[0]
 
                 # Convert to actual temperature (divide by 10)
                 ir_temp_celsius = ir_temp_scaled / 10.0
@@ -557,12 +577,14 @@ class LMAMCU(MCUService):
                 )
                 return ir_temp_celsius
             else:
-                logger.warning("Temperature read failed, returning cached value")
-                return self._current_temperature
+                error_msg = "Invalid temperature response or timeout"
+                logger.error(error_msg)
+                raise HardwareOperationError("fast_lma_mcu", "get_temperature", error_msg)
 
         except Exception as e:
-            logger.error(f"Temperature query error: {e}, returning cached value")
-            return self._current_temperature
+            error_msg = f"Temperature query failed: {e}"
+            logger.error(error_msg)
+            raise HardwareOperationError("fast_lma_mcu", "get_temperature", error_msg) from e
 
     async def set_test_mode(self, mode: TestMode) -> None:
         """Set test mode"""
