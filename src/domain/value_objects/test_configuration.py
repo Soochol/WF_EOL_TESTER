@@ -46,8 +46,8 @@ class TestConfiguration:
     # MCU/TEMPERATURE CONTROLLER SETTINGS
     # ========================================================================
     upper_temperature: float = 80.0  # Maximum temperature limit (°C)
-    activation_temperature: float = 60.0  # Temperature activation threshold (°C)
-    standby_temperature: float = 40.0  # Standby temperature setting (°C)
+    activation_temperature: float = 52.0  # Temperature activation threshold (°C)
+    standby_temperature: float = 38.0  # Standby temperature setting (°C)
     fan_speed: int = 10  # Fan speed setting (0-10)
 
     # ========================================================================

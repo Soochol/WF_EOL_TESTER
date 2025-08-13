@@ -71,6 +71,12 @@ class DIOMonitoringService:
         # State tracking for edge detection
         self._previous_states: Dict[int, bool] = {}
         self._first_read = True
+        
+        # Edge-based dual button press detection
+        self._left_button_edge_time: Optional[float] = None
+        self._right_button_edge_time: Optional[float] = None
+        self._dual_press_window = 0.2  # 200ms window for dual press detection
+        self._edge_cleanup_task: Optional[asyncio.Task] = None
 
         # Build channel configuration from DigitalPin objects
         logger.info("🔧 DIO_INIT: Building channel configuration from DigitalPin objects...")
@@ -153,7 +159,21 @@ class DIOMonitoringService:
             except asyncio.CancelledError:
                 pass
 
+        # Cancel edge cleanup task if running
+        if self._edge_cleanup_task and not self._edge_cleanup_task.done():
+            self._edge_cleanup_task.cancel()
+            try:
+                await self._edge_cleanup_task
+            except asyncio.CancelledError:
+                pass
+
         self._monitoring_task = None
+        self._edge_cleanup_task = None
+        
+        # Clear edge times
+        self._left_button_edge_time = None
+        self._right_button_edge_time = None
+        
         logger.info("Button monitoring service stopped")
 
     async def _monitor_loop(self) -> None:
@@ -358,37 +378,55 @@ class DIOMonitoringService:
         self, pressed_channel: int, current_raw_states: List[bool]
     ) -> None:
         """
-        Handle operator button press - check for dual button press and safety conditions
+        Handle operator button press - use edge-based dual button press detection
 
         Args:
             pressed_channel: Channel number of the button that was pressed
             current_raw_states: Current raw states of all channels (list, index = channel number)
         """
-        logger.info(f"🎯 DIO_BUTTON: Processing button press on channel {pressed_channel}")
-
-        # Check if both operator buttons are currently pressed (logical states)
+        import time
+        
+        logger.info(f"🎯 DIO_BUTTON: Processing button press edge on channel {pressed_channel}")
+        
+        current_time = time.time()
         left_ch = self.left_button_pin.pin_number
         right_ch = self.right_button_pin.pin_number
 
-        # Safely get button states with bounds checking
-        left_raw = current_raw_states[left_ch] if left_ch < len(current_raw_states) else True
-        right_raw = current_raw_states[right_ch] if right_ch < len(current_raw_states) else True
+        # Record edge detection time for this button
+        if pressed_channel == left_ch:
+            self._left_button_edge_time = current_time
+            button_name = "Left"
+        elif pressed_channel == right_ch:
+            self._right_button_edge_time = current_time
+            button_name = "Right"
+        else:
+            logger.warning(f"🎯 DIO_BUTTON: Unknown button channel {pressed_channel}")
+            return
 
-        left_pressed = not left_raw  # B-contact logic
-        right_pressed = not right_raw  # B-contact logic
+        logger.info(f"🎯 DIO_BUTTON: {button_name} button edge detected at {current_time:.3f}")
 
-        logger.info(
-            f"🎯 DIO_BUTTON: Button states - Left (ch{left_ch}): raw={left_raw}, pressed={left_pressed}"
-        )
-        logger.info(
-            f"🎯 DIO_BUTTON: Button states - Right (ch{right_ch}): raw={right_raw}, pressed={right_pressed}"
-        )
+        # Check for dual button press within the time window
+        dual_press_detected = False
+        
+        if self._left_button_edge_time and self._right_button_edge_time:
+            time_diff = abs(self._left_button_edge_time - self._right_button_edge_time)
+            logger.info(f"🎯 DIO_BUTTON: Time difference between button edges: {time_diff:.3f}s")
+            
+            if time_diff <= self._dual_press_window:
+                dual_press_detected = True
+                logger.info(
+                    f"🎯 DIO_BUTTON: ✅ DUAL BUTTON PRESS DETECTED! "
+                    f"Left: {self._left_button_edge_time:.3f}, Right: {self._right_button_edge_time:.3f}, "
+                    f"Diff: {time_diff:.3f}s (window: {self._dual_press_window}s)"
+                )
+            else:
+                logger.info(
+                    f"🎯 DIO_BUTTON: Time window exceeded for dual press "
+                    f"(diff: {time_diff:.3f}s > window: {self._dual_press_window}s)"
+                )
 
-        if left_pressed and right_pressed:
-            # Both buttons are currently pressed - check safety conditions
-            logger.info(
-                "🎯 DIO_BUTTON: ✅ DUAL BUTTON PRESS DETECTED! Checking safety conditions..."
-            )
+        if dual_press_detected:
+            # Check safety conditions
             clamp_ch = self.clamp_sensor_pin.pin_number
             chain_ch = self.chain_sensor_pin.pin_number
             door_ch = self.door_sensor_pin.pin_number
@@ -405,6 +443,11 @@ class DIOMonitoringService:
                 logger.info(
                     "✅ DIO_SAFETY: All safety sensors satisfied! Proceeding with callback execution..."
                 )
+                
+                # Clear edge times after successful dual press
+                self._left_button_edge_time = None
+                self._right_button_edge_time = None
+                
                 await self._handle_button_press()
             else:
                 logger.warning(
@@ -412,11 +455,43 @@ class DIOMonitoringService:
                     f"Clamp: {clamp_ok}, Chain: {chain_ok}, Door: {door_ok}"
                 )
                 logger.warning("❌ DIO_SAFETY: Dual button press BLOCKED due to safety conditions")
+                
+                # Clear edge times after blocked attempt
+                self._left_button_edge_time = None
+                self._right_button_edge_time = None
         else:
             pin_name = self._channel_config[pressed_channel]["pin"].name
-            logger.debug(
-                f"Single button press detected ({pin_name}) - both buttons required for operation"
+            logger.info(
+                f"🎯 DIO_BUTTON: Single button edge detected ({pin_name}) - waiting for dual press within {self._dual_press_window}s"
             )
+            
+            # Start or restart edge cleanup timer
+            await self._start_edge_cleanup_timer()
+    
+    async def _start_edge_cleanup_timer(self) -> None:
+        """Start edge cleanup timer to clear edge times after dual press window expires"""
+        # Cancel existing cleanup task if running
+        if self._edge_cleanup_task and not self._edge_cleanup_task.done():
+            self._edge_cleanup_task.cancel()
+            
+        # Start new cleanup task
+        self._edge_cleanup_task = asyncio.create_task(self._edge_cleanup_worker())
+    
+    async def _edge_cleanup_worker(self) -> None:
+        """Worker task to clean up edge times after timeout"""
+        try:
+            # Wait for dual press window + small buffer
+            await asyncio.sleep(self._dual_press_window + 0.1)
+            
+            # Clear edge times if no dual press occurred
+            if self._left_button_edge_time or self._right_button_edge_time:
+                logger.debug("🎯 DIO_BUTTON: Clearing edge times after timeout")
+                self._left_button_edge_time = None
+                self._right_button_edge_time = None
+                
+        except asyncio.CancelledError:
+            # Task was cancelled, which is normal when new edges are detected
+            pass
 
     async def _handle_left_button_press(self) -> None:
         """Handle left button individual press (for future use)"""
