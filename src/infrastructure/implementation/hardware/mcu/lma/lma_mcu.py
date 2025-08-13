@@ -219,6 +219,8 @@ class LMAMCU(MCUService):
             ffff_pos = buffer.find(b"\xff\xff", i)
             if ffff_pos == -1:
                 break  # No more FFFF patterns found
+            
+            logger.debug(f"Found FFFF pattern at position {ffff_pos} in buffer of {len(buffer)} bytes")
 
             # Check if we have enough bytes for packet header
             if ffff_pos + 3 >= len(buffer):
@@ -255,14 +257,14 @@ class LMAMCU(MCUService):
                         logger.debug(
                             f"INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}"
                         )
-                        # Move to next potential FFFF position
-                        i = ffff_pos + 2
+                        # Move to next potential FFFF position (skip by 1 byte to find overlapping patterns)
+                        i = ffff_pos + 1
             else:
                 logger.debug(
                     f"INCOMPLETE_PACKET at position {ffff_pos}: need {expected_packet_end} bytes, have {len(buffer)}"
                 )
-                # Move to next potential FFFF position
-                i = ffff_pos + 2
+                # Move to next potential FFFF position (skip by 1 byte to find overlapping patterns)
+                i = ffff_pos + 1
 
         if packets_found:
             # Return first packet, store additional packets in buffer
