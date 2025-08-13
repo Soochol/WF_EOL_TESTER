@@ -49,6 +49,9 @@ class LMAMCU(MCUService):
         self._current_test_mode = TestMode.MODE_1
         self._current_fan_speed = 0.0
         self._mcu_status = MCUStatus.IDLE
+        
+        # Packet buffering for multi-response commands
+        self._packet_buffer = []  # Store additional packets received during first response
 
     async def connect(
         self,
@@ -115,6 +118,11 @@ class LMAMCU(MCUService):
         Optimized for maximum performance with minimal overhead
         """
         self._ensure_connected()
+
+        # Clear packet buffer on new command to prevent mixing with previous commands
+        if self._packet_buffer:
+            logger.warning(f"Clearing previous packet buffer: {len(self._packet_buffer)} packets")
+            self._packet_buffer.clear()
 
         try:
             # Send packet
@@ -189,10 +197,10 @@ class LMAMCU(MCUService):
 
     def _extract_valid_packet(self, buffer: bytes) -> Optional[bytes]:
         """
-        Extract the first valid FFFF packet from buffer, handling initial noise.
+        Extract all valid FFFF packets from buffer, return first one and store others.
 
         Searches for FFFF (STX) patterns and validates each packet structure.
-        Returns the first packet that passes validation (correct length, ETX).
+        Returns the first packet that passes validation, stores additional packets in buffer.
 
         Args:
             buffer: Raw received data that may contain noise + valid packet(s)
@@ -203,7 +211,9 @@ class LMAMCU(MCUService):
         if len(buffer) < 6:
             return None  # Too short for any valid packet
 
+        packets_found = []
         i = 0
+        
         while i <= len(buffer) - 6:  # Minimum packet size is 6 bytes
             # Find next FFFF pattern
             ffff_pos = buffer.find(b"\xff\xff", i)
@@ -225,19 +235,29 @@ class LMAMCU(MCUService):
                 expected_packet_end <= len(buffer)
                 and buffer[expected_packet_end - 2 : expected_packet_end] == b"\xfe\xfe"
             ):
-
                 valid_packet = buffer[ffff_pos:expected_packet_end]
+                packets_found.append(valid_packet)
                 logger.info(
                     f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}"
                 )
-                return valid_packet
+                i = expected_packet_end  # Move past this packet
             else:
                 logger.debug(
                     f"INVALID_PACKET at position {ffff_pos}: length={length}, expected_end={expected_packet_end}, buffer_len={len(buffer)}"
                 )
+                # Move to next potential FFFF position
+                i = ffff_pos + 2
 
-            # Move to next potential FFFF position
-            i = ffff_pos + 2
+        if packets_found:
+            # Return first packet, store additional packets in buffer
+            first_packet = packets_found[0]
+            if len(packets_found) > 1:
+                additional_packets = packets_found[1:]
+                self._packet_buffer.extend(additional_packets)
+                logger.info(f"Stored {len(additional_packets)} additional packets in buffer:")
+                for j, packet in enumerate(additional_packets):
+                    logger.info(f"  [{j+1}] {packet.hex().upper()}")
+            return first_packet
 
         logger.warning(f"NO_VALID_PACKET found in buffer ({len(buffer)} bytes)")
         return None
@@ -257,13 +277,13 @@ class LMAMCU(MCUService):
             expected_stx = b"\xff\xff"
             expected_etx = b"\xfe\xfe"
 
-            logger.info(f"PACKET_ANALYSIS for '{description}':")
-            logger.info(f"   Total Length: {len(response_data)} bytes")
-            logger.info(
+            logger.debug(f"PACKET_ANALYSIS for '{description}':")
+            logger.debug(f"   Total Length: {len(response_data)} bytes")
+            logger.debug(
                 f"   STX: {stx.hex().upper()} {'OK' if stx == expected_stx else 'ERROR (expected FFFF)'}"
             )
-            logger.info(f"   Command/Status: 0x{cmd:02X} ({cmd})")
-            logger.info(f"   Data Length: {length} bytes")
+            logger.debug(f"   Command/Status: 0x{cmd:02X} ({cmd})")
+            logger.debug(f"   Data Length: {length} bytes")
 
             if len(response_data) >= 4 + length + 2:
                 data_bytes = response_data[4 : 4 + length] if length > 0 else b""
@@ -271,11 +291,11 @@ class LMAMCU(MCUService):
 
                 if data_bytes:
                     data_hex = data_bytes.hex().upper()
-                    logger.info(f"   Data: {data_hex}")
+                    logger.debug(f"   Data: {data_hex}")
                 else:
-                    logger.info("   Data: (none)")
+                    logger.debug("   Data: (none)")
 
-                logger.info(
+                logger.debug(
                     f"   ETX: {etx.hex().upper()} {'OK' if etx == expected_etx else 'ERROR (expected FEFE)'}"
                 )
 
@@ -326,13 +346,20 @@ class LMAMCU(MCUService):
         """
         self._ensure_connected()
 
+        # First check if we have packets in the buffer from previous receive
+        if self._packet_buffer:
+            packet = self._packet_buffer.pop(0)
+            if not quiet:
+                logger.info(f"Using buffered packet: {packet.hex().upper()}")
+            return packet
+
+        if not quiet:
+            logger.info(f"WAITING for additional response: {description} (timeout: {timeout}s)")
+
         start_time = time.time()
         response_data = b""
         data_chunks = []
         expected_etx = b"\xfe\xfe"
-
-        if not quiet:
-            logger.info(f"WAITING for additional response: {description} (timeout: {timeout}s)")
 
         while time.time() - start_time < timeout:
             if self.serial_conn and self.serial_conn.in_waiting > 0:

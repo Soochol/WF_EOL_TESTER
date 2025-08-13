@@ -147,7 +147,7 @@ class SessionManager(ISessionManager):
 
         except Exception as e:
             # Log shutdown errors but don't prevent shutdown completion
-            logger.warning("Error during session shutdown: %s", e)
+            logger.warning(f"Error during session shutdown: {e}")
 
         logger.info("Enhanced CLI session shutdown complete")
 

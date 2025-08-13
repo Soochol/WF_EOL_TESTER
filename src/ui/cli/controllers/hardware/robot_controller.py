@@ -318,10 +318,10 @@ class RobotController(HardwareController):
                 return
             position = float(position_input)
 
-            # Get default values from config or use fallbacks
-            default_velocity = self.robot_config.velocity if self.robot_config else 200.0
-            default_acceleration = self.robot_config.acceleration if self.robot_config else 1000.0
-            default_deceleration = self.robot_config.deceleration if self.robot_config else 1000.0
+            # Use default values for CLI robot control
+            default_velocity = 1000.0  # μm/s - conservative default for manual control
+            default_acceleration = 5000.0  # μm/s² - conservative default for manual control
+            default_deceleration = 5000.0  # μm/s² - conservative default for manual control
 
             # Get velocity from user (with default)
             velocity_input = self._get_user_input_with_validation(
@@ -409,10 +409,10 @@ class RobotController(HardwareController):
                 return
             distance = float(distance_input)
 
-            # Get default values from config or use fallbacks
-            default_velocity = self.robot_config.velocity if self.robot_config else 200.0
-            default_acceleration = self.robot_config.acceleration if self.robot_config else 1000.0
-            default_deceleration = self.robot_config.deceleration if self.robot_config else 1000.0
+            # Use default values for CLI robot control
+            default_velocity = 1000.0  # μm/s - conservative default for manual control
+            default_acceleration = 5000.0  # μm/s² - conservative default for manual control
+            default_deceleration = 5000.0  # μm/s² - conservative default for manual control
 
             # Get velocity from user (with default)
             velocity_input = self._get_user_input_with_validation(

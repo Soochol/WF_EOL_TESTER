@@ -203,12 +203,17 @@ async def control_robot(
                     detail="Position is required for move operation",
                 )
 
+            # Validate and set default values for motion parameters
+            velocity = request.velocity if request.velocity is not None else 1000.0
+            acceleration = request.acceleration if request.acceleration is not None else 5000.0
+            deceleration = request.deceleration if request.deceleration is not None else 5000.0
+
             await robot_service.move_absolute(
                 position=request.position,
                 axis_id=axis_id,
-                velocity=request.velocity,
-                acceleration=request.acceleration,
-                deceleration=request.deceleration,
+                velocity=velocity,
+                acceleration=acceleration,
+                deceleration=deceleration,
             )
             message = f"Robot move initiated to position {request.position}μm"
 
