@@ -100,7 +100,7 @@ class MCUConfig:
     """
 
     # Serial communication parameters
-    port: str = "COM9"  # Serial port (Windows: COMx, Linux: /dev/ttyUSBx)
+    port: str = "COM10"  # Serial port (Windows: COMx, Linux: /dev/ttyUSBx)
     baudrate: int = 115200  # Communication speed (115200 bps for LMA)
     timeout: float = 60.0  # Read timeout in seconds (longer for complex operations)
 

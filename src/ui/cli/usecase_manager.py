@@ -97,7 +97,7 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             formatter.console.print("[bold cyan]MCU Test Configuration[/bold cyan]")
             
             # Use hardcoded default values for port and baudrate
-            port = "COM9"
+            port = "COM10"
             baudrate = 115200
             
             # Get operator ID from user input
