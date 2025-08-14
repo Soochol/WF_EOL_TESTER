@@ -111,6 +111,10 @@ class SimpleMCUTestUseCase:
             # Wait for boot complete
             logger.info("Waiting for MCU boot complete...")
             await mcu_service.wait_boot_complete()
+            
+            # Add 2 second delay after boot complete
+            logger.info("Boot complete confirmed, waiting 2 seconds for stabilization...")
+            await asyncio.sleep(2.0)
 
             # Define test sequence (same as simple_serial_test.py)
             test_sequence = [

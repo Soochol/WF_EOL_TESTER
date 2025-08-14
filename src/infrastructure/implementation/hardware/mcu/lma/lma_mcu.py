@@ -745,7 +745,7 @@ class LMAMCU(MCUService):
 
             # First response (immediate ACK)
             response = await self._send_packet(
-                packet, f"CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C)"
+                packet, f"CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms)"
             )
 
             if not response or len(response) < 6 or response[2] != 0x04:

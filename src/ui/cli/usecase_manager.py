@@ -92,30 +92,23 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             raise
 
     async def get_parameters(self, formatter: RichFormatter) -> Optional[SimpleMCUTestCommand]:
-        """Collect MCU test parameters using simple input"""
+        """Get MCU test parameters with operator input"""
         try:
             formatter.console.print("[bold cyan]MCU Test Configuration[/bold cyan]")
-
-            # Get port (default COM4)
-            port = input("MCU Port [COM4]: ").strip()
-            if not port:
-                port = "COM4"
-
-            # Get baudrate (default 115200)
-            baudrate_input = input("Baudrate [115200]: ").strip()
-            if not baudrate_input:
-                baudrate = 115200
-            else:
-                try:
-                    baudrate = int(baudrate_input)
-                except ValueError:
-                    formatter.console.print("[red]Invalid baudrate, using default 115200[/red]")
-                    baudrate = 115200
-
-            # Get operator ID
+            
+            # Use hardcoded default values for port and baudrate
+            port = "COM9"
+            baudrate = 115200
+            
+            # Get operator ID from user input
             operator = input("Operator ID [cli_user]: ").strip()
             if not operator:
                 operator = "cli_user"
+            
+            formatter.console.print(f"[green]Configuration:[/green]")
+            formatter.console.print(f"  Port: {port}")
+            formatter.console.print(f"  Baudrate: {baudrate}")
+            formatter.console.print(f"  Operator: {operator}")
 
             # Create and return command
             command = SimpleMCUTestCommand(
@@ -128,6 +121,9 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
 
         except (KeyboardInterrupt, EOFError):
             formatter.print_message("MCU test configuration cancelled by user", "info")
+            return None
+        except Exception as e:
+            formatter.print_message(f"MCU test configuration failed: {str(e)}", "error")
             return None
 
     def _display_test_result(self, result: Any, formatter: RichFormatter) -> None:
