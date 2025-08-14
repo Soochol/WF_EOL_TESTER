@@ -224,8 +224,18 @@ class MenuSystem(IMenuSystem):
                 )
                 return
 
+            # Get configuration service from usecase manager
+            configuration_service = getattr(self._usecase_manager, "configuration_service", None)
+            if not configuration_service:
+                self._formatter.print_message(
+                    "Configuration service not available for Simple MCU Test.",
+                    message_type="error",
+                    title="Configuration Service Unavailable",
+                )
+                return
+
             # Create Simple MCU Test UseCase instance
-            simple_mcu_usecase = SimpleMCUTestUseCase(hardware_services)
+            simple_mcu_usecase = SimpleMCUTestUseCase(hardware_services, configuration_service)
 
             # Execute Simple MCU Test through usecase manager
             result = await self._usecase_manager.execute_usecase(

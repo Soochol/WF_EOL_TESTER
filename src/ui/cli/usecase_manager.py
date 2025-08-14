@@ -73,8 +73,6 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             "MCU Test Initialization",
             "PREPARING",
             details={
-                "Port": command.port,
-                "Baudrate": str(command.baudrate),
                 "Operator": command.operator_id,
             },
         )
@@ -96,24 +94,17 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
         try:
             formatter.console.print("[bold cyan]MCU Test Configuration[/bold cyan]")
             
-            # Use hardcoded default values for port and baudrate
-            port = "COM10"
-            baudrate = 115200
-            
             # Get operator ID from user input
             operator = input("Operator ID [cli_user]: ").strip()
             if not operator:
                 operator = "cli_user"
             
             formatter.console.print(f"[green]Configuration:[/green]")
-            formatter.console.print(f"  Port: {port}")
-            formatter.console.print(f"  Baudrate: {baudrate}")
             formatter.console.print(f"  Operator: {operator}")
+            formatter.console.print(f"  Port/Baudrate: Will be loaded from hardware configuration")
 
             # Create and return command
             command = SimpleMCUTestCommand(
-                port=port,
-                baudrate=baudrate,
                 operator_id=operator,
             )
 

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.enums.mcu_enums import TestMode
 from domain.enums.test_status import TestStatus
@@ -21,9 +22,7 @@ from domain.value_objects.time_values import TestDuration
 class SimpleMCUTestCommand:
     """Simple MCU Test Command"""
 
-    def __init__(self, port: str = "COM4", baudrate: int = 115200, operator_id: str = "cli_user"):
-        self.port = port
-        self.baudrate = baudrate
+    def __init__(self, operator_id: str = "cli_user"):
         self.operator_id = operator_id
 
 
@@ -64,9 +63,12 @@ class SimpleMCUTestUseCase:
     as simple_serial_test.py but integrated into the UseCase framework.
     """
 
-    def __init__(self, hardware_services: HardwareServiceFacade):
+    def __init__(
+        self, hardware_services: HardwareServiceFacade, configuration_service: ConfigurationService
+    ):
         """Initialize Simple MCU Test Use Case"""
         self._hardware_services = hardware_services
+        self._configuration_service = configuration_service
         self._is_running = False
 
     def is_running(self) -> bool:
@@ -78,7 +80,7 @@ class SimpleMCUTestUseCase:
         Execute Simple MCU Communication Test
 
         Args:
-            command: Test command with port and baudrate settings
+            command: Test command with operator information
 
         Returns:
             SimpleMCUTestResult with test outcomes and timing information
@@ -89,30 +91,36 @@ class SimpleMCUTestUseCase:
         test_results = []
 
         logger.info(f"Starting Simple MCU Test - ID: {test_id}")
-        logger.info(f"Test parameters - Port: {command.port}, Baudrate: {command.baudrate}")
+        logger.info(f"Test parameters - Operator: {command.operator_id}")
 
         try:
+            # Load hardware configuration
+            logger.info("Loading hardware configuration...")
+            hardware_config = await self._configuration_service.load_hardware_config()
+
             # Get MCU service using public property
             mcu_service = self._hardware_services.mcu_service
             if not mcu_service:
                 raise RuntimeError("MCU service not available")
 
-            # Connect to MCU
-            logger.info("Connecting to MCU...")
+            # Connect to MCU using configuration values
+            logger.info(
+                f"Connecting to MCU - Port: {hardware_config.mcu.port}, Baudrate: {hardware_config.mcu.baudrate}"
+            )
             await mcu_service.connect(
-                port=command.port,
-                baudrate=command.baudrate,
-                timeout=5.0,
-                bytesize=8,
-                stopbits=1,
-                parity=None,
+                port=hardware_config.mcu.port,
+                baudrate=hardware_config.mcu.baudrate,
+                timeout=hardware_config.mcu.timeout,
+                bytesize=hardware_config.mcu.bytesize,
+                stopbits=hardware_config.mcu.stopbits,
+                parity=hardware_config.mcu.parity,
             )
 
             # Wait for boot complete
             logger.info("Waiting for MCU boot complete...")
             await mcu_service.wait_boot_complete()
-            
-            # Add 2 second delay after boot complete
+
+            # Add 2 second delay after boot complete (using default stabilization time)
             logger.info("Boot complete confirmed, waiting 2 seconds for stabilization...")
             await asyncio.sleep(2.0)
 
