@@ -144,11 +144,12 @@ class MCUController(HardwareController):
             "3": f"Get Temperature [{temp_info}]",
             "4": f"Enter Test Mode [{mode_info}]",
             "5": f"Set Operating Temp [{temp_info}]",
-            "6": "Wait Boot Complete",
-            "7": "Start Standby Heating",
-            "8": "Start Standby Cooling",
-            "9": "Set Upper Temperature",
-            "10": "Set Fan Speed (0-10)",
+            "6": f"Set Cooling Temp [{temp_info}]",
+            "7": "Wait Boot Complete",
+            "8": "Start Standby Heating",
+            "9": "Start Standby Cooling",
+            "10": "Set Upper Temperature",
+            "11": "Set Fan Speed (0-10)",
             "b": "Back to Hardware Menu",
         }
 
@@ -156,7 +157,7 @@ class MCUController(HardwareController):
         enhanced_title = (
             f"MCU Control System\n"
             f"Status: {connection_status}  |  {temp_info}  |  {mode_info}\n"
-            f"[dim]Use numbers 1-10 to select options, or 'b' to go back[/dim]"
+            f"[dim]Use numbers 1-11 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -182,15 +183,17 @@ class MCUController(HardwareController):
                 await self._enter_test_mode()
             elif cmd == "5" or cmd == "set":
                 await self._set_operating_temperature()
-            elif cmd == "6" or cmd == "boot":
+            elif cmd == "6" or cmd == "cooling":
+                await self._set_cooling_temperature()
+            elif cmd == "7" or cmd == "boot":
                 await self._wait_boot_complete()
-            elif cmd == "7" or cmd == "heat":
+            elif cmd == "8" or cmd == "heat":
                 await self._start_standby_heating()
-            elif cmd == "8" or cmd == "cool":
+            elif cmd == "9" or cmd == "cool":
                 await self._start_standby_cooling()
-            elif cmd == "9":
-                await self._set_upper_temperature()
             elif cmd == "10":
+                await self._set_upper_temperature()
+            elif cmd == "11":
                 await self._set_fan_speed()
             else:
                 return False
@@ -254,6 +257,33 @@ class MCUController(HardwareController):
         except Exception as e:
             self.formatter.print_message(
                 f"Failed to set operating temperature: {str(e)}", message_type="error"
+            )
+
+    async def _set_cooling_temperature(self) -> None:
+        """Set cooling temperature"""
+        try:
+            # Get temperature from user
+            temperature = self._get_user_input_with_validation(
+                "Enter cooling temperature (°C):",
+                input_type=float,
+                validator=lambda x: -50 <= x <= 200,  # Reasonable temperature range
+            )
+            if temperature is None:
+                self.formatter.print_message("Cooling temperature setting cancelled", message_type="info")
+                return
+            
+            # Type check temperature value
+            if isinstance(temperature, (int, float)):
+                await self.mcu_service.set_cooling_temperature(float(temperature))
+            else:
+                raise ValueError("Invalid temperature type")
+                
+            self.formatter.print_message(
+                f"Cooling temperature set to {temperature:.2f}°C", message_type="success"
+            )
+        except Exception as e:
+            self.formatter.print_message(
+                f"Failed to set cooling temperature: {str(e)}", message_type="error"
             )
 
     async def _wait_boot_complete(self) -> None:

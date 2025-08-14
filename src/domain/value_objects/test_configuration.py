@@ -101,6 +101,7 @@ class TestConfiguration:
     measurement_tolerance: float = 0.001  # Measurement precision tolerance
     force_precision: int = 2  # Force measurement decimal places
     temperature_precision: int = 1  # Temperature measurement decimal places
+    temperature_tolerance: float = 3.0  # Temperature verification tolerance (±°C)
 
     # ========================================================================
     # TEST EXECUTION SETTINGS
@@ -594,6 +595,7 @@ class TestConfiguration:
             "measurement_tolerance": self.measurement_tolerance,
             "force_precision": self.force_precision,
             "temperature_precision": self.temperature_precision,
+            "temperature_tolerance": self.temperature_tolerance,
             # Test execution settings
             "retry_attempts": self.retry_attempts,
             "timeout_seconds": self.timeout_seconds,
@@ -686,6 +688,7 @@ class TestConfiguration:
                 "measurement_tolerance": self.measurement_tolerance,
                 "force_precision": self.force_precision,
                 "temperature_precision": self.temperature_precision,
+                "temperature_tolerance": self.temperature_tolerance,
             },
             # Pass criteria (keep as nested object)
             "pass_criteria": self.pass_criteria.to_dict(),
@@ -801,6 +804,7 @@ class TestConfiguration:
                     "measurement_tolerance": tolerances.get("measurement_tolerance", 0.001),
                     "force_precision": tolerances.get("force_precision", 2),
                     "temperature_precision": tolerances.get("temperature_precision", 1),
+                    "temperature_tolerance": tolerances.get("temperature_tolerance", 3.0),
                 }
             )
 

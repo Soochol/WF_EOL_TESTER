@@ -115,6 +115,19 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
+    async def set_cooling_temperature(self, target_temp: float) -> None:
+        """
+        Set cooling temperature for the MCU
+
+        Args:
+            target_temp: Target cooling temperature in Celsius
+
+        Raises:
+            HardwareOperationError: If cooling temperature setting fails
+        """
+        ...
+
+    @abstractmethod
     async def set_test_mode(self, mode: TestMode) -> None:
         """
         Set test mode for the MCU

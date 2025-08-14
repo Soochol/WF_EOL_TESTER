@@ -50,6 +50,9 @@ if TYPE_CHECKING:
 from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
+from domain.exceptions.eol_exceptions import (
+    HardwareOperationError,
+)
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.measurements import (
     TestMeasurements,
@@ -397,6 +400,10 @@ class HardwareServiceFacade:
                 logger.info(
                     f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
                 )
+                
+                # Verify MCU temperature reached operating temperature
+                await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
+                logger.info(f"Temperature verification passed for activation temperature {test_config.activation_temperature}°C")
             except Exception as e:
                 logger.error(f"MCU standby heating failed - {e}")
                 raise
@@ -444,6 +451,10 @@ class HardwareServiceFacade:
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info("MCU standby cooling started")
+                
+                # Verify MCU temperature reached standby temperature
+                await self.verify_mcu_temperature(calculated_standby_temp, test_config)
+                logger.info(f"Temperature verification passed for standby temperature {calculated_standby_temp}°C")
             except Exception as e:
                 logger.error(f"MCU standby cooling failed - {e}")
                 raise
@@ -567,6 +578,10 @@ class HardwareServiceFacade:
                 # Wait for temperature stabilization
                 await asyncio.sleep(test_config.mcu_temperature_stabilization)
                 logger.info(f"Temperature stabilized at {temperature}°C")
+                
+                # Verify MCU temperature reached target
+                await self.verify_mcu_temperature(temperature, test_config)
+                logger.info(f"Temperature verification passed for {temperature}°C")
 
                 # Inner loop: Iterate through stroke positions
                 for pos_idx, position in enumerate(test_config.stroke_positions):
@@ -631,6 +646,10 @@ class HardwareServiceFacade:
                 logger.info(
                     f"MCU standby heating started - operating: {test_config.activation_temperature}°C"
                 )
+                
+                # Verify MCU temperature reached activation temperature
+                await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
+                logger.info(f"Temperature verification passed for activation temperature {test_config.activation_temperature}°C")
 
                 # Robot to initial stroke position
                 await self._robot.move_absolute(
@@ -650,6 +669,10 @@ class HardwareServiceFacade:
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info(f"MCU standby cooling started - standby: {calculated_standby_temp}°C")
+                
+                # Verify MCU temperature reached standby temperature
+                await self.verify_mcu_temperature(calculated_standby_temp, test_config)
+                logger.info(f"Temperature verification passed for standby temperature {calculated_standby_temp}°C")
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
 
@@ -688,3 +711,65 @@ class HardwareServiceFacade:
         except Exception as e:
             logger.error(f"Test teardown failed: {e}")
             # Don't re-raise to allow cleanup to continue
+
+    # ============================================================================
+    # 온도 검증
+    # ============================================================================
+
+    async def verify_mcu_temperature(
+        self, 
+        expected_temp: float, 
+        test_config: TestConfiguration
+    ) -> None:
+        """
+        Verify MCU temperature is within acceptable range of expected value
+        
+        Uses MCU get_temperature() to read actual temperature and compares
+        against expected value with configurable tolerance range.
+        
+        Args:
+            expected_temp: Expected temperature value (°C)
+            test_config: Test configuration containing tolerance settings
+            
+        Raises:
+            HardwareOperationError: If temperature verification fails (out of tolerance)
+            HardwareConnectionException: If MCU temperature read fails
+        """
+        logger.info(f"Verifying MCU temperature - Expected: {expected_temp}°C (±{test_config.temperature_tolerance}°C)")
+        
+        try:
+            # Read actual temperature from MCU
+            actual_temp = await self._mcu.get_temperature()
+            
+            # Calculate temperature difference
+            temp_diff = abs(actual_temp - expected_temp)
+            
+            # Check if within tolerance
+            is_within_tolerance = temp_diff <= test_config.temperature_tolerance
+            
+            # Log verification results and raise exception if verification fails
+            if is_within_tolerance:
+                logger.info(f"✅ Temperature verification PASSED - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (≤{test_config.temperature_tolerance:.1f}°C)")
+            else:
+                error_msg = f"Temperature verification failed - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (>{test_config.temperature_tolerance:.1f}°C)"
+                logger.error(f"❌ {error_msg}")
+                raise HardwareOperationError(
+                    device="mcu",
+                    operation="verify_temperature", 
+                    reason=error_msg
+                )
+            
+        except HardwareOperationError:
+            # Re-raise temperature verification failures
+            raise
+        except Exception as e:
+            error_msg = f"MCU temperature verification failed: {str(e)}"
+            logger.error(error_msg)
+            raise HardwareConnectionException(
+                error_msg,
+                details={
+                    "expected_temp": expected_temp,
+                    "tolerance": test_config.temperature_tolerance,
+                    "error": str(e)
+                }
+            ) from e

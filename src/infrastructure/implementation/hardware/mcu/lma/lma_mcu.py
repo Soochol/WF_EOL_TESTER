@@ -267,17 +267,22 @@ class LMAMCU(MCUService):
                 i = ffff_pos + 1
 
         if packets_found:
-            # Return first packet, but error if multiple packets received
+            # Return first packet, store additional packets in buffer
             first_packet = packets_found[0]
             if len(packets_found) > 1:
-                # Multiple packets in single response - this indicates system error
-                packet_list = [p.hex().upper() for p in packets_found]
-                logger.error(f"MULTIPLE_PACKETS_RECEIVED: {packet_list}")
-                raise HardwareOperationError(
-                    "fast_lma_mcu",
-                    "_extract_valid_packet", 
-                    f"Multiple packets received in single response: {packet_list}. System expects one packet per command."
-                )
+                # Check for duplicate packets - this indicates a system error
+                for i, packet in enumerate(packets_found):
+                    for j, other_packet in enumerate(packets_found[i+1:], i+1):
+                        if packet == other_packet:
+                            duplicate_hex = packet.hex().upper()
+                            logger.warning(f"DUPLICATE_RESPONSE_DETECTED: {duplicate_hex} found at positions {i} and {j}")
+                            # Continue processing rather than raising error
+                
+                additional_packets = packets_found[1:]
+                self._packet_buffer.extend(additional_packets)
+                logger.info(f"Stored {len(additional_packets)} additional packets in buffer:")
+                for j, packet in enumerate(additional_packets):
+                    logger.info(f"  [{j+1}] {packet.hex().upper()}")
             return first_packet
 
         # Debug: Log the buffer content when no valid packet found
@@ -609,6 +614,50 @@ class LMAMCU(MCUService):
             logger.error(error_msg)
             raise HardwareOperationError(
                 "fast_lma_mcu", "set_operating_temperature", error_msg
+            ) from e
+
+    async def set_cooling_temperature(self, target_temp: float) -> None:
+        """Set cooling temperature"""
+        self._ensure_connected()
+
+        try:
+            temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
+            packet = f"FFFF0604{temp_scaled:08X}FEFE"
+
+            # First response (immediate ACK)
+            response = await self._send_packet(packet, f"CMD_SET_COOLING_TEMP ({target_temp}°C)")
+
+            if not response or len(response) < 6 or response[2] != 0x06:
+                raise HardwareOperationError(
+                    "fast_lma_mcu", "set_cooling_temperature", "Invalid ACK response"
+                )
+
+            # Second response (cooling complete signal)
+            cooling_response = self._wait_for_additional_response(
+                timeout=120.0, description="Cooling temperature reached signal"
+            )
+
+            if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0D:
+                logger.info("Cooling temperature reached confirmed")
+            else:
+                # 타임아웃 또는 잘못된 응답을 에러로 처리
+                if cooling_response:
+                    error_msg = (
+                        f"Invalid cooling temperature response: {cooling_response.hex().upper()}"
+                    )
+                else:
+                    error_msg = "Cooling temperature reached signal not received within timeout"
+                logger.error(error_msg)
+                raise HardwareOperationError("fast_lma_mcu", "set_cooling_temperature", error_msg)
+
+            self._target_temperature = target_temp
+            logger.info(f"Cooling temperature set: {target_temp}°C")
+
+        except Exception as e:
+            error_msg = f"Cooling temperature setting failed: {e}"
+            logger.error(error_msg)
+            raise HardwareOperationError(
+                "fast_lma_mcu", "set_cooling_temperature", error_msg
             ) from e
 
     async def get_temperature(self) -> float:
