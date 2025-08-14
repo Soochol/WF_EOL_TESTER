@@ -90,6 +90,7 @@ class TestConfiguration:
     robot_standby_stabilization: float = 1.0  # Standby heating stabilization time (s)
     mcu_temperature_stabilization: float = 0.1  # Temperature change stabilization time (s)
     mcu_command_stabilization: float = 0.1  # MCU command stabilization time (s)
+    mcu_boot_complete_stabilization: float = 2.0  # MCU boot complete stabilization time (s)
     poweron_stabilization: float = 0.5  # Power-on stabilization time (s)
     power_command_stabilization: float = 0.2  # Power command stabilization time (s)
     loadcell_zero_delay: float = 0.1  # Load cell zeroing delay (s)
@@ -588,6 +589,7 @@ class TestConfiguration:
             "power_command_stabilization": self.power_command_stabilization,
             "loadcell_zero_delay": self.loadcell_zero_delay,
             "mcu_command_stabilization": self.mcu_command_stabilization,
+            "mcu_boot_complete_stabilization": self.mcu_boot_complete_stabilization,
             # Measurement settings
             "measurement_tolerance": self.measurement_tolerance,
             "force_precision": self.force_precision,
@@ -659,6 +661,7 @@ class TestConfiguration:
                 "power_command_stabilization": self.power_command_stabilization,
                 "loadcell_zero_delay": self.loadcell_zero_delay,
                 "mcu_command_stabilization": self.mcu_command_stabilization,
+                "mcu_boot_complete_stabilization": self.mcu_boot_complete_stabilization,
             },
             # Test parameters section
             "test_parameters": {
@@ -786,6 +789,7 @@ class TestConfiguration:
                     "power_command_stabilization": timing.get("power_command_stabilization", 0.2),
                     "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
                     "mcu_command_stabilization": timing.get("mcu_command_stabilization", 0.1),
+                    "mcu_boot_complete_stabilization": timing.get("mcu_boot_complete_stabilization", 2.0),
                 }
             )
 
