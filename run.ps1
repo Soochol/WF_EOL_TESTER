@@ -71,7 +71,8 @@ DESCRIPTION:
     This script launches the WF EOL Tester application with proper
     environment setup and error handling. It automatically:
     
-    - Detects and activates Python virtual environment
+    - Uses uv for fast dependency management
+    - Syncs project dependencies automatically
     - Sets up required environment variables
     - Provides colored console output
     - Handles errors gracefully
@@ -79,73 +80,47 @@ DESCRIPTION:
 
 REQUIREMENTS:
     - Windows PowerShell 5.1+ or PowerShell Core 6.0+
-    - Python 3.8+ installed and in PATH
-    - Virtual environment set up (run setup_windows.bat first)
+    - uv package manager installed and in PATH
+    - Project dependencies defined in pyproject.toml
 
 ========================================================================
 "@
 }
 
-function Test-PythonInstallation {
+function Test-UvInstallation {
     try {
-        $pythonVersion = & python --version 2>&1
+        $uvVersion = & uv --version 2>&1
         if ($LASTEXITCODE -ne 0) {
-            throw "Python command failed"
+            throw "uv command failed"
         }
         
-        Write-ColoredOutput "Found Python: $pythonVersion" "SUCCESS"
-        
-        # Extract version numbers
-        $versionMatch = $pythonVersion -match "Python (\d+)\.(\d+)\.(\d+)"
-        if ($versionMatch) {
-            $major = [int]$matches[1]
-            $minor = [int]$matches[2]
-            
-            if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 8)) {
-                throw "Python version $major.$minor is too old. Please install Python 3.8 or newer."
-            }
-        }
-        
+        Write-ColoredOutput "Found uv: $uvVersion" "SUCCESS"
         return $true
     }
     catch {
-        Write-ColoredOutput "Python is not installed or not in PATH" "ERROR"
-        Write-ColoredOutput "Please install Python 3.8+ from: https://www.python.org/downloads/" "ERROR"
+        Write-ColoredOutput "uv is not installed or not in PATH" "ERROR"
+        Write-ColoredOutput "Please install uv from: https://docs.astral.sh/uv/getting-started/installation/" "ERROR"
+        Write-ColoredOutput "Or install with pip: pip install uv" "ERROR"
         return $false
     }
 }
 
-function Test-VirtualEnvironment {
-    $venvPath = Join-Path $PWD "venv"
-    $activateScript = Join-Path $venvPath "Scripts\Activate.ps1"
+function Initialize-UvEnvironment {
+    Write-ColoredOutput "Initializing uv environment..." "DEBUG"
     
-    Write-ColoredOutput "Checking for virtual environment..." "DEBUG"
-    
-    if (Test-Path $activateScript) {
-        Write-ColoredOutput "Found virtual environment at: $venvPath" "SUCCESS"
+    try {
+        Write-ColoredOutput "Syncing dependencies with uv..." "INFO"
+        & uv sync --dev
         
-        try {
-            # Activate virtual environment
-            Write-ColoredOutput "Activating virtual environment..." "DEBUG"
-            & $activateScript
-            
-            if ($LASTEXITCODE -eq 0) {
-                Write-ColoredOutput "Virtual environment activated successfully" "SUCCESS"
-                return $true
-            } else {
-                throw "Activation script failed with exit code $LASTEXITCODE"
-            }
-        }
-        catch {
-            Write-ColoredOutput "Failed to activate virtual environment: $_" "WARNING"
-            Write-ColoredOutput "Continuing with system Python..." "WARNING"
-            return $false
+        if ($LASTEXITCODE -eq 0) {
+            Write-ColoredOutput "Dependencies synced successfully" "SUCCESS"
+            return $true
+        } else {
+            throw "uv sync failed with exit code $LASTEXITCODE"
         }
     }
-    else {
-        Write-ColoredOutput "Virtual environment not found" "WARNING"
-        Write-ColoredOutput "Expected location: $activateScript" "DEBUG"
-        Write-ColoredOutput "Consider running setup_windows.bat first" "WARNING"
+    catch {
+        Write-ColoredOutput "Failed to sync dependencies: $_" "ERROR"
         return $false
     }
 }
@@ -187,11 +162,11 @@ function Start-Application {
         Write-Host "WF EOL Tester Application Starting..." -ForegroundColor Green
         Write-Host "========================================================================`n"
         
-        # Execute main.py with proper error handling
+        # Execute main.py with proper error handling using uv
         if ($Debug -or $Verbose) {
-            & python -u main.py
+            & uv run python -u main.py
         } else {
-            & python main.py
+            & uv run python main.py
         }
         
         $exitCode = $LASTEXITCODE
@@ -250,7 +225,7 @@ function Main {
         # Perform pre-flight checks
         Write-ColoredOutput "Performing pre-flight checks..." "INFO"
         
-        if (-not (Test-PythonInstallation)) {
+        if (-not (Test-UvInstallation)) {
             return 1
         }
         
@@ -258,8 +233,10 @@ function Main {
             return 1
         }
         
-        # Try to set up virtual environment (non-critical)
-        Test-VirtualEnvironment | Out-Null
+        # Initialize uv environment
+        if (-not (Initialize-UvEnvironment)) {
+            return 1
+        }
         
         # Set environment variables
         Set-EnvironmentVariables

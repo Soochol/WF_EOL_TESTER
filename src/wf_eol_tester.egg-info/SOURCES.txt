@@ -27,6 +27,7 @@ src/application/use_cases/__init__.py
 src/application/use_cases/eol_force_test.py
 src/application/use_cases/eol_force_test_original.py
 src/application/use_cases/robot_home.py
+src/application/use_cases/simple_mcu_test.py
 src/application/use_cases/eol_force_test/__init__.py
 src/application/use_cases/eol_force_test/configuration_loader.py
 src/application/use_cases/eol_force_test/constants.py
@@ -98,6 +99,7 @@ src/infrastructure/implementation/hardware/mcu/lma/__init__.py
 src/infrastructure/implementation/hardware/mcu/lma/constants.py
 src/infrastructure/implementation/hardware/mcu/lma/error_codes.py
 src/infrastructure/implementation/hardware/mcu/lma/lma_mcu.py
+src/infrastructure/implementation/hardware/mcu/lma/lma_mcu_legacy.py
 src/infrastructure/implementation/hardware/mcu/mock/__init__.py
 src/infrastructure/implementation/hardware/mcu/mock/mock_mcu.py
 src/infrastructure/implementation/hardware/power/mock/__init__.py

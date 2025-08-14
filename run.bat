@@ -12,13 +12,14 @@ setlocal enabledelayedexpansion
 REM Change to the script directory
 cd /d "%~dp0"
 
-REM Check if Python is available
-python --version >nul 2>&1
+REM Check if uv is available
+uv --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python is not installed or not in PATH
+    echo [ERROR] uv is not installed or not in PATH
     echo.
-    echo Please install Python 3.8+ and try again.
-    echo You can download Python from: https://www.python.org/downloads/
+    echo Please install uv and try again.
+    echo You can install uv with: pip install uv
+    echo Or visit: https://docs.astral.sh/uv/getting-started/installation/
     echo.
     pause
     exit /b 1
@@ -40,13 +41,13 @@ echo. >> temp_runner.bat
 echo REM Change to application directory >> temp_runner.bat
 echo cd /d "%~dp0" >> temp_runner.bat
 echo. >> temp_runner.bat
-echo REM Check and activate virtual environment >> temp_runner.bat
-echo if exist venv\Scripts\activate.bat ^( >> temp_runner.bat
-echo     echo [INFO] Activating virtual environment... >> temp_runner.bat
-echo     call venv\Scripts\activate.bat >> temp_runner.bat
-echo     echo [INFO] Virtual environment activated >> temp_runner.bat
-echo ^) else ^( >> temp_runner.bat
-echo     echo [WARNING] Using system Python... >> temp_runner.bat
+echo REM Initialize uv environment if needed >> temp_runner.bat
+echo echo [INFO] Using uv package manager... >> temp_runner.bat
+echo uv sync --dev >> temp_runner.bat
+echo if errorlevel 1 ^( >> temp_runner.bat
+echo     echo [ERROR] Failed to sync dependencies with uv >> temp_runner.bat
+echo     pause >> temp_runner.bat
+echo     exit /b 1 >> temp_runner.bat
 echo ^) >> temp_runner.bat
 echo. >> temp_runner.bat
 echo echo. >> temp_runner.bat
@@ -56,7 +57,7 @@ echo echo ======================================================================
 echo echo. >> temp_runner.bat
 echo. >> temp_runner.bat
 echo REM Run the main application >> temp_runner.bat
-echo python main.py >> temp_runner.bat
+echo uv run python main.py >> temp_runner.bat
 echo. >> temp_runner.bat
 echo REM Check exit status >> temp_runner.bat
 echo if errorlevel 1 ^( >> temp_runner.bat

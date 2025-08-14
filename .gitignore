@@ -49,3 +49,6 @@ venv/
 .venv/
 venv_disabled/
 .venv_disabled/
+
+# uv
+.uv_cache/

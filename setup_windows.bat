@@ -22,125 +22,56 @@ echo.
 echo This script will set up the WF EOL Tester environment on your Windows system.
 echo.
 
-REM Check if Python is available
-echo [SETUP] Checking Python installation...
-python --version >nul 2>&1
+REM Check if uv is available
+echo [SETUP] Checking uv installation...
+uv --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python is not installed or not in PATH
+    echo [ERROR] uv is not installed or not in PATH
     echo.
-    echo Please install Python 3.8+ before running this setup:
-    echo 1. Download Python from: https://www.python.org/downloads/
-    echo 2. During installation, make sure to check "Add Python to PATH"
+    echo Please install uv before running this setup:
+    echo 1. Visit: https://docs.astral.sh/uv/getting-started/installation/
+    echo 2. Or install with pip: pip install uv
     echo 3. Restart your command prompt and run this script again
     echo.
     pause
     exit /b 1
 )
 
-REM Display Python version and check minimum requirement
-for /f "tokens=2" %%i in ('python --version') do set PYTHON_VERSION=%%i
-echo [SETUP] Found Python %PYTHON_VERSION%
-
-REM Extract major and minor version numbers
-for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
-    set MAJOR=%%a
-    set MINOR=%%b
-)
-
-REM Check minimum Python version (3.8+)
-if %MAJOR% LSS 3 (
-    echo [ERROR] Python version too old. Please install Python 3.8 or newer.
-    pause
-    exit /b 1
-)
-if %MAJOR% EQU 3 if %MINOR% LSS 8 (
-    echo [ERROR] Python version too old. Please install Python 3.8 or newer.
-    pause
-    exit /b 1
-)
-
-echo [SETUP] Python version is compatible
+REM Display uv version
+for /f "tokens=*" %%i in ('uv --version') do set UV_VERSION=%%i
+echo [SETUP] Found %UV_VERSION%
 echo.
 
-REM Check if pip is available
-echo [SETUP] Checking pip installation...
-python -m pip --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] pip is not available
-    echo Please ensure pip is installed with Python
-    pause
-    exit /b 1
-)
-echo [SETUP] pip is available
-echo.
-
-REM Create virtual environment
-echo [SETUP] Creating virtual environment...
-if exist "venv" (
-    echo [WARNING] Virtual environment already exists
+REM Initialize uv project
+echo [SETUP] Initializing uv environment...
+if exist ".venv" (
+    echo [WARNING] uv environment already exists
     set /p RECREATE="Do you want to recreate it? (y/N): "
     if /i "!RECREATE!"=="y" (
-        echo [SETUP] Removing existing virtual environment...
-        rmdir /s /q venv
+        echo [SETUP] Removing existing uv environment...
+        rmdir /s /q .venv
     ) else (
-        echo [SETUP] Using existing virtual environment
-        goto :activate_venv
+        echo [SETUP] Using existing uv environment
+        goto :sync_deps
     )
 )
 
-echo [SETUP] Creating new virtual environment...
-python -m venv venv
+:sync_deps
+REM Sync dependencies with uv
+echo [SETUP] Syncing dependencies with uv...
+uv sync --dev
 if errorlevel 1 (
-    echo [ERROR] Failed to create virtual environment
-    echo Make sure you have sufficient permissions and disk space
+    echo [ERROR] Failed to sync dependencies with uv
+    echo Make sure pyproject.toml is properly configured
     pause
     exit /b 1
 )
-echo [SETUP] Virtual environment created successfully
-
-:activate_venv
-REM Activate virtual environment
-echo [SETUP] Activating virtual environment...
-call venv\Scripts\activate.bat
-if errorlevel 1 (
-    echo [ERROR] Failed to activate virtual environment
-    pause
-    exit /b 1
-)
-echo [SETUP] Virtual environment activated
-echo.
-
-REM Upgrade pip in virtual environment
-echo [SETUP] Upgrading pip...
-python -m pip install --upgrade pip
-echo.
-
-REM Install dependencies
-echo [SETUP] Installing dependencies...
-if exist "pyproject.toml" (
-    echo [SETUP] Installing from pyproject.toml...
-    python -m pip install -e .
-) else if exist "requirements.txt" (
-    echo [SETUP] Installing from requirements.txt...
-    python -m pip install -r requirements.txt
-) else (
-    echo [WARNING] No pyproject.toml or requirements.txt found
-    echo [SETUP] Installing basic dependencies...
-    python -m pip install loguru pyyaml rich
-)
-
-if errorlevel 1 (
-    echo [ERROR] Failed to install some dependencies
-    echo Please check the error messages above
-    pause
-    exit /b 1
-)
-echo [SETUP] Dependencies installed successfully
+echo [SETUP] Dependencies synced successfully
 echo.
 
 REM Verify installation
 echo [SETUP] Verifying installation...
-python -c "
+uv run python -c "
 import sys
 print('[SETUP] Python executable:', sys.executable)
 
@@ -203,7 +134,7 @@ if /i "!TEST_RUN!"=="y" (
     timeout /t 3 /nobreak >nul
     
     REM Quick test run with timeout
-    start /b python -c "
+    start /b uv run python -c "
 import asyncio
 import signal
 import sys
@@ -255,8 +186,8 @@ echo 2. Double-click 'run_debug.bat' for debug mode with verbose output
 echo 3. Make sure your hardware configuration files are properly set up
 echo.
 echo Files created:
-echo - Virtual environment in 'venv' directory
-echo - All Python dependencies installed
+echo - uv environment in '.venv' directory
+echo - All Python dependencies installed via uv
 echo - Logs directory created
 echo.
 echo If you encounter any issues:
