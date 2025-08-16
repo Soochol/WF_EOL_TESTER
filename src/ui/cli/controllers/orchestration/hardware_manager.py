@@ -476,7 +476,7 @@ class HardwareControlManager:
             )
 
             # Create Robot Home use case
-            robot_home_use_case = RobotHomeUseCase(facade)
+            robot_home_use_case = RobotHomeUseCase(facade, self.hardware_config)
 
             # Create Robot Home command
             command = RobotHomeCommand(operator_id="cli_user")

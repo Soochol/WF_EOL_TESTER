@@ -327,9 +327,9 @@ class MCUController(HardwareController):
 
             # Get operating temperature
             operating_temp_input = self._get_user_input_with_validation(
-                "Enter operating temperature (°C) [30-60, default: 60]:",
+                "Enter operating temperature (°C) [30-80, default: 60]:",
                 input_type=float,
-                validator=lambda x: 30 <= x <= 60,
+                validator=lambda x: 30 <= x <= 80,
             )
             if operating_temp_input is None:
                 self.formatter.print_message("Operation cancelled", message_type="warning")
@@ -338,9 +338,9 @@ class MCUController(HardwareController):
 
             # Get standby temperature
             standby_temp_input = self._get_user_input_with_validation(
-                "Enter standby temperature (°C) [30-60, default: 40]:",
+                "Enter standby temperature (°C) [30-80, default: 40]:",
                 input_type=float,
-                validator=lambda x: 30 <= x <= 60,
+                validator=lambda x: 30 <= x <= 80,
             )
             if standby_temp_input is None:
                 self.formatter.print_message("Operation cancelled", message_type="warning")

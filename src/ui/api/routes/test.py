@@ -249,7 +249,7 @@ async def execute_robot_home(
 ):
     """Execute robot homing operation"""
     try:
-        robot_home_use_case = container.robot_home_use_case()
+        robot_home_use_case = await container.robot_home_use_case()
 
         # Create command
         command = RobotHomeCommand(operator_id=request.operator_id)

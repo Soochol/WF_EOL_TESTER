@@ -48,7 +48,7 @@ class DIContainer:
         self._repository_service: Optional[RepositoryService] = None
         self._exception_handler: Optional[ExceptionHandler] = None
         self._eol_force_test_use_case: Optional[EOLForceTestUseCase] = None
-        self._robot_home_use_case: Optional[RobotHomeUseCase] = None
+        # Note: robot_home_use_case is created fresh each time with current config
 
     def hardware_service_facade(self) -> HardwareServiceFacade:
         """Get or create hardware service facade"""
@@ -151,20 +151,25 @@ class DIContainer:
 
         return self._eol_force_test_use_case
 
-    def robot_home_use_case(self) -> RobotHomeUseCase:
-        """Get or create robot home use case"""
-        if self._robot_home_use_case is None:
-            logger.info("Initializing robot home use case...")
+    async def robot_home_use_case(self) -> RobotHomeUseCase:
+        """Get or create robot home use case with current hardware configuration"""
+        # Always create a fresh instance with current configuration
+        # This ensures we always use the latest hardware config
+        logger.info("Creating robot home use case with current configuration...")
 
-            hardware_services = self.hardware_service_facade()
+        hardware_services = self.hardware_service_facade()
+        configuration_service = self.configuration_service()
+        
+        # Load current hardware configuration
+        hardware_config = await configuration_service.load_hardware_config()
 
-            self._robot_home_use_case = RobotHomeUseCase(
-                hardware_services=hardware_services,
-            )
+        robot_home_use_case = RobotHomeUseCase(
+            hardware_services=hardware_services,
+            hardware_config=hardware_config,
+        )
 
-            logger.info("Robot home use case initialized")
-
-        return self._robot_home_use_case
+        logger.info("Robot home use case created")
+        return robot_home_use_case
 
     async def cleanup(self):
         """Cleanup resources"""

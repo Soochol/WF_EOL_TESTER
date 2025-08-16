@@ -861,13 +861,13 @@ export class MCUControlPageManager {
      * @returns {boolean} True if valid
      */
     validateHeatingParameters(operatingTemp, standbyTemp, holdTime) {
-        if (isNaN(operatingTemp) || operatingTemp < 30 || operatingTemp > 60) {
-            this.uiManager.showNotification('Operating temperature must be between 30 and 60 °C', 'error');
+        if (isNaN(operatingTemp) || operatingTemp < 30 || operatingTemp > 80) {
+            this.uiManager.showNotification('Operating temperature must be between 30 and 80 °C', 'error');
             return false;
         }
         
-        if (isNaN(standbyTemp) || standbyTemp < 30 || standbyTemp > 60) {
-            this.uiManager.showNotification('Standby temperature must be between 30 and 60 °C', 'error');
+        if (isNaN(standbyTemp) || standbyTemp < 30 || standbyTemp > 80) {
+            this.uiManager.showNotification('Standby temperature must be between 30 and 80 °C', 'error');
             return false;
         }
         

@@ -108,6 +108,7 @@ class TestConfiguration:
     # ========================================================================
     retry_attempts: int = 3  # Number of retry attempts on failure
     timeout_seconds: float = 60.0  # Test operation timeout (s)
+    repeat_count: int = 1  # Number of times to repeat the entire test sequence
 
     # ========================================================================
     # PASS/FAIL CRITERIA
@@ -390,6 +391,20 @@ class TestConfiguration:
                 "Retry attempts should not exceed 10",
             )
 
+        if self.repeat_count < 1:
+            raise ValidationException(
+                "repeat_count",
+                self.repeat_count,
+                "Repeat count must be at least 1",
+            )
+
+        if self.repeat_count > 100:
+            raise ValidationException(
+                "repeat_count",
+                self.repeat_count,
+                "Repeat count should not exceed 100 for safety and practical reasons",
+            )
+
     def _validate_measurement_settings(self) -> None:
         """Validate measurement precision and tolerance parameters"""
         if self.measurement_tolerance <= 0:
@@ -494,7 +509,7 @@ class TestConfiguration:
         # Measurement acquisition time (estimated 1 second per measurement)
         measurement_time = self.get_total_measurement_points() * 1.0
 
-        return (
+        single_test_duration = (
             setup_time
             + cleanup_time
             + power_setup_time
@@ -503,6 +518,15 @@ class TestConfiguration:
             + position_change_time
             + measurement_time
         )
+
+        # For repeated tests, add setup/cleanup overhead between repetitions
+        if self.repeat_count > 1:
+            repetition_overhead = 10.0  # Additional time between repetitions (hardware reset, etc.)
+            total_duration = single_test_duration * self.repeat_count + repetition_overhead * (self.repeat_count - 1)
+        else:
+            total_duration = single_test_duration
+
+        return total_duration
 
     def with_overrides(self, **overrides) -> "TestConfiguration":
         """
@@ -599,6 +623,7 @@ class TestConfiguration:
             # Test execution settings
             "retry_attempts": self.retry_attempts,
             "timeout_seconds": self.timeout_seconds,
+            "repeat_count": self.repeat_count,
             # Safety limits
             "max_voltage": self.max_voltage,
             "max_current": self.max_current,
@@ -682,6 +707,7 @@ class TestConfiguration:
             "execution": {
                 "retry_attempts": self.retry_attempts,
                 "timeout_seconds": self.timeout_seconds,
+                "repeat_count": self.repeat_count,
             },
             # Tolerances section
             "tolerances": {
@@ -815,6 +841,7 @@ class TestConfiguration:
                 {
                     "retry_attempts": execution.get("retry_attempts", 3),
                     "timeout_seconds": execution.get("timeout_seconds", 60.0),
+                    "repeat_count": execution.get("repeat_count", 1),
                 }
             )
 
@@ -885,7 +912,8 @@ class TestConfiguration:
         duration = self.estimate_test_duration_seconds()
         points = self.get_total_measurement_points()
         mode = "SAFE" if not self.get_safety_violations() else "UNSAFE"
-        return f"TestConfiguration({self.voltage}V, {self.current}A, {points} points, ~{duration:.0f}s, {mode})"
+        repeat_info = f"{self.repeat_count}x" if self.repeat_count > 1 else ""
+        return f"TestConfiguration({self.voltage}V, {self.current}A, {points} points, {repeat_info}~{duration:.0f}s, {mode})"
 
     def __repr__(self) -> str:
         """Debug representation"""

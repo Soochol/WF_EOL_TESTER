@@ -389,8 +389,12 @@ class HardwareServiceFacade:
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
+                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum  
+                max_test_temp = max(test_config.temperature_list)
+                calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
+                
                 await self._mcu.start_standby_heating(
-                    operating_temp=test_config.activation_temperature,
+                    operating_temp=calculated_operating_temp,
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
                 )
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
@@ -398,12 +402,12 @@ class HardwareServiceFacade:
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info(
-                    f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {calculated_standby_temp}°C"
+                    f"MCU standby heating started - operating: {calculated_operating_temp}°C, standby: {calculated_standby_temp}°C"
                 )
                 
                 # Verify MCU temperature reached operating temperature
-                await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
-                logger.info(f"Temperature verification passed for activation temperature {test_config.activation_temperature}°C")
+                await self.verify_mcu_temperature(calculated_operating_temp, test_config)
+                logger.info(f"Temperature verification passed for operating temperature {calculated_operating_temp}°C")
             except Exception as e:
                 logger.error(f"MCU standby heating failed - {e}")
                 raise
@@ -634,9 +638,13 @@ class HardwareServiceFacade:
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
+                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum  
+                max_test_temp = max(test_config.temperature_list)
+                calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
+                
                 # MCU start standby heating
                 await self._mcu.start_standby_heating(
-                    operating_temp=test_config.activation_temperature,
+                    operating_temp=calculated_operating_temp,
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
                 )
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
@@ -644,12 +652,12 @@ class HardwareServiceFacade:
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info(
-                    f"MCU standby heating started - operating: {test_config.activation_temperature}°C"
+                    f"MCU standby heating started - operating: {calculated_operating_temp}°C"
                 )
                 
-                # Verify MCU temperature reached activation temperature
-                await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
-                logger.info(f"Temperature verification passed for activation temperature {test_config.activation_temperature}°C")
+                # Verify MCU temperature reached operating temperature
+                await self.verify_mcu_temperature(calculated_operating_temp, test_config)
+                logger.info(f"Temperature verification passed for operating temperature {calculated_operating_temp}°C")
 
                 # Robot to initial stroke position
                 await self._robot.move_absolute(
