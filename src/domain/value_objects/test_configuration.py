@@ -60,7 +60,7 @@ class TestConfiguration:
     # ========================================================================
     # POSITIONING SETTINGS
     # ========================================================================
-    initial_position: float = 10000.0  # Starting position (μm)
+    initial_position: float = 1000.0  # Starting position (μm)
     max_stroke: float = 220000.0  # Maximum stroke length (μm)
 
     # ========================================================================
@@ -522,7 +522,9 @@ class TestConfiguration:
         # For repeated tests, add setup/cleanup overhead between repetitions
         if self.repeat_count > 1:
             repetition_overhead = 10.0  # Additional time between repetitions (hardware reset, etc.)
-            total_duration = single_test_duration * self.repeat_count + repetition_overhead * (self.repeat_count - 1)
+            total_duration = single_test_duration * self.repeat_count + repetition_overhead * (
+                self.repeat_count - 1
+            )
         else:
             total_duration = single_test_duration
 
@@ -818,7 +820,9 @@ class TestConfiguration:
                     "power_command_stabilization": timing.get("power_command_stabilization", 0.2),
                     "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
                     "mcu_command_stabilization": timing.get("mcu_command_stabilization", 0.1),
-                    "mcu_boot_complete_stabilization": timing.get("mcu_boot_complete_stabilization", 2.0),
+                    "mcu_boot_complete_stabilization": timing.get(
+                        "mcu_boot_complete_stabilization", 2.0
+                    ),
                 }
             )
 

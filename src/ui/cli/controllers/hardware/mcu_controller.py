@@ -204,6 +204,67 @@ class MCUController(HardwareController):
             return False
 
     # Private MCU-specific operations
+    def _get_user_input_with_default(
+        self, prompt: str, default_value, input_type: type = str, allow_cancel: bool = True, validator=None
+    ):
+        """Get user input with default value support when Enter is pressed
+        
+        Args:
+            prompt: Input prompt to display
+            default_value: Default value to use when user presses Enter
+            input_type: Expected input type (str, float, int)
+            allow_cancel: Whether to allow 'cancel' input
+            validator: Optional validation function
+            
+        Returns:
+            Validated input value, default value if Enter pressed, or None if cancelled
+        """
+        while True:
+            try:
+                self.formatter.console.print(f"[bold cyan]{prompt}[/bold cyan]")
+                if allow_cancel:
+                    self.formatter.console.print(
+                        f"[yellow]   Press Enter for default ({default_value}) or 'cancel' to abort:[/yellow]"
+                    )
+                else:
+                    self.formatter.console.print(
+                        f"[yellow]   Press Enter for default ({default_value}):[/yellow]"
+                    )
+
+                user_input = input("  → ").strip()
+
+                # Handle cancel
+                if allow_cancel and user_input.lower() == "cancel":
+                    return None
+                    
+                # Handle empty input (Enter pressed) - use default
+                if not user_input:
+                    # Validate default value
+                    if validator and not validator(default_value):
+                        self.formatter.print_message("Default value is invalid", message_type="error")
+                        continue
+                    return default_value
+
+                # Type conversion for non-empty input
+                if input_type is not str:
+                    converted_value = input_type(user_input)
+                else:
+                    converted_value = user_input
+
+                # Custom validation
+                if validator and not validator(converted_value):
+                    self.formatter.print_message("Invalid input value", message_type="error")
+                    continue
+
+                return converted_value
+
+            except ValueError:
+                self.formatter.print_message(
+                    f"Invalid {input_type.__name__} value - please try again", message_type="error"
+                )
+            except (KeyboardInterrupt, EOFError):
+                return None
+
     async def _get_temperature(self) -> None:
         """Get current temperature"""
         try:
@@ -325,9 +386,10 @@ class MCUController(HardwareController):
                 self.formatter.print_message("MCU is not connected", message_type="error")
                 return
 
-            # Get operating temperature
-            operating_temp_input = self._get_user_input_with_validation(
+            # Get operating temperature with default value support
+            operating_temp_input = self._get_user_input_with_default(
                 "Enter operating temperature (°C) [30-80, default: 60]:",
+                default_value=60.0,
                 input_type=float,
                 validator=lambda x: 30 <= x <= 80,
             )
@@ -336,9 +398,10 @@ class MCUController(HardwareController):
                 return
             operating_temp = float(operating_temp_input)
 
-            # Get standby temperature
-            standby_temp_input = self._get_user_input_with_validation(
+            # Get standby temperature with default value support
+            standby_temp_input = self._get_user_input_with_default(
                 "Enter standby temperature (°C) [30-80, default: 40]:",
+                default_value=40.0,
                 input_type=float,
                 validator=lambda x: 30 <= x <= 80,
             )
@@ -347,9 +410,10 @@ class MCUController(HardwareController):
                 return
             standby_temp = float(standby_temp_input)
 
-            # Get hold time
-            hold_time_input = self._get_user_input_with_validation(
-                "Enter hold time (ms) [1000-60000, default: 10000]:",
+            # Get hold time with default value support (changed to 60000)
+            hold_time_input = self._get_user_input_with_default(
+                "Enter hold time (ms) [1000-60000, default: 60000]:",
+                default_value=60000,
                 input_type=int,
                 validator=lambda x: 1000 <= x <= 60000,
             )
@@ -403,9 +467,10 @@ class MCUController(HardwareController):
     async def _set_upper_temperature(self) -> None:
         """Set upper temperature limit"""
         try:
-            # Get upper temperature from user
-            upper_temp = self._get_user_input_with_validation(
-                "Enter upper temperature limit (°C):",
+            # Get upper temperature from user with default value support
+            upper_temp = self._get_user_input_with_default(
+                "Enter upper temperature limit (°C) [0-200, default: 80]:",
+                default_value=80.0,
                 input_type=float,
                 validator=lambda x: 0 <= x <= 200,  # Reasonable upper temperature range
             )
@@ -432,9 +497,10 @@ class MCUController(HardwareController):
     async def _set_fan_speed(self) -> None:
         """Set fan speed level (0-10)"""
         try:
-            # Get fan speed from user (0-10 range)
-            fan_speed_input = self._get_user_input_with_validation(
-                "Enter fan speed level (0-10):",
+            # Get fan speed from user (0-10 range) with default value support
+            fan_speed_input = self._get_user_input_with_default(
+                "Enter fan speed level (0-10) [default: 10]:",
+                default_value=10,
                 input_type=int,
                 validator=lambda x: 0 <= x <= 10,  # User input range 0-10
             )

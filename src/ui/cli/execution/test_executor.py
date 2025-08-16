@@ -21,7 +21,7 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports - Application layer
-from application.use_cases.eol_force_test import (
+from application.use_cases.eol_force_test.main_executor import (
     EOLForceTestCommand,
     EOLForceTestUseCase,
 )

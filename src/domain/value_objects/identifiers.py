@@ -8,7 +8,7 @@ and generation capabilities for various domain entities.
 
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 from domain.exceptions.validation_exceptions import (
@@ -200,7 +200,7 @@ class TestId(BaseId):
             )
 
         if timestamp is None:
-            timestamp = datetime.now()
+            timestamp = datetime.now(timezone.utc)
 
         if sequence is None:
             sequence = 1
@@ -236,7 +236,7 @@ class TestId(BaseId):
             TestId in standard TEST format
         """
         if timestamp is None:
-            timestamp = datetime.now()
+            timestamp = datetime.now(timezone.utc)
             
         if sequence is None:
             sequence = 1

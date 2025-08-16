@@ -28,7 +28,7 @@ from application.services.repository_service import RepositoryService
 from application.services.test_result_evaluator import TestResultEvaluator
 
 # Local application imports - Use Cases
-from application.use_cases.eol_force_test import EOLForceTestUseCase
+from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
 
 # Local infrastructure imports
 from infrastructure.configuration.json_profile_preference import JsonProfilePreference

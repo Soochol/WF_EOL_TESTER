@@ -47,11 +47,11 @@ if TYPE_CHECKING:
 
 # Type checking imports removed as they are no longer needed
 # The constructor now uses interface types instead of concrete types
-from domain.exceptions.hardware_exceptions import (
-    HardwareConnectionException,
-)
 from domain.exceptions.eol_exceptions import (
     HardwareOperationError,
+)
+from domain.exceptions.hardware_exceptions import (
+    HardwareConnectionException,
 )
 from domain.value_objects.hardware_configuration import HardwareConfiguration
 from domain.value_objects.measurements import (
@@ -389,10 +389,10 @@ class HardwareServiceFacade:
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
-                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum  
+                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum
                 max_test_temp = max(test_config.temperature_list)
                 calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
-                
+
                 await self._mcu.start_standby_heating(
                     operating_temp=calculated_operating_temp,
                     standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
@@ -404,10 +404,12 @@ class HardwareServiceFacade:
                 logger.info(
                     f"MCU standby heating started - operating: {calculated_operating_temp}°C, standby: {calculated_standby_temp}°C"
                 )
-                
+
                 # Verify MCU temperature reached operating temperature
                 await self.verify_mcu_temperature(calculated_operating_temp, test_config)
-                logger.info(f"Temperature verification passed for operating temperature {calculated_operating_temp}°C")
+                logger.info(
+                    f"Temperature verification passed for operating temperature {calculated_operating_temp}°C"
+                )
             except Exception as e:
                 logger.error(f"MCU standby heating failed - {e}")
                 raise
@@ -455,10 +457,12 @@ class HardwareServiceFacade:
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info("MCU standby cooling started")
-                
+
                 # Verify MCU temperature reached standby temperature
                 await self.verify_mcu_temperature(calculated_standby_temp, test_config)
-                logger.info(f"Temperature verification passed for standby temperature {calculated_standby_temp}°C")
+                logger.info(
+                    f"Temperature verification passed for standby temperature {calculated_standby_temp}°C"
+                )
             except Exception as e:
                 logger.error(f"MCU standby cooling failed - {e}")
                 raise
@@ -571,8 +575,19 @@ class HardwareServiceFacade:
                 )  # MCU stabilization delay
                 logger.info(f"Upper temperature set to {test_config.upper_temperature}°C")
 
+                await self._mcu.set_fan_speed(test_config.fan_speed)
+                logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                await asyncio.sleep(test_config.mcu_command_stabilization)
+
                 # MCU heat up
-                await self._mcu.set_operating_temperature(temperature)
+                # Calculate standby temperature: minimum of configured standby temp and test temperature list minimum
+                min_test_temp = min(test_config.temperature_list)
+                calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
+
+                await self._mcu.start_standby_heating(
+                    operating_temp=temperature,
+                    standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
+                )
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(
                     test_config.mcu_command_stabilization
@@ -582,7 +597,7 @@ class HardwareServiceFacade:
                 # Wait for temperature stabilization
                 await asyncio.sleep(test_config.mcu_temperature_stabilization)
                 logger.info(f"Temperature stabilized at {temperature}°C")
-                
+
                 # Verify MCU temperature reached target
                 await self.verify_mcu_temperature(temperature, test_config)
                 logger.info(f"Temperature verification passed for {temperature}°C")
@@ -638,10 +653,10 @@ class HardwareServiceFacade:
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
-                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum  
+                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum
                 max_test_temp = max(test_config.temperature_list)
                 calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
-                
+
                 # MCU start standby heating
                 await self._mcu.start_standby_heating(
                     operating_temp=calculated_operating_temp,
@@ -654,10 +669,12 @@ class HardwareServiceFacade:
                 logger.info(
                     f"MCU standby heating started - operating: {calculated_operating_temp}°C"
                 )
-                
+
                 # Verify MCU temperature reached operating temperature
                 await self.verify_mcu_temperature(calculated_operating_temp, test_config)
-                logger.info(f"Temperature verification passed for operating temperature {calculated_operating_temp}°C")
+                logger.info(
+                    f"Temperature verification passed for operating temperature {calculated_operating_temp}°C"
+                )
 
                 # Robot to initial stroke position
                 await self._robot.move_absolute(
@@ -677,10 +694,12 @@ class HardwareServiceFacade:
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info(f"MCU standby cooling started - standby: {calculated_standby_temp}°C")
-                
+
                 # Verify MCU temperature reached standby temperature
                 await self.verify_mcu_temperature(calculated_standby_temp, test_config)
-                logger.info(f"Temperature verification passed for standby temperature {calculated_standby_temp}°C")
+                logger.info(
+                    f"Temperature verification passed for standby temperature {calculated_standby_temp}°C"
+                )
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
 
@@ -714,6 +733,18 @@ class HardwareServiceFacade:
             await self._power.disable_output()
             logger.info("Power output disabled")
 
+            # Robot teardown - move to initial position for safety
+            logger.info(f"Moving robot to initial position: {test_config.initial_position}μm")
+            await self._robot.move_absolute(
+                position=test_config.initial_position,
+                axis_id=hardware_config.robot.axis_id,
+                velocity=test_config.velocity,
+                acceleration=test_config.acceleration,
+                deceleration=test_config.deceleration,
+            )
+            await asyncio.sleep(test_config.robot_move_stabilization)
+            logger.info("Robot moved to initial position successfully")
+
             logger.info("Test teardown completed successfully")
 
         except Exception as e:
@@ -725,68 +756,74 @@ class HardwareServiceFacade:
     # ============================================================================
 
     async def verify_mcu_temperature(
-        self, 
-        expected_temp: float, 
-        test_config: TestConfiguration
+        self, expected_temp: float, test_config: TestConfiguration
     ) -> None:
         """
         Verify MCU temperature is within acceptable range of expected value
-        
+
         Uses MCU get_temperature() to read actual temperature and compares
         against expected value with configurable tolerance range.
         Includes retry logic: 10 additional attempts with 1-second delays if initial verification fails.
-        
+
         Args:
             expected_temp: Expected temperature value (°C)
             test_config: Test configuration containing tolerance settings
-            
+
         Raises:
             HardwareOperationError: If temperature verification fails after all retries
             HardwareConnectionException: If MCU temperature read fails consistently
         """
-        logger.info(f"Verifying MCU temperature - Expected: {expected_temp}°C (±{test_config.temperature_tolerance}°C)")
-        
+        logger.info(
+            f"Verifying MCU temperature - Expected: {expected_temp}°C (±{test_config.temperature_tolerance}°C)"
+        )
+
         max_retries = 10
         retry_delay = 1.0
-        
+
         for attempt in range(max_retries + 1):  # 0-10 (11 total attempts)
             try:
                 # Read actual temperature from MCU
                 actual_temp = await self._mcu.get_temperature()
-                
+
                 # Calculate temperature difference
                 temp_diff = abs(actual_temp - expected_temp)
-                
+
                 # Check if within tolerance
                 is_within_tolerance = temp_diff <= test_config.temperature_tolerance
-                
+
                 if is_within_tolerance:
                     if attempt == 0:
-                        logger.info(f"✅ Temperature verification PASSED on first attempt - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (≤{test_config.temperature_tolerance:.1f}°C)")
+                        logger.info(
+                            f"✅ Temperature verification PASSED on first attempt - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (≤{test_config.temperature_tolerance:.1f}°C)"
+                        )
                     else:
-                        logger.info(f"✅ Temperature verification PASSED on attempt {attempt + 1}/{max_retries + 1} - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (≤{test_config.temperature_tolerance:.1f}°C)")
+                        logger.info(
+                            f"✅ Temperature verification PASSED on attempt {attempt + 1}/{max_retries + 1} - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (≤{test_config.temperature_tolerance:.1f}°C)"
+                        )
                     return
                 else:
                     if attempt < max_retries:
-                        logger.warning(f"❌ Temperature verification attempt {attempt + 1}/{max_retries + 1} failed - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (>{test_config.temperature_tolerance:.1f}°C) - Retrying in {retry_delay}s...")
+                        logger.warning(
+                            f"❌ Temperature verification attempt {attempt + 1}/{max_retries + 1} failed - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (>{test_config.temperature_tolerance:.1f}°C) - Retrying in {retry_delay}s..."
+                        )
                         await asyncio.sleep(retry_delay)
                     else:
                         # Final failure after all retries
                         error_msg = f"Temperature verification failed after {max_retries + 1} attempts - Final: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (>{test_config.temperature_tolerance:.1f}°C)"
                         logger.error(f"❌ {error_msg}")
                         raise HardwareOperationError(
-                            device="mcu",
-                            operation="verify_temperature", 
-                            reason=error_msg
+                            device="mcu", operation="verify_temperature", reason=error_msg
                         )
-            
+
             except HardwareOperationError:
                 # Re-raise our own temperature verification failures
                 raise
             except Exception as e:
                 # Handle MCU communication errors
                 if attempt < max_retries:
-                    logger.warning(f"⚠️  MCU communication error on attempt {attempt + 1}/{max_retries + 1} - {str(e)} - Retrying in {retry_delay}s...")
+                    logger.warning(
+                        f"⚠️  MCU communication error on attempt {attempt + 1}/{max_retries + 1} - {str(e)} - Retrying in {retry_delay}s..."
+                    )
                     await asyncio.sleep(retry_delay)
                 else:
                     # Final communication failure after all retries
@@ -798,6 +835,6 @@ class HardwareServiceFacade:
                             "expected_temp": expected_temp,
                             "tolerance": test_config.temperature_tolerance,
                             "final_error": str(e),
-                            "attempts_made": max_retries + 1
-                        }
+                            "attempts_made": max_retries + 1,
+                        },
                     ) from e
