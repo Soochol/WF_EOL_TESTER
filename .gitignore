@@ -44,6 +44,7 @@ __pycache__/
 *.pyd
 .Python
 *.so
+*.egg-info/
 
 # Virtual environments
 venv/

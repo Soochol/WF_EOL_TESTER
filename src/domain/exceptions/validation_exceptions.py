@@ -102,12 +102,3 @@ class InvalidFormatException(ValidationException):
         super().__init__(
             field_name, value, message, details
         )
-        details.update(
-            {
-                "expected_format": expected_format,
-                "actual_value": str(value),
-            }
-        )
-        super().__init__(
-            field_name, value, message, details
-        )

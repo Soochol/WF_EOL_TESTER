@@ -32,6 +32,7 @@ class RobotHomeResult:
         self,
         operation_id: TestId,
         test_status: TestStatus,
+        *,
         execution_duration: TestDuration,
         is_success: bool,
         error_message: Optional[str] = None,
@@ -105,7 +106,7 @@ class RobotHomeUseCase:
                     details={"dio_channel": servo_brake_channel, "dio_error": str(dio_error)},
                 ) from dio_error
             # Step 1: Check if robot service is available
-            if not self._hardware_services._robot:
+            if not self._hardware_services.robot_service:
                 raise HardwareConnectionException(
                     "Robot service is not available. Please check system configuration.",
                     details={"robot_service": None},
@@ -118,14 +119,14 @@ class RobotHomeUseCase:
 
             try:
                 # Check if already connected, if not connect
-                if not await self._hardware_services._robot.is_connected():
-                    await self._hardware_services._robot.connect(axis_id=axis_id, irq_no=irq_no)
+                if not await self._hardware_services.robot_service.is_connected():
+                    await self._hardware_services.robot_service.connect(axis_id=axis_id, irq_no=irq_no)
                     logger.info("Robot connected successfully")
                 else:
                     logger.info("Robot already connected")
 
                 # Verify connection with status check
-                robot_status = await self._hardware_services._robot.get_status()
+                await self._hardware_services.robot_service.get_status()
                 logger.info("Robot connection verified")
 
             except Exception as connect_error:
@@ -138,7 +139,7 @@ class RobotHomeUseCase:
             # Step 3: Enable servo for the robot axis
             logger.info(f"Enabling servo for axis {axis_id}...")
             try:
-                await self._hardware_services._robot.enable_servo(axis_id)
+                await self._hardware_services.robot_service.enable_servo(axis_id)
                 logger.info("Robot servo enabled successfully")
             except Exception as servo_error:
                 logger.error(f"Servo enable failed: {servo_error}")
@@ -149,7 +150,7 @@ class RobotHomeUseCase:
 
             # Step 4: Execute homing operation
             logger.info(f"Starting homing operation for axis {axis_id}...")
-            await self._hardware_services._robot.home_axis(axis_id)
+            await self._hardware_services.robot_service.home_axis(axis_id)
             logger.info("Robot homing completed successfully")
 
             # Calculate execution duration
@@ -161,8 +162,8 @@ class RobotHomeUseCase:
             )
 
             return RobotHomeResult(
-                operation_id=operation_id,
-                test_status=TestStatus.COMPLETED,
+                operation_id,
+                TestStatus.COMPLETED,
                 execution_duration=duration,
                 is_success=True,
                 error_message=None,
@@ -179,10 +180,10 @@ class RobotHomeUseCase:
             # Try to cleanup on error for safety
             try:
                 axis_id = locals().get("axis_id", 0)
-                if self._hardware_services._robot:
+                if self._hardware_services.robot_service:
                     # Try to disable servo if it was enabled
                     try:
-                        await self._hardware_services._robot.disable_servo(axis_id)
+                        await self._hardware_services.robot_service.disable_servo(axis_id)
                         logger.info("Robot servo disabled after error")
                     except Exception as servo_error:
                         logger.warning(f"Failed to disable servo after error: {servo_error}")
@@ -192,8 +193,8 @@ class RobotHomeUseCase:
                 logger.warning(f"Error during cleanup: {cleanup_error}")
 
             return RobotHomeResult(
-                operation_id=operation_id,
-                test_status=TestStatus.ERROR,
+                operation_id,
+                TestStatus.ERROR,
                 execution_duration=duration,
                 is_success=False,
                 error_message=error_message,
@@ -211,7 +212,7 @@ class RobotHomeUseCase:
             robot_connected = hardware_status.get("robot", False)
 
             if robot_connected:
-                robot_status = await self._hardware_services._robot.get_status()
+                robot_status = await self._hardware_services.robot_service.get_status()
                 return {
                     "connected": True,
                     "robot_details": robot_status,

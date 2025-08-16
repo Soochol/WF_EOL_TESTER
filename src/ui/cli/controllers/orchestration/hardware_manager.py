@@ -13,6 +13,7 @@ from rich.console import Console
 
 from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
+from domain.exceptions.hardware_exceptions import HardwareConnectionException
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
@@ -353,17 +354,28 @@ class HardwareControlManager:
                 self.formatter.print_message(
                     "Robot controller not available. Please check system configuration.",
                     message_type="error",
-                    title="Robot Controller Error"
+                    title="Robot Controller Error",
                 )
                 return False
 
-            robot_service = robot_controller.robot_service
+            # Cast to RobotController to access robot_service attribute
+            from ..hardware.robot_controller import RobotController
+            if isinstance(robot_controller, RobotController):
+                robot_service = robot_controller.robot_service
+            else:
+                logger.error("Robot controller is not of type RobotController")
+                self.formatter.print_message(
+                    "Robot controller type mismatch. Please check system configuration.",
+                    message_type="error",
+                    title="Controller Type Error",
+                )
+                return False
             if not robot_service:
                 logger.error("Robot service not available")
                 self.formatter.print_message(
                     "Robot service not available. Please check hardware configuration.",
                     message_type="error",
-                    title="Robot Service Error"
+                    title="Robot Service Error",
                 )
                 return False
 
@@ -371,77 +383,71 @@ class HardwareControlManager:
             self.formatter.print_message(
                 "Step 1/3: Checking robot connection...",
                 message_type="info",
-                title="🔗 Robot Connect"
+                title="🔗 Robot Connect",
             )
-            
+
             try:
                 # Check if robot is already connected
                 is_connected = await robot_service.is_connected()
-                
+
                 if not is_connected:
                     logger.info("Robot not connected, attempting to connect...")
                     self.formatter.print_message(
-                        "Robot not connected. Establishing connection...",
-                        message_type="warning"
+                        "Robot not connected. Establishing connection...", message_type="warning"
                     )
-                    
+
                     # Attempt to connect with required parameters
                     if not self.hardware_config:
                         logger.error("Hardware configuration not available for robot connection")
                         raise ValueError("Hardware configuration required for robot connection")
-                    
+
                     await robot_service.connect(
-                        axis_id=self.axis_id,
-                        irq_no=self.hardware_config.robot.irq_no
+                        axis_id=self.axis_id, irq_no=self.hardware_config.robot.irq_no
                     )
-                    
+
                     # Verify connection was successful
                     is_connected = await robot_service.is_connected()
-                    
+
                 if is_connected:
                     self.formatter.print_message(
-                        "✅ Robot connection verified successfully",
-                        message_type="success"
+                        "✅ Robot connection verified successfully", message_type="success"
                     )
                     logger.info("Robot connection verified")
                 else:
-                    raise Exception("Failed to establish robot connection")
-                    
+                    raise HardwareConnectionException("Failed to establish robot connection")
+
             except Exception as connect_error:
                 logger.error(f"Robot connection failed: {connect_error}")
                 self.formatter.print_message(
                     f"❌ Robot connection failed: {str(connect_error)}",
                     message_type="error",
-                    title="Connection Error"
+                    title="Connection Error",
                 )
                 return False
 
             # Step 2: Robot Servo On - Enable servo for movement
             self.formatter.print_message(
-                "Step 2/3: Enabling robot servo...",
-                message_type="info",
-                title="⚡ Robot Servo On"
+                "Step 2/3: Enabling robot servo...", message_type="info", title="⚡ Robot Servo On"
             )
-            
+
             try:
                 # Use configured axis_id from hardware configuration
                 axis_id = self.axis_id
                 logger.info(f"Enabling servo for axis {axis_id}")
-                
+
                 await robot_service.enable_servo(axis_id)
-                
+
                 self.formatter.print_message(
-                    f"✅ Robot servo enabled successfully (axis {axis_id})",
-                    message_type="success"
+                    f"✅ Robot servo enabled successfully (axis {axis_id})", message_type="success"
                 )
                 logger.info(f"Robot servo enabled for axis {axis_id}")
-                
+
             except Exception as servo_error:
                 logger.error(f"Robot servo enable failed: {servo_error}")
                 self.formatter.print_message(
                     f"❌ Robot servo enable failed: {str(servo_error)}",
                     message_type="error",
-                    title="Servo Error"
+                    title="Servo Error",
                 )
                 return False
 
@@ -449,7 +455,7 @@ class HardwareControlManager:
             self.formatter.print_message(
                 "Step 3/3: Executing robot home operation...",
                 message_type="info",
-                title="🏠 Robot Home"
+                title="🏠 Robot Home",
             )
 
             # Create a minimal hardware facade for the Robot Home use case
@@ -476,6 +482,15 @@ class HardwareControlManager:
             )
 
             # Create Robot Home use case
+            if not self.hardware_config:
+                logger.error("Hardware configuration not available for robot home operation")
+                self.formatter.print_message(
+                    "Hardware configuration required for robot home operation.",
+                    message_type="error",
+                    title="Configuration Error",
+                )
+                return False
+            
             robot_home_use_case = RobotHomeUseCase(facade, self.hardware_config)
 
             # Create Robot Home command
@@ -489,29 +504,29 @@ class HardwareControlManager:
                 self.formatter.print_message(
                     f"✅ Robot home operation completed successfully in {result.execution_duration.seconds:.2f}s",
                     message_type="success",
-                    title="Home Complete"
+                    title="Home Complete",
                 )
                 logger.info(
                     f"Robot homing completed successfully in {result.execution_duration.seconds:.2f}s"
                 )
-                
+
                 # Display complete sequence success
                 self.formatter.print_message(
                     "🎉 Complete robot home sequence finished successfully!\n"
                     "   1. ✅ Robot Connected\n"
-                    "   2. ✅ Servo Enabled\n" 
+                    "   2. ✅ Servo Enabled\n"
                     "   3. ✅ Home Position Reached",
                     message_type="success",
-                    title="Robot Home Sequence Complete"
+                    title="Robot Home Sequence Complete",
                 )
-                
+
                 return True
             else:
                 logger.error(f"Robot homing failed: {result.error_message}")
                 self.formatter.print_message(
                     f"❌ Robot home operation failed: {result.error_message}",
                     message_type="error",
-                    title="Home Failed"
+                    title="Home Failed",
                 )
                 return False
 
@@ -520,6 +535,6 @@ class HardwareControlManager:
             self.formatter.print_message(
                 f"❌ Robot home sequence failed: {str(e)}",
                 message_type="error",
-                title="Sequence Error"
+                title="Sequence Error",
             )
             return False

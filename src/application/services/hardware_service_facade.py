@@ -5,7 +5,6 @@ Facade pattern implementation to group and simplify hardware service interaction
 """
 
 import asyncio
-from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from loguru import logger
@@ -25,6 +24,19 @@ from application.interfaces.hardware.power import (
 )
 from application.interfaces.hardware.robot import (
     RobotService,
+)
+from domain.exceptions.eol_exceptions import (
+    HardwareOperationError,
+)
+from domain.exceptions.hardware_exceptions import (
+    HardwareConnectionException,
+)
+from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.measurements import (
+    TestMeasurements,
+)
+from domain.value_objects.test_configuration import (
+    TestConfiguration,
 )
 
 # IDE 개발용 타입 힌트 - 런타임에는 영향 없음
@@ -47,19 +59,6 @@ if TYPE_CHECKING:
 
 # Type checking imports removed as they are no longer needed
 # The constructor now uses interface types instead of concrete types
-from domain.exceptions.eol_exceptions import (
-    HardwareOperationError,
-)
-from domain.exceptions.hardware_exceptions import (
-    HardwareConnectionException,
-)
-from domain.value_objects.hardware_configuration import HardwareConfiguration
-from domain.value_objects.measurements import (
-    TestMeasurements,
-)
-from domain.value_objects.test_configuration import (
-    TestConfiguration,
-)
 
 
 class HardwareServiceFacade:

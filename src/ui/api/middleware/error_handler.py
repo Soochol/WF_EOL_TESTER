@@ -33,7 +33,7 @@ async def domain_exception_handler(request: Request, exc: Exception) -> Response
                 "error": "Validation Error",
                 "message": str(exc),
                 "details": {
-                    "field": exc.field if hasattr(exc, "field") else None,
+                    "field": exc.field_name if hasattr(exc, "field_name") else None,
                     "value": str(exc.value) if hasattr(exc, "value") else None,
                 },
             },
@@ -72,7 +72,6 @@ async def domain_exception_handler(request: Request, exc: Exception) -> Response
                 "message": str(exc),
                 "details": {
                     "test_id": exc.test_id if hasattr(exc, "test_id") else None,
-                    "phase": exc.phase if hasattr(exc, "phase") else None,
                 },
             },
         )

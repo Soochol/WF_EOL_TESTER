@@ -8,17 +8,17 @@
     "editor.rulers": [100],
     "editor.wordWrap": "off",
     "editor.trimAutoWhitespace": true,
-    
+
     // === File Management ===
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "files.autoSave": "onFocusChange",
-    
+
     // === Python Environment ===
     "python.defaultInterpreterPath": "./venv/bin/python",
     "python.terminal.activateEnvironment": false,
-    
+
     // === Python Analysis (Fixed) ===
     "python.languageServer": "Pylance",
     "python.analysis.autoImportCompletions": true,
@@ -30,7 +30,7 @@
     "python.analysis.diagnosticSeverityOverrides": {
         "reportUndefinedVariable": "none"
     },
-    
+
     // === Python Language-Specific Settings ===
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
@@ -42,14 +42,14 @@
         "editor.tabSize": 4,
         "editor.rulers": [100]
     },
-    
+
     // === Black Formatter Configuration ===
     "black-formatter.args": [
         "--config",
         "pyproject.toml"
     ],
     "black-formatter.importStrategy": "fromEnvironment",
-    
+
     // === Testing Configuration ===
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
@@ -57,7 +57,7 @@
         "tests",
         "-v"
     ],
-    
+
     // === Spell Checking ===
     "cSpell.words": [
         "loadcell",
@@ -75,5 +75,6 @@
         "loguru",
         "asyncio",
         "yaml"
-    ]
+    ],
+    "python-envs.pythonProjects": []
 }
