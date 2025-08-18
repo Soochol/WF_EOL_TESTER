@@ -353,6 +353,56 @@ export class RobotControlPageManager {
             console.log('🛑 Motion completed: Switched to normal position polling (1s)');
         }
     }
+    
+    /**
+     * Monitor motion completion and update polling accordingly
+     * @private
+     */
+    async monitorMotionCompletion() {
+        console.log('👀 Starting motion monitoring...');
+        
+        const checkMotion = async () => {
+            try {
+                const response = await this.apiClient.get(`/hardware/robot/status?axis_id=${this.axisId}`);
+                if (response.success && response.data) {
+                    const isMoving = response.data.is_moving;
+                    
+                    if (!isMoving && (this.motionStatus === 'moving' || this.motionStatus === 'homing')) {
+                        // Motion completed
+                        console.log('✅ Motion completed detected, switching to idle polling');
+                        this.motionStatus = 'idle';
+                        this.updatePollingInterval();
+                        
+                        // Final status refresh
+                        await this.refreshStatus();
+                        await this.updatePosition();
+                        return true; // Motion completed
+                    }
+                }
+            } catch (error) {
+                console.warn('Motion monitoring check failed:', error);
+            }
+            return false; // Motion still in progress
+        };
+        
+        // Check motion status every 100ms
+        const monitorInterval = setInterval(async () => {
+            const completed = await checkMotion();
+            if (completed) {
+                clearInterval(monitorInterval);
+            }
+        }, 100);
+        
+        // Safety timeout after 30 seconds
+        setTimeout(() => {
+            clearInterval(monitorInterval);
+            if (this.motionStatus === 'moving' || this.motionStatus === 'homing') {
+                console.warn('⚠️ Motion monitoring timeout, forcing idle state');
+                this.motionStatus = 'idle';
+                this.updatePollingInterval();
+            }
+        }, 30000);
+    }
 
     // =========================
     // Axis Configuration
@@ -752,18 +802,8 @@ export class RobotControlPageManager {
                 this.addLogEntry('info', `Homing axis ${this.axisId} to origin`);
                 this.uiManager.showNotification('Axis homing started', 'info');
                 
-                // Update position display and refresh full status after homing completes
-                setTimeout(async () => {
-                    console.log('🏠 [DEBUG] Post-home status refresh starting...');
-                    // Refresh full status first (includes position and servo state)
-                    await this.refreshStatus();
-                    // Also explicitly update position to ensure it's current
-                    await this.updatePosition();
-                    // Reset motion status and switch back to normal polling
-                    this.motionStatus = 'idle';
-                    this.updatePollingInterval();
-                    console.log('🏠 [DEBUG] Post-home status refresh completed');
-                }, 3000);
+                // Start real-time motion monitoring
+                this.monitorMotionCompletion();
             } else {
                 throw new Error(response.error || 'Homing failed');
             }
@@ -837,18 +877,8 @@ export class RobotControlPageManager {
                 this.addLogEntry('info', `Moving axis ${this.axisId} to position ${position.toFixed(3)} μm`);
                 this.uiManager.showNotification(`Moving to position ${position.toFixed(3)} μm`, 'info');
                 
-                // Update position and refresh full status after movement completes
-                setTimeout(async () => {
-                    console.log('📍 [DEBUG] Post-absolute-move status refresh starting...');
-                    // Refresh full status first (includes position and servo state)
-                    await this.refreshStatus();
-                    // Also explicitly update position to ensure it's current
-                    await this.updatePosition();
-                    // Reset motion status and switch back to normal polling
-                    this.motionStatus = 'idle';
-                    this.updatePollingInterval();
-                    console.log('📍 [DEBUG] Post-absolute-move status refresh completed');
-                }, 3000);
+                // Start real-time motion monitoring
+                this.monitorMotionCompletion();
             } else {
                 throw new Error(response.error || 'Absolute move failed');
             }
@@ -922,18 +952,8 @@ export class RobotControlPageManager {
                 this.addLogEntry('info', `Moving axis ${this.axisId} by distance ${distance.toFixed(3)} μm`);
                 this.uiManager.showNotification(`Moving distance ${distance.toFixed(3)} μm`, 'info');
                 
-                // Update position and refresh full status after movement completes
-                setTimeout(async () => {
-                    console.log('↔️ [DEBUG] Post-relative-move status refresh starting...');
-                    // Refresh full status first (includes position and servo state)
-                    await this.refreshStatus();
-                    // Also explicitly update position to ensure it's current
-                    await this.updatePosition();
-                    // Reset motion status and switch back to normal polling
-                    this.motionStatus = 'idle';
-                    this.updatePollingInterval();
-                    console.log('↔️ [DEBUG] Post-relative-move status refresh completed');
-                }, 3000);
+                // Start real-time motion monitoring
+                this.monitorMotionCompletion();
             } else {
                 throw new Error(response.error || 'Relative move failed');
             }
