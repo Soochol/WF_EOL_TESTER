@@ -70,6 +70,9 @@ export class RobotControlPageManager {
         try {
             console.log('🔧 Initializing Robot Control Page...');
             
+            // Load compact CSS for 1280x1024 resolution optimization
+            this.loadCompactCSS();
+            
             // Setup event listeners
             this.setupEventListeners();
             
@@ -1185,6 +1188,30 @@ export class RobotControlPageManager {
         URL.revokeObjectURL(url);
         
         this.addLogEntry('info', 'Operation log exported');
+    }
+
+    /**
+     * Load compact CSS for 1280x1024 resolution optimization
+     * @private
+     */
+    loadCompactCSS() {
+        // Check if compact CSS is already loaded
+        if (document.getElementById('robot-control-compact-css')) {
+            return;
+        }
+
+        const link = document.createElement('link');
+        link.id = 'robot-control-compact-css';
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'static/css/pages/robot-control-compact.css';
+        
+        // Add cache busting parameter
+        link.href += '?v=' + Date.now();
+        
+        document.head.appendChild(link);
+        
+        console.log('🎨 Compact CSS loaded for 1280x1024 resolution optimization');
     }
 }
 
