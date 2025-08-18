@@ -253,6 +253,136 @@ module = [
 ]
 ignore_missing_imports = true
 
+[tool.pylint.main]
+init-hook = 'import sys; sys.path.append("src")'
+jobs = 0
+persistent = true
+fail-under = 6.0
+
+[tool.pylint."messages control"]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring", 
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "too-many-public-methods",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "import-outside-toplevel",
+    "broad-except",
+    "unused-argument",
+    "consider-using-from-import",
+    "line-too-long",
+    "duplicate-code",
+    "unnecessary-ellipsis",
+    "invalid-name",
+    "consider-using-enumerate",
+    "consider-using-dict-comprehension",
+    "consider-using-set-comprehension",
+    "consider-using-ternary",
+    "consider-using-with",
+    "consider-iterating-dictionary",
+    "consider-using-f-string",
+    "consider-using-in",
+    "consider-using-get",
+    "consider-using-max-builtin",
+    "consider-using-min-builtin",
+    "use-implicit-booleaness-not-comparison",
+    "simplifiable-if-statement",
+    "simplifiable-if-expression",
+    "no-else-return",
+    "no-else-raise",
+    "no-else-break",
+    "no-else-continue",
+]
+
+[tool.pylint.format]
+max-line-length = 100
+indent-string = "    "
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_", "id", "db", "ui", "e"]
+
+[tool.pylint.design]
+max-args = 10
+max-attributes = 15
+max-locals = 15
+max-statements = 50
+max-public-methods = 20
+
+[tool.pylint.logging]
+logging-modules = ["loguru"]
+
+[tool.pylint.variables]
+dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_"
+
+[tool.flake8]
+max-line-length = 100
+max-complexity = 10
+select = ["E", "W", "F", "C"]
+ignore = [
+    "E203",  # whitespace before ':'
+    "E501",  # line too long (handled by black)
+    "W503",  # line break before binary operator (prefer W504)
+    "E226",  # missing whitespace around arithmetic operator
+    "E24",   # multiple spaces after ','
+]
+extend-ignore = ["E203", "E501", "W503", "E226", "E24"]
+per-file-ignores = [
+    "__init__.py:F401,F403",
+    "tests/*:F401,F811,E402,S101,S106",
+    "**/test_*.py:F401,F811,E402,S101,S106",
+    "**/mock/*:F401,F811,W0613",
+    "setup.py:E402",
+    "conftest.py:F401,F811",
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".tox",
+    ".mypy_cache",
+    "node_modules",
+    "migrations",
+    ".coverage",
+    "htmlcov",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.17.0",
