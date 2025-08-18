@@ -373,7 +373,7 @@
                                 </div>
                                 
                                 <div class="panel-content" style="display: grid; gap: 10px;">
-                                    <button class="btn btn-danger btn-lg emergency-btn" id="robot-emergency-stop-btn" style="padding: 20px; background: #dc3545; color: white; border: none; border-radius: 4px; text-align: left; font-size: 16px;">
+                                    <button class="btn btn-danger btn-lg emergency-btn" id="index-emergency-stop-btn" style="padding: 20px; background: #dc3545; color: white; border: none; border-radius: 4px; text-align: left; font-size: 16px;">
                                         <div>🛑 EMERGENCY STOP</div>
                                         <small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Immediate stop all motion</small>
                                     </button>
@@ -660,7 +660,7 @@
                                 });
                                 
                                 // Emergency Stop Button - 실제 API 연동
-                                document.getElementById('robot-emergency-stop-btn')?.addEventListener('click', async function() {
+                                document.getElementById('index-emergency-stop-btn')?.addEventListener('click', async function() {
                                     console.log('🚨 Emergency stop clicked');
                                     
                                     // 확인 대화상자

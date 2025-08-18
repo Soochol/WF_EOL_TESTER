@@ -146,10 +146,12 @@ async def get_robot_status(container: DIContainer = Depends(get_container)):
 
         if connected:
             status_info = await robot_service.get_status()
+            # Try both position field names for compatibility
+            position = status_info.get("current_position") or status_info.get("position")
             return RobotStatusResponse(
                 connected=True,
                 axis_id=0,  # Default axis
-                current_position=status_info.get("position"),
+                current_position=position,
                 is_homed=status_info.get("is_homed"),
                 servo_enabled=status_info.get("servo_enabled"),
                 is_moving=status_info.get("is_moving"),

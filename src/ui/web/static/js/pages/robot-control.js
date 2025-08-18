@@ -311,8 +311,11 @@ export class RobotControlPageManager {
             if (this.isConnected) {
                 console.group('🔄 [PERIODIC] Position polling cycle');
                 console.log('Connected status:', this.isConnected);
+                console.log('Current position before update:', this.currentPosition);
                 this.updatePosition();
                 console.groupEnd();
+            } else {
+                console.log('🔄 [PERIODIC] Skipping position update - not connected');
             }
         }, 2000);
     }
@@ -613,22 +616,32 @@ export class RobotControlPageManager {
      */
     async handleEmergencyStop() {
         try {
+            console.log('🛑 [DEBUG] Emergency stop button clicked!');
+            console.log('🛑 [DEBUG] Current axis ID:', this.axisId);
+            console.log('🛑 [DEBUG] Connection status:', this.isConnected);
+            
             // Emergency stop should work immediately without confirmation
             const response = await this.apiClient.post('/hardware/robot/emergency-stop', {
                 axis_id: this.axisId
             });
+            
+            console.log('🛑 [DEBUG] Emergency stop API response:', JSON.stringify(response, null, 2));
             
             if (response.success) {
                 this.motionStatus = 'stopped';
                 this.updateMotionStatus('emergency_stopped');
                 this.addLogEntry('warning', `Emergency stop executed for axis ${this.axisId}`);
                 this.uiManager.showNotification('Emergency stop executed successfully', 'warning');
+                console.log('🛑 [DEBUG] Emergency stop completed successfully');
             } else {
+                console.error('🛑 [DEBUG] Emergency stop API returned failure:', response.error);
                 throw new Error(response.error || 'Emergency stop failed');
             }
             
         } catch (error) {
-            console.error('Emergency stop failed:', error);
+            console.error('🛑 [DEBUG] Emergency stop failed with exception:', error);
+            console.error('🛑 [DEBUG] Error type:', typeof error);
+            console.error('🛑 [DEBUG] Error message:', error.message);
             this.addLogEntry('error', `Emergency stop failed: ${error.message}`);
             this.uiManager.showNotification(`Emergency stop failed: ${error.message}`, 'error');
         }
@@ -966,6 +979,8 @@ export class RobotControlPageManager {
     async updatePosition() {
         try {
             console.log(`📍 [DEBUG] Fetching position for axis ${this.axisId}...`);
+            console.log(`📍 [DEBUG] Current connection status: ${this.isConnected}`);
+            
             const response = await this.apiClient.get(`/hardware/robot/position?axis_id=${this.axisId}`);
             
             console.log('📍 [DEBUG] Position API raw response:', JSON.stringify(response, null, 2));
@@ -984,15 +999,23 @@ export class RobotControlPageManager {
                     return;
                 }
                 
+                const oldPosition = this.currentPosition;
                 this.currentPosition = position;
-                console.log(`📍 [DEBUG] Position successfully updated: ${this.currentPosition} μm`);
+                console.log(`📍 [DEBUG] Position updated: ${oldPosition} → ${this.currentPosition} μm`);
                 this.updatePositionDisplay(this.currentPosition);
             } else {
-                console.warn('📍 [DEBUG] Position API failed - success:', response.success, 'data:', response.data, 'error:', response.error);
+                console.warn('📍 [DEBUG] Position API failed:');
+                console.warn('  Success:', response.success);
+                console.warn('  Data:', response.data);
+                console.warn('  Error:', response.error);
+                console.warn('  Full response:', response);
             }
             
         } catch (error) {
-            console.error('📍 [DEBUG] Position update failed with error:', error);
+            console.error('📍 [DEBUG] Position update failed with exception:', error);
+            console.error('  Error type:', typeof error);
+            console.error('  Error message:', error.message);
+            console.error('  Error stack:', error.stack);
         }
     }
 

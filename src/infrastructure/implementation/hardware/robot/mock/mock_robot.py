@@ -104,9 +104,9 @@ class MockRobot(RobotService):
         if not self._is_connected:
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
-        # 작은 노이즈 추가로 실제 하드웨어 시뮬레이션
-        noise = random.uniform(-10, 10)  # ±10μm 노이즈
-        return self._current_position + noise
+        # 디버깅을 위해 노이즈 제거하고 정확한 position 반환
+        logger.debug(f"Mock robot position requested for axis {axis}: {self._current_position}μm")
+        return self._current_position
 
     async def get_current_position(self, axis: int) -> float:
         """
@@ -132,8 +132,8 @@ class MockRobot(RobotService):
             )
 
         # Same as get_position but with different method name for compatibility
-        noise = random.uniform(-10, 10)  # ±10μm 노이즈
-        return self._current_position + noise
+        logger.debug(f"Mock robot current position requested for axis {axis}: {self._current_position}μm")
+        return self._current_position
 
     async def move_absolute(
         self,
