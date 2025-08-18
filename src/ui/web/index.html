@@ -19,6 +19,20 @@
     <script src="static/libs/chart.js/chart.min.js?v=20250110"></script>
     
     <link rel="icon" href="static/assets/icons/favicon.ico" type="image/x-icon">
+    
+    <style>
+        /* Make disabled buttons visually distinct */
+        .btn:disabled {
+            opacity: 0.4 !important;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+        
+        .btn:not(:disabled) {
+            opacity: 1 !important;
+            cursor: pointer !important;
+        }
+    </style>
 </head>
 <body>
     <!-- Main Application Container -->
@@ -3316,8 +3330,14 @@
         if (disconnectBtn) disconnectBtn.disabled = !connected;
         
         // Enable servo controls when connected
-        if (servoOnBtn) servoOnBtn.disabled = !connected;
-        if (servoOffBtn) servoOffBtn.disabled = !connected;
+        if (servoOnBtn) {
+            servoOnBtn.disabled = !connected;
+            console.log(`🔧 [EMBEDDED] Servo ON button disabled: ${servoOnBtn.disabled}`);
+        }
+        if (servoOffBtn) {
+            servoOffBtn.disabled = !connected;
+            console.log(`🔧 [EMBEDDED] Servo OFF button disabled: ${servoOffBtn.disabled}`);
+        }
         
         // Enable movement controls when connected
         if (homeBtn) homeBtn.disabled = !connected;
