@@ -7,6 +7,7 @@ for the WF EOL Tester web interface. Integrates with Clean Architecture.
 
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
@@ -171,11 +172,14 @@ else:
 if __name__ == "__main__":
     import uvicorn
 
-    # Configure logging
+    # Configure logging with date-based filename
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    api_server_log_filename = f"logs/api_server_{current_date}.log"
+    
     logger.add(
-        "logs/api_server.log",
-        rotation="1 day",
-        retention="30 days",
+        api_server_log_filename,
+        rotation=None,     # No rotation needed - using date-based filenames
+        retention=None,    # Manual cleanup - no automatic retention
         enqueue=True,      # Background thread processing to prevent file lock conflicts
         catch=True,        # Prevent logging errors from crashing the application
         level="INFO",

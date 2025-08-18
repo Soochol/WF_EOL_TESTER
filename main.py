@@ -8,6 +8,7 @@ Simplified main application with direct service creation.
 import asyncio
 import signal
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple
 
@@ -42,10 +43,12 @@ from infrastructure.implementation.repositories.json_result_repository import (
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
 
 # Application configuration constants
-DEFAULT_LOG_ROTATION_SIZE = "10 MB"
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"
 LOGS_DIRECTORY_NAME = "logs"
-EOL_TESTER_LOG_FILENAME = "eol_tester.log"
+
+# Generate date-based log filename to prevent Windows file lock issues
+CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
+EOL_TESTER_LOG_FILENAME = f"eol_tester_{CURRENT_DATE}.log"
 
 
 async def main() -> None:
@@ -334,8 +337,8 @@ def setup_logging(debug: bool = False) -> None:
 
     logger.add(
         logs_directory / EOL_TESTER_LOG_FILENAME,
-        rotation="1 day",  # Time-based rotation for predictability
-        retention=DEFAULT_LOG_RETENTION_PERIOD,
+        rotation=None,     # No rotation needed - using date-based filenames
+        retention=None,    # Manual cleanup - no automatic retention
         enqueue=True,      # Background thread processing to prevent file lock conflicts
         catch=True,        # Prevent logging errors from crashing the application
         level="DEBUG",
