@@ -47,21 +47,27 @@ class DIContainer:
             logger.info("Initializing hardware services...")
 
             # Load hardware model configuration (following CLI pattern)
-            from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
             from infrastructure.factory import ServiceFactory
-            
+            from infrastructure.implementation.configuration.yaml_configuration import (
+                YamlConfiguration,
+            )
+
             yaml_config = YamlConfiguration()
             hardware_model = await yaml_config.load_hardware_model()
             hw_model_dict = hardware_model.to_dict()
-            
+
             logger.info(f"Loaded hardware model configuration: {hw_model_dict}")
 
             # Create services based on hardware model configuration
             robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
             mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
-            loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
+            loadcell_service = ServiceFactory.create_loadcell_service(
+                {"model": hw_model_dict["loadcell"]}
+            )
             power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
-            digital_io_service = ServiceFactory.create_digital_io_service({"model": hw_model_dict["digital_io"]})
+            digital_io_service = ServiceFactory.create_digital_io_service(
+                {"model": hw_model_dict["digital_io"]}
+            )
 
             self._hardware_service_facade = HardwareServiceFacade(
                 robot_service=robot_service,
@@ -159,7 +165,7 @@ class DIContainer:
 
         hardware_services = await self.hardware_service_facade()
         configuration_service = self.configuration_service()
-        
+
         # Load current hardware configuration
         hardware_config = await configuration_service.load_hardware_config()
 

@@ -11,12 +11,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
-from starlette.requests import Request
 
 from ui.api.dependencies import get_container
 from ui.api.middleware.error_handler import add_error_handlers
@@ -57,7 +56,7 @@ app_state: Dict[str, Any] = {
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(fastapi_app: FastAPI):
     """Application lifespan management"""
     logger.info("Starting WF EOL Tester API server...")
 
@@ -66,8 +65,8 @@ async def lifespan(app: FastAPI):
         container = get_container()
 
         # Store container in app state for access in routes
-        app.state.container = container
-        app.state.app_state = app_state
+        fastapi_app.state.container = container
+        fastapi_app.state.app_state = app_state
 
         logger.info("API server started successfully")
         yield

@@ -1,0 +1,2896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Last-Modified" content="Thu, 01 Jan 1970 00:00:00 GMT">
+    <meta name="cache-control" content="max-age=0">
+    <title>WF EOL Tester - ROBOT CONTROL EMBEDDED FIX</title>
+    
+    <!-- CSS Stylesheets -->
+    <link rel="stylesheet" href="static/css/main.css?v=20250110_235255_NOCACHE&t=20250110235500">
+    <link rel="stylesheet" href="static/css/components.css?v=20250110_235255_NOCACHE&t=20250110235500">
+    <link rel="stylesheet" href="static/css/charts.css?v=20250110_235255_NOCACHE&t=20250110235500">
+    
+    <!-- Third-party Libraries -->
+    <script src="static/libs/chart.js/chart.min.js?v=20250110"></script>
+    
+    <link rel="icon" href="static/assets/icons/favicon.ico" type="image/x-icon">
+    
+    <style>
+        /* Make disabled buttons visually distinct */
+        .btn:disabled {
+            opacity: 0.4 !important;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+        
+        .btn:not(:disabled) {
+            opacity: 1 !important;
+            cursor: pointer !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div id="app" class="app-container">
+        
+        <!-- Top Header -->
+        <header id="app-header" class="app-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="app-title">
+                        <span class="app-icon">WF</span>
+                        WF EOL Tester
+                    </h1>
+                    <div class="system-status" id="system-status">
+                        <span class="status-indicator" id="status-indicator">●</span>
+                        <span class="status-text" id="status-text">Initializing...</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-controls">
+                        <button id="emergency-stop" class="btn btn-danger btn-emergency" title="Emergency Stop">
+                            EMERGENCY STOP
+                        </button>
+                        <div class="connection-status" id="connection-status">
+                            <span class="connection-indicator offline" id="connection-indicator"></span>
+                            <span class="connection-text" id="connection-text">Offline</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content Area -->
+        <div class="app-body">
+            
+            <!-- Left Sidebar -->
+            <aside id="app-sidebar" class="app-sidebar">
+                <nav class="sidebar-nav">
+                    
+                    <!-- Use Case Menu -->
+                    <div class="nav-section">
+                        <h3 class="nav-section-title" data-toggle="usecase">Use Case</h3>
+                        <ul class="nav-menu" id="usecase-menu" style="display: none;">
+                            <li><a href="#" data-page="eol-force-test" class="nav-link">EOL Force Test</a></li>
+                            <li><a href="#" data-page="robot-home" class="nav-link">Robot Home</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Hardware Control Menu -->
+                    <div class="nav-section">
+                        <h3 class="nav-section-title" data-toggle="hardware">Hardware Control</h3>
+                        <ul class="nav-menu" id="hardware-menu" style="display: none;">
+                            <li><a href="#" data-page="robot-control" class="nav-link">Robot Control</a></li>
+                            <li><a href="#" data-page="power-control" class="nav-link">Power Control</a></li>
+                            <li><a href="#" data-page="mcu-control" class="nav-link">MCU Control</a></li>
+                            <li><a href="#" data-page="loadcell-control" class="nav-link">LoadCell Control</a></li>
+                            <li><a href="#" data-page="digital-io-control" class="nav-link">Digital I/O Control</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Parameters Menu -->
+                    <div class="nav-section">
+                        <h3 class="nav-section-title" data-toggle="parameters">Parameters</h3>
+                        <ul class="nav-menu" id="parameters-menu" style="display: none;">
+                            <li><a href="#" data-page="test-profiles" class="nav-link">Test Profiles</a></li>
+                            <li><a href="#" data-page="dut-defaults" class="nav-link">DUT Defaults</a></li>
+                            <li><a href="#" data-page="hardware-config" class="nav-link">Hardware Config</a></li>
+                            <li><a href="#" data-page="hardware-model" class="nav-link">Hardware Model</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- API & Tools Menu -->
+                    <div class="nav-section">
+                        <h3 class="nav-section-title" data-toggle="api-tools">🔧 API & Tools</h3>
+                        <ul class="nav-menu" id="api-tools-menu" style="display: none;">
+                            <li><a href="/api/docs" target="_blank" class="nav-link">📖 API Documentation <span style="font-size: 10px;">↗️</span></a></li>
+                            <li><a href="/api/redoc" target="_blank" class="nav-link">📋 API Reference <span style="font-size: 10px;">↗️</span></a></li>
+                            <li><a href="#" data-page="api-status" class="nav-link">⚡ API Status</a></li>
+                        </ul>
+                    </div>
+                    
+                </nav>
+            </aside>
+            
+            <!-- Main Content Area -->
+            <main id="app-content" class="app-content">
+                
+                <!-- Welcome Screen (Default) -->
+                <div id="welcome-page" class="content-page active">
+                    <div class="welcome-container">
+                        <div class="welcome-header">
+                            <h2>🚀 Robot Control EMBEDDED - Cache Problem SOLVED!</h2>
+                            <p class="welcome-subtitle">Direct Embedded Robot Control - No Dynamic Loading</p>
+                        </div>
+                        
+                        <div class="quick-status-grid">
+                            <div class="status-card" id="hardware-status-card">
+                                <h3>Hardware Status</h3>
+                                <div class="status-indicators">
+                                    <div class="status-item">
+                                        <span class="status-label">Robot:</span>
+                                        <span class="status-value" id="robot-status">Disconnected</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">Power:</span>
+                                        <span class="status-value" id="power-status">Disconnected</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">MCU:</span>
+                                        <span class="status-value" id="mcu-status">Disconnected</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">LoadCell:</span>
+                                        <span class="status-value" id="loadcell-status">Disconnected</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="status-card" id="system-info-card">
+                                <h3>System Information</h3>
+                                <div class="status-indicators">
+                                    <div class="status-item">
+                                        <span class="status-label">Version:</span>
+                                        <span class="status-value">1.0.0</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">Architecture:</span>
+                                        <span class="status-value">Clean Architecture</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">Last Test:</span>
+                                        <span class="status-value" id="last-test-time">Never</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="quick-actions">
+                            <h3>Quick Actions</h3>
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" data-action="start-eol-test">
+                                    Start EOL Test
+                                </button>
+                                <button class="btn btn-secondary" data-action="robot-home">
+                                    Home Robot
+                                </button>
+                                <button class="btn btn-info" data-action="check-hardware">
+                                    Check Hardware
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Content Pages -->
+                <div id="dynamic-content" class="content-pages">
+                    <!-- Robot Control Page - EMBEDDED FOR CACHE FIX -->
+                    <div id="robot-control" class="content-page hardware-control-panel" style="display: none;">
+                        <div class="page-header">
+                            <div class="header-content">
+                                <h1 class="page-title">🤖 Robot Control System</h1>
+                                <div class="page-subtitle">AJINEXTEK Motion Controller - Direct Embedded</div>
+                            </div>
+                            
+                            <div class="status-badge" id="robot-status-badge">
+                                <div class="status-indicator">
+                                    <div class="status-light status-unknown"></div>
+                                    <span class="status-text">Disconnected</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px;">
+                            <!-- Connection Panel -->
+                            <div class="control-panel connection-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                                    <h3>🔌 Connection</h3>
+                                    <div class="connection-status" id="robot-connection-status">
+                                        <div class="status-dot status-unknown" style="width: 8px; height: 8px; border-radius: 50%; background: #999; display: inline-block; margin-right: 5px;"></div>
+                                        <span>Disconnected</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="connection-controls" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                        <button class="btn btn-success" id="robot-connect-btn" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px;">Connect</button>
+                                        <button class="btn btn-secondary" id="robot-disconnect-btn" disabled style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 4px;">Disconnect</button>
+                                    </div>
+                                    
+                                    <div class="connection-info">
+                                        <div class="info-row" style="margin-bottom: 10px;">
+                                            <label style="font-weight: bold;">Controller:</label>
+                                            <span>AJINEXTEK Motion Controller</span>
+                                        </div>
+                                        <div class="info-row" style="margin-bottom: 10px;">
+                                            <label for="robot-axis-select" style="font-weight: bold;">Axis ID:</label>
+                                            <select id="robot-axis-select" class="form-control form-control-sm" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                                <option value="0">Axis 0</option>
+                                                <option value="1">Axis 1</option>
+                                                <option value="2">Axis 2</option>
+                                                <option value="3">Axis 3</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Position Panel -->
+                            <div class="control-panel status-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                                    <h3>📍 Position & Status</h3>
+                                    <button class="btn btn-sm btn-outline" id="robot-refresh-status-btn" style="padding: 5px 10px; border: 1px solid #007bff; color: #007bff; background: white; border-radius: 4px;">Refresh</button>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="status-grid" style="display: grid; gap: 15px;">
+                                        <div class="status-card" style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                                            <div class="status-label" style="font-size: 12px; color: #6c757d; margin-bottom: 5px;">Current Position</div>
+                                            <div class="status-value" id="robot-current-position" style="font-size: 18px; font-weight: bold;">
+                                                <span class="value">---.---</span>
+                                                <span class="unit" style="font-size: 14px; color: #6c757d;">μm</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="status-card" style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                                            <div class="status-label" style="font-size: 12px; color: #6c757d; margin-bottom: 5px;">Servo Status</div>
+                                            <div class="status-value" id="robot-servo-status" style="font-size: 14px;">
+                                                <div class="status-dot status-unknown" style="width: 8px; height: 8px; border-radius: 50%; background: #999; display: inline-block; margin-right: 5px;"></div>
+                                                <span>Unknown</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Servo Control Panel -->
+                            <div class="control-panel servo-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                                    <h3>⚡ Servo Control</h3>
+                                    <div class="warning-indicator" style="color: #ffc107; font-size: 12px;">⚠️ Motor Power Control</div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="servo-controls" style="display: grid; gap: 10px;">
+                                        <button class="btn btn-success servo-btn" id="robot-servo-on-btn" disabled style="padding: 15px; background: #28a745; color: white; border: none; border-radius: 4px; text-align: left;">
+                                            <div>🟢 Enable Servo</div>
+                                            <small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn ON motor power</small>
+                                        </button>
+                                        
+                                        <button class="btn btn-warning servo-btn" id="robot-servo-off-btn" disabled style="padding: 15px; background: #ffc107; color: #212529; border: none; border-radius: 4px; text-align: left;">
+                                            <div>🔴 Disable Servo</div>
+                                            <small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn OFF motor power</small>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Movement Control Panel -->
+                            <div class="control-panel movement-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px; grid-column: span 2;">
+                                <div class="panel-header" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                                    <h3>🎯 Movement Control</h3>
+                                    <div class="panel-tabs" style="display: flex; gap: 5px;">
+                                        <button class="tab-btn active" data-tab="home" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px;">Home</button>
+                                        <button class="tab-btn" data-tab="absolute" style="padding: 8px 16px; background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; border-radius: 4px;">Absolute</button>
+                                        <button class="tab-btn" data-tab="relative" style="padding: 8px 16px; background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; border-radius: 4px;">Relative</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <!-- Home Tab -->
+                                    <div class="tab-content active" id="home-tab" style="text-align: center; padding: 30px;">
+                                        <button class="btn btn-primary btn-lg" id="robot-home-axis-btn" disabled style="padding: 20px 40px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px;">
+                                            <div>🏠 Home Axis</div>
+                                            <small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Move to origin position</small>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Absolute Move Tab -->
+                                    <div class="tab-content" id="absolute-tab" style="display: none;">
+                                        <div class="form-group" style="margin-bottom: 20px;">
+                                            <label for="absolute-position" style="display: block; font-weight: bold; margin-bottom: 5px;">Target Position (μm)</label>
+                                            <input type="number" id="absolute-position" class="form-control" 
+                                                   min="0" max="500000" step="0.001" placeholder="Enter position"
+                                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                        
+                                        <div class="motion-parameters" style="margin-bottom: 20px;">
+                                            <div class="form-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                                                <div class="form-group">
+                                                    <label for="absolute-velocity" style="display: block; font-weight: bold; margin-bottom: 5px;">Velocity (μm/s)</label>
+                                                    <input type="number" id="absolute-velocity" class="form-control" 
+                                                           value="200" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="absolute-acceleration" style="display: block; font-weight: bold; margin-bottom: 5px;">Acceleration (μm/s²)</label>
+                                                    <input type="number" id="absolute-acceleration" class="form-control" 
+                                                           value="1000" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="absolute-deceleration" style="display: block; font-weight: bold; margin-bottom: 5px;">Deceleration (μm/s²)</label>
+                                                    <input type="number" id="absolute-deceleration" class="form-control" 
+                                                           value="1000" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-primary btn-lg" id="robot-move-absolute-btn" disabled style="width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px;">
+                                            🎯 Move to Position
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Relative Move Tab -->
+                                    <div class="tab-content" id="relative-tab" style="display: none;">
+                                        <div class="form-group" style="margin-bottom: 20px;">
+                                            <label for="relative-distance" style="display: block; font-weight: bold; margin-bottom: 5px;">Relative Distance (μm)</label>
+                                            <input type="number" id="relative-distance" class="form-control" 
+                                                   placeholder="Enter distance" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                        
+                                        <div class="motion-parameters" style="margin-bottom: 20px;">
+                                            <div class="form-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                                                <div class="form-group">
+                                                    <label for="relative-velocity" style="display: block; font-weight: bold; margin-bottom: 5px;">Velocity (μm/s)</label>
+                                                    <input type="number" id="relative-velocity" class="form-control" 
+                                                           value="200" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="relative-acceleration" style="display: block; font-weight: bold; margin-bottom: 5px;">Acceleration (μm/s²)</label>
+                                                    <input type="number" id="relative-acceleration" class="form-control" 
+                                                           value="1000" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="relative-deceleration" style="display: block; font-weight: bold; margin-bottom: 5px;">Deceleration (μm/s²)</label>
+                                                    <input type="number" id="relative-deceleration" class="form-control" 
+                                                           value="1000" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-primary btn-lg" id="robot-move-relative-btn" disabled style="width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px;">
+                                            📏 Move Distance
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Emergency Control Panel -->
+                            <div class="control-panel emergency-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                                    <h3>🚨 Emergency Control</h3>
+                                    <div class="danger-indicator" style="color: #dc3545; font-size: 12px;">🛑 Safety Critical</div>
+                                </div>
+                                
+                                <div class="panel-content" style="display: grid; gap: 10px;">
+                                    <button class="btn btn-danger btn-lg emergency-btn" id="index-emergency-stop-btn" style="padding: 20px; background: #dc3545; color: white; border: none; border-radius: 4px; text-align: left; font-size: 16px;">
+                                        <div>🛑 EMERGENCY STOP</div>
+                                        <small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Immediate stop all motion</small>
+                                    </button>
+                                    
+                                    <button class="btn btn-warning" id="robot-stop-motion-btn" disabled style="padding: 15px; background: #ffc107; color: #212529; border: none; border-radius: 4px; text-align: left;">
+                                        <div>⏸️ Stop Motion</div>
+                                        <small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Controlled stop with deceleration</small>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Operations Log Panel -->
+                            <div class="control-panel log-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                                    <h3>📋 Operations Log</h3>
+                                    <div class="log-controls" style="display: flex; gap: 5px;">
+                                        <button class="btn btn-sm btn-outline" id="robot-clear-log-btn" style="padding: 5px 10px; border: 1px solid #6c757d; color: #6c757d; background: white; border-radius: 4px; font-size: 12px;">Clear</button>
+                                        <button class="btn btn-sm btn-outline" id="robot-export-log-btn" style="padding: 5px 10px; border: 1px solid #6c757d; color: #6c757d; background: white; border-radius: 4px; font-size: 12px;">Export</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="log-viewer" id="robot-log-viewer" style="background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                                        <div class="log-entry" style="margin-bottom: 5px;">
+                                            <span class="timestamp" style="color: #6c757d;">[--:--:--]</span>
+                                            <span class="level info" style="color: #007bff; font-weight: bold;">INFO</span>
+                                            <span class="message">Robot Control Panel initialized - EMBEDDED VERSION</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Robot Control JavaScript moved to external file -->
+                            
+                                
+                                tabButtons.forEach(button => {
+                                    button.addEventListener('click', function() {
+                                        const targetTab = this.getAttribute('data-tab');
+                                        
+                                        // Update button states
+                                        tabButtons.forEach(btn => {
+                                            if (btn === this) {
+                                                btn.style.background = '#007bff';
+                                                btn.style.color = 'white';
+                                            } else {
+                                                btn.style.background = '#f8f9fa';
+                                                btn.style.color = '#495057';
+                                            }
+                                        });
+                                        
+                                        // Update tab content visibility
+                                        tabContents.forEach(content => {
+                                            if (content.id === targetTab + '-tab') {
+                                                content.style.display = 'block';
+                                            } else {
+                                                content.style.display = 'none';
+                                            }
+                                        });
+                                    });
+                                });
+                                
+                                // Robot Connect Button - 실제 API 연동
+                                document.getElementById('robot-connect-btn')?.addEventListener('click', async function() {
+                                    console.log('🔌 Robot connect clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = 'Connecting...';
+                                    this.disabled = true;
+                                    this.style.opacity = '0.6';
+                                    
+                                    // 연결 상태 표시 업데이트
+                                    const statusDot = document.querySelector('.connection-panel .status-dot');
+                                    const statusText = document.querySelector('.connection-panel .status-dot + span');
+                                    if (statusDot && statusText) {
+                                        statusDot.style.background = '#ffc107'; // 노란색 - 연결 중
+                                        statusText.textContent = 'Connecting...';
+                                    }
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/connect', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0,
+                                                irq_no: 7  // 기본값
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.textContent = 'Connected ✅';
+                                            this.style.background = '#28a745';
+                                            this.style.opacity = '1';
+                                            
+                                            // Disconnect 버튼 활성화
+                                            const disconnectBtn = document.getElementById('robot-disconnect-btn');
+                                            if (disconnectBtn) {
+                                                disconnectBtn.disabled = false;
+                                                disconnectBtn.style.opacity = '1';
+                                            }
+                                            
+                                            // 서보 컨트롤 버튼들만 활성화 (움직임 버튼은 서보 활성화 후)
+                                            ['robot-servo-on-btn', 'robot-servo-off-btn'].forEach(btnId => {
+                                                const btn = document.getElementById(btnId);
+                                                if (btn) {
+                                                    btn.disabled = false;
+                                                    btn.style.opacity = '1';
+                                                }
+                                            });
+                                            
+                                            // 사용자 가이드 메시지 표시
+                                            setTimeout(() => {
+                                                addLogEntry('INFO', 'Next step: Enable servo to unlock movement controls');
+                                                // showNotification('Connected! Please enable servo to control robot movement', 'info'); // 제거됨
+                                            }, 1000);
+                                            
+                                            // 상태 표시 업데이트
+                                            if (statusDot && statusText) {
+                                                statusDot.style.background = '#28a745'; // 녹색 - 연결됨
+                                                statusText.textContent = 'Connected';
+                                            }
+                                            
+                                            // 로그에 성공 메시지 추가
+                                            addLogEntry('SUCCESS', result.message || 'Robot connected successfully');
+                                            
+                                            // 상태 새로고침
+                                            setTimeout(refreshRobotStatus, 1000);
+                                            
+                                        } else {
+                                            // 실패 시 UI 업데이트
+                                            this.textContent = 'Failed ❌';
+                                            this.style.background = '#dc3545';
+                                            this.style.opacity = '1';
+                                            this.disabled = false;
+                                            
+                                            // 상태 표시 업데이트
+                                            if (statusDot && statusText) {
+                                                statusDot.style.background = '#dc3545'; // 빨간색 - 오류
+                                                statusText.textContent = 'Connection Failed';
+                                            }
+                                            
+                                            // 로그에 오류 메시지 추가
+                                            addLogEntry('ERROR', result.error || 'Connection failed');
+                                            
+                                            // 3초 후 원래 상태로 복구
+                                            setTimeout(() => {
+                                                this.textContent = 'Connect';
+                                                this.style.background = '#28a745';
+                                            }, 3000);
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('🔌 Robot connection error:', error);
+                                        
+                                        // 네트워크 오류 시 UI 업데이트
+                                        this.textContent = 'Error ❌';
+                                        this.style.background = '#dc3545';
+                                        this.style.opacity = '1';
+                                        this.disabled = false;
+                                        
+                                        // 상태 표시 업데이트
+                                        if (statusDot && statusText) {
+                                            statusDot.style.background = '#dc3545'; // 빨간색 - 오류
+                                            statusText.textContent = 'Network Error';
+                                        }
+                                        
+                                        // 로그에 오류 메시지 추가
+                                        addLogEntry('ERROR', `Network error: ${error.message}`);
+                                        
+                                        // 3초 후 원래 상태로 복구
+                                        setTimeout(() => {
+                                            this.textContent = 'Connect';
+                                            this.style.background = '#28a745';
+                                        }, 3000);
+                                    }
+                                });
+                                
+                                // Robot Disconnect Button - 실제 API 연동
+                                document.getElementById('robot-disconnect-btn')?.addEventListener('click', async function() {
+                                    console.log('🔌 Robot disconnect clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = 'Disconnecting...';
+                                    this.disabled = true;
+                                    this.style.opacity = '0.6';
+                                    
+                                    // 연결 상태 표시 업데이트
+                                    const statusDot = document.querySelector('.connection-panel .status-dot');
+                                    const statusText = document.querySelector('.connection-panel .status-dot + span');
+                                    if (statusDot && statusText) {
+                                        statusDot.style.background = '#ffc107'; // 노란색 - 연결 해제 중
+                                        statusText.textContent = 'Disconnecting...';
+                                    }
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/disconnect', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            }
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.textContent = 'Disconnect';
+                                            this.disabled = true;
+                                            this.style.opacity = '0.5';
+                                            
+                                            // Connect 버튼 활성화
+                                            const connectBtn = document.getElementById('robot-connect-btn');
+                                            if (connectBtn) {
+                                                connectBtn.disabled = false;
+                                                connectBtn.textContent = 'Connect';
+                                                connectBtn.style.background = '#28a745';
+                                                connectBtn.style.opacity = '1';
+                                            }
+                                            
+                                            // 다른 컨트롤 버튼들 비활성화
+                                            ['robot-servo-on-btn', 'robot-servo-off-btn', 'robot-home-axis-btn', 
+                                             'robot-move-absolute-btn', 'robot-move-relative-btn', 'robot-stop-motion-btn'].forEach(btnId => {
+                                                const btn = document.getElementById(btnId);
+                                                if (btn) {
+                                                    btn.disabled = true;
+                                                    btn.style.opacity = '0.5';
+                                                }
+                                            });
+                                            
+                                            // 상태 표시 업데이트
+                                            if (statusDot && statusText) {
+                                                statusDot.style.background = '#999'; // 회색 - 연결 해제됨
+                                                statusText.textContent = 'Disconnected';
+                                            }
+                                            
+                                            // 로그에 성공 메시지 추가
+                                            addLogEntry('SUCCESS', result.message || 'Robot disconnected successfully');
+                                            
+                                        } else {
+                                            // 실패 시 UI 업데이트
+                                            this.textContent = 'Disconnect';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            
+                                            // 로그에 오류 메시지 추가
+                                            addLogEntry('ERROR', result.error || 'Disconnection failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('🔌 Robot disconnection error:', error);
+                                        
+                                        // 네트워크 오류 시 UI 복구
+                                        this.textContent = 'Disconnect';
+                                        this.disabled = false;
+                                        this.style.opacity = '1';
+                                        
+                                        // 로그에 오류 메시지 추가
+                                        addLogEntry('ERROR', `Disconnect error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // Emergency Stop Button - 실제 API 연동
+                                document.getElementById('index-emergency-stop-btn')?.addEventListener('click', async function() {
+                                    console.log('🚨 Emergency stop clicked');
+                                    
+                                    // Emergency stop should execute immediately without confirmation
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = '🛑 STOPPING...';
+                                    this.disabled = true;
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/emergency-stop', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시
+                                            addLogEntry('EMERGENCY', result.message || 'Emergency stop executed');
+                                            
+                                            // 모든 움직임 관련 버튼 비활성화
+                                            ['robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn'].forEach(btnId => {
+                                                const btn = document.getElementById(btnId);
+                                                if (btn) {
+                                                    btn.disabled = true;
+                                                    btn.style.opacity = '0.5';
+                                                }
+                                            });
+                                            
+                                        } else {
+                                            addLogEntry('ERROR', result.error || 'Emergency stop failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('🚨 Emergency stop error:', error);
+                                        addLogEntry('ERROR', `Emergency stop error: ${error.message}`);
+                                    }
+                                    
+                                    // 3초 후 버튼 상태 복구
+                                    setTimeout(() => {
+                                        this.textContent = '🛑 EMERGENCY STOP';
+                                        this.disabled = false;
+                                    }, 3000);
+                                });
+                                
+                                // 헬퍼 함수들
+                                function addLogEntry(level, message) {
+                                    const logViewer = document.getElementById('robot-log-viewer');
+                                    if (!logViewer) return;
+                                    
+                                    const timestamp = new Date().toLocaleTimeString();
+                                    const levelColor = {
+                                        'SUCCESS': '#28a745',
+                                        'ERROR': '#dc3545',
+                                        'EMERGENCY': '#ff6b35',
+                                        'INFO': '#007bff',
+                                        'WARNING': '#ffc107'
+                                    }[level] || '#6c757d';
+                                    
+                                    const logEntry = document.createElement('div');
+                                    logEntry.className = 'log-entry';
+                                    logEntry.style.marginBottom = '5px';
+                                    logEntry.innerHTML = `
+                                        <span class="timestamp" style="color: #6c757d;">[${timestamp}]</span>
+                                        <span class="level" style="color: ${levelColor}; font-weight: bold;">${level}</span>
+                                        <span class="message">${message}</span>
+                                    `;
+                                    
+                                    logViewer.appendChild(logEntry);
+                                    logViewer.scrollTop = logViewer.scrollHeight;
+                                    
+                                    // 로그 항목이 너무 많으면 오래된 것 제거
+                                    const logEntries = logViewer.children;
+                                    if (logEntries.length > 50) {
+                                        logViewer.removeChild(logEntries[0]);
+                                    }
+                                }
+                                
+                                async function refreshRobotStatus() {
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/status');
+                                        const data = await response.json();
+                                        
+                                        // 현재 위치 업데이트
+                                        const positionElement = document.getElementById('robot-current-position');
+                                        if (positionElement && data.current_position !== undefined) {
+                                            const valueSpan = positionElement.querySelector('.value');
+                                            if (valueSpan) {
+                                                valueSpan.textContent = data.current_position !== null ? data.current_position.toFixed(3) : '---.---';
+                                            }
+                                        }
+                                        
+                                        // 서보 상태 업데이트
+                                        const servoStatusElement = document.getElementById('robot-servo-status');
+                                        if (servoStatusElement && data.servo_enabled !== undefined) {
+                                            const statusDot = servoStatusElement.querySelector('.status-dot');
+                                            const statusText = servoStatusElement.querySelector('span');
+                                            if (statusDot && statusText) {
+                                                if (data.servo_enabled) {
+                                                    statusDot.style.background = '#28a745';
+                                                    statusText.textContent = 'Enabled';
+                                                } else {
+                                                    statusDot.style.background = '#dc3545';
+                                                    statusText.textContent = 'Disabled';
+                                                }
+                                            }
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('Failed to refresh robot status:', error);
+                                    }
+                                }
+                                
+                                // 페이지 로드 시 현재 상태 확인
+                                setTimeout(refreshRobotStatus, 2000);
+                                
+                                // 로그 제어 버튼들
+                                document.getElementById('robot-clear-log-btn')?.addEventListener('click', function() {
+                                    const logViewer = document.getElementById('robot-log-viewer');
+                                    if (logViewer) {
+                                        logViewer.innerHTML = `
+                                            <div class="log-entry" style="margin-bottom: 5px;">
+                                                <span class="timestamp" style="color: #6c757d;">[${new Date().toLocaleTimeString()}]</span>
+                                                <span class="level info" style="color: #007bff; font-weight: bold;">INFO</span>
+                                                <span class="message">Log cleared - Robot Control Panel ready</span>
+                                            </div>
+                                        `;
+                                    }
+                                });
+                                
+                                document.getElementById('robot-export-log-btn')?.addEventListener('click', function() {
+                                    const logViewer = document.getElementById('robot-log-viewer');
+                                    if (!logViewer) return;
+                                    
+                                    const logEntries = Array.from(logViewer.children).map(entry => entry.textContent).join('\n');
+                                    const blob = new Blob([logEntries], { type: 'text/plain' });
+                                    const url = URL.createObjectURL(blob);
+                                    
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `robot_control_log_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.txt`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                    
+                                    addLogEntry('INFO', 'Log exported successfully');
+                                });
+                                
+                                // Status Refresh Button
+                                document.getElementById('robot-refresh-status-btn')?.addEventListener('click', async function() {
+                                    console.log('🔄 Robot status refresh clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = '🔄 Refreshing...';
+                                    this.disabled = true;
+                                    
+                                    try {
+                                        await refreshRobotStatus();
+                                        addLogEntry('INFO', 'Robot status refreshed successfully');
+                                    } catch (error) {
+                                        console.error('Status refresh error:', error);
+                                        addLogEntry('ERROR', `Status refresh failed: ${error.message}`);
+                                    }
+                                    
+                                    // 1초 후 버튼 상태 복구
+                                    setTimeout(() => {
+                                        this.textContent = 'Refresh';
+                                        this.disabled = false;
+                                    }, 1000);
+                                });
+                                
+                                // Servo Enable Button
+                                document.getElementById('robot-servo-on-btn')?.addEventListener('click', async function() {
+                                    console.log('⚡ Servo enable clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = '🔄 Enabling...';
+                                    this.disabled = true;
+                                    
+                                    try {
+                                        console.log('🚀 Starting API call to /api/hardware/robot/servo/enable');
+                                        const response = await fetch('/api/hardware/robot/servo/enable', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0
+                                            })
+                                        });
+                                        
+                                        console.log('📡 API response received, status:', response.status);
+                                        const result = await response.json();
+                                        console.log('📄 API response data:', result);
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.innerHTML = '<div>🟢 Enable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn ON motor power</small>';
+                                            this.disabled = false;
+                                            
+                                            // 서보 상태 표시 업데이트
+                                            const servoStatusElement = document.getElementById('robot-servo-status');
+                                            if (servoStatusElement) {
+                                                const statusDot = servoStatusElement.querySelector('.status-dot');
+                                                const statusText = servoStatusElement.querySelector('span');
+                                                if (statusDot && statusText) {
+                                                    statusDot.style.background = '#28a745';
+                                                    statusText.textContent = 'Enabled';
+                                                }
+                                            }
+                                            
+                                            // 움직임 제어 버튼들 활성화
+                                            ['robot-home-axis-btn', 'robot-move-absolute-btn', 
+                                             'robot-move-relative-btn', 'robot-stop-motion-btn'].forEach(btnId => {
+                                                const btn = document.getElementById(btnId);
+                                                if (btn) {
+                                                    btn.disabled = false;
+                                                    btn.style.opacity = '1';
+                                                }
+                                            });
+                                            
+                                            addLogEntry('SUCCESS', result.message || 'Servo enabled successfully');
+                                            addLogEntry('INFO', 'Movement controls are now active');
+                                            
+                                        } else {
+                                            // 실패 시
+                                            this.innerHTML = '<div>🟢 Enable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn ON motor power</small>';
+                                            this.disabled = false;
+                                            addLogEntry('ERROR', result.error || 'Servo enable failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('⚡ Servo enable error:', error);
+                                        console.error('⚡ Error details:', {
+                                            message: error.message,
+                                            stack: error.stack,
+                                            name: error.name
+                                        });
+                                        this.innerHTML = '<div>🟢 Enable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn ON motor power</small>';
+                                        this.disabled = false;
+                                        addLogEntry('ERROR', `Servo enable error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // Servo Disable Button
+                                document.getElementById('robot-servo-off-btn')?.addEventListener('click', async function() {
+                                    console.log('🔴 Servo disable clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = '🔄 Disabling...';
+                                    this.disabled = true;
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/servo/disable', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.innerHTML = '<div>🔴 Disable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn OFF motor power</small>';
+                                            this.disabled = false;
+                                            
+                                            // 서보 상태 표시 업데이트
+                                            const servoStatusElement = document.getElementById('robot-servo-status');
+                                            if (servoStatusElement) {
+                                                const statusDot = servoStatusElement.querySelector('.status-dot');
+                                                const statusText = servoStatusElement.querySelector('span');
+                                                if (statusDot && statusText) {
+                                                    statusDot.style.background = '#dc3545';
+                                                    statusText.textContent = 'Disabled';
+                                                }
+                                            }
+                                            
+                                            // 움직임 제어 버튼들 비활성화
+                                            ['robot-home-axis-btn', 'robot-move-absolute-btn', 
+                                             'robot-move-relative-btn', 'robot-stop-motion-btn'].forEach(btnId => {
+                                                const btn = document.getElementById(btnId);
+                                                if (btn) {
+                                                    btn.disabled = true;
+                                                    btn.style.opacity = '0.5';
+                                                }
+                                            });
+                                            
+                                            addLogEntry('SUCCESS', result.message || 'Servo disabled successfully');
+                                            
+                                        } else {
+                                            // 실패 시
+                                            this.innerHTML = '<div>🔴 Disable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn OFF motor power</small>';
+                                            this.disabled = false;
+                                            addLogEntry('ERROR', result.error || 'Servo disable failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('🔴 Servo disable error:', error);
+                                        this.innerHTML = '<div>🔴 Disable Servo</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Turn OFF motor power</small>';
+                                        this.disabled = false;
+                                        addLogEntry('ERROR', `Servo disable error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // Home Axis Button
+                                document.getElementById('robot-home-axis-btn')?.addEventListener('click', async function() {
+                                    console.log('🏠 Home axis clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.innerHTML = '<div>🔄 Homing...</div><small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Moving to origin position</small>';
+                                    this.disabled = true;
+                                    this.style.opacity = '0.6';
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/home-axis', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.innerHTML = '<div>🏠 Home Axis</div><small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Move to origin position</small>';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            
+                                            addLogEntry('SUCCESS', result.message || 'Robot homing completed successfully');
+                                            
+                                            // 위치 정보 새로고침
+                                            setTimeout(refreshRobotStatus, 2000);
+                                            
+                                        } else {
+                                            // 실패 시
+                                            this.innerHTML = '<div>🏠 Home Axis</div><small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Move to origin position</small>';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            addLogEntry('ERROR', result.error || 'Robot homing failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('🏠 Home axis error:', error);
+                                        this.innerHTML = '<div>🏠 Home Axis</div><small class="btn-subtitle" style="display: block; font-size: 12px; opacity: 0.8;">Move to origin position</small>';
+                                        this.disabled = false;
+                                        this.style.opacity = '1';
+                                        addLogEntry('ERROR', `Home axis error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // Absolute Move Button
+                                document.getElementById('robot-move-absolute-btn')?.addEventListener('click', async function() {
+                                    console.log('🎯 Absolute move clicked');
+                                    
+                                    // 입력값 검증
+                                    const position = parseFloat(document.getElementById('absolute-position').value);
+                                    const velocity = parseFloat(document.getElementById('absolute-velocity').value);
+                                    const acceleration = parseFloat(document.getElementById('absolute-acceleration').value);
+                                    const deceleration = parseFloat(document.getElementById('absolute-deceleration').value);
+                                    
+                                    if (isNaN(position)) {
+                                        addLogEntry('ERROR', 'Position value is required');
+                                        return;
+                                    }
+                                    
+                                    if (position < 0 || position > 500000) {
+                                        addLogEntry('ERROR', 'Position must be between 0 and 500000 μm');
+                                        return;
+                                    }
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = '🔄 Moving...';
+                                    this.disabled = true;
+                                    this.style.opacity = '0.6';
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/move-absolute', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0,
+                                                position: position,
+                                                velocity: velocity || 200,
+                                                acceleration: acceleration || 1000,
+                                                deceleration: deceleration || 1000
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.textContent = '🎯 Move to Position';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            
+                                            addLogEntry('SUCCESS', result.message || `Moving to position ${position}μm`);
+                                            
+                                            // 위치 정보 새로고침 (움직임 완료 후)
+                                            setTimeout(refreshRobotStatus, 3000);
+                                            
+                                        } else {
+                                            // 실패 시
+                                            this.textContent = '🎯 Move to Position';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            addLogEntry('ERROR', result.error || 'Absolute move failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('🎯 Absolute move error:', error);
+                                        this.textContent = '🎯 Move to Position';
+                                        this.disabled = false;
+                                        this.style.opacity = '1';
+                                        addLogEntry('ERROR', `Absolute move error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // Relative Move Button
+                                document.getElementById('robot-move-relative-btn')?.addEventListener('click', async function() {
+                                    console.log('📏 Relative move clicked');
+                                    
+                                    // 입력값 검증
+                                    const distance = parseFloat(document.getElementById('relative-distance').value);
+                                    const velocity = parseFloat(document.getElementById('relative-velocity').value);
+                                    const acceleration = parseFloat(document.getElementById('relative-acceleration').value);
+                                    const deceleration = parseFloat(document.getElementById('relative-deceleration').value);
+                                    
+                                    if (isNaN(distance)) {
+                                        addLogEntry('ERROR', 'Distance value is required');
+                                        return;
+                                    }
+                                    
+                                    if (Math.abs(distance) > 500000) {
+                                        addLogEntry('ERROR', 'Distance must be between -500000 and 500000 μm');
+                                        return;
+                                    }
+                                    
+                                    // UI 상태 업데이트
+                                    this.textContent = '🔄 Moving...';
+                                    this.disabled = true;
+                                    this.style.opacity = '0.6';
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/move-relative', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0,
+                                                distance: distance,
+                                                velocity: velocity || 200,
+                                                acceleration: acceleration || 1000,
+                                                deceleration: deceleration || 1000
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.textContent = '📏 Move Distance';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            
+                                            addLogEntry('SUCCESS', result.message || `Moving distance ${distance}μm`);
+                                            
+                                            // 위치 정보 새로고침 (움직임 완료 후)
+                                            setTimeout(refreshRobotStatus, 3000);
+                                            
+                                        } else {
+                                            // 실패 시
+                                            this.textContent = '📏 Move Distance';
+                                            this.disabled = false;
+                                            this.style.opacity = '1';
+                                            addLogEntry('ERROR', result.error || 'Relative move failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('📏 Relative move error:', error);
+                                        this.textContent = '📏 Move Distance';
+                                        this.disabled = false;
+                                        this.style.opacity = '1';
+                                        addLogEntry('ERROR', `Relative move error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // Controlled Stop Motion Button
+                                document.getElementById('robot-stop-motion-btn')?.addEventListener('click', async function() {
+                                    console.log('⏸️ Stop motion clicked');
+                                    
+                                    // UI 상태 업데이트
+                                    this.innerHTML = '<div>🔄 Stopping...</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Controlled stop in progress</small>';
+                                    this.disabled = true;
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/stop-motion', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                axis_id: parseInt(document.getElementById('robot-axis-select').value) || 0,
+                                                deceleration: 1000.0  // 기본 감속값
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        
+                                        if (result.success) {
+                                            // 성공 시 UI 업데이트
+                                            this.innerHTML = '<div>⏸️ Stop Motion</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Controlled stop with deceleration</small>';
+                                            this.disabled = false;
+                                            
+                                            addLogEntry('SUCCESS', result.message || 'Robot motion stopped successfully');
+                                            
+                                            // 상태 새로고침
+                                            setTimeout(refreshRobotStatus, 1000);
+                                            
+                                        } else {
+                                            // 실패 시
+                                            this.innerHTML = '<div>⏸️ Stop Motion</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Controlled stop with deceleration</small>';
+                                            this.disabled = false;
+                                            addLogEntry('ERROR', result.error || 'Stop motion failed');
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('⏸️ Stop motion error:', error);
+                                        this.innerHTML = '<div>⏸️ Stop Motion</div><small class="btn-subtitle" style="display: block; font-size: 11px; opacity: 0.8;">Controlled stop with deceleration</small>';
+                                        this.disabled = false;
+                                        addLogEntry('ERROR', `Stop motion error: ${error.message}`);
+                                    }
+                                });
+                                
+                                // UI 상태 관리 개선 함수
+                                function updateUIBasedOnConnectionState(isConnected, servoEnabled = false) {
+                                    // 서보 제어 버튼 - 연결 상태에만 의존
+                                    const servoButtons = ['robot-servo-on-btn', 'robot-servo-off-btn'];
+                                    servoButtons.forEach(btnId => {
+                                        const btn = document.getElementById(btnId);
+                                        if (btn) {
+                                            btn.disabled = !isConnected;
+                                            btn.style.opacity = isConnected ? '1' : '0.5';
+                                        }
+                                    });
+                                    
+                                    // 움직임 제어 버튼 - 연결 상태 AND 서보 활성화 상태에 의존
+                                    const movementButtons = [
+                                        'robot-home-axis-btn', 'robot-move-absolute-btn', 
+                                        'robot-move-relative-btn', 'robot-stop-motion-btn'
+                                    ];
+                                    movementButtons.forEach(btnId => {
+                                        const btn = document.getElementById(btnId);
+                                        if (btn) {
+                                            const enabled = isConnected && servoEnabled;
+                                            btn.disabled = !enabled;
+                                            btn.style.opacity = enabled ? '1' : '0.5';
+                                        }
+                                    });
+                                    
+                                    // 연결 버튼 상태 업데이트
+                                    const connectBtn = document.getElementById('robot-connect-btn');
+                                    const disconnectBtn = document.getElementById('robot-disconnect-btn');
+                                    
+                                    if (connectBtn && disconnectBtn) {
+                                        if (isConnected) {
+                                            connectBtn.textContent = 'Connected ✅';
+                                            connectBtn.disabled = true;
+                                            connectBtn.style.opacity = '0.6';
+                                            
+                                            disconnectBtn.disabled = false;
+                                            disconnectBtn.style.opacity = '1';
+                                        } else {
+                                            connectBtn.textContent = 'Connect';
+                                            connectBtn.disabled = false;
+                                            connectBtn.style.opacity = '1';
+                                            
+                                            disconnectBtn.disabled = true;
+                                            disconnectBtn.style.opacity = '0.5';
+                                        }
+                                    }
+                                }
+                                
+                                // 개선된 상태 새로고침 함수
+                                async function refreshRobotStatus() {
+                                    try {
+                                        const response = await fetch('/api/hardware/robot/status');
+                                        const data = await response.json();
+                                        
+                                        // 연결 상태와 서보 상태에 따른 UI 업데이트
+                                        updateUIBasedOnConnectionState(data.connected, data.servo_enabled);
+                                        
+                                        if (data.connected) {
+                                            // 현재 위치 업데이트
+                                            const positionElement = document.getElementById('robot-current-position');
+                                            if (positionElement && data.current_position !== undefined) {
+                                                const valueSpan = positionElement.querySelector('.value');
+                                                if (valueSpan) {
+                                                    valueSpan.textContent = data.current_position !== null ? data.current_position.toFixed(3) : '---.---';
+                                                }
+                                            }
+                                            
+                                            // 서보 상태 업데이트
+                                            const servoStatusElement = document.getElementById('robot-servo-status');
+                                            if (servoStatusElement && data.servo_enabled !== undefined) {
+                                                const statusDot = servoStatusElement.querySelector('.status-dot');
+                                                const statusText = servoStatusElement.querySelector('span');
+                                                if (statusDot && statusText) {
+                                                    if (data.servo_enabled) {
+                                                        statusDot.style.background = '#28a745';
+                                                        statusText.textContent = 'Enabled';
+                                                        
+                                                        // 서보 활성화시 움직임 버튼들 활성화
+                                                        ['robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn'].forEach(btnId => {
+                                                            const btn = document.getElementById(btnId);
+                                                            if (btn) {
+                                                                btn.disabled = false;
+                                                                btn.style.opacity = '1';
+                                                            }
+                                                        });
+                                                    } else {
+                                                        statusDot.style.background = '#dc3545';
+                                                        statusText.textContent = 'Disabled';
+                                                        
+                                                        // 서보 비활성화시 움직임 버튼들 비활성화
+                                                        ['robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn'].forEach(btnId => {
+                                                            const btn = document.getElementById(btnId);
+                                                            if (btn) {
+                                                                btn.disabled = true;
+                                                                btn.style.opacity = '0.5';
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                    } catch (error) {
+                                        console.error('Failed to refresh robot status:', error);
+                                        // 연결 오류시 모든 버튼 비활성화
+                                        updateUIBasedOnConnectionState(false);
+                                    }
+                                }
+                                
+                                // 초기 로그 메시지 업데이트
+                                setTimeout(() => {
+                                    addLogEntry('INFO', 'Robot Control Panel initialized - Full API integration complete');
+                                }, 500);
+                                
+                                console.log('✅ Robot Control functionality initialized - COMPLETE API INTEGRATION');
+                            });
+                        </script>
+                    </div>
+                    
+                    <!-- Power Control Page - EMBEDDED FOR CACHE FIX -->
+                    <div id="power-control" class="content-page hardware-control-panel" style="display: none;">
+                        <div class="page-header">
+                            <div class="header-content">
+                                <h1 class="page-title">
+                                    <i class="icon-power"></i>
+                                    Power Control System
+                                </h1>
+                                <div class="page-subtitle">
+                                    ODA Power Supply Controller - Direct Embedded
+                                </div>
+                            </div>
+                            
+                            <!-- Status Badge -->
+                            <div class="status-badge" id="power-status-badge">
+                                <div class="status-indicator">
+                                    <div class="status-light status-unknown"></div>
+                                    <span class="status-text">Disconnected</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-grid">
+                            <!-- Connection Panel -->
+                            <div class="control-panel connection-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-connection"></i> Connection</h3>
+                                    <div class="connection-status" id="power-connection-status">
+                                        <div class="status-dot status-unknown"></div>
+                                        <span>Disconnected</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="connection-info" id="power-connection-info">
+                                        <div class="info-row">
+                                            <label>Device Type:</label>
+                                            <span>ODA Power Supply</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Host:</label>
+                                            <span id="power-host">192.168.11.1</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Port:</label>
+                                            <span id="power-port">5000</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Channel:</label>
+                                            <span id="power-channel">1</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Device Identity:</label>
+                                            <span id="power-device-identity">--</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="connection-controls">
+                                        <button class="btn btn-success" id="power-connect-btn">
+                                            <i class="icon-connect"></i>
+                                            Connect
+                                        </button>
+                                        <button class="btn btn-secondary" id="power-disconnect-btn" disabled>
+                                            <i class="icon-disconnect"></i>
+                                            Disconnect
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Readings Panel -->
+                            <div class="control-panel readings-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-meter"></i> Live Readings</h3>
+                                    <button class="btn btn-sm btn-outline" id="power-refresh-readings-btn">
+                                        <i class="icon-refresh"></i>
+                                        Refresh
+                                    </button>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="readings-grid">
+                                        <div class="reading-card voltage-card">
+                                            <div class="reading-label">
+                                                <i class="icon-voltage"></i>
+                                                Voltage
+                                            </div>
+                                            <div class="reading-value" id="power-voltage-reading">
+                                                <span class="value">---.--</span>
+                                                <span class="unit">V</span>
+                                            </div>
+                                            <div class="reading-status" id="power-voltage-status">
+                                                <div class="status-dot status-unknown"></div>
+                                                <span>Unknown</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="reading-card current-card">
+                                            <div class="reading-label">
+                                                <i class="icon-current"></i>
+                                                Current
+                                            </div>
+                                            <div class="reading-value" id="power-current-reading">
+                                                <span class="value">---.--</span>
+                                                <span class="unit">A</span>
+                                            </div>
+                                            <div class="reading-status" id="power-current-status">
+                                                <div class="status-dot status-unknown"></div>
+                                                <span>Unknown</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="reading-card power-card">
+                                            <div class="reading-label">
+                                                <i class="icon-power"></i>
+                                                Power
+                                            </div>
+                                            <div class="reading-value" id="power-power-reading">
+                                                <span class="value">---.--</span>
+                                                <span class="unit">W</span>
+                                            </div>
+                                            <div class="reading-status" id="power-power-status">
+                                                <div class="status-dot status-unknown"></div>
+                                                <span>Calculated</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="readings-chart" id="power-readings-chart">
+                                        <!-- Chart will be rendered here -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Output Control Panel -->
+                            <div class="control-panel output-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-output"></i> Output Control</h3>
+                                    <div class="output-status" id="power-output-status">
+                                        <div class="status-dot status-unknown"></div>
+                                        <span>Unknown</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="output-controls">
+                                        <button class="btn btn-danger btn-lg output-btn" id="power-enable-output-btn" disabled>
+                                            <i class="icon-power-on"></i>
+                                            Enable Output
+                                            <span class="btn-subtitle">⚠️ HIGH VOLTAGE WARNING</span>
+                                        </button>
+                                        
+                                        <button class="btn btn-secondary output-btn" id="power-disable-output-btn" disabled>
+                                            <i class="icon-power-off"></i>
+                                            Disable Output
+                                            <span class="btn-subtitle">Safe shutdown</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="safety-notice high-voltage-warning">
+                                        <div class="warning-content">
+                                            <i class="icon-warning"></i>
+                                            <div class="warning-text">
+                                                <div class="warning-title">HIGH VOLTAGE DANGER</div>
+                                                <div class="warning-message">
+                                                    Ensure all safety precautions are in place before enabling output.
+                                                    Verify proper connections and safety equipment.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Voltage Control Panel -->
+                            <div class="control-panel voltage-control-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-voltage"></i> Voltage Control</h3>
+                                    <div class="current-setting" id="power-voltage-setting">
+                                        Current: <span>---.-- V</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="control-form">
+                                        <div class="form-group">
+                                            <label for="voltage-setpoint">Voltage Setpoint (V)</label>
+                                            <div class="input-group">
+                                                <input type="number" id="voltage-setpoint" class="form-control" 
+                                                       min="0" max="50" step="0.01" placeholder="0.00">
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">V</span>
+                                                </div>
+                                            </div>
+                                            <div class="input-help">Range: 0.00 - 50.00 V</div>
+                                        </div>
+                                        
+                                        <div class="voltage-presets">
+                                            <div class="presets-label">Quick Presets:</div>
+                                            <div class="preset-buttons">
+                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="0">0V</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="3.3">3.3V</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="5">5V</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="12">12V</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="24">24V</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-primary btn-lg" id="power-set-voltage-btn" disabled>
+                                            <i class="icon-set"></i>
+                                            Set Voltage
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Current Control Panel -->
+                            <div class="control-panel current-control-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-current"></i> Current Control</h3>
+                                    <div class="panel-tabs">
+                                        <button class="tab-btn active" data-tab="current">Current</button>
+                                        <button class="tab-btn" data-tab="limit">Limit</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <!-- Current Setting Tab -->
+                                    <div class="tab-content active" id="current-tab">
+                                        <div class="current-setting-display" id="power-current-setting">
+                                            Current Setting: <span>---.-- A</span>
+                                        </div>
+                                        
+                                        <div class="control-form">
+                                            <div class="form-group">
+                                                <label for="current-setpoint">Current Setpoint (A)</label>
+                                                <div class="input-group">
+                                                    <input type="number" id="current-setpoint" class="form-control" 
+                                                           min="0" max="50" step="0.01" placeholder="0.00">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text">A</span>
+                                                    </div>
+                                                </div>
+                                                <div class="input-help">Range: 0.00 - 50.00 A</div>
+                                            </div>
+                                            
+                                            <button class="btn btn-primary btn-lg" id="power-set-current-btn" disabled>
+                                                <i class="icon-set"></i>
+                                                Set Current
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Current Limit Tab -->
+                                    <div class="tab-content" id="limit-tab">
+                                        <div class="current-limit-display" id="power-current-limit-setting">
+                                            Current Limit: <span>---.-- A</span>
+                                        </div>
+                                        
+                                        <div class="control-form">
+                                            <div class="form-group">
+                                                <label for="current-limit-setpoint">Current Limit (A)</label>
+                                                <div class="input-group">
+                                                    <input type="number" id="current-limit-setpoint" class="form-control" 
+                                                           min="0" max="50" step="0.01" placeholder="0.00">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text">A</span>
+                                                    </div>
+                                                </div>
+                                                <div class="input-help">Range: 0.00 - 50.00 A</div>
+                                            </div>
+                                            
+                                            <div class="limit-info">
+                                                <i class="icon-info"></i>
+                                                <span>Current limit provides overcurrent protection</span>
+                                            </div>
+                                            
+                                            <button class="btn btn-primary btn-lg" id="power-set-current-limit-btn" disabled>
+                                                <i class="icon-set"></i>
+                                                Set Current Limit
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Operations Log Panel -->
+                            <div class="control-panel log-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-log"></i> Operations Log</h3>
+                                    <div class="log-controls">
+                                        <button class="btn btn-sm btn-outline" id="power-clear-log-btn">
+                                            <i class="icon-clear"></i>
+                                            Clear
+                                        </button>
+                                        <button class="btn btn-sm btn-outline" id="power-export-log-btn">
+                                            <i class="icon-export"></i>
+                                            Export
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="log-viewer" id="power-log-viewer">
+                                        <div class="log-entry">
+                                            <span class="timestamp">[--:--:--]</span>
+                                            <span class="level info">INFO</span>
+                                            <span class="message">Power Control Panel initialized - EMBEDDED VERSION</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                            // Power Control Tab switching functionality
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // Tab switching for current control panel
+                                const powerTabButtons = document.querySelectorAll('#power-control .tab-btn');
+                                const powerTabContents = document.querySelectorAll('#power-control .tab-content');
+                                
+                                powerTabButtons.forEach(button => {
+                                    button.addEventListener('click', function() {
+                                        const targetTab = this.getAttribute('data-tab');
+                                        
+                                        // Update button states
+                                        powerTabButtons.forEach(btn => {
+                                            if (btn === this) {
+                                                btn.style.background = '#007bff';
+                                                btn.style.color = 'white';
+                                                btn.classList.add('active');
+                                            } else {
+                                                btn.style.background = 'transparent';
+                                                btn.style.color = '#6c757d';
+                                                btn.classList.remove('active');
+                                            }
+                                        });
+                                        
+                                        // Update tab content visibility
+                                        powerTabContents.forEach(content => {
+                                            if (content.id === targetTab + '-tab') {
+                                                content.style.display = 'block';
+                                                content.classList.add('active');
+                                            } else {
+                                                content.style.display = 'none';
+                                                content.classList.remove('active');
+                                            }
+                                        });
+                                    });
+                                });
+                                
+                                // Voltage preset buttons
+                                const presetButtons = document.querySelectorAll('#power-control .preset-btn');
+                                const voltageInput = document.getElementById('voltage-setpoint');
+                                
+                                presetButtons.forEach(button => {
+                                    button.addEventListener('click', function() {
+                                        const voltage = this.getAttribute('data-voltage');
+                                        if (voltageInput) {
+                                            voltageInput.value = voltage;
+                                        }
+                                        
+                                        // Visual feedback
+                                        presetButtons.forEach(btn => {
+                                            btn.style.background = 'transparent';
+                                            btn.style.color = '#007bff';
+                                        });
+                                        this.style.background = '#007bff';
+                                        this.style.color = 'white';
+                                        
+                                        // Reset after 1 second
+                                        setTimeout(() => {
+                                            this.style.background = 'transparent';
+                                            this.style.color = '#007bff';
+                                        }, 1000);
+                                    });
+                                });
+                                
+                                console.log('✅ Power Control Tab functionality initialized - EMBEDDED VERSION');
+                            });
+                        </script>
+                    </div>
+                    
+                    <!-- MCU Control Page - EMBEDDED FOR CACHE FIX -->
+                    <div id="mcu-control" class="content-page hardware-control-panel" style="display: none;">
+                        <div class="page-header">
+                            <div class="header-content">
+                                <h1 class="page-title">
+                                    <i class="icon-mcu"></i>
+                                    MCU Control System
+                                </h1>
+                                <div class="page-subtitle">
+                                    LMA Temperature Controller - Direct Embedded
+                                </div>
+                            </div>
+                            
+                            <!-- Status Badge -->
+                            <div class="status-badge" id="mcu-status-badge">
+                                <div class="status-indicator">
+                                    <div class="status-light status-unknown"></div>
+                                    <span class="status-text">Disconnected</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-grid">
+                            <!-- Connection Panel -->
+                            <div class="control-panel connection-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-connection"></i> Serial Connection</h3>
+                                    <div class="connection-status" id="mcu-connection-status">
+                                        <div class="status-dot status-unknown"></div>
+                                        <span>Disconnected</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="connection-info" id="mcu-connection-info">
+                                        <div class="info-row">
+                                            <label>Controller Type:</label>
+                                            <span>LMA Temperature Controller</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Port:</label>
+                                            <span id="mcu-port">COM4</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Baudrate:</label>
+                                            <span id="mcu-baudrate">115200</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Timeout:</label>
+                                            <span id="mcu-timeout">2.0s</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="connection-controls">
+                                        <button class="btn btn-success" id="mcu-connect-btn">
+                                            <i class="icon-connect"></i>
+                                            Connect
+                                        </button>
+                                        <button class="btn btn-secondary" id="mcu-disconnect-btn" disabled>
+                                            <i class="icon-disconnect"></i>
+                                            Disconnect
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Temperature Monitoring Panel -->
+                            <div class="control-panel temperature-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-temperature"></i> Temperature Monitoring</h3>
+                                    <button class="btn btn-sm btn-outline" id="mcu-refresh-temperature-btn">
+                                        <i class="icon-refresh"></i>
+                                        Read
+                                    </button>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="temperature-display">
+                                        <div class="temperature-reading">
+                                            <div class="reading-label">Current Temperature</div>
+                                            <div class="reading-value" id="mcu-current-temperature">
+                                                <span class="value">---.--</span>
+                                                <span class="unit">°C</span>
+                                            </div>
+                                            <div class="reading-status" id="mcu-temperature-status">
+                                                <div class="status-dot status-unknown"></div>
+                                                <span>Unknown</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="temperature-chart" id="mcu-temperature-chart">
+                                            <!-- Temperature chart will be rendered here -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="temperature-controls">
+                                        <button class="btn btn-primary" id="mcu-get-temperature-btn" disabled>
+                                            <i class="icon-thermometer"></i>
+                                            Read Temperature
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Test Mode Control Panel -->
+                            <div class="control-panel test-mode-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-test"></i> Test Mode Control</h3>
+                                    <div class="test-mode-status" id="mcu-test-mode-status">
+                                        <div class="status-dot status-unknown"></div>
+                                        <span>Normal Mode</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="test-mode-info">
+                                        <div class="info-card">
+                                            <div class="info-title">Current Mode</div>
+                                            <div class="info-value" id="mcu-current-mode">Normal Mode</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="test-mode-controls">
+                                        <button class="btn btn-warning btn-lg" id="mcu-enter-test-mode-btn" disabled>
+                                            <i class="icon-test"></i>
+                                            Enter Test Mode
+                                            <span class="btn-subtitle">Mode 1 - Testing</span>
+                                        </button>
+                                        
+                                        <button class="btn btn-secondary" id="mcu-exit-test-mode-btn" disabled>
+                                            <i class="icon-normal"></i>
+                                            Exit Test Mode
+                                            <span class="btn-subtitle">Return to normal operation</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="test-mode-description">
+                                        <i class="icon-info"></i>
+                                        <span>Test mode enables special diagnostic and calibration functions</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Temperature Control Panel -->
+                            <div class="control-panel temperature-control-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-control"></i> Temperature Control</h3>
+                                    <div class="current-setpoint" id="mcu-temperature-setpoint">
+                                        Setpoint: <span>---.-- °C</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="control-form">
+                                        <div class="form-group">
+                                            <label for="operating-temperature">Operating Temperature (°C)</label>
+                                            <div class="input-group">
+                                                <input type="number" id="operating-temperature" class="form-control" 
+                                                       min="-50" max="200" step="0.1" placeholder="25.0">
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">°C</span>
+                                                </div>
+                                            </div>
+                                            <div class="input-help">Range: -50.0 - 200.0 °C</div>
+                                        </div>
+                                        
+                                        <div class="temperature-presets">
+                                            <div class="presets-label">Quick Presets:</div>
+                                            <div class="preset-buttons">
+                                                <button class="btn btn-sm btn-outline preset-btn" data-temperature="25">25°C</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-temperature="40">40°C</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-temperature="60">60°C</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-temperature="85">85°C</button>
+                                                <button class="btn btn-sm btn-outline preset-btn" data-temperature="125">125°C</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-primary btn-lg" id="mcu-set-temperature-btn" disabled>
+                                            <i class="icon-set"></i>
+                                            Set Operating Temperature
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Standby Operations Panel -->
+                            <div class="control-panel standby-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-standby"></i> Standby Operations</h3>
+                                    <div class="panel-tabs">
+                                        <button class="tab-btn active" data-tab="heating">Heating</button>
+                                        <button class="tab-btn" data-tab="cooling">Cooling</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <!-- Standby Heating Tab -->
+                                    <div class="tab-content active" id="heating-tab">
+                                        <div class="standby-form">
+                                            <div class="form-row">
+                                                <div class="form-group">
+                                                    <label for="heating-operating-temp">Operating Temp (°C)</label>
+                                                    <input type="number" id="heating-operating-temp" class="form-control" 
+                                                           min="30" max="60" step="0.1" value="60" placeholder="60.0">
+                                                    <div class="input-help">30-60°C</div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="heating-standby-temp">Standby Temp (°C)</label>
+                                                    <input type="number" id="heating-standby-temp" class="form-control" 
+                                                           min="30" max="60" step="0.1" value="40" placeholder="40.0">
+                                                    <div class="input-help">30-60°C</div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="heating-hold-time">Hold Time (ms)</label>
+                                                    <input type="number" id="heating-hold-time" class="form-control" 
+                                                           min="1000" max="60000" step="1000" value="10000" placeholder="10000">
+                                                    <div class="input-help">1000-60000ms</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="heating-preview" id="heating-preview">
+                                                <div class="preview-title">Heating Sequence:</div>
+                                                <div class="preview-steps">
+                                                    <div class="step">1. Heat to <span id="preview-operating">60.0</span>°C</div>
+                                                    <div class="step">2. Hold for <span id="preview-hold">10.0</span>s</div>
+                                                    <div class="step">3. Cool to <span id="preview-standby">40.0</span>°C</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <button class="btn btn-warning btn-lg" id="mcu-start-heating-btn" disabled>
+                                                <i class="icon-heat"></i>
+                                                Start Standby Heating
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Standby Cooling Tab -->
+                                    <div class="tab-content" id="cooling-tab">
+                                        <div class="standby-form">
+                                            <div class="cooling-info">
+                                                <i class="icon-info"></i>
+                                                <span>Standby cooling will start the cooling process to ambient temperature</span>
+                                            </div>
+                                            
+                                            <button class="btn btn-info btn-lg" id="mcu-start-cooling-btn" disabled>
+                                                <i class="icon-cool"></i>
+                                                Start Standby Cooling
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Boot Control Panel -->
+                            <div class="control-panel boot-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-boot"></i> Boot Control</h3>
+                                    <div class="boot-status" id="mcu-boot-status">
+                                        <div class="status-dot status-unknown"></div>
+                                        <span>Unknown</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="boot-info">
+                                        <div class="info-row">
+                                            <label>Boot Status:</label>
+                                            <span id="mcu-boot-complete-status">Unknown</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <label>Last Boot:</label>
+                                            <span id="mcu-last-boot-time">--</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="boot-controls">
+                                        <button class="btn btn-primary" id="mcu-wait-boot-btn" disabled>
+                                            <i class="icon-wait"></i>
+                                            Wait for Boot Complete
+                                            <span class="btn-subtitle">Monitor boot completion signal</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="boot-description">
+                                        <i class="icon-info"></i>
+                                        <span>Wait for MCU to complete its boot sequence and send ready signal</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Operations Log Panel -->
+                            <div class="control-panel log-panel">
+                                <div class="panel-header">
+                                    <h3><i class="icon-log"></i> Operations Log</h3>
+                                    <div class="log-controls">
+                                        <button class="btn btn-sm btn-outline" id="mcu-clear-log-btn">
+                                            <i class="icon-clear"></i>
+                                            Clear
+                                        </button>
+                                        <button class="btn btn-sm btn-outline" id="mcu-export-log-btn">
+                                            <i class="icon-export"></i>
+                                            Export
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="panel-content">
+                                    <div class="log-viewer" id="mcu-log-viewer">
+                                        <div class="log-entry">
+                                            <span class="timestamp">[--:--:--]</span>
+                                            <span class="level info">INFO</span>
+                                            <span class="message">MCU Control Panel initialized - EMBEDDED VERSION</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                            // MCU Control embedded functionality
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // MCU Control Tab switching functionality for standby operations
+                                const mcuTabButtons = document.querySelectorAll('#mcu-control .standby-panel .tab-btn');
+                                const mcuTabContents = document.querySelectorAll('#mcu-control .standby-panel .tab-content');
+                                
+                                mcuTabButtons.forEach(button => {
+                                    button.addEventListener('click', function() {
+                                        const targetTab = this.getAttribute('data-tab');
+                                        
+                                        // Update button states
+                                        mcuTabButtons.forEach(btn => {
+                                            if (btn === this) {
+                                                btn.style.background = '#007bff';
+                                                btn.style.color = 'white';
+                                                btn.classList.add('active');
+                                            } else {
+                                                btn.style.background = 'transparent';
+                                                btn.style.color = '#6c757d';
+                                                btn.classList.remove('active');
+                                            }
+                                        });
+                                        
+                                        // Update tab content visibility
+                                        mcuTabContents.forEach(content => {
+                                            if (content.id === targetTab + '-tab') {
+                                                content.style.display = 'block';
+                                                content.classList.add('active');
+                                            } else {
+                                                content.style.display = 'none';
+                                                content.classList.remove('active');
+                                            }
+                                        });
+                                    });
+                                });
+                                
+                                // MCU Temperature preset buttons
+                                const mcuPresetButtons = document.querySelectorAll('#mcu-control .preset-btn');
+                                const operatingTempInput = document.getElementById('operating-temperature');
+                                
+                                mcuPresetButtons.forEach(button => {
+                                    button.addEventListener('click', function() {
+                                        const temperature = this.getAttribute('data-temperature');
+                                        if (operatingTempInput) {
+                                            operatingTempInput.value = temperature;
+                                        }
+                                        
+                                        // Visual feedback
+                                        mcuPresetButtons.forEach(btn => {
+                                            btn.style.background = 'transparent';
+                                            btn.style.color = '#007bff';
+                                        });
+                                        this.style.background = '#007bff';
+                                        this.style.color = 'white';
+                                        
+                                        // Reset after 1 second
+                                        setTimeout(() => {
+                                            this.style.background = 'transparent';
+                                            this.style.color = '#007bff';
+                                        }, 1000);
+                                    });
+                                });
+                                
+                                // MCU Heating parameter preview updates
+                                const updateHeatingPreview = () => {
+                                    const operatingTemp = document.getElementById('heating-operating-temp')?.value || '60.0';
+                                    const standbyTemp = document.getElementById('heating-standby-temp')?.value || '40.0';
+                                    const holdTime = document.getElementById('heating-hold-time')?.value || '10000';
+                                    
+                                    const previewOperating = document.getElementById('preview-operating');
+                                    const previewStandby = document.getElementById('preview-standby');
+                                    const previewHold = document.getElementById('preview-hold');
+                                    
+                                    if (previewOperating) previewOperating.textContent = parseFloat(operatingTemp).toFixed(1);
+                                    if (previewStandby) previewStandby.textContent = parseFloat(standbyTemp).toFixed(1);
+                                    if (previewHold) previewHold.textContent = (parseInt(holdTime) / 1000).toFixed(1);
+                                };
+                                
+                                // Setup heating parameter inputs
+                                const heatingInputs = ['heating-operating-temp', 'heating-standby-temp', 'heating-hold-time'];
+                                heatingInputs.forEach(id => {
+                                    const input = document.getElementById(id);
+                                    if (input) {
+                                        input.addEventListener('input', updateHeatingPreview);
+                                    }
+                                });
+                                
+                                // Initial preview update
+                                updateHeatingPreview();
+                                
+                                console.log('✅ MCU Control embedded functionality initialized - EMBEDDED VERSION');
+                            });
+                        </script>
+                    </div>
+                    
+                    <!-- API Status Page -->
+                    <div id="api-status" class="content-page" style="display: none;">
+                        <div class="page-header">
+                            <div class="header-content">
+                                <h1 class="page-title">⚡ API Status & Information</h1>
+                                <div class="page-subtitle">FastAPI Server Status and Endpoints Overview</div>
+                            </div>
+                        </div>
+                        
+                        <div class="api-status-container" style="display: grid; gap: 20px; padding: 20px;">
+                            <!-- API Server Status -->
+                            <div class="status-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <h3 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">🖥️ Server Status</h3>
+                                <div class="server-info" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                                    <div class="info-item">
+                                        <label style="font-weight: bold; color: #666;">Server:</label>
+                                        <span id="api-server-status">FastAPI + Uvicorn</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label style="font-weight: bold; color: #666;">Version:</label>
+                                        <span id="api-version">1.0.0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label style="font-weight: bold; color: #666;">Port:</label>
+                                        <span id="api-port">8004</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label style="font-weight: bold; color: #666;">Status:</label>
+                                        <span id="api-connection-status" style="color: #28a745; font-weight: bold;">🟢 Online</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- API Documentation Links -->
+                            <div class="docs-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <h3 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">📚 Documentation</h3>
+                                <div class="docs-links" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                                    <div class="doc-item" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px;">
+                                        <h4 style="margin: 0 0 8px 0; color: #007bff;">📖 Swagger UI</h4>
+                                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Interactive API testing and exploration</p>
+                                        <a href="/api/docs" target="_blank" class="btn btn-primary" style="display: inline-block; padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">Open Swagger UI ↗️</a>
+                                    </div>
+                                    <div class="doc-item" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px;">
+                                        <h4 style="margin: 0 0 8px 0; color: #28a745;">📋 ReDoc</h4>
+                                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Clean, readable API documentation</p>
+                                        <a href="/api/redoc" target="_blank" class="btn btn-success" style="display: inline-block; padding: 8px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">Open ReDoc ↗️</a>
+                                    </div>
+                                    <div class="doc-item" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px;">
+                                        <h4 style="margin: 0 0 8px 0; color: #6c757d;">🔧 OpenAPI JSON</h4>
+                                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Raw OpenAPI specification</p>
+                                        <a href="/api/openapi.json" target="_blank" class="btn btn-secondary" style="display: inline-block; padding: 8px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">View JSON ↗️</a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Endpoint Overview -->
+                            <div class="endpoints-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <h3 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">🔗 Hardware API Endpoints</h3>
+                                <div class="endpoints-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                    <!-- General Hardware -->
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #6c757d; margin: 0 0 10px 0;">⚙️ General Hardware</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/status</code> - Overall status</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/connect</code> - Connect all</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/initialize</code> - Initialize</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- Robot Control -->
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #007bff; margin: 0 0 10px 0;">🤖 Robot Control</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/connect</code> - Connect</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/disconnect</code> - Disconnect</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/servo/enable</code> - Enable servo</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/home-axis</code> - Home axis</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/move-absolute</code> - Absolute move</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/move-relative</code> - Relative move</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/emergency-stop</code> - Emergency stop</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/robot/status</code> - Status</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- Power Supply -->
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #dc3545; margin: 0 0 10px 0;">🔌 Power Supply</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/power/status</code> - Status</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/power/control</code> - Enable/Disable</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: enable</code> - Enable output</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: disable</code> - Disable output</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: set_voltage</code> - Set voltage</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: set_current</code> - Set current</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- MCU Control -->
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #28a745; margin: 0 0 10px 0;">🖥️ MCU Control</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/mcu/status</code> - Status</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/mcu/control</code> - Control operations</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: set_operating_temperature</code> - Set operating temp</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: set_fan_speed</code> - Set fan speed</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- Load Cell -->
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #fd7e14; margin: 0 0 10px 0;">⚖️ Load Cell</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/loadcell/status</code> - Status & reading</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/loadcell/zero</code> - Zero calibration</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- Digital I/O -->
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #6610f2; margin: 0 0 10px 0;">🔢 Digital I/O</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/digital-io/status</code> - All channels status</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/hardware/digital-io/control</code> - I/O operations</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: read_input</code> - Read single input</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: write_output</code> - Write output</li>
+                                            <li style="margin-bottom: 5px;">• <code>operation: read_all_inputs</code> - Read all 32 inputs</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <hr style="margin: 25px 0; border: none; border-top: 1px solid #eee;">
+                                
+                                <h3 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">🔗 Other API Endpoints</h3>
+                                <div class="endpoints-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #17a2b8; margin: 0 0 10px 0;">⚙️ Configuration</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/config/profiles</code> - Test profiles</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/config/hardware</code> - Hardware config</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/config/active</code> - Active profile</li>
+                                        </ul>
+                                    </div>
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #e83e8c; margin: 0 0 10px 0;">🧪 Test Execution</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/api/test/eol-force</code> - EOL force test</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/test/status</code> - Test status</li>
+                                            <li style="margin-bottom: 5px;"><code>/api/test/results</code> - Test results</li>
+                                        </ul>
+                                    </div>
+                                    <div class="endpoint-group">
+                                        <h4 style="color: #20c997; margin: 0 0 10px 0;">📡 WebSocket</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 5px;"><code>/ws</code> - Real-time updates</li>
+                                            <li style="margin-bottom: 5px;"><code>/ws/test</code> - Test progress</li>
+                                            <li style="margin-bottom: 5px;"><code>/ws/hardware</code> - Hardware events</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Test -->
+                            <div class="test-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <h3 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">🧪 Quick API Test</h3>
+                                <div class="test-controls" style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                                    <button id="test-api-health" class="btn btn-primary" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px;">Test API Health</button>
+                                    <button id="test-hardware-status" class="btn btn-success" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px;">Test Hardware Status</button>
+                                    <span id="test-result" style="font-weight: bold;"></span>
+                                </div>
+                                <div id="test-output" style="background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; min-height: 60px; overflow-x: auto; border: 1px solid #e9ecef;"></div>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // Quick API test functionality
+                                document.getElementById('test-api-health')?.addEventListener('click', async function() {
+                                    const output = document.getElementById('test-output');
+                                    const result = document.getElementById('test-result');
+                                    
+                                    result.textContent = 'Testing...';
+                                    result.style.color = '#ffc107';
+                                    
+                                    try {
+                                        const response = await fetch('/api/health');
+                                        const data = await response.json();
+                                        
+                                        output.innerHTML = `<strong>GET /api/health</strong>\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                                        result.textContent = '✅ Success';
+                                        result.style.color = '#28a745';
+                                    } catch (error) {
+                                        output.innerHTML = `<strong>GET /api/health</strong>\nError: ${error.message}`;
+                                        result.textContent = '❌ Failed';
+                                        result.style.color = '#dc3545';
+                                    }
+                                });
+                                
+                                document.getElementById('test-hardware-status')?.addEventListener('click', async function() {
+                                    const output = document.getElementById('test-output');
+                                    const result = document.getElementById('test-result');
+                                    
+                                    result.textContent = 'Testing...';
+                                    result.style.color = '#ffc107';
+                                    
+                                    try {
+                                        const response = await fetch('/api/hardware/status');
+                                        const data = await response.json();
+                                        
+                                        output.innerHTML = `<strong>GET /api/hardware/status</strong>\nStatus: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                                        result.textContent = '✅ Success';
+                                        result.style.color = '#28a745';
+                                    } catch (error) {
+                                        output.innerHTML = `<strong>GET /api/hardware/status</strong>\nError: ${error.message}`;
+                                        result.textContent = '❌ Failed';
+                                        result.style.color = '#dc3545';
+                                    }
+                                });
+                                
+                                console.log('✅ API Status page initialized');
+                            });
+                        </script>
+                    </div>
+                    
+                    <!-- All other pages will be loaded dynamically from templates -->
+                </div>
+                
+            </main>
+            
+        </div>
+        
+        <!-- Bottom Status Bar -->
+        <footer id="app-footer" class="app-footer">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <div class="status-section">
+                        <span class="footer-label">Status:</span>
+                        <span class="footer-value" id="footer-status">Ready</span>
+                    </div>
+                    <div class="status-section">
+                        <span class="footer-label">Active Test:</span>
+                        <span class="footer-value" id="active-test">None</span>
+                    </div>
+                </div>
+                <div class="footer-center">
+                    <div class="footer-time" id="footer-time">--:--:--</div>
+                </div>
+                <div class="footer-right">
+                    <div class="status-section">
+                        <span class="footer-label">Memory:</span>
+                        <span class="footer-value" id="memory-usage">--</span>
+                    </div>
+                    <div class="status-section">
+                        <span class="footer-label">CPU:</span>
+                        <span class="footer-value" id="cpu-usage">--</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+    
+    <!-- Modal Container -->
+    <div id="modal-container" class="modal-container" style="display: none;">
+        <!-- Modal content will be dynamically inserted here -->
+    </div>
+    
+    <!-- JavaScript Modules -->
+    <script src="static/js/api-client.js"></script>
+    <script src="static/js/integration.js"></script>
+    
+    <!-- Force Cache Clear Script -->
+    <script>
+        // Force cache clear for development
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+        
+        // Clear all caches
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+        
+        console.log('🧹 NOCACHE VERSION 235500 - Force reload everything!');
+        
+        // Force complete page reload after cache clear
+        setTimeout(function() {
+            if (window.location.search.indexOf('nocache') === -1) {
+                window.location.href = window.location.href + '?nocache=' + Date.now();
+            }
+        }, 100);
+    </script>
+    
+    <!-- Debug Script for Menu Toggle -->
+    <script>
+        console.log('🔧 Debug script loaded - Adding basic menu functionality');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 DOM loaded, setting up basic menu toggles');
+            
+            // Basic sidebar toggle functionality
+            document.addEventListener('click', function(e) {
+                console.log('🔧 Click detected on:', e.target);
+                
+                // Handle menu toggles
+                if (e.target.hasAttribute('data-toggle')) {
+                    console.log('🔧 Toggle clicked:', e.target.getAttribute('data-toggle'));
+                    e.preventDefault();
+                    
+                    const menuType = e.target.getAttribute('data-toggle');
+                    const menu = document.getElementById(menuType + '-menu');
+                    
+                    if (menu) {
+                        const isHidden = menu.style.display === 'none' || menu.style.display === '';
+                        menu.style.display = isHidden ? 'block' : 'none';
+                        console.log('🔧 Menu toggled:', menuType, isHidden ? 'shown' : 'hidden');
+                        
+                        // Add expanded class for styling
+                        e.target.classList.toggle('expanded', isHidden);
+                    } else {
+                        console.error('🔧 Menu not found:', menuType + '-menu');
+                    }
+                    return;
+                }
+                
+                // Handle page navigation
+                if (e.target.hasAttribute('data-page')) {
+                    console.log('🔧 Page navigation clicked:', e.target.getAttribute('data-page'));
+                    e.preventDefault();
+                    
+                    const pageName = e.target.getAttribute('data-page');
+                    
+                    // Hide all pages
+                    document.querySelectorAll('.content-page').forEach(page => {
+                        page.classList.remove('active');
+                        page.style.display = 'none';
+                    });
+                    
+                    // Show selected page or welcome page
+                    let targetPage = document.getElementById(pageName);
+                    if (!targetPage) {
+                        targetPage = document.getElementById('welcome-page');
+                        console.log('🔧 Page not found, showing welcome page:', pageName);
+                    }
+                    
+                    if (targetPage) {
+                        targetPage.style.display = 'block';
+                        targetPage.classList.add('active');
+                        console.log('🔧 Page shown:', pageName);
+                        
+                        // Initialize embedded robot control when robot-control page is shown
+                        if (pageName === 'robot-control') {
+                            console.log('🚀 [EMBEDDED] Robot Control page detected - Initializing embedded control...');
+                            setTimeout(() => {
+                                initializeEmbeddedRobotControl();
+                            }, 100);
+                        }
+                    }
+                    
+                    // Update active nav links
+                    document.querySelectorAll('.nav-link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+                    
+                    return;
+                }
+            });
+            
+            // Initialize clock
+            function updateClock() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString();
+                const clockElement = document.getElementById('footer-time');
+                if (clockElement) {
+                    clockElement.textContent = timeString;
+                }
+            }
+            
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            // Hardware Dashboard functionality
+            let hardwareDashboardInterval;
+            let autoRefreshEnabled = true;
+            
+            // Navigation function for hardware dashboard
+            window.navigateToPage = function(pageName) {
+                console.log('🔧 Navigating to page:', pageName);
+                
+                // Hide all pages
+                document.querySelectorAll('.content-page').forEach(page => {
+                    page.classList.remove('active');
+                    page.style.display = 'none';
+                });
+                
+                // Show target page
+                const targetPage = document.getElementById(pageName);
+                if (targetPage) {
+                    targetPage.style.display = 'block';
+                    targetPage.classList.add('active');
+                    console.log('✅ Page shown:', pageName);
+                } else {
+                    console.error('❌ Page not found:', pageName);
+                }
+            };
+            
+            // Hardware control function
+            window.controlHardware = async function(hardware, action) {
+                console.log('🔧 Hardware control:', hardware, action);
+                
+                try {
+                    let response;
+                    const url = `/api/hardware/${hardware}/${action}`;
+                    
+                    // Show loading state
+                    const statusElement = document.getElementById(`${hardware}-status-label`);
+                    if (statusElement) {
+                        statusElement.textContent = 'Processing...';
+                    }
+                    
+                    switch (action) {
+                        case 'connect':
+                            response = await fetch(url, { method: 'POST' });
+                            break;
+                        case 'home':
+                        case 'reset':
+                        case 'zero':
+                        case 'enable':
+                            response = await fetch(url, { method: 'POST' });
+                            break;
+                        default:
+                            console.warn('Unknown action:', action);
+                            return;
+                    }
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('✅ Hardware control success:', result);
+                        
+                        // Show success feedback
+                        showNotification(`${hardware} ${action} completed successfully`, 'success');
+                        
+                        // Refresh hardware status
+                        setTimeout(() => updateHardwareStatus(), 1000);
+                    } else {
+                        const error = await response.text();
+                        console.error('❌ Hardware control failed:', error);
+                        showNotification(`${hardware} ${action} failed: ${error}`, 'error');
+                        
+                        // Reset status
+                        if (statusElement) {
+                            statusElement.textContent = 'Error';
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Hardware control error:', error);
+                    showNotification(`Communication error: ${error.message}`, 'error');
+                    
+                    // Reset status
+                    const statusElement = document.getElementById(`${hardware}-status-label`);
+                    if (statusElement) {
+                        statusElement.textContent = 'Error';
+                    }
+                }
+            };
+            
+            // Update hardware status
+            async function updateHardwareStatus() {
+                try {
+                    console.log('🔄 Updating hardware status...');
+                    
+                    const response = await fetch('/api/hardware/status');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('📊 Hardware status received:', data);
+                    
+                    // Update overall status
+                    updateOverallStatus(data);
+                    
+                    // Update individual hardware cards
+                    updateRobotStatus(data.robot || {});
+                    updateMCUStatus(data.mcu || {});
+                    updatePowerStatus(data.power || {});
+                    updateLoadCellStatus(data.loadcell || {});
+                    updateDigitalIOStatus(data.digital_io || {});
+                    
+                    // Update last update time
+                    const now = new Date().toLocaleTimeString();
+                    const updateElement = document.getElementById('dashboard-last-update');
+                    if (updateElement) {
+                        updateElement.textContent = now;
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Failed to update hardware status:', error);
+                    showNotification('Failed to update hardware status', 'error');
+                }
+            }
+            
+            // Update overall status
+            function updateOverallStatus(data) {
+                const overallStatusDot = document.getElementById('overall-status-dot');
+                const overallStatusText = document.getElementById('overall-status-text');
+                const activeCountElement = document.getElementById('active-count');
+                
+                let connectedCount = 0;
+                const totalHardware = 5;
+                
+                // Count connected hardware
+                ['robot', 'mcu', 'power', 'loadcell', 'digital_io'].forEach(hw => {
+                    if (data[hw] && data[hw].connected) {
+                        connectedCount++;
+                    }
+                });
+                
+                // Update active count
+                if (activeCountElement) {
+                    activeCountElement.textContent = connectedCount;
+                }
+                
+                // Update overall status
+                let statusText, statusClass;
+                if (connectedCount === totalHardware) {
+                    statusText = 'All Connected';
+                    statusClass = 'online';
+                } else if (connectedCount > 0) {
+                    statusText = 'Partial Connection';
+                    statusClass = 'warning';
+                } else {
+                    statusText = 'Disconnected';
+                    statusClass = 'offline';
+                }
+                
+                if (overallStatusText) {
+                    overallStatusText.textContent = statusText;
+                }
+                if (overallStatusDot) {
+                    overallStatusDot.className = `status-dot ${statusClass}`;
+                }
+            }
+            
+            // Update individual hardware status functions
+            function updateHardwareCard(hardware, data) {
+                const statusDot = document.getElementById(`${hardware}-status-dot`);
+                const statusLabel = document.getElementById(`${hardware}-status-label`);
+                
+                if (statusDot && statusLabel) {
+                    if (data.connected) {
+                        statusDot.className = 'status-dot online';
+                        statusLabel.textContent = 'Connected';
+                    } else {
+                        statusDot.className = 'status-dot offline';
+                        statusLabel.textContent = 'Disconnected';
+                    }
+                }
+            }
+            
+            function updateRobotStatus(data) {
+                updateHardwareCard('robot', data);
+                
+                // Update robot-specific metrics
+                const elements = {
+                    'robot-position': data.current_position ? `${data.current_position.toFixed(0)} μm` : '-- μm',
+                    'robot-servo-status': data.servo_enabled ? 'ON' : 'OFF',
+                    'robot-homed-status': data.is_homed ? 'YES' : 'NO',
+                    'robot-moving-status': data.is_moving ? 'YES' : 'NO'
+                };
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
+            }
+            
+            function updateMCUStatus(data) {
+                updateHardwareCard('mcu', data);
+                
+                const elements = {
+                    'mcu-temperature': data.current_temperature ? `${data.current_temperature.toFixed(1)} °C` : '-- °C',
+                    'mcu-target-temp': data.target_temperature ? `${data.target_temperature.toFixed(1)} °C` : '-- °C',
+                    'mcu-fan-speed': data.fan_speed ? `${data.fan_speed} RPM` : '-- RPM',
+                    'mcu-test-mode': data.test_mode || '--'
+                };
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
+            }
+            
+            function updatePowerStatus(data) {
+                updateHardwareCard('power', data);
+                
+                const voltage = data.measured_voltage || data.voltage || 0;
+                const current = data.measured_current || data.current || 0;
+                const power = (voltage * current).toFixed(1);
+                
+                const elements = {
+                    'power-voltage': `${voltage.toFixed(2)} V`,
+                    'power-current': `${current.toFixed(3)} A`,
+                    'power-output-status': data.output_enabled ? 'ON' : 'OFF',
+                    'power-wattage': `${power} W`
+                };
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
+            }
+            
+            function updateLoadCellStatus(data) {
+                updateHardwareCard('loadcell', data);
+                
+                const elements = {
+                    'loadcell-force': data.force ? `${data.force.toFixed(3)} N` : '-- N',
+                    'loadcell-raw': data.raw_value || '--',
+                    'loadcell-calibrated': data.calibrated ? 'YES' : 'NO',
+                    'loadcell-range': data.range ? `±${data.range} N` : '-- N'
+                };
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
+            }
+            
+            function updateDigitalIOStatus(data) {
+                updateHardwareCard('digital_io', data);
+                
+                const elements = {
+                    'dio-active-inputs': data.active_inputs || '--',
+                    'dio-active-outputs': data.active_outputs || '--'
+                };
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
+            }
+            
+            // Notification system
+            function showNotification(message, type = 'info') {
+                console.log(`📢 ${type.toUpperCase()}: ${message}`);
+                
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `
+                    <span class="notification-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+                    <span class="notification-message">${message}</span>
+                `;
+                
+                // Add to page
+                document.body.appendChild(notification);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            // Initialize hardware dashboard when that page is shown
+            document.addEventListener('click', function(e) {
+                if (e.target.hasAttribute('data-page') && e.target.getAttribute('data-page') === 'hardware-dashboard') {
+                    // Start auto refresh
+                    console.log('🔄 Starting hardware dashboard auto-refresh');
+                    updateHardwareStatus();
+                    
+                    // Clear existing interval
+                    if (hardwareDashboardInterval) {
+                        clearInterval(hardwareDashboardInterval);
+                    }
+                    
+                    // Set up auto refresh
+                    if (autoRefreshEnabled) {
+                        hardwareDashboardInterval = setInterval(updateHardwareStatus, 5000);
+                    }
+                }
+            });
+            
+            // Dashboard action buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.id === 'refresh-hardware') {
+                    updateHardwareStatus();
+                } else if (e.target.id === 'connect-all-hardware') {
+                    connectAllHardware();
+                } else if (e.target.id === 'emergency-stop-hardware') {
+                    emergencyStopAllHardware();
+                } else if (e.target.id === 'auto-refresh-toggle') {
+                    autoRefreshEnabled = e.target.checked;
+                    if (autoRefreshEnabled && document.getElementById('hardware-dashboard').classList.contains('active')) {
+                        hardwareDashboardInterval = setInterval(updateHardwareStatus, 5000);
+                    } else {
+                        clearInterval(hardwareDashboardInterval);
+                    }
+                }
+            });
+            
+            async function connectAllHardware() {
+                console.log('🔌 Connecting all hardware...');
+                showNotification('Connecting all hardware...', 'info');
+                
+                const hardwareList = ['robot', 'mcu', 'power', 'loadcell', 'digital_io'];
+                const promises = hardwareList.map(hw => controlHardware(hw, 'connect'));
+                
+                try {
+                    await Promise.all(promises);
+                    showNotification('All hardware connection initiated', 'success');
+                } catch (error) {
+                    showNotification('Some hardware connections failed', 'warning');
+                }
+            }
+            
+            async function emergencyStopAllHardware() {
+                console.log('🛑 Emergency stop all hardware...');
+                showNotification('EMERGENCY STOP ACTIVATED', 'error');
+                
+                try {
+                    const response = await fetch('/api/hardware/emergency-stop', { method: 'POST' });
+                    if (response.ok) {
+                        showNotification('Emergency stop completed', 'success');
+                    } else {
+                        showNotification('Emergency stop failed', 'error');
+                    }
+                } catch (error) {
+                    console.error('Emergency stop error:', error);
+                    showNotification('Emergency stop communication error', 'error');
+                }
+            }
+            
+            console.log('✅ Hardware Dashboard functionality initialized');
+        });
+    </script>
+    
+    <!-- Load Robot Control JavaScript from external file -->
+    <script src="static/js/pages/robot-control-embedded.js?v=20250118_1"></script>
+    
+    <script type="module" src="static/js/main.js?v=20250110_235255_NOCACHE&t=20250110235500"></script>
+    
+</body>
+</html>
