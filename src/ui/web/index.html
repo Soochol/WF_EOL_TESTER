@@ -3030,7 +3030,18 @@
     function updateEmbeddedPositionDisplay(position) {
         const positionElement = document.getElementById('robot-current-position');
         if (positionElement) {
-            positionElement.textContent = position.toFixed(3);
+            // Check if it has a nested .value span structure
+            const valueSpan = positionElement.querySelector('.value');
+            if (valueSpan) {
+                valueSpan.textContent = position.toFixed(3);
+                console.log(`📍 [EMBEDDED] Position display updated with nested structure: ${position.toFixed(3)}μm`);
+            } else {
+                // Fallback to direct text content
+                positionElement.textContent = position.toFixed(3);
+                console.log(`📍 [EMBEDDED] Position display updated directly: ${position.toFixed(3)}μm`);
+            }
+        } else {
+            console.warn('❌ [EMBEDDED] robot-current-position element not found');
         }
     }
     
@@ -3044,11 +3055,17 @@
             });
             if (result.success) {
                 embeddedRobotState.isConnected = true;
-                showNotification('Connected successfully', 'success');
+                console.log('✅ [EMBEDDED] Connected successfully');
+                
+                // Update UI state after successful connection
+                updateEmbeddedConnectionState(true);
+                
+                // Get current status to update servo state
+                await updateEmbeddedStatus();
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Connect failed:', error);
-            showNotification('Connect failed', 'error');
+            updateEmbeddedConnectionState(false);
         }
     }
     
@@ -3060,7 +3077,10 @@
                 embeddedRobotState.isConnected = false;
                 embeddedRobotState.motionStatus = 'idle';
                 updateEmbeddedPollingInterval();
-                showNotification('Disconnected successfully', 'info');
+                console.log('✅ [EMBEDDED] Disconnected successfully');
+                
+                // Update UI state after disconnection
+                updateEmbeddedConnectionState(false);
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Disconnect failed:', error);
@@ -3075,11 +3095,13 @@
             });
             if (result.success) {
                 embeddedRobotState.servoEnabled = true;
-                showNotification('Servo enabled', 'success');
+                console.log('✅ [EMBEDDED] Servo enabled');
+                
+                // Update servo status in UI
+                updateEmbeddedServoStatus(true);
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Servo enable failed:', error);
-            showNotification('Servo enable failed', 'error');
         }
     }
     
@@ -3091,7 +3113,10 @@
             });
             if (result.success) {
                 embeddedRobotState.servoEnabled = false;
-                showNotification('Servo disabled', 'info');
+                console.log('✅ [EMBEDDED] Servo disabled');
+                
+                // Update servo status in UI
+                updateEmbeddedServoStatus(false);
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Servo disable failed:', error);
@@ -3109,13 +3134,14 @@
                 axis_id: embeddedRobotState.axisId 
             });
             if (result.success) {
-                showNotification('Homing started', 'info');
+                console.log('✅ [EMBEDDED] Homing started');
+                updateEmbeddedMotionStatus('homing');
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Home failed:', error);
             embeddedRobotState.motionStatus = 'idle';
             updateEmbeddedPollingInterval();
-            showNotification('Home failed', 'error');
+            updateEmbeddedMotionStatus('idle');
         }
     }
     
@@ -3128,7 +3154,7 @@
             const deceleration = parseFloat(document.getElementById('absolute-deceleration').value) || 1000;
             
             if (isNaN(position)) {
-                showNotification('Invalid position value', 'error');
+                console.error('❌ [EMBEDDED] Invalid position value');
                 return;
             }
             
@@ -3145,13 +3171,14 @@
             });
             
             if (result.success) {
-                showNotification(`Moving to ${position}μm`, 'info');
+                console.log(`✅ [EMBEDDED] Moving to ${position}μm`);
+                updateEmbeddedMotionStatus('moving');
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Absolute move failed:', error);
             embeddedRobotState.motionStatus = 'idle';
             updateEmbeddedPollingInterval();
-            showNotification('Absolute move failed', 'error');
+            updateEmbeddedMotionStatus('idle');
         }
     }
     
@@ -3164,7 +3191,7 @@
             const deceleration = parseFloat(document.getElementById('relative-deceleration').value) || 1000;
             
             if (isNaN(distance)) {
-                showNotification('Invalid distance value', 'error');
+                console.error('❌ [EMBEDDED] Invalid distance value');
                 return;
             }
             
@@ -3181,13 +3208,14 @@
             });
             
             if (result.success) {
-                showNotification(`Moving ${distance}μm`, 'info');
+                console.log(`✅ [EMBEDDED] Moving ${distance}μm`);
+                updateEmbeddedMotionStatus('moving');
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Relative move failed:', error);
             embeddedRobotState.motionStatus = 'idle';
             updateEmbeddedPollingInterval();
-            showNotification('Relative move failed', 'error');
+            updateEmbeddedMotionStatus('idle');
         }
     }
     
@@ -3201,12 +3229,11 @@
                 embeddedRobotState.motionStatus = 'stopped';
                 updateEmbeddedPollingInterval();
                 stopEmbeddedMotionMonitoring();
-                showNotification('Emergency stop executed', 'warning');
                 console.log('🛑 [EMBEDDED] Emergency stop completed successfully');
+                updateEmbeddedMotionStatus('stopped');
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Emergency stop failed:', error);
-            showNotification('Emergency stop failed', 'error');
         }
     }
     
@@ -3247,6 +3274,150 @@
             clearInterval(embeddedRobotState.motionMonitoringInterval);
             embeddedRobotState.motionMonitoringInterval = null;
             console.log('🛑 [EMBEDDED] Motion monitoring stopped');
+        }
+    }
+    
+    // UI State Management Functions
+    function updateEmbeddedConnectionState(connected) {
+        console.log(`🔗 [EMBEDDED] Updating connection state: ${connected}`);
+        
+        // Update connection status display
+        const statusElement = document.getElementById('robot-connection-status');
+        if (statusElement) {
+            const statusText = statusElement.querySelector('span');
+            const statusDot = statusElement.querySelector('.status-dot');
+            if (statusText && statusDot) {
+                statusText.textContent = connected ? 'Connected' : 'Disconnected';
+                statusDot.className = connected ? 'status-dot status-success' : 'status-dot status-error';
+            }
+        }
+        
+        // Update badge status
+        const badgeElement = document.getElementById('robot-status-badge');
+        if (badgeElement) {
+            const badgeText = badgeElement.querySelector('.status-text');
+            const badgeLight = badgeElement.querySelector('.status-light');
+            if (badgeText && badgeLight) {
+                badgeText.textContent = connected ? 'Connected' : 'Disconnected';
+                badgeLight.className = connected ? 'status-light status-success' : 'status-light status-error';
+            }
+        }
+        
+        // Enable/disable buttons based on connection state
+        const connectBtn = document.getElementById('robot-connect-btn');
+        const disconnectBtn = document.getElementById('robot-disconnect-btn');
+        const servoOnBtn = document.getElementById('robot-servo-on-btn');
+        const servoOffBtn = document.getElementById('robot-servo-off-btn');
+        const homeBtn = document.getElementById('robot-home-axis-btn');
+        const moveAbsBtn = document.getElementById('robot-move-absolute-btn');
+        const moveRelBtn = document.getElementById('robot-move-relative-btn');
+        
+        if (connectBtn) connectBtn.disabled = connected;
+        if (disconnectBtn) disconnectBtn.disabled = !connected;
+        
+        // Enable servo controls when connected
+        if (servoOnBtn) servoOnBtn.disabled = !connected;
+        if (servoOffBtn) servoOffBtn.disabled = !connected;
+        
+        // Enable movement controls when connected
+        if (homeBtn) homeBtn.disabled = !connected;
+        if (moveAbsBtn) moveAbsBtn.disabled = !connected;
+        if (moveRelBtn) moveRelBtn.disabled = !connected;
+        
+        console.log(`✅ [EMBEDDED] UI state updated for connection: ${connected}`);
+    }
+    
+    function updateEmbeddedServoStatus(enabled) {
+        console.log(`⚙️ [EMBEDDED] Updating servo status: ${enabled}`);
+        
+        const servoElement = document.getElementById('robot-servo-status');
+        if (servoElement) {
+            const statusIndicator = servoElement.querySelector('.status-indicator');
+            if (statusIndicator) {
+                const statusDot = statusIndicator.querySelector('.status-dot');
+                const statusText = statusIndicator.querySelector('span');
+                
+                if (statusDot && statusText) {
+                    statusText.textContent = enabled ? 'Enabled' : 'Disabled';
+                    statusDot.className = enabled ? 'status-dot status-success' : 'status-dot status-error';
+                }
+            }
+        }
+        
+        console.log(`✅ [EMBEDDED] Servo status updated: ${enabled}`);
+    }
+    
+    function updateEmbeddedMotionStatus(status) {
+        console.log(`🔄 [EMBEDDED] Updating motion status: ${status}`);
+        
+        const motionElement = document.getElementById('robot-motion-status');
+        if (motionElement) {
+            const statusIndicator = motionElement.querySelector('.status-indicator');
+            if (statusIndicator) {
+                const statusDot = statusIndicator.querySelector('.status-dot');
+                const statusText = statusIndicator.querySelector('span');
+                
+                if (statusDot && statusText) {
+                    let displayText = 'Unknown';
+                    let statusClass = 'status-dot status-unknown';
+                    
+                    switch (status) {
+                        case 'idle':
+                            displayText = 'Idle';
+                            statusClass = 'status-dot status-success';
+                            break;
+                        case 'moving':
+                            displayText = 'Moving';
+                            statusClass = 'status-dot status-warning';
+                            break;
+                        case 'homing':
+                            displayText = 'Homing';
+                            statusClass = 'status-dot status-warning';
+                            break;
+                        case 'stopped':
+                            displayText = 'Stopped';
+                            statusClass = 'status-dot status-error';
+                            break;
+                    }
+                    
+                    statusText.textContent = displayText;
+                    statusDot.className = statusClass;
+                }
+            }
+        }
+        
+        console.log(`✅ [EMBEDDED] Motion status updated: ${status}`);
+    }
+    
+    async function updateEmbeddedStatus() {
+        console.log('📊 [EMBEDDED] Updating full status...');
+        try {
+            const result = await embeddedApiCall('GET', `/hardware/robot/status?axis_id=${embeddedRobotState.axisId}`);
+            if (result.success) {
+                const status = result.data;
+                
+                // Update internal state
+                embeddedRobotState.isConnected = status.connected;
+                embeddedRobotState.servoEnabled = status.servo_enabled;
+                embeddedRobotState.currentPosition = status.current_position || status.position || 0;
+                
+                // Update UI
+                updateEmbeddedConnectionState(status.connected);
+                updateEmbeddedServoStatus(status.servo_enabled);
+                updateEmbeddedPositionDisplay(embeddedRobotState.currentPosition);
+                
+                // Update motion status
+                const isMoving = status.is_moving;
+                if (isMoving) {
+                    updateEmbeddedMotionStatus('moving');
+                } else {
+                    updateEmbeddedMotionStatus('idle');
+                }
+                
+                console.log('✅ [EMBEDDED] Full status updated:', status);
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Failed to update status:', error);
         }
     }
     
