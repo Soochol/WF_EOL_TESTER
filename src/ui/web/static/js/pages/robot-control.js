@@ -306,18 +306,52 @@ export class RobotControlPageManager {
             }
         }, 5000);
         
-        // Position update every 2 seconds when connected
+        // Position update with dynamic interval (1 second normally, 0.1 second during motion)
+        this.setPositionPollingInterval(1000); // Start with 1 second interval
+    }
+    
+    /**
+     * Set position polling interval dynamically
+     * @private
+     * @param {number} interval - Polling interval in milliseconds
+     */
+    setPositionPollingInterval(interval) {
+        // Clear existing interval
+        if (this.positionUpdateInterval) {
+            clearInterval(this.positionUpdateInterval);
+        }
+        
+        // Set new interval
         this.positionUpdateInterval = setInterval(() => {
             if (this.isConnected) {
                 console.group('🔄 [PERIODIC] Position polling cycle');
                 console.log('Connected status:', this.isConnected);
                 console.log('Current position before update:', this.currentPosition);
+                console.log('Polling interval:', interval + 'ms');
                 this.updatePosition();
                 console.groupEnd();
             } else {
                 console.log('🔄 [PERIODIC] Skipping position update - not connected');
             }
-        }, 2000);
+        }, interval);
+        
+        console.log(`📍 Position polling interval set to ${interval}ms`);
+    }
+    
+    /**
+     * Update polling interval based on motion status
+     * @private
+     */
+    updatePollingInterval() {
+        if (this.motionStatus === 'moving' || this.motionStatus === 'homing') {
+            // Fast polling during motion (0.1 second)
+            this.setPositionPollingInterval(100);
+            console.log('🏃 Motion detected: Switched to fast position polling (0.1s)');
+        } else {
+            // Normal polling when idle (1 second)
+            this.setPositionPollingInterval(1000);
+            console.log('🛑 Motion completed: Switched to normal position polling (1s)');
+        }
     }
 
     // =========================
@@ -714,6 +748,7 @@ export class RobotControlPageManager {
             if (response.success) {
                 this.motionStatus = 'homing';
                 this.updateMotionStatus('moving');
+                this.updatePollingInterval(); // Switch to fast polling during motion
                 this.addLogEntry('info', `Homing axis ${this.axisId} to origin`);
                 this.uiManager.showNotification('Axis homing started', 'info');
                 
@@ -724,6 +759,9 @@ export class RobotControlPageManager {
                     await this.refreshStatus();
                     // Also explicitly update position to ensure it's current
                     await this.updatePosition();
+                    // Reset motion status and switch back to normal polling
+                    this.motionStatus = 'idle';
+                    this.updatePollingInterval();
                     console.log('🏠 [DEBUG] Post-home status refresh completed');
                 }, 3000);
             } else {
@@ -795,6 +833,7 @@ export class RobotControlPageManager {
             if (response.success) {
                 this.motionStatus = 'moving';
                 this.updateMotionStatus('moving');
+                this.updatePollingInterval(); // Switch to fast polling during motion
                 this.addLogEntry('info', `Moving axis ${this.axisId} to position ${position.toFixed(3)} μm`);
                 this.uiManager.showNotification(`Moving to position ${position.toFixed(3)} μm`, 'info');
                 
@@ -805,6 +844,9 @@ export class RobotControlPageManager {
                     await this.refreshStatus();
                     // Also explicitly update position to ensure it's current
                     await this.updatePosition();
+                    // Reset motion status and switch back to normal polling
+                    this.motionStatus = 'idle';
+                    this.updatePollingInterval();
                     console.log('📍 [DEBUG] Post-absolute-move status refresh completed');
                 }, 3000);
             } else {
@@ -876,6 +918,7 @@ export class RobotControlPageManager {
             if (response.success) {
                 this.motionStatus = 'moving';
                 this.updateMotionStatus('moving');
+                this.updatePollingInterval(); // Switch to fast polling during motion
                 this.addLogEntry('info', `Moving axis ${this.axisId} by distance ${distance.toFixed(3)} μm`);
                 this.uiManager.showNotification(`Moving distance ${distance.toFixed(3)} μm`, 'info');
                 
@@ -886,6 +929,9 @@ export class RobotControlPageManager {
                     await this.refreshStatus();
                     // Also explicitly update position to ensure it's current
                     await this.updatePosition();
+                    // Reset motion status and switch back to normal polling
+                    this.motionStatus = 'idle';
+                    this.updatePollingInterval();
                     console.log('↔️ [DEBUG] Post-relative-move status refresh completed');
                 }, 3000);
             } else {
