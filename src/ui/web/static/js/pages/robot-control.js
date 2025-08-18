@@ -312,6 +312,12 @@ export class RobotControlPageManager {
         console.log('🚀 [INIT] Motion status:', this.motionStatus);
         console.log('🚀 [INIT] Axis ID:', this.axisId);
         
+        // Test that console logging is working
+        window.setTimeout(() => {
+            console.log('🧪 [TEST] Console logging is working!');
+            console.log('🧪 [TEST] Current time:', new Date().toISOString());
+        }, 1000);
+        
         // Add global error handler for unhandled promise rejections
         window.addEventListener('unhandledrejection', (event) => {
             console.error('🚨 [GLOBAL] Unhandled promise rejection:', event.reason);

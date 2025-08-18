@@ -628,9 +628,17 @@ class AjinextekRobot(RobotService):
         Raises:
             RobotValidationError: If axis parameters are invalid
         """
+        self._ensure_connected()
 
-        # Check specific axis
-        return self._motion_status == MotionStatus.MOVING
+        try:
+            # Check actual hardware motion status
+            is_moving = self._axl.read_in_motion(axis)
+            logger.debug(f"Hardware motion check for axis {axis}: {is_moving}")
+            return is_moving
+        except Exception as e:
+            logger.warning(f"Failed to read motion status for axis {axis}: {e}")
+            # Fallback to internal status if hardware read fails
+            return self._motion_status == MotionStatus.MOVING
 
     async def get_axis_count(self) -> int:
         """
@@ -707,13 +715,23 @@ class AjinextekRobot(RobotService):
             "motion_status": self._motion_status.value,
             "servo_state": self._servo_state,
             "servo_enabled": self._servo_state,  # API 호환성을 위한 필드 추가
-            "is_moving": self._motion_status == MotionStatus.MOVING,
+            "is_moving": False,  # Will be updated below for connected hardware
             "is_homed": True,  # AJINEXTEK robot의 homed 상태 (실제 구현 시 조건 확인 필요)
         }
 
         if is_connected:
             status["axis_count"] = self._axis_count
             status["version"] = self.version
+            
+            # Check actual hardware motion status
+            try:
+                is_moving = await self.is_moving(axis_id)
+                status["is_moving"] = is_moving
+                logger.debug(f"Hardware motion status for axis {axis_id}: {is_moving}")
+            except Exception as e:
+                logger.warning(f"Failed to get motion status for axis {axis_id}: {e}")
+                status["is_moving"] = self._motion_status == MotionStatus.MOVING
+            
             # Position 정보도 추가 (실제 하드웨어에서 읽어오는 로직 필요)
             try:
                 current_pos = await self.get_position(axis_id)
