@@ -209,7 +209,7 @@ async def digital_input_monitor():
 
         while active_connections["digital-input"]:
             try:
-                hardware_services = container.hardware_service_facade()
+                hardware_services = await container.hardware_service_facade()
                 digital_io_service = hardware_services.digital_io_service
 
                 # Check if digital I/O is connected
@@ -287,7 +287,7 @@ async def system_status_monitor():
 
         while active_connections["system-status"]:
             try:
-                hardware_services = container.hardware_service_facade()
+                hardware_services = await container.hardware_service_facade()
                 hardware_status = await hardware_services.get_hardware_status()
 
                 # Create system status message

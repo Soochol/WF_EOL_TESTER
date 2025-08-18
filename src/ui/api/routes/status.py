@@ -75,7 +75,7 @@ async def get_system_status():
 async def get_hardware_system_status(container: DIContainer = Depends(get_container)):
     """Get hardware system status"""
     try:
-        hardware_services = container.hardware_service_facade()
+        hardware_services = await container.hardware_service_facade()
         hardware_status = await hardware_services.get_hardware_status()
 
         # Calculate overall status
