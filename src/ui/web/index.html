@@ -2917,7 +2917,36 @@
             clearInterval(embeddedRobotState.motionMonitoringInterval);
         }
         
-        // Override existing functions
+        // Remove existing event listeners by cloning elements
+        const buttonIds = [
+            'robot-connect-btn', 'robot-disconnect-btn', 
+            'robot-servo-on-btn', 'robot-servo-off-btn',
+            'robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn',
+            'robot-emergency-stop-btn', 'robot-refresh-status-btn'
+        ];
+        
+        console.log('🔧 [EMBEDDED] Removing existing event listeners...');
+        buttonIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                const newElement = element.cloneNode(true);
+                element.parentNode.replaceChild(newElement, element);
+                console.log(`🔧 [EMBEDDED] Cloned element: ${id}`);
+            }
+        });
+        
+        // Add embedded event listeners
+        console.log('🔧 [EMBEDDED] Adding embedded event listeners...');
+        document.getElementById('robot-connect-btn')?.addEventListener('click', embeddedHandleConnect);
+        document.getElementById('robot-disconnect-btn')?.addEventListener('click', embeddedHandleDisconnect);
+        document.getElementById('robot-servo-on-btn')?.addEventListener('click', embeddedHandleServoOn);
+        document.getElementById('robot-servo-off-btn')?.addEventListener('click', embeddedHandleServoOff);
+        document.getElementById('robot-home-axis-btn')?.addEventListener('click', embeddedHandleHomeAxis);
+        document.getElementById('robot-move-absolute-btn')?.addEventListener('click', embeddedHandleMoveAbsolute);
+        document.getElementById('robot-move-relative-btn')?.addEventListener('click', embeddedHandleMoveRelative);
+        document.getElementById('robot-emergency-stop-btn')?.addEventListener('click', embeddedHandleEmergencyStop);
+        
+        // Override global functions as fallback
         window.handleConnect = embeddedHandleConnect;
         window.handleDisconnect = embeddedHandleDisconnect;
         window.handleServoOn = embeddedHandleServoOn;
@@ -2931,6 +2960,7 @@
         startEmbeddedPositionPolling(1000);
         
         console.log('✅ [EMBEDDED] Robot control functions overridden and polling started');
+        console.log('✅ [EMBEDDED] Event listeners replaced with embedded versions');
     }
     
     // API helper
