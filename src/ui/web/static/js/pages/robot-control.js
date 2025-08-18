@@ -366,6 +366,7 @@ export class RobotControlPageManager {
                 const response = await this.apiClient.get(`/hardware/robot/status?axis_id=${this.axisId}`);
                 if (response.success && response.data) {
                     const isMoving = response.data.is_moving;
+                    console.log(`🔍 Motion check: isMoving=${isMoving}, motionStatus=${this.motionStatus}`);
                     
                     if (!isMoving && (this.motionStatus === 'moving' || this.motionStatus === 'homing')) {
                         // Motion completed
@@ -378,6 +379,8 @@ export class RobotControlPageManager {
                         await this.updatePosition();
                         return true; // Motion completed
                     }
+                } else {
+                    console.warn('❌ Motion check failed: Invalid response', response);
                 }
             } catch (error) {
                 console.warn('Motion monitoring check failed:', error);

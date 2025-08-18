@@ -188,25 +188,10 @@ class MockRobot(RobotService):
 
             self._motion_status = MotionStatus.MOVING
 
-            # Calculate motion time
-            distance = abs(position - self._current_position)
-            motion_time = distance / velocity if velocity > 0 else 0.1
+            # Start motion simulation in background (non-blocking)
+            asyncio.create_task(self._simulate_motion(position, velocity))
 
-            # Simulate motion with steps
-            start_position = self._current_position
-            steps = max(int(motion_time / 0.1), 1)
-
-            for i in range(steps):
-                await asyncio.sleep(0.1)
-                # Linear interpolation
-                progress = (i + 1) / steps
-                self._current_position = start_position + (position - start_position) * progress
-
-            # Ensure exact final position
-            self._current_position = position
-            self._motion_status = MotionStatus.IDLE
-
-            logger.info(f"Mock robot axis {axis_id} reached position {position}μm")
+            logger.info(f"Mock robot axis {axis_id} motion started")
 
         except Exception as e:
             logger.error(f"Failed to move mock robot axis {axis_id} to position {position}μm: {e}")
@@ -237,8 +222,21 @@ class MockRobot(RobotService):
         if not self._is_connected:
             raise HardwareConnectionError("mock_robot", "Robot is not connected")
 
-        target_position = self._current_position + distance
-        await self.move_absolute(target_position, axis_id, velocity, acceleration, deceleration)
+        try:
+            logger.info(f"Moving mock robot axis {axis_id} by relative distance: {distance}μm")
+            
+            self._motion_status = MotionStatus.MOVING
+            target_position = self._current_position + distance
+            
+            # Start motion simulation in background (non-blocking)
+            asyncio.create_task(self._simulate_motion(target_position, velocity))
+            
+            logger.info(f"Mock robot axis {axis_id} relative motion started")
+            
+        except Exception as e:
+            logger.error(f"Failed to start relative move on axis {axis_id}: {e}")
+            self._motion_status = MotionStatus.ERROR
+            raise HardwareOperationError("mock_robot", "move_relative", str(e)) from e
 
     async def get_motion_status(self) -> MotionStatus:
         """
@@ -488,13 +486,10 @@ class MockRobot(RobotService):
 
             self._motion_status = MotionStatus.MOVING
 
-            # Simulate homing motion - move to position 0
-            await asyncio.sleep(1.0)  # Simulate homing time
+            # Start homing simulation in background (non-blocking)
+            asyncio.create_task(self._simulate_homing())
 
-            self._current_position = 0.0
-            self._motion_status = MotionStatus.IDLE
-
-            logger.info(f"Mock robot axis {axis} homed to position 0.0μm")
+            logger.info(f"Mock robot axis {axis} homing started")
 
         except Exception as e:
             logger.error(f"Failed to home mock robot axis {axis}: {e}")
@@ -527,3 +522,76 @@ class MockRobot(RobotService):
             "axis_id": self._axis_id,
             "irq_no": self._irq_no,
         }
+
+    async def _simulate_motion(self, target_position: float, velocity: float) -> None:
+        """
+        Simulate motion in background for realistic motion timing
+        
+        Args:
+            target_position: Target position to move to
+            velocity: Motion velocity
+        """
+        try:
+            # Calculate motion time
+            distance = abs(target_position - self._current_position)
+            motion_time = distance / velocity if velocity > 0 else 0.1
+            
+            # Ensure minimum motion time for testing
+            motion_time = max(motion_time, 2.0)  # At least 2 seconds for testing
+            
+            logger.info(f"Mock motion simulation: {motion_time:.1f}s to reach {target_position}μm")
+
+            # Simulate motion with steps
+            start_position = self._current_position
+            steps = max(int(motion_time / 0.1), 1)
+
+            for i in range(steps):
+                await asyncio.sleep(0.1)
+                # Linear interpolation
+                progress = (i + 1) / steps
+                self._current_position = start_position + (target_position - start_position) * progress
+                
+                # Break if motion was stopped
+                if self._motion_status != MotionStatus.MOVING:
+                    break
+
+            # Ensure exact final position
+            self._current_position = target_position
+            self._motion_status = MotionStatus.IDLE
+
+            logger.info(f"Mock robot motion completed at position {target_position}μm")
+
+        except Exception as e:
+            logger.error(f"Motion simulation failed: {e}")
+            self._motion_status = MotionStatus.ERROR
+
+    async def _simulate_homing(self) -> None:
+        """
+        Simulate homing motion in background
+        """
+        try:
+            logger.info("Mock homing simulation: 3.0s to reach home position")
+            
+            # Simulate homing time (typically longer than regular moves)
+            start_position = self._current_position
+            steps = 30  # 3 seconds at 0.1s intervals
+            
+            for i in range(steps):
+                await asyncio.sleep(0.1)
+                # Linear interpolation to home (position 0)
+                progress = (i + 1) / steps
+                self._current_position = start_position * (1 - progress)
+                
+                # Break if motion was stopped
+                if self._motion_status != MotionStatus.MOVING:
+                    break
+            
+            # Ensure exact home position
+            self._current_position = 0.0
+            self._motion_status = MotionStatus.IDLE
+            
+            logger.info("Mock robot homing completed at position 0.0μm")
+            
+        except Exception as e:
+            logger.error(f"Homing simulation failed: {e}")
+            self._motion_status = MotionStatus.ERROR
