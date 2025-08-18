@@ -2989,11 +2989,21 @@
         
         try {
             const response = await fetch(`/api${url}`, options);
+            console.log(`🔍 [EMBEDDED] HTTP Response status: ${response.status} ${response.statusText}`);
+            
+            if (!response.ok) {
+                console.error(`❌ [EMBEDDED] HTTP Error: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                console.error(`❌ [EMBEDDED] Error response body:`, errorText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const result = await response.json();
             console.log(`✅ [EMBEDDED] API Response:`, result);
             return result;
         } catch (error) {
             console.error(`❌ [EMBEDDED] API Error:`, error);
+            console.error(`❌ [EMBEDDED] API Error details:`, error.message);
             throw error;
         }
     }
@@ -3067,7 +3077,10 @@
                 axis_id: embeddedRobotState.axisId, 
                 irq_no: 7 
             });
-            if (result.success) {
+            
+            console.log('🔍 [EMBEDDED] Connect API result:', result);
+            
+            if (result && result.success) {
                 embeddedRobotState.isConnected = true;
                 console.log('✅ [EMBEDDED] Connected successfully');
                 
@@ -3076,9 +3089,13 @@
                 
                 // Get current status to update servo state
                 await updateEmbeddedStatus();
+            } else {
+                console.warn('⚠️ [EMBEDDED] Connect API returned failure:', result);
+                updateEmbeddedConnectionState(false);
             }
         } catch (error) {
             console.error('❌ [EMBEDDED] Connect failed:', error);
+            console.error('❌ [EMBEDDED] Error details:', error.message, error.stack);
             updateEmbeddedConnectionState(false);
         }
     }
