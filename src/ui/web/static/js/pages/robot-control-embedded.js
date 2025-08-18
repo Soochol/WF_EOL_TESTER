@@ -75,6 +75,9 @@ function initializeEmbeddedRobotControl() {
         }
     });
     
+    // Setup tab navigation for Movement Control
+    setupEmbeddedTabs();
+    
     // Start separate polling for position and status
     startEmbeddedPositionPolling(1000);
     startEmbeddedStatusPolling();
@@ -596,6 +599,56 @@ async function updateEmbeddedStatus() {
     } catch (error) {
         console.error('❌ [EMBEDDED] Failed to update status:', error);
     }
+}
+
+// Setup tab navigation for Movement Control
+function setupEmbeddedTabs() {
+    console.log('🔧 [EMBEDDED] Setting up tab navigation...');
+    
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    if (tabButtons.length === 0) {
+        console.warn('⚠️ [EMBEDDED] No tab buttons found');
+        return;
+    }
+    
+    console.log(`🔧 [EMBEDDED] Found ${tabButtons.length} tab buttons and ${tabContents.length} tab contents`);
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.getAttribute('data-tab');
+            console.log(`🔧 [EMBEDDED] Tab clicked: ${tabName}`);
+            
+            // Update active tab button
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = '#f8f9fa';
+                btn.style.color = '#495057';
+            });
+            
+            button.classList.add('active');
+            button.style.background = '#007bff';
+            button.style.color = 'white';
+            
+            // Update active tab content
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            });
+            
+            const targetTab = document.getElementById(`${tabName}-tab`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+                targetTab.style.display = 'block';
+                console.log(`✅ [EMBEDDED] Tab switched to: ${tabName}`);
+            } else {
+                console.error(`❌ [EMBEDDED] Target tab not found: ${tabName}-tab`);
+            }
+        });
+    });
+    
+    console.log('✅ [EMBEDDED] Tab navigation setup completed');
 }
 
 console.log('✅ [EMBEDDED] Robot Control functions defined in external file');
