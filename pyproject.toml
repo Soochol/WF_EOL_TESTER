@@ -322,22 +322,26 @@ dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unuse
 [tool.flake8]
 max-line-length = 100
 max-complexity = 10
+# Force line length to 100 to match black configuration
+line-length = 100
 select = ["E", "W", "F", "C"]
 ignore = [
     "E203",  # whitespace before ':'
-    "E501",  # line too long (handled by black)
+    "E501",  # line too long (handled by black and set to 100 chars)
     "W503",  # line break before binary operator (prefer W504)
     "E226",  # missing whitespace around arithmetic operator
     "E24",   # multiple spaces after ','
 ]
+# Use both ignore and extend-ignore for maximum compatibility
 extend-ignore = ["E203", "E501", "W503", "E226", "E24"]
 per-file-ignores = [
-    "__init__.py:F401,F403",
-    "tests/*:F401,F811,E402,S101,S106",
-    "**/test_*.py:F401,F811,E402,S101,S106",
-    "**/mock/*:F401,F811,W0613",
-    "setup.py:E402",
-    "conftest.py:F401,F811",
+    "__init__.py:F401,F403,E501",
+    "tests/*:F401,F811,E402,S101,S106,E501",
+    "**/test_*.py:F401,F811,E402,S101,S106,E501",
+    "**/mock/*:F401,F811,W0613,E501",
+    "setup.py:E402,E501",
+    "conftest.py:F401,F811,E501",
+    "*.py:E501",  # Global E501 ignore for all Python files
 ]
 exclude = [
     ".git",

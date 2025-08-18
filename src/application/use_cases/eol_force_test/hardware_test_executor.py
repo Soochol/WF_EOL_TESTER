@@ -89,7 +89,9 @@ class HardwareTestExecutor:
 
         except Exception as hardware_error:
             logger.error("Hardware test execution failed: {}", hardware_error)
-            logger.debug(f"Hardware test failed with configs - test: {test_config.to_dict()}, hardware: {hardware_config.to_dict()}")
+            logger.debug(
+                f"Hardware test failed with configs - test: {test_config.to_dict()}, hardware: {hardware_config.to_dict()}"
+            )
             raise TestExecutionException(
                 f"{TestExecutionConstants.HARDWARE_TEST_EXECUTION_ERROR_PREFIX}: {str(hardware_error)}"
             ) from hardware_error
