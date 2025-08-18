@@ -31,7 +31,8 @@ function initializeEmbeddedRobotControl() {
         'robot-connect-btn', 'robot-disconnect-btn', 
         'robot-servo-on-btn', 'robot-servo-off-btn',
         'robot-home-axis-btn', 'robot-move-absolute-btn', 'robot-move-relative-btn',
-        'robot-emergency-stop-btn', 'robot-refresh-status-btn'
+        'robot-emergency-stop-btn', 'robot-refresh-status-btn',
+        'index-emergency-stop-btn'
     ];
     
     console.log('🔧 [EMBEDDED] Removing existing event listeners...');
@@ -54,6 +55,7 @@ function initializeEmbeddedRobotControl() {
     document.getElementById('robot-move-absolute-btn')?.addEventListener('click', embeddedHandleMoveAbsolute);
     document.getElementById('robot-move-relative-btn')?.addEventListener('click', embeddedHandleMoveRelative);
     document.getElementById('robot-emergency-stop-btn')?.addEventListener('click', embeddedHandleEmergencyStop);
+    document.getElementById('index-emergency-stop-btn')?.addEventListener('click', embeddedHandleEmergencyStop);
     
     // Override global functions as fallback
     window.handleConnect = embeddedHandleConnect;
