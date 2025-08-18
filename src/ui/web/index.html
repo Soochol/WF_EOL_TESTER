@@ -2916,7 +2916,9 @@
         servoEnabled: false,
         currentPosition: 0,
         positionPollingInterval: null,
-        motionMonitoringInterval: null
+        statusPollingInterval: null,
+        motionMonitoringInterval: null,
+        isPageVisible: true
     };
     
     // Initialize embedded robot control
@@ -2970,8 +2972,19 @@
         window.handleMoveRelative = embeddedHandleMoveRelative;
         window.handleEmergencyStop = embeddedHandleEmergencyStop;
         
-        // Start position polling
+        // Add page visibility listener for performance optimization
+        document.addEventListener('visibilitychange', () => {
+            embeddedRobotState.isPageVisible = !document.hidden;
+            if (embeddedRobotState.isPageVisible) {
+                console.log('👁️ [EMBEDDED] Page visible - resuming polling');
+            } else {
+                console.log('🙈 [EMBEDDED] Page hidden - pausing polling');
+            }
+        });
+        
+        // Start separate polling for position and status
         startEmbeddedPositionPolling(1000);
+        startEmbeddedStatusPolling();
         
         console.log('✅ [EMBEDDED] Robot control functions overridden and polling started');
         console.log('✅ [EMBEDDED] Event listeners replaced with embedded versions');
@@ -3008,30 +3021,61 @@
         }
     }
     
-    // Status polling (includes position and servo status)
+    // Separate position and status polling for better performance
     function startEmbeddedPositionPolling(interval) {
-        console.log(`📊 [EMBEDDED] Starting status polling with ${interval}ms interval`);
+        console.log(`📍 [EMBEDDED] Starting position polling with ${interval}ms interval`);
         
         if (embeddedRobotState.positionPollingInterval) {
             clearInterval(embeddedRobotState.positionPollingInterval);
         }
         
         embeddedRobotState.positionPollingInterval = setInterval(async () => {
-            if (embeddedRobotState.isConnected) {
-                console.log(`🔄 [EMBEDDED] Polling status (${interval}ms interval)...`);
+            if (embeddedRobotState.isConnected && embeddedRobotState.isPageVisible) {
+                console.log(`🔄 [EMBEDDED] Polling position (${interval}ms interval)...`);
+                try {
+                    await updateEmbeddedPosition();
+                } catch (error) {
+                    console.error('❌ [EMBEDDED] Position update failed:', error);
+                }
+            }
+        }, interval);
+    }
+    
+    function startEmbeddedStatusPolling() {
+        console.log(`📊 [EMBEDDED] Starting status polling with 2000ms interval`);
+        
+        if (embeddedRobotState.statusPollingInterval) {
+            clearInterval(embeddedRobotState.statusPollingInterval);
+        }
+        
+        embeddedRobotState.statusPollingInterval = setInterval(async () => {
+            if (embeddedRobotState.isConnected && embeddedRobotState.isPageVisible) {
+                console.log(`🔄 [EMBEDDED] Polling status (2000ms interval)...`);
                 try {
                     await updateEmbeddedStatus();
                 } catch (error) {
                     console.error('❌ [EMBEDDED] Status update failed:', error);
                 }
             }
-        }, interval);
+        }, 2000);
+    }
+    
+    function stopEmbeddedPolling() {
+        if (embeddedRobotState.positionPollingInterval) {
+            clearInterval(embeddedRobotState.positionPollingInterval);
+            embeddedRobotState.positionPollingInterval = null;
+        }
+        if (embeddedRobotState.statusPollingInterval) {
+            clearInterval(embeddedRobotState.statusPollingInterval);
+            embeddedRobotState.statusPollingInterval = null;
+        }
+        console.log('🛑 [EMBEDDED] All polling stopped');
     }
     
     function updateEmbeddedPollingInterval() {
         if (embeddedRobotState.motionStatus === 'moving' || embeddedRobotState.motionStatus === 'homing') {
-            console.log('🏃 [EMBEDDED] Motion detected: Switching to fast polling (100ms)');
-            startEmbeddedPositionPolling(100);
+            console.log('🏃 [EMBEDDED] Motion detected: Switching to fast polling (250ms)');
+            startEmbeddedPositionPolling(250);
         } else {
             console.log('🛑 [EMBEDDED] Motion completed: Switching to normal polling (1000ms)');
             startEmbeddedPositionPolling(1000);
