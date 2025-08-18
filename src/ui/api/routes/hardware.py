@@ -136,7 +136,7 @@ async def initialize_hardware(
 # POWER SUPPLY CONTROL ENDPOINTS
 # =============================================================================
 @router.get("/robot/status", response_model=RobotStatusResponse)
-async def get_robot_status(container: DIContainer = Depends(get_container)):
+async def get_robot_status(axis_id: int = 0, container: DIContainer = Depends(get_container)):
     """Get robot status"""
     try:
         hardware_services = await container.hardware_service_facade()
@@ -145,12 +145,12 @@ async def get_robot_status(container: DIContainer = Depends(get_container)):
         connected = await robot_service.is_connected()
 
         if connected:
-            status_info = await robot_service.get_status()
+            status_info = await robot_service.get_status(axis_id=axis_id)
             # Try both position field names for compatibility
             position = status_info.get("current_position") or status_info.get("position")
             return RobotStatusResponse(
                 connected=True,
-                axis_id=0,  # Default axis
+                axis_id=axis_id,
                 current_position=position,
                 is_homed=status_info.get("is_homed"),
                 servo_enabled=status_info.get("servo_enabled"),
@@ -159,7 +159,7 @@ async def get_robot_status(container: DIContainer = Depends(get_container)):
         else:
             return RobotStatusResponse(
                 connected=False,
-                axis_id=0,
+                axis_id=axis_id,
                 current_position=None,
                 is_homed=None,
                 servo_enabled=None,
@@ -171,7 +171,7 @@ async def get_robot_status(container: DIContainer = Depends(get_container)):
         logger.error(f"Failed to get robot status: {e}")
         return RobotStatusResponse(
             connected=False,
-            axis_id=0,
+            axis_id=axis_id,
             current_position=None,
             is_homed=None,
             servo_enabled=None,

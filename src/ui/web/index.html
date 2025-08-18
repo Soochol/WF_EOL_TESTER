@@ -663,10 +663,7 @@
                                 document.getElementById('index-emergency-stop-btn')?.addEventListener('click', async function() {
                                     console.log('🚨 Emergency stop clicked');
                                     
-                                    // 확인 대화상자
-                                    if (!confirm('⚠️ EMERGENCY STOP will immediately halt all robot motion. Continue?')) {
-                                        return;
-                                    }
+                                    // Emergency stop should execute immediately without confirmation
                                     
                                     // UI 상태 업데이트
                                     this.textContent = '🛑 STOPPING...';

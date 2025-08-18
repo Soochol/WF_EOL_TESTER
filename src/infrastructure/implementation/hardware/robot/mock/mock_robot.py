@@ -501,9 +501,12 @@ class MockRobot(RobotService):
             self._motion_status = MotionStatus.ERROR
             raise HardwareOperationError("mock_robot", "home_axis", str(e)) from e
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self, axis_id: int = 0) -> Dict[str, Any]:
         """
         Get robot status information
+
+        Args:
+            axis_id: 위치를 조회할 축 번호 (기본값: 0)
 
         Returns:
             Dictionary containing robot status

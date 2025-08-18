@@ -689,9 +689,12 @@ class AjinextekRobot(RobotService):
             logger.warning(f"Failed to read limit sensors for axis {axis}: {e}")
             return {"positive_limit": False, "negative_limit": False}
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self, axis_id: int = 0) -> Dict[str, Any]:
         """
         하드웨어 상태 조회
+
+        Args:
+            axis_id: 위치를 조회할 축 번호 (기본값: 0)
 
         Returns:
             상태 정보 딕셔너리
@@ -713,11 +716,11 @@ class AjinextekRobot(RobotService):
             status["version"] = self.version
             # Position 정보도 추가 (실제 하드웨어에서 읽어오는 로직 필요)
             try:
-                current_pos = await self.get_position(self._current_axis)
+                current_pos = await self.get_position(axis_id)
                 status["position"] = current_pos
                 status["current_position"] = current_pos
             except Exception as e:
-                logger.warning(f"Failed to get current position: {e}")
+                logger.warning(f"Failed to get current position for axis {axis_id}: {e}")
                 status["position"] = 0.0
                 status["current_position"] = 0.0
 

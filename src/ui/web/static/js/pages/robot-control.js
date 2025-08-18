@@ -1092,7 +1092,7 @@ export class RobotControlPageManager {
     async refreshStatus() {
         try {
             console.log('🔄 [DEBUG] Refreshing robot status...');
-            const response = await this.apiClient.get('/hardware/robot/status');
+            const response = await this.apiClient.get(`/hardware/robot/status?axis_id=${this.axisId}`);
             
             console.log('🔄 [DEBUG] Status API raw response:', JSON.stringify(response, null, 2));
             
