@@ -703,11 +703,23 @@ class AjinextekRobot(RobotService):
             "hardware_type": "AJINEXTEK",
             "motion_status": self._motion_status.value,
             "servo_state": self._servo_state,
+            "servo_enabled": self._servo_state,  # API 호환성을 위한 필드 추가
+            "is_moving": self._motion_status == MotionStatus.MOVING,
+            "is_homed": True,  # AJINEXTEK robot의 homed 상태 (실제 구현 시 조건 확인 필요)
         }
 
         if is_connected:
             status["axis_count"] = self._axis_count
             status["version"] = self.version
+            # Position 정보도 추가 (실제 하드웨어에서 읽어오는 로직 필요)
+            try:
+                current_pos = await self.get_position(self._current_axis)
+                status["position"] = current_pos
+                status["current_position"] = current_pos
+            except Exception as e:
+                logger.warning(f"Failed to get current position: {e}")
+                status["position"] = 0.0
+                status["current_position"] = 0.0
 
         return status
 

@@ -31,6 +31,7 @@ class MockRobot(RobotService):
         self._current_position: float = 0.0
         self._motion_status = MotionStatus.IDLE
         self._axis_velocity: float = 0.0
+        self._servo_enabled = False  # Servo 상태 추적
 
         # Connection parameters - will be set during connect
         self._axis_id = 0
@@ -369,6 +370,7 @@ class MockRobot(RobotService):
                 f"Invalid axis {axis}",
             )
 
+        self._servo_enabled = True  # 상태 업데이트
         logger.info(f"Mock robot axis {axis} servo enabled")
 
     async def disable_servo(self, axis: int) -> None:
@@ -391,6 +393,7 @@ class MockRobot(RobotService):
                 f"Invalid axis {axis}",
             )
 
+        self._servo_enabled = False  # 상태 업데이트
         logger.info(f"Mock robot axis {axis} servo disabled")
 
     async def get_axis_count(self) -> int:
@@ -511,9 +514,13 @@ class MockRobot(RobotService):
             "axis_count": self._axis_count,
             "max_position": self._max_position,
             "max_velocity": self._max_velocity,
+            "position": self._current_position,  # API 호환성을 위해 position 필드도 추가
             "current_position": self._current_position,
             "motion_status": self._motion_status.value,
             "connected": self._is_connected,
+            "servo_enabled": self._servo_enabled,  # 누락된 필드 추가
+            "is_moving": self._motion_status == MotionStatus.MOVING,
+            "is_homed": True,  # Mock robot은 항상 homed 상태로 가정
             "axis_id": self._axis_id,
             "irq_no": self._irq_no,
         }
