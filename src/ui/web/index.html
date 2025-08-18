@@ -2998,9 +2998,9 @@
         }
     }
     
-    // Position polling
+    // Status polling (includes position and servo status)
     function startEmbeddedPositionPolling(interval) {
-        console.log(`📍 [EMBEDDED] Starting position polling with ${interval}ms interval`);
+        console.log(`📊 [EMBEDDED] Starting status polling with ${interval}ms interval`);
         
         if (embeddedRobotState.positionPollingInterval) {
             clearInterval(embeddedRobotState.positionPollingInterval);
@@ -3008,11 +3008,11 @@
         
         embeddedRobotState.positionPollingInterval = setInterval(async () => {
             if (embeddedRobotState.isConnected) {
-                console.log(`🔄 [EMBEDDED] Polling position (${interval}ms interval)...`);
+                console.log(`🔄 [EMBEDDED] Polling status (${interval}ms interval)...`);
                 try {
-                    await updateEmbeddedPosition();
+                    await updateEmbeddedStatus();
                 } catch (error) {
-                    console.error('❌ [EMBEDDED] Position update failed:', error);
+                    console.error('❌ [EMBEDDED] Status update failed:', error);
                 }
             }
         }, interval);
