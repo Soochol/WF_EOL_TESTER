@@ -307,7 +307,30 @@ export class RobotControlPageManager {
         }, 5000);
         
         // Position update with dynamic interval (1 second normally, 0.1 second during motion)
+        console.log('🚀 [INIT] Starting position polling initialization...');
+        console.log('🚀 [INIT] Connected status:', this.isConnected);
+        console.log('🚀 [INIT] Motion status:', this.motionStatus);
+        console.log('🚀 [INIT] Axis ID:', this.axisId);
+        
+        // Add global error handler for unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('🚨 [GLOBAL] Unhandled promise rejection:', event.reason);
+            console.error('🚨 [GLOBAL] This might be breaking the polling system!');
+        });
+        
         this.setPositionPollingInterval(1000); // Start with 1 second interval
+        console.log('🚀 [INIT] Position polling setup completed');
+        
+        // Test immediate position update to verify it works
+        setTimeout(async () => {
+            console.log('🧪 [TEST] Testing immediate position update...');
+            try {
+                await this.updatePosition();
+                console.log('🧪 [TEST] Immediate position update successful');
+            } catch (error) {
+                console.error('🧪 [TEST] Immediate position update failed:', error);
+            }
+        }, 2000);
     }
     
     /**
@@ -322,13 +345,18 @@ export class RobotControlPageManager {
         }
         
         // Set new interval
-        this.positionUpdateInterval = setInterval(() => {
+        this.positionUpdateInterval = setInterval(async () => {
             if (this.isConnected) {
                 console.group('🔄 [PERIODIC] Position polling cycle');
                 console.log('Connected status:', this.isConnected);
                 console.log('Current position before update:', this.currentPosition);
                 console.log('Polling interval:', interval + 'ms');
-                this.updatePosition();
+                try {
+                    await this.updatePosition();
+                    console.log('✅ [PERIODIC] Position update completed successfully');
+                } catch (error) {
+                    console.error('❌ [PERIODIC] Position update failed:', error);
+                }
                 console.groupEnd();
             } else {
                 console.log('🔄 [PERIODIC] Skipping position update - not connected');
@@ -359,7 +387,9 @@ export class RobotControlPageManager {
      * @private
      */
     async monitorMotionCompletion() {
-        console.log('👀 Starting motion monitoring...');
+        console.log('👀 [MONITOR] Starting motion monitoring...');
+        console.log('👀 [MONITOR] Current motion status:', this.motionStatus);
+        console.log('👀 [MONITOR] Current axis ID:', this.axisId);
         
         const checkMotion = async () => {
             try {
@@ -726,11 +756,12 @@ export class RobotControlPageManager {
             console.log('🛑 [DEBUG] Emergency stop API response:', JSON.stringify(response, null, 2));
             
             if (response.success) {
+                console.log('🛑 [DEBUG] Setting motion status from', this.motionStatus, 'to stopped');
                 this.motionStatus = 'stopped';
                 this.updateMotionStatus('emergency_stopped');
                 this.addLogEntry('warning', `Emergency stop executed for axis ${this.axisId}`);
                 this.uiManager.showNotification('Emergency stop executed successfully', 'warning');
-                console.log('🛑 [DEBUG] Emergency stop completed successfully');
+                console.log('🛑 [DEBUG] Emergency stop completed successfully - motion status now:', this.motionStatus);
                 
                 // Refresh status immediately to update servo state and position
                 await this.refreshStatus();
