@@ -207,6 +207,13 @@ class WFEOLTesterApp {
             if (manager.init && typeof manager.init === 'function') {
                 try {
                     await manager.init();
+                    
+                    // Expose robot control page manager globally for debugging
+                    if (pageId === 'robot-control') {
+                        window.robotControlPage = manager;
+                        console.log('🔧 Robot Control Page Manager exposed globally as window.robotControlPage');
+                        console.log('🔧 Use window.robotControlPage.testAPIEndpoints() to test API endpoints');
+                    }
                 } catch (error) {
                     console.warn(`❌ Failed to initialize page manager for ${pageId}:`, error);
                 }
