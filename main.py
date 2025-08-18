@@ -31,8 +31,8 @@ from application.services.test_result_evaluator import TestResultEvaluator
 from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
 
 # Local infrastructure imports
-from infrastructure.configuration.json_profile_preference import JsonProfilePreference
-from infrastructure.configuration.yaml_configuration import YamlConfiguration
+from infrastructure.implementation.configuration.json_profile_preference import JsonProfilePreference
+from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
 from infrastructure.factory import ServiceFactory
 from infrastructure.implementation.repositories.json_result_repository import (
     JsonResultRepository,

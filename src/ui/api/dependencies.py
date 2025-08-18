@@ -18,7 +18,7 @@ from application.services.repository_service import RepositoryService
 from application.services.test_result_evaluator import TestResultEvaluator
 from application.use_cases.eol_force_test import EOLForceTestUseCase
 from application.use_cases.robot_home import RobotHomeUseCase
-from infrastructure.configuration.yaml_configuration import (
+from infrastructure.implementation.configuration.yaml_configuration import (
     YamlConfiguration,
 )
 from infrastructure.implementation.hardware.digital_io.mock.mock_digital_io import (

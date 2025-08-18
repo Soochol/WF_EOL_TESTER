@@ -25,19 +25,11 @@ from infrastructure.implementation.hardware.digital_io.ajinextek.constants impor
 )
 from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes import (
     AjinextekChannelError,
-    AjinextekDIOError,
     AjinextekErrorCode,
     AjinextekHardwareError,
     AjinextekOperationError,
     validate_channel_list,
     validate_pin_values,
-)
-from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
-    AXLWrapper,
-)
-from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
-    AXT_RT_SUCCESS,
-    get_error_message,
 )
 
 
@@ -52,8 +44,10 @@ class AjinextekDIO(DigitalIOService):
         # State tracking
         self._is_connected = False
 
-        # AXL library interface
-        self._axl_lib = AXLWrapper()
+        # AXL library interface (싱글톤 인스턴스 사용)
+        from infrastructure.factory import AXLWrapperFactory
+
+        self._axl_lib = AXLWrapperFactory.get_axl_wrapper()
         self._detected_modules: Dict[int, Dict[str, Any]] = {}
         self._module_input_counts: Dict[int, int] = {}
         self._module_output_counts: Dict[int, int] = {}
@@ -85,23 +79,8 @@ class AjinextekDIO(DigitalIOService):
         try:
             logger.info("Connecting to Ajinextek DIO hardware")
 
-            # Open AXL library if not already open
-            if self._axl_lib.is_opened():
-                logger.debug("AXL library is already open")
-                result = AXT_RT_SUCCESS
-            else:
-                result = self._axl_lib.open(irq_no)
-                if result != AXT_RT_SUCCESS:
-                    error_msg = get_error_message(result)
-                    logger.error(
-                        f"Failed to initialize AXL library: {error_msg} (Error Code: {result})"
-                    )
-                    raise AjinextekHardwareError(
-                        f"Failed to initialize AXL library: {error_msg}",
-                        error_code=result,
-                    )
-                else:
-                    logger.info("AXL library opened successfully")
+            # 중앙화된 연결 관리 사용
+            self._axl_lib.connect(irq_no)
 
             # Check if DIO modules exist
             if not self._axl_lib.is_dio_module():
@@ -196,17 +175,8 @@ class AjinextekDIO(DigitalIOService):
         """
         try:
             if self._is_connected:
-                # Close AXL library connection if open
-                try:
-                    if self._axl_lib.is_opened():
-                        result = self._axl_lib.close()
-                        if result != AXT_RT_SUCCESS:
-                            error_msg = get_error_message(result)
-                            logger.warning(f"AXL library close warning: {error_msg}")
-                    else:
-                        logger.debug("AXL library was already closed")
-                except Exception as e:
-                    logger.warning(f"Error closing AXL library: {e}")
+                # 중앙화된 연결 해제 사용
+                self._axl_lib.disconnect()
 
             self._is_connected = False
             logger.info("AJINEXTEK DIO hardware disconnected")

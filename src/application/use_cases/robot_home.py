@@ -90,6 +90,31 @@ class RobotHomeUseCase:
                 f"Enabling servo brake release on Digital Output channel {servo_brake_channel} for robot homing preparation..."
             )
 
+            # Step 0.1: Connect to Digital I/O service if not already connected
+            irq_no = self._hardware_config.robot.irq_no
+            logger.info(f"Checking Digital I/O service connection with irq_no={irq_no}...")
+
+            try:
+                # Check if already connected, if not connect
+                if not await self._hardware_services.digital_io_service.is_connected():
+                    await self._hardware_services.digital_io_service.connect(irq_no=irq_no)
+                    logger.info("Digital I/O service connected successfully")
+                else:
+                    logger.info("Digital I/O service already connected")
+
+                # Verify connection by checking status
+                # Note: Digital I/O service may not have explicit status check, so we rely on is_connected()
+                if not await self._hardware_services.digital_io_service.is_connected():
+                    raise Exception("Digital I/O service connection verification failed")
+                logger.info("Digital I/O service connection verified")
+
+            except Exception as dio_connect_error:
+                logger.error(f"Digital I/O service connection failed: {dio_connect_error}")
+                raise HardwareConnectionException(
+                    f"Failed to connect to Digital I/O service: {str(dio_connect_error)}",
+                    details={"irq_no": irq_no, "error": str(dio_connect_error)},
+                ) from dio_connect_error
+
             try:
                 await self._hardware_services.digital_io_service.write_output(
                     servo_brake_channel, True

@@ -17,7 +17,7 @@ TestResults/
 node_modules/
 
 # configuration folders (environment-specific, should not be versioned)
-configuration/
+/configuration/
 !configuration/*.template
 # Environment variables
 .env

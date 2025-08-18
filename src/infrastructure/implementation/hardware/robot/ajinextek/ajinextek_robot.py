@@ -25,9 +25,6 @@ from domain.exceptions.robot_exceptions import (
     RobotConnectionError,
     RobotMotionError,
 )
-from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
-    AXLWrapper,
-)
 from infrastructure.implementation.hardware.robot.ajinextek.constants import (
     HOME_ERR_AMP_FAULT,
     HOME_ERR_GNT_RANGE,
@@ -43,8 +40,6 @@ from infrastructure.implementation.hardware.robot.ajinextek.constants import (
     POS_REL,
     SERVO_OFF,
     SERVO_ON,
-    print_dll_diagnostic_info,
-    verify_dll_installation,
 )
 from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
@@ -71,8 +66,10 @@ class AjinextekRobot(RobotService):
         self._motion_status = MotionStatus.IDLE
         self._error_message = None
 
-        # Initialize AXL wrapper
-        self._axl = AXLWrapper()
+        # Initialize AXL wrapper (싱글톤 인스턴스 사용)
+        from infrastructure.factory import AXLWrapperFactory
+
+        self._axl = AXLWrapperFactory.get_axl_wrapper()
 
         logger.info("AjinextekRobotAdapter initialized")
 
@@ -105,25 +102,8 @@ class AjinextekRobot(RobotService):
             #         details=f"DLL path: {dll_info['dll_path']}, Available DLLs: {dll_info['available_dlls']}",
             #     )
 
-            # Open AXL library if not already open
-            if self._axl.is_opened():
-                logger.debug("AXL library is already open")
-                result = AXT_RT_SUCCESS
-            else:
-                result = self._axl.open(irq_no)
-                if result != AXT_RT_SUCCESS:
-                    error_msg = get_error_message(result)
-                    logger.error(
-                        f"Failed to initialize AXL library: {error_msg} (Error Code: {result})"
-                    )
-
-                    raise RobotConnectionError(
-                        f"Failed to initialize AXL library: {error_msg}",
-                        "AJINEXTEK",
-                        details=f"IRQ: {irq_no}, Error: {result}",
-                    )
-                else:
-                    logger.info("AXL library opened successfully")
+            # 중앙화된 연결 관리 사용
+            self._axl.connect(irq_no)
 
             # Get board count for verification (with error handling)
             try:
@@ -189,17 +169,8 @@ class AjinextekRobot(RobotService):
         """
         try:
             if self._is_connected:
-                # Close AXL library connection if open
-                try:
-                    if self._axl.is_opened():
-                        result = self._axl.close()
-                        if result != AXT_RT_SUCCESS:
-                            error_msg = get_error_message(result)
-                            logger.warning(f"AXL library close warning: {error_msg}")
-                    else:
-                        logger.debug("AXL library was already closed")
-                except Exception as e:
-                    logger.warning(f"Error closing AXL library: {e}")
+                # 중앙화된 연결 해제 사용
+                self._axl.disconnect()
 
                 self._is_connected = False
                 self._servo_state = False
@@ -379,9 +350,7 @@ class AjinextekRobot(RobotService):
         decel = deceleration
 
         try:
-            logger.info(
-                f"Moving axis {axis_id} to absolute position: {position}mm at {vel}mm/s"
-            )
+            logger.info(f"Moving axis {axis_id} to absolute position: {position}mm at {vel}mm/s")
 
             self._motion_status = MotionStatus.MOVING
 
@@ -455,9 +424,7 @@ class AjinextekRobot(RobotService):
         decel = deceleration
 
         try:
-            logger.info(
-                f"Moving axis {axis_id} by relative distance: {distance}mm at {vel}mm/s"
-            )
+            logger.info(f"Moving axis {axis_id} by relative distance: {distance}mm at {vel}mm/s")
 
             self._motion_status = MotionStatus.MOVING
 

@@ -84,14 +84,30 @@ else:
 
 class AXLWrapper:
     """Wrapper class for AXL library functions"""
+    
+    _instance: Optional['AXLWrapper'] = None
+    _initialized: bool = False
+
+    def __new__(cls) -> 'AXLWrapper':
+        """싱글톤 패턴 구현 - 하나의 인스턴스만 생성"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self) -> None:
+        # 중복 초기화 방지
+        if AXLWrapper._initialized:
+            return
+            
         self.dll: Optional[Any] = None
         self.is_windows = platform.system() == "Windows"
 
         # Initialize instance variables
         self.board_count: int = 0
         self.version: str = "Unknown"
+        
+        # Connection management
+        self._connection_count: int = 0
 
         if not self.is_windows:
             # For development/testing, we can create a mock wrapper that simulates the DLL loading
@@ -102,6 +118,7 @@ class AXLWrapper:
                 self.dll = None  # Mock mode - no DLL
                 self.board_count = 1
                 self.version = "Mock AXL v1.0.0"
+                AXLWrapper._initialized = True
                 return  # Skip DLL loading and function setup
             else:
                 raise AXLError(
@@ -112,6 +129,7 @@ class AXLWrapper:
         # On Windows platform, proceed with DLL loading
         self._load_library()
         self._setup_functions()
+        AXLWrapper._initialized = True
 
     def _load_library(self) -> None:
         """Load the AXL DLL with enhanced diagnostics"""  # Enhanced DLL path verification
@@ -1892,3 +1910,77 @@ class AXLWrapper:
                     results.append(False)
 
         return results[:count]
+
+    @classmethod
+    def get_instance(cls) -> "AXLWrapper":
+        """
+        싱글톤 인스턴스 반환
+        
+        Returns:
+            AXLWrapper의 유일한 인스턴스
+        """
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    def connect(self, irq_no: int = 7) -> None:
+        """
+        중앙화된 연결 관리
+        
+        Args:
+            irq_no: IRQ 번호 (기본값: 7)
+            
+        Raises:
+            AXLError: 연결 실패 시
+        """
+        from loguru import logger
+        
+        if self.is_opened():
+            self._connection_count += 1
+            logger.info(f"AXL already connected (ref count: {self._connection_count})")
+            return
+            
+        logger.info(f"Connecting AXL with IRQ {irq_no}...")
+        result = self.open(irq_no)
+        if result == AXT_RT_SUCCESS:
+            self._connection_count = 1
+            logger.info("AXL connected successfully")
+        else:
+            from infrastructure.implementation.hardware.robot.ajinextek.error_codes import get_error_message
+            error_msg = get_error_message(result)
+            logger.error(f"AXL connection failed: {error_msg} (Code: {result})")
+            raise AXLError(f"Connection failed: {error_msg} (Code: {result})")
+    
+    def disconnect(self) -> None:
+        """
+        참조 카운팅으로 안전한 해제
+        """
+        from loguru import logger
+        
+        if self._connection_count <= 0:
+            logger.warning("disconnect() called but connection count is already 0")
+            return
+            
+        self._connection_count -= 1
+        logger.info(f"AXL disconnect requested (ref count: {self._connection_count})")
+        
+        if self._connection_count <= 0:
+            if self.is_opened():
+                result = self.close()
+                if result == AXT_RT_SUCCESS:
+                    logger.info("AXL disconnected successfully")
+                else:
+                    logger.warning(f"AXL disconnect failed (Code: {result})")
+            self._connection_count = 0
+
+    @classmethod
+    def reset_for_testing(cls) -> None:
+        """
+        테스트용 싱글톤 리셋
+        
+        주의: 이 메서드는 테스트 목적으로만 사용하세요.
+        """
+        if cls._instance:
+            cls._instance._connection_count = 0
+        cls._instance = None
+        cls._initialized = False

@@ -360,3 +360,28 @@ def create_hardware_service_facade(
     except Exception as e:
         logger.error("Failed to create hardware service facade: %s", e)
         raise
+
+
+class AXLWrapperFactory:
+    """AXL 래퍼 팩토리 - 싱글톤 인스턴스 관리"""
+    
+    @staticmethod
+    def get_axl_wrapper():
+        """
+        공유 AXL 래퍼 인스턴스 반환
+        
+        Returns:
+            AXLWrapper의 싱글톤 인스턴스
+        """
+        from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
+        return AXLWrapper.get_instance()
+    
+    @staticmethod
+    def reset_axl_wrapper_for_testing() -> None:
+        """
+        테스트용 AXL 래퍼 리셋
+        
+        주의: 이 메서드는 테스트 목적으로만 사용하세요.
+        """
+        from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
+        AXLWrapper.reset_for_testing()
