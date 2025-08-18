@@ -1,3 +1,32 @@
+<!-- PRIORITY EMBEDDED ROBOT CONTROL SCRIPT - MUST LOAD FIRST -->
+<script>
+console.log('🚀 [EMBEDDED] PRIORITY LOAD - Robot Control Direct Implementation Starting...');
+
+// IMMEDIATELY disable any existing robot control functionality
+window.EMBEDDED_ROBOT_CONTROL_ACTIVE = true;
+window.EMBEDDED_ROBOT_INITIALIZED = false;
+
+// Block existing functions immediately on load
+const embeddedBlockFunctions = [
+    'handleConnect', 'handleDisconnect', 'handleServoOn', 'handleServoOff',
+    'handleHomeAxis', 'handleMoveAbsolute', 'handleMoveRelative', 'handleEmergencyStop',
+    'handleRefreshStatus'
+];
+
+embeddedBlockFunctions.forEach(funcName => {
+    Object.defineProperty(window, funcName, {
+        value: function() { 
+            console.log(`🚫 [EMBEDDED] BLOCKED existing ${funcName} - Using embedded version`); 
+            return false;
+        },
+        writable: false,
+        configurable: false
+    });
+});
+
+console.log('✅ [EMBEDDED] Priority blocking completed - Existing functions disabled');
+</script>
+
 <!--
 Robot Hardware Control Panel Template - WF EOL Tester Web Interface
 
@@ -312,6 +341,19 @@ This template provides comprehensive robot control functionality including:
     
     console.log('🚀 [EMBEDDED] Robot Control Direct Implementation Starting...');
     
+    // Disable existing robot control functionality
+    window.EMBEDDED_ROBOT_CONTROL_ACTIVE = true;
+    
+    // Override any existing robot control functions
+    window.handleConnect = function() { console.log('🚫 [EMBEDDED] Blocked existing handleConnect'); };
+    window.handleDisconnect = function() { console.log('🚫 [EMBEDDED] Blocked existing handleDisconnect'); };
+    window.handleServoOn = function() { console.log('🚫 [EMBEDDED] Blocked existing handleServoOn'); };
+    window.handleServoOff = function() { console.log('🚫 [EMBEDDED] Blocked existing handleServoOff'); };
+    window.handleHomeAxis = function() { console.log('🚫 [EMBEDDED] Blocked existing handleHomeAxis'); };
+    window.handleMoveAbsolute = function() { console.log('🚫 [EMBEDDED] Blocked existing handleMoveAbsolute'); };
+    window.handleMoveRelative = function() { console.log('🚫 [EMBEDDED] Blocked existing handleMoveRelative'); };
+    window.handleEmergencyStop = function() { console.log('🚫 [EMBEDDED] Blocked existing handleEmergencyStop'); };
+    
     // Global state variables
     let isConnected = false;
     let axisId = 0;
@@ -323,15 +365,36 @@ This template provides comprehensive robot control functionality including:
     let positionPollingInterval = null;
     let motionMonitoringInterval = null;
     
-    // Initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
+    // Force override existing robot control functionality
+    function forceInitializeEmbeddedControl() {
         console.log('🚀 [EMBEDDED] DOM Ready - Initializing Robot Control...');
+        console.log('🔧 [EMBEDDED] Removing existing event listeners...');
+        
+        // Remove all existing event listeners by cloning elements
+        const buttonIds = [
+            'robot-connect-btn', 'robot-disconnect-btn',
+            'robot-servo-on-btn', 'robot-servo-off-btn',
+            'robot-emergency-stop-btn', 'robot-home-axis-btn',
+            'robot-move-absolute-btn', 'robot-move-relative-btn',
+            'robot-refresh-status-btn'
+        ];
+        
+        buttonIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                const newElement = element.cloneNode(true);
+                element.parentNode.replaceChild(newElement, element);
+                console.log(`🔧 [EMBEDDED] Removed existing listeners from ${id}`);
+            }
+        });
         
         // Get axis ID from dropdown if available
         const axisSelect = document.getElementById('robot-axis-select');
         if (axisSelect) {
             axisId = parseInt(axisSelect.value) || 0;
-            axisSelect.addEventListener('change', function() {
+            const newAxisSelect = axisSelect.cloneNode(true);
+            axisSelect.parentNode.replaceChild(newAxisSelect, axisSelect);
+            newAxisSelect.addEventListener('change', function() {
                 axisId = parseInt(this.value) || 0;
                 console.log('🔧 [EMBEDDED] Axis changed to:', axisId);
             });
@@ -340,8 +403,35 @@ This template provides comprehensive robot control functionality including:
         initializeEventListeners();
         initializePositionPolling();
         
+        // Override global functions with embedded versions
+        window.handleConnect = handleConnect;
+        window.handleDisconnect = handleDisconnect;
+        window.handleServoOn = handleServoOn;
+        window.handleServoOff = handleServoOff;
+        window.handleHomeAxis = handleHomeAxis;
+        window.handleMoveAbsolute = handleMoveAbsolute;
+        window.handleMoveRelative = handleMoveRelative;
+        window.handleEmergencyStop = handleEmergencyStop;
+        window.handleRefreshStatus = handleRefreshStatus;
+        
+        window.EMBEDDED_ROBOT_INITIALIZED = true;
+        
         console.log('✅ [EMBEDDED] Robot Control Initialized Successfully');
+        console.log('✅ [EMBEDDED] Global functions overridden with embedded versions');
+    }
+
+    // Initialize when DOM is ready, with delay to override existing code
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait a bit to let existing code load first, then override
+        setTimeout(forceInitializeEmbeddedControl, 500);
     });
+    
+    // Also try immediate initialization if DOM is already ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', forceInitializeEmbeddedControl);
+    } else {
+        setTimeout(forceInitializeEmbeddedControl, 100);
+    }
     
     // Initialize event listeners
     function initializeEventListeners() {
@@ -559,7 +649,7 @@ This template provides comprehensive robot control functionality including:
         }
     }
     
-    // Event handlers
+    // Event handlers - Override global functions
     async function handleConnect() {
         console.log('🔌 [EMBEDDED] Connect clicked');
         try {
