@@ -402,8 +402,13 @@ async function embeddedHandleEmergencyStop() {
             embeddedRobotState.motionStatus = 'stopped';
             updateEmbeddedPollingInterval();
             stopEmbeddedMotionMonitoring();
-            console.log('🛑 [EMBEDDED] Emergency stop completed successfully');
             updateEmbeddedMotionStatus('stopped');
+            
+            // Update servo state - emergency stop disables servo for safety
+            embeddedRobotState.servoEnabled = false;
+            updateEmbeddedServoStatus(false);
+            
+            console.log('🛑 [EMBEDDED] Emergency stop completed - servo disabled for safety');
         }
     } catch (error) {
         console.error('❌ [EMBEDDED] Emergency stop failed:', error);
