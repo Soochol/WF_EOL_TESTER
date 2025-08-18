@@ -90,17 +90,17 @@ class EOLForceTestUseCase:
     async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
         Execute EOL test with support for repetition
-        
+
         This method handles test repetition based on the repeat_count configuration.
         For repeat_count > 1, it executes multiple test cycles and aggregates results.
         For repeat_count = 1, it behaves as a single test execution.
-        
+
         Args:
             command: Test execution command containing DUT info and operator ID
-            
+
         Returns:
             EOLTestResult containing aggregated test outcome and execution details
-            
+
         Raises:
             TestExecutionException: If configuration validation fails or critical test errors occur
             ConfigurationNotFoundError: If specified profile cannot be found
@@ -110,22 +110,21 @@ class EOLForceTestUseCase:
         # Load configuration to check repeat_count
         await self._config_loader.load_and_validate_configurations()
         test_config = self._config_loader.test_config
-        
+
         if test_config is None:
             raise TestExecutionException(
-                message="Test configuration could not be loaded",
-                details={"command": str(command)}
+                message="Test configuration could not be loaded", details={"command": str(command)}
             )
-        
+
         repeat_count = test_config.repeat_count
-        
+
         if repeat_count == 1:
             # Single execution - use original logic
             return await self.execute_single(command)
         else:
             # Multiple executions - handle repetition
             return await self._execute_repeated(command, repeat_count)
-    
+
     async def execute_single(self, command: EOLForceTestCommand) -> EOLTestResult:
         """
         Execute EOL test using component-based architecture
@@ -337,71 +336,82 @@ class EOLForceTestUseCase:
             test_context = f" for test entity {test_entity.test_id}" if test_entity else ""
             logger.warning("Hardware cleanup failed{}: {}", test_context, cleanup_error)
 
-    async def _execute_repeated(self, command: EOLForceTestCommand, repeat_count: int) -> EOLTestResult:
+    async def _execute_repeated(
+        self, command: EOLForceTestCommand, repeat_count: int
+    ) -> EOLTestResult:
         """
         Execute repeated test cycles and aggregate results
-        
+
         Args:
             command: Original test execution command
             repeat_count: Number of test repetitions to perform
-            
+
         Returns:
             EOLTestResult containing aggregated results from all repetitions
         """
-        logger.info(f"Starting repeated EOL test execution: {repeat_count} repetitions for DUT {command.dut_info.dut_id}")
-        
+        logger.info(
+            f"Starting repeated EOL test execution: {repeat_count} repetitions for DUT {command.dut_info.dut_id}"
+        )
+
         # Set running flag to prevent duplicate execution
         self._is_running = True
         overall_start_time = asyncio.get_event_loop().time()
-        
+
         all_results = []
         successful_tests = 0
         failed_tests = 0
-        
+
         try:
             for cycle in range(1, repeat_count + 1):
-                logger.info(f"Executing test cycle {cycle}/{repeat_count} for DUT {command.dut_info.dut_id}")
-                
+                logger.info(
+                    f"Executing test cycle {cycle}/{repeat_count} for DUT {command.dut_info.dut_id}"
+                )
+
                 # Create unique DUT info for this cycle
                 cycle_dut_info = DUTCommandInfo(
                     dut_id=f"{command.dut_info.dut_id}_cycle_{cycle:03d}",
                     model_number=command.dut_info.model_number,
                     serial_number=f"{command.dut_info.serial_number}_C{cycle:03d}",
-                    manufacturer=command.dut_info.manufacturer
+                    manufacturer=command.dut_info.manufacturer,
                 )
-                
+
                 cycle_command = EOLForceTestCommand(
-                    dut_info=cycle_dut_info,
-                    operator_id=command.operator_id
+                    dut_info=cycle_dut_info, operator_id=command.operator_id
                 )
-                
+
                 try:
                     # Execute single test cycle
                     result = await self.execute_single(cycle_command)
                     all_results.append(result)
-                    
+
                     if result.is_passed:
                         successful_tests += 1
-                        logger.info(f"Test cycle {cycle}/{repeat_count} PASSED for DUT {cycle_dut_info.dut_id}")
+                        logger.info(
+                            f"Test cycle {cycle}/{repeat_count} PASSED for DUT {cycle_dut_info.dut_id}"
+                        )
                     else:
                         failed_tests += 1
-                        logger.warning(f"Test cycle {cycle}/{repeat_count} FAILED for DUT {cycle_dut_info.dut_id}")
-                        
+                        logger.warning(
+                            f"Test cycle {cycle}/{repeat_count} FAILED for DUT {cycle_dut_info.dut_id}"
+                        )
+
                 except Exception as cycle_error:
                     failed_tests += 1
-                    logger.error(f"Test cycle {cycle}/{repeat_count} ERROR for DUT {cycle_dut_info.dut_id}: {cycle_error}")
+                    logger.error(
+                        f"Test cycle {cycle}/{repeat_count} ERROR for DUT {cycle_dut_info.dut_id}: {cycle_error}"
+                    )
                     # Continue with next cycle even if one fails
-                
+
                 # Add delay between cycles for hardware stabilization (except for last cycle)
                 if cycle < repeat_count:
                     stabilization_delay = 2.0  # 2 seconds between cycles
                     logger.debug(f"Waiting {stabilization_delay}s between test cycles...")
                     await asyncio.sleep(stabilization_delay)
-            
+
             # Create aggregated result
             overall_duration = self._calculate_execution_duration(overall_start_time)
             overall_passed = successful_tests > 0  # At least one test must pass
-            
+
             # Use the first successful result as template, or first result if none successful
             template_result = None
             for result in all_results:
@@ -410,7 +420,7 @@ class EOLForceTestUseCase:
                     break
             if template_result is None and all_results:
                 template_result = all_results[0]
-            
+
             if template_result is None:
                 # No results at all - create a failure result
                 return EOLTestResult(
@@ -418,9 +428,9 @@ class EOLForceTestUseCase:
                     test_status=TestStatus.ERROR,
                     is_passed=False,
                     execution_duration=overall_duration,
-                    error_message=f"All {repeat_count} test cycles failed to execute"
+                    error_message=f"All {repeat_count} test cycles failed to execute",
                 )
-            
+
             # Create summary result
             summary_result = EOLTestResult(
                 test_id=TestId.generate(),
@@ -428,13 +438,19 @@ class EOLForceTestUseCase:
                 is_passed=overall_passed,
                 test_summary=template_result.test_summary,  # Use template measurements
                 execution_duration=overall_duration,
-                error_message=f"Repeated test summary: {successful_tests}/{repeat_count} cycles passed, {failed_tests}/{repeat_count} cycles failed" if failed_tests > 0 else None,
-                completed_at=template_result.completed_at
+                error_message=(
+                    f"Repeated test summary: {successful_tests}/{repeat_count} cycles passed, {failed_tests}/{repeat_count} cycles failed"
+                    if failed_tests > 0
+                    else None
+                ),
+                completed_at=template_result.completed_at,
             )
-            
-            logger.info(f"Repeated EOL test completed: {successful_tests}/{repeat_count} cycles passed for DUT {command.dut_info.dut_id}")
+
+            logger.info(
+                f"Repeated EOL test completed: {successful_tests}/{repeat_count} cycles passed for DUT {command.dut_info.dut_id}"
+            )
             return summary_result
-            
+
         finally:
             # Clear running flag
             self._is_running = False
