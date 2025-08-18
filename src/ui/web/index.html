@@ -2493,6 +2493,14 @@
                         targetPage.style.display = 'block';
                         targetPage.classList.add('active');
                         console.log('🔧 Page shown:', pageName);
+                        
+                        // Initialize embedded robot control when robot-control page is shown
+                        if (pageName === 'robot-control') {
+                            console.log('🚀 [EMBEDDED] Robot Control page detected - Initializing embedded control...');
+                            setTimeout(() => {
+                                initializeEmbeddedRobotControl();
+                            }, 100);
+                        }
                     }
                     
                     // Update active nav links
@@ -2882,6 +2890,337 @@
             
             console.log('✅ Hardware Dashboard functionality initialized');
         });
+    </script>
+    
+    <!-- EMBEDDED ROBOT CONTROL - Direct Implementation in Index -->
+    <script>
+    // Global embedded robot control variables
+    let embeddedRobotState = {
+        isConnected: false,
+        axisId: 0,
+        motionStatus: 'idle',
+        servoEnabled: false,
+        currentPosition: 0,
+        positionPollingInterval: null,
+        motionMonitoringInterval: null
+    };
+    
+    // Initialize embedded robot control
+    function initializeEmbeddedRobotControl() {
+        console.log('🚀 [EMBEDDED] Initializing embedded robot control in index.html...');
+        
+        // Clear any existing intervals
+        if (embeddedRobotState.positionPollingInterval) {
+            clearInterval(embeddedRobotState.positionPollingInterval);
+        }
+        if (embeddedRobotState.motionMonitoringInterval) {
+            clearInterval(embeddedRobotState.motionMonitoringInterval);
+        }
+        
+        // Override existing functions
+        window.handleConnect = embeddedHandleConnect;
+        window.handleDisconnect = embeddedHandleDisconnect;
+        window.handleServoOn = embeddedHandleServoOn;
+        window.handleServoOff = embeddedHandleServoOff;
+        window.handleHomeAxis = embeddedHandleHomeAxis;
+        window.handleMoveAbsolute = embeddedHandleMoveAbsolute;
+        window.handleMoveRelative = embeddedHandleMoveRelative;
+        window.handleEmergencyStop = embeddedHandleEmergencyStop;
+        
+        // Start position polling
+        startEmbeddedPositionPolling(1000);
+        
+        console.log('✅ [EMBEDDED] Robot control functions overridden and polling started');
+    }
+    
+    // API helper
+    async function embeddedApiCall(method, url, data = null) {
+        const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (data) options.body = JSON.stringify(data);
+        
+        console.log(`📡 [EMBEDDED] API ${method} ${url}`, data || '');
+        
+        try {
+            const response = await fetch(`/api${url}`, options);
+            const result = await response.json();
+            console.log(`✅ [EMBEDDED] API Response:`, result);
+            return result;
+        } catch (error) {
+            console.error(`❌ [EMBEDDED] API Error:`, error);
+            throw error;
+        }
+    }
+    
+    // Position polling
+    function startEmbeddedPositionPolling(interval) {
+        console.log(`📍 [EMBEDDED] Starting position polling with ${interval}ms interval`);
+        
+        if (embeddedRobotState.positionPollingInterval) {
+            clearInterval(embeddedRobotState.positionPollingInterval);
+        }
+        
+        embeddedRobotState.positionPollingInterval = setInterval(async () => {
+            if (embeddedRobotState.isConnected) {
+                console.log(`🔄 [EMBEDDED] Polling position (${interval}ms interval)...`);
+                try {
+                    await updateEmbeddedPosition();
+                } catch (error) {
+                    console.error('❌ [EMBEDDED] Position update failed:', error);
+                }
+            }
+        }, interval);
+    }
+    
+    function updateEmbeddedPollingInterval() {
+        if (embeddedRobotState.motionStatus === 'moving' || embeddedRobotState.motionStatus === 'homing') {
+            console.log('🏃 [EMBEDDED] Motion detected: Switching to fast polling (100ms)');
+            startEmbeddedPositionPolling(100);
+        } else {
+            console.log('🛑 [EMBEDDED] Motion completed: Switching to normal polling (1000ms)');
+            startEmbeddedPositionPolling(1000);
+        }
+    }
+    
+    async function updateEmbeddedPosition() {
+        try {
+            const result = await embeddedApiCall('GET', `/hardware/robot/position?axis_id=${embeddedRobotState.axisId}`);
+            if (result.success) {
+                embeddedRobotState.currentPosition = result.data.position;
+                updateEmbeddedPositionDisplay(result.data.position);
+                console.log(`📍 [EMBEDDED] Position updated: ${result.data.position}μm`);
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Failed to update position:', error);
+        }
+    }
+    
+    function updateEmbeddedPositionDisplay(position) {
+        const positionElement = document.getElementById('robot-current-position');
+        if (positionElement) {
+            positionElement.textContent = position.toFixed(3);
+        }
+    }
+    
+    // Event handlers
+    async function embeddedHandleConnect() {
+        console.log('🔌 [EMBEDDED] Connect clicked');
+        try {
+            const result = await embeddedApiCall('POST', '/hardware/robot/connect', { 
+                axis_id: embeddedRobotState.axisId, 
+                irq_no: 7 
+            });
+            if (result.success) {
+                embeddedRobotState.isConnected = true;
+                showNotification('Connected successfully', 'success');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Connect failed:', error);
+            showNotification('Connect failed', 'error');
+        }
+    }
+    
+    async function embeddedHandleDisconnect() {
+        console.log('🔌 [EMBEDDED] Disconnect clicked');
+        try {
+            const result = await embeddedApiCall('POST', '/hardware/robot/disconnect');
+            if (result.success) {
+                embeddedRobotState.isConnected = false;
+                embeddedRobotState.motionStatus = 'idle';
+                updateEmbeddedPollingInterval();
+                showNotification('Disconnected successfully', 'info');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Disconnect failed:', error);
+        }
+    }
+    
+    async function embeddedHandleServoOn() {
+        console.log('⚡ [EMBEDDED] Servo enable clicked');
+        try {
+            const result = await embeddedApiCall('POST', '/hardware/robot/servo/enable', { 
+                axis_id: embeddedRobotState.axisId 
+            });
+            if (result.success) {
+                embeddedRobotState.servoEnabled = true;
+                showNotification('Servo enabled', 'success');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Servo enable failed:', error);
+            showNotification('Servo enable failed', 'error');
+        }
+    }
+    
+    async function embeddedHandleServoOff() {
+        console.log('🔴 [EMBEDDED] Servo disable clicked');
+        try {
+            const result = await embeddedApiCall('POST', '/hardware/robot/servo/disable', { 
+                axis_id: embeddedRobotState.axisId 
+            });
+            if (result.success) {
+                embeddedRobotState.servoEnabled = false;
+                showNotification('Servo disabled', 'info');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Servo disable failed:', error);
+        }
+    }
+    
+    async function embeddedHandleHomeAxis() {
+        console.log('🏠 [EMBEDDED] Home axis clicked');
+        try {
+            embeddedRobotState.motionStatus = 'homing';
+            updateEmbeddedPollingInterval();
+            startEmbeddedMotionMonitoring();
+            
+            const result = await embeddedApiCall('POST', '/hardware/robot/home-axis', { 
+                axis_id: embeddedRobotState.axisId 
+            });
+            if (result.success) {
+                showNotification('Homing started', 'info');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Home failed:', error);
+            embeddedRobotState.motionStatus = 'idle';
+            updateEmbeddedPollingInterval();
+            showNotification('Home failed', 'error');
+        }
+    }
+    
+    async function embeddedHandleMoveAbsolute() {
+        console.log('🎯 [EMBEDDED] Absolute move clicked');
+        try {
+            const position = parseFloat(document.getElementById('absolute-position').value);
+            const velocity = parseFloat(document.getElementById('absolute-velocity').value) || 200;
+            const acceleration = parseFloat(document.getElementById('absolute-acceleration').value) || 1000;
+            const deceleration = parseFloat(document.getElementById('absolute-deceleration').value) || 1000;
+            
+            if (isNaN(position)) {
+                showNotification('Invalid position value', 'error');
+                return;
+            }
+            
+            embeddedRobotState.motionStatus = 'moving';
+            updateEmbeddedPollingInterval();
+            startEmbeddedMotionMonitoring();
+            
+            const result = await embeddedApiCall('POST', '/hardware/robot/move-absolute', {
+                axis_id: embeddedRobotState.axisId,
+                position: position,
+                velocity: velocity,
+                acceleration: acceleration,
+                deceleration: deceleration
+            });
+            
+            if (result.success) {
+                showNotification(`Moving to ${position}μm`, 'info');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Absolute move failed:', error);
+            embeddedRobotState.motionStatus = 'idle';
+            updateEmbeddedPollingInterval();
+            showNotification('Absolute move failed', 'error');
+        }
+    }
+    
+    async function embeddedHandleMoveRelative() {
+        console.log('↔️ [EMBEDDED] Relative move clicked');
+        try {
+            const distance = parseFloat(document.getElementById('relative-distance').value);
+            const velocity = parseFloat(document.getElementById('relative-velocity').value) || 200;
+            const acceleration = parseFloat(document.getElementById('relative-acceleration').value) || 1000;
+            const deceleration = parseFloat(document.getElementById('relative-deceleration').value) || 1000;
+            
+            if (isNaN(distance)) {
+                showNotification('Invalid distance value', 'error');
+                return;
+            }
+            
+            embeddedRobotState.motionStatus = 'moving';
+            updateEmbeddedPollingInterval();
+            startEmbeddedMotionMonitoring();
+            
+            const result = await embeddedApiCall('POST', '/hardware/robot/move-relative', {
+                axis_id: embeddedRobotState.axisId,
+                distance: distance,
+                velocity: velocity,
+                acceleration: acceleration,
+                deceleration: deceleration
+            });
+            
+            if (result.success) {
+                showNotification(`Moving ${distance}μm`, 'info');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Relative move failed:', error);
+            embeddedRobotState.motionStatus = 'idle';
+            updateEmbeddedPollingInterval();
+            showNotification('Relative move failed', 'error');
+        }
+    }
+    
+    async function embeddedHandleEmergencyStop() {
+        console.log('🛑 [EMBEDDED] Emergency stop clicked!');
+        try {
+            const result = await embeddedApiCall('POST', '/hardware/robot/emergency-stop', { 
+                axis_id: embeddedRobotState.axisId 
+            });
+            if (result.success) {
+                embeddedRobotState.motionStatus = 'stopped';
+                updateEmbeddedPollingInterval();
+                stopEmbeddedMotionMonitoring();
+                showNotification('Emergency stop executed', 'warning');
+                console.log('🛑 [EMBEDDED] Emergency stop completed successfully');
+            }
+        } catch (error) {
+            console.error('❌ [EMBEDDED] Emergency stop failed:', error);
+            showNotification('Emergency stop failed', 'error');
+        }
+    }
+    
+    // Motion monitoring
+    function startEmbeddedMotionMonitoring() {
+        console.log('👀 [EMBEDDED] Starting motion monitoring...');
+        
+        if (embeddedRobotState.motionMonitoringInterval) {
+            clearInterval(embeddedRobotState.motionMonitoringInterval);
+        }
+        
+        embeddedRobotState.motionMonitoringInterval = setInterval(async () => {
+            try {
+                const result = await embeddedApiCall('GET', `/hardware/robot/status?axis_id=${embeddedRobotState.axisId}`);
+                if (result.success) {
+                    const isMoving = result.data.is_moving;
+                    console.log(`🔍 [EMBEDDED] Motion check: isMoving=${isMoving}, motionStatus=${embeddedRobotState.motionStatus}`);
+                    
+                    if (!isMoving && (embeddedRobotState.motionStatus === 'moving' || embeddedRobotState.motionStatus === 'homing')) {
+                        console.log('✅ [EMBEDDED] Motion completed detected!');
+                        embeddedRobotState.motionStatus = 'idle';
+                        updateEmbeddedPollingInterval();
+                        stopEmbeddedMotionMonitoring();
+                    } else if (embeddedRobotState.motionStatus === 'stopped') {
+                        console.log('🛑 [EMBEDDED] Emergency stop detected, stopping monitoring');
+                        stopEmbeddedMotionMonitoring();
+                        updateEmbeddedPollingInterval();
+                    }
+                }
+            } catch (error) {
+                console.warn('❌ [EMBEDDED] Motion monitoring failed:', error);
+            }
+        }, 100);
+    }
+    
+    function stopEmbeddedMotionMonitoring() {
+        if (embeddedRobotState.motionMonitoringInterval) {
+            clearInterval(embeddedRobotState.motionMonitoringInterval);
+            embeddedRobotState.motionMonitoringInterval = null;
+            console.log('🛑 [EMBEDDED] Motion monitoring stopped');
+        }
+    }
+    
+    console.log('✅ [EMBEDDED] Robot Control functions defined in index.html');
     </script>
     
     <script type="module" src="static/js/main.js?v=20250110_235255_NOCACHE&t=20250110235500"></script>
