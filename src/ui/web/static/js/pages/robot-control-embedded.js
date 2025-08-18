@@ -523,7 +523,11 @@ function updateEmbeddedServoStatus(enabled) {
         if (statusDot && statusText) {
             statusText.textContent = enabled ? 'Enabled' : 'Disabled';
             statusDot.className = enabled ? 'status-dot status-success' : 'status-dot status-error';
-            console.log(`🎯 [EMBEDDED] DOM updated - Dot: ${statusDot.className}, Text: ${statusText.textContent}`);
+            
+            // Update background color directly to override inline styles
+            statusDot.style.background = enabled ? '#28a745' : '#dc3545'; // Green for enabled, Red for disabled
+            
+            console.log(`🎯 [EMBEDDED] DOM updated - Dot: ${statusDot.className}, Background: ${statusDot.style.background}, Text: ${statusText.textContent}`);
         } else {
             console.warn(`❌ [EMBEDDED] Could not find status elements - Dot: ${!!statusDot}, Text: ${!!statusText}`);
         }

@@ -425,314 +425,193 @@
                     </div>
                     
                     <!-- Power Control Page - EMBEDDED FOR CACHE FIX -->
-                    <div id="power-control" class="content-page hardware-control-panel" style="display: none;">
-                        <div class="page-header">
-                            <div class="header-content">
-                                <h1 class="page-title">
-                                    <i class="icon-power"></i>
-                                    Power Control System
-                                </h1>
-                                <div class="page-subtitle">
-                                    ODA Power Supply Controller - Direct Embedded
+                    <div id="power-control" class="content-page hardware-control-panel" style="display: none; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; padding: 20px;">
+                        <div class="page-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h1 style="margin: 0; font-size: 1.5em; font-weight: 600;">
+                                        <i class="icon-power" style="margin-right: 8px;"></i>
+                                        Power Control System
+                                    </h1>
+                                    <div style="font-size: 0.9em; opacity: 0.9; margin-top: 4px;">
+                                        ODA Power Supply Controller
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Status Badge -->
-                            <div class="status-badge" id="power-status-badge">
-                                <div class="status-indicator">
-                                    <div class="status-light status-unknown"></div>
-                                    <span class="status-text">Disconnected</span>
+                                <div class="status-badge" id="power-status-badge" style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; backdrop-filter: blur(10px);">
+                                    <div class="status-indicator" style="display: flex; align-items: center; gap: 8px;">
+                                        <div class="status-light status-unknown"></div>
+                                        <span class="status-text" style="font-weight: 500; font-size: 0.9em;">Disconnected</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="panel-grid">
+                        <div class="panel-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto;">
                             <!-- Connection Panel -->
-                            <div class="control-panel connection-panel">
-                                <div class="panel-header">
-                                    <h3><i class="icon-connection"></i> Connection</h3>
-                                    <div class="connection-status" id="power-connection-status">
+                            <div class="control-panel connection-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 600; color: #495057;"><i class="icon-connection" style="margin-right: 8px;"></i>Connection</h3>
+                                    <div class="connection-status" id="power-connection-status" style="display: flex; align-items: center; gap: 6px;">
                                         <div class="status-dot status-unknown"></div>
-                                        <span>Disconnected</span>
+                                        <span style="font-size: 0.9em; font-weight: 500;">Disconnected</span>
                                     </div>
                                 </div>
                                 
                                 <div class="panel-content">
-                                    <div class="connection-info" id="power-connection-info">
-                                        <div class="info-row">
-                                            <label>Device Type:</label>
-                                            <span>ODA Power Supply</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <label>Host:</label>
-                                            <span id="power-host">192.168.11.1</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <label>Port:</label>
-                                            <span id="power-port">5000</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <label>Channel:</label>
-                                            <span id="power-channel">1</span>
-                                        </div>
-                                        <div class="info-row">
-                                            <label>Device Identity:</label>
-                                            <span id="power-device-identity">--</span>
-                                        </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; font-size: 0.9em;">
+                                        <div><strong>Host:</strong> <span id="power-host">192.168.11.1</span></div>
+                                        <div><strong>Port:</strong> <span id="power-port">5000</span></div>
+                                        <div><strong>Channel:</strong> <span id="power-channel">1</span></div>
+                                        <div><strong>Identity:</strong> <span id="power-device-identity">--</span></div>
                                     </div>
-                                    
-                                    <div class="connection-controls">
-                                        <button class="btn btn-success" id="power-connect-btn">
-                                            <i class="icon-connect"></i>
-                                            Connect
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-success" id="power-connect-btn" style="flex: 1;">
+                                            <i class="icon-connect"></i> Connect
                                         </button>
-                                        <button class="btn btn-secondary" id="power-disconnect-btn" disabled>
-                                            <i class="icon-disconnect"></i>
-                                            Disconnect
+                                        <button class="btn btn-secondary" id="power-disconnect-btn" disabled style="flex: 1;">
+                                            <i class="icon-disconnect"></i> Disconnect
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Live Readings Panel -->
-                            <div class="control-panel readings-panel">
-                                <div class="panel-header">
-                                    <h3><i class="icon-meter"></i> Live Readings</h3>
-                                    <button class="btn btn-sm btn-outline" id="power-refresh-readings-btn">
-                                        <i class="icon-refresh"></i>
-                                        Refresh
+                            <div class="control-panel readings-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 600; color: #495057;"><i class="icon-meter" style="margin-right: 8px;"></i>Live Readings</h3>
+                                    <button class="btn btn-sm btn-outline" id="power-refresh-readings-btn" style="font-size: 0.8em; padding: 4px 8px;">
+                                        <i class="icon-refresh"></i> Refresh
                                     </button>
                                 </div>
                                 
                                 <div class="panel-content">
-                                    <div class="readings-grid">
-                                        <div class="reading-card voltage-card">
-                                            <div class="reading-label">
-                                                <i class="icon-voltage"></i>
-                                                Voltage
-                                            </div>
-                                            <div class="reading-value" id="power-voltage-reading">
-                                                <span class="value">---.--</span>
-                                                <span class="unit">V</span>
-                                            </div>
-                                            <div class="reading-status" id="power-voltage-status">
-                                                <div class="status-dot status-unknown"></div>
-                                                <span>Unknown</span>
+                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                                        <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                            <div style="font-size: 0.8em; color: #6c757d; margin-bottom: 4px;">Voltage</div>
+                                            <div id="power-voltage-reading" style="font-size: 1.2em; font-weight: bold; color: #007bff;">
+                                                <span class="value">---.--</span> <span class="unit">V</span>
                                             </div>
                                         </div>
-                                        
-                                        <div class="reading-card current-card">
-                                            <div class="reading-label">
-                                                <i class="icon-current"></i>
-                                                Current
-                                            </div>
-                                            <div class="reading-value" id="power-current-reading">
-                                                <span class="value">---.--</span>
-                                                <span class="unit">A</span>
-                                            </div>
-                                            <div class="reading-status" id="power-current-status">
-                                                <div class="status-dot status-unknown"></div>
-                                                <span>Unknown</span>
+                                        <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                            <div style="font-size: 0.8em; color: #6c757d; margin-bottom: 4px;">Current</div>
+                                            <div id="power-current-reading" style="font-size: 1.2em; font-weight: bold; color: #28a745;">
+                                                <span class="value">---.--</span> <span class="unit">A</span>
                                             </div>
                                         </div>
-                                        
-                                        <div class="reading-card power-card">
-                                            <div class="reading-label">
-                                                <i class="icon-power"></i>
-                                                Power
-                                            </div>
-                                            <div class="reading-value" id="power-power-reading">
-                                                <span class="value">---.--</span>
-                                                <span class="unit">W</span>
-                                            </div>
-                                            <div class="reading-status" id="power-power-status">
-                                                <div class="status-dot status-unknown"></div>
-                                                <span>Calculated</span>
+                                        <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                            <div style="font-size: 0.8em; color: #6c757d; margin-bottom: 4px;">Power</div>
+                                            <div id="power-power-reading" style="font-size: 1.2em; font-weight: bold; color: #fd7e14;">
+                                                <span class="value">---.--</span> <span class="unit">W</span>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="readings-chart" id="power-readings-chart">
-                                        <!-- Chart will be rendered here -->
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Output Control Panel -->
-                            <div class="control-panel output-panel">
-                                <div class="panel-header">
-                                    <h3><i class="icon-output"></i> Output Control</h3>
-                                    <div class="output-status" id="power-output-status">
+                            <div class="control-panel output-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 600; color: #495057;"><i class="icon-output" style="margin-right: 8px;"></i>Output Control</h3>
+                                    <div class="output-status" id="power-output-status" style="display: flex; align-items: center; gap: 6px;">
                                         <div class="status-dot status-unknown"></div>
-                                        <span>Unknown</span>
+                                        <span style="font-size: 0.9em; font-weight: 500;">Unknown</span>
                                     </div>
                                 </div>
                                 
                                 <div class="panel-content">
-                                    <div class="output-controls">
-                                        <button class="btn btn-danger btn-lg output-btn" id="power-enable-output-btn" disabled>
-                                            <i class="icon-power-on"></i>
-                                            Enable Output
-                                            <span class="btn-subtitle">⚠️ HIGH VOLTAGE WARNING</span>
+                                    <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                                        <button class="btn btn-danger" id="power-enable-output-btn" disabled style="flex: 1; padding: 12px;">
+                                            <i class="icon-power-on"></i> Enable Output
                                         </button>
-                                        
-                                        <button class="btn btn-secondary output-btn" id="power-disable-output-btn" disabled>
-                                            <i class="icon-power-off"></i>
-                                            Disable Output
-                                            <span class="btn-subtitle">Safe shutdown</span>
+                                        <button class="btn btn-secondary" id="power-disable-output-btn" disabled style="flex: 1; padding: 12px;">
+                                            <i class="icon-power-off"></i> Disable
                                         </button>
                                     </div>
-                                    
-                                    <div class="safety-notice high-voltage-warning">
-                                        <div class="warning-content">
-                                            <i class="icon-warning"></i>
-                                            <div class="warning-text">
-                                                <div class="warning-title">HIGH VOLTAGE DANGER</div>
-                                                <div class="warning-message">
-                                                    Ensure all safety precautions are in place before enabling output.
-                                                    Verify proper connections and safety equipment.
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div style="padding: 8px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; font-size: 0.8em; color: #856404;">
+                                        <i class="icon-warning"></i> <strong>HIGH VOLTAGE:</strong> Ensure safety precautions before enabling output.
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Voltage Control Panel -->
-                            <div class="control-panel voltage-control-panel">
-                                <div class="panel-header">
-                                    <h3><i class="icon-voltage"></i> Voltage Control</h3>
-                                    <div class="current-setting" id="power-voltage-setting">
-                                        Current: <span>---.-- V</span>
+                            <div class="control-panel voltage-control-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 600; color: #495057;"><i class="icon-voltage" style="margin-right: 8px;"></i>Voltage Control</h3>
+                                    <div class="current-setting" id="power-voltage-setting" style="font-size: 0.9em; font-weight: 500; color: #007bff;">
+                                        <span>---.-- V</span>
                                     </div>
                                 </div>
                                 
                                 <div class="panel-content">
-                                    <div class="control-form">
-                                        <div class="form-group">
-                                            <label for="voltage-setpoint">Voltage Setpoint (V)</label>
-                                            <div class="input-group">
-                                                <input type="number" id="voltage-setpoint" class="form-control" 
-                                                       min="0" max="50" step="0.01" placeholder="0.00">
-                                                <div class="input-group-append">
-                                                    <span class="input-group-text">V</span>
-                                                </div>
-                                            </div>
-                                            <div class="input-help">Range: 0.00 - 50.00 V</div>
+                                    <div style="margin-bottom: 12px;">
+                                        <label style="font-size: 0.9em; font-weight: 500; margin-bottom: 6px; display: block;">Voltage Setpoint (0-50V)</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="number" id="voltage-setpoint" style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;" 
+                                                   min="0" max="50" step="0.01" placeholder="0.00">
+                                            <span style="padding: 8px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9em;">V</span>
                                         </div>
-                                        
-                                        <div class="voltage-presets">
-                                            <div class="presets-label">Quick Presets:</div>
-                                            <div class="preset-buttons">
-                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="0">0V</button>
-                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="3.3">3.3V</button>
-                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="5">5V</button>
-                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="12">12V</button>
-                                                <button class="btn btn-sm btn-outline preset-btn" data-voltage="24">24V</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <button class="btn btn-primary btn-lg" id="power-set-voltage-btn" disabled>
-                                            <i class="icon-set"></i>
-                                            Set Voltage
-                                        </button>
                                     </div>
+                                    <div style="display: flex; gap: 4px; margin-bottom: 15px;">
+                                        <button class="btn btn-sm btn-outline preset-btn" data-voltage="0" style="flex: 1; padding: 4px; font-size: 0.8em;">0V</button>
+                                        <button class="btn btn-sm btn-outline preset-btn" data-voltage="3.3" style="flex: 1; padding: 4px; font-size: 0.8em;">3.3V</button>
+                                        <button class="btn btn-sm btn-outline preset-btn" data-voltage="5" style="flex: 1; padding: 4px; font-size: 0.8em;">5V</button>
+                                        <button class="btn btn-sm btn-outline preset-btn" data-voltage="12" style="flex: 1; padding: 4px; font-size: 0.8em;">12V</button>
+                                        <button class="btn btn-sm btn-outline preset-btn" data-voltage="24" style="flex: 1; padding: 4px; font-size: 0.8em;">24V</button>
+                                    </div>
+                                    <button class="btn btn-primary" id="power-set-voltage-btn" disabled style="width: 100%; padding: 10px;">
+                                        <i class="icon-set"></i> Set Voltage
+                                    </button>
                                 </div>
                             </div>
 
                             <!-- Current Control Panel -->
-                            <div class="control-panel current-control-panel">
-                                <div class="panel-header">
-                                    <h3><i class="icon-current"></i> Current Control</h3>
-                                    <div class="panel-tabs">
-                                        <button class="tab-btn active" data-tab="current">Current</button>
-                                        <button class="tab-btn" data-tab="limit">Limit</button>
+                            <div class="control-panel current-control-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 600; color: #495057;"><i class="icon-current" style="margin-right: 8px;"></i>Current Control</h3>
+                                    <div class="panel-tabs" style="display: flex; gap: 4px;">
+                                        <button class="tab-btn active" data-tab="current" style="padding: 4px 8px; font-size: 0.8em; border-radius: 4px;">Current</button>
+                                        <button class="tab-btn" data-tab="limit" style="padding: 4px 8px; font-size: 0.8em; border-radius: 4px;">Limit</button>
                                     </div>
                                 </div>
                                 
                                 <div class="panel-content">
-                                    <!-- Current Setting Tab -->
                                     <div class="tab-content active" id="current-tab">
-                                        <div class="current-setting-display" id="power-current-setting">
-                                            Current Setting: <span>---.-- A</span>
-                                        </div>
-                                        
-                                        <div class="control-form">
-                                            <div class="form-group">
-                                                <label for="current-setpoint">Current Setpoint (A)</label>
-                                                <div class="input-group">
-                                                    <input type="number" id="current-setpoint" class="form-control" 
-                                                           min="0" max="50" step="0.01" placeholder="0.00">
-                                                    <div class="input-group-append">
-                                                        <span class="input-group-text">A</span>
-                                                    </div>
-                                                </div>
-                                                <div class="input-help">Range: 0.00 - 50.00 A</div>
-                                            </div>
-                                            
-                                            <button class="btn btn-primary btn-lg" id="power-set-current-btn" disabled>
-                                                <i class="icon-set"></i>
-                                                Set Current
-                                            </button>
+                                        <div style="margin-bottom: 12px; font-size: 0.9em; color: #007bff;">Setting: <span id="power-current-setting-value">---.-- A</span></div>
+                                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                            <input type="number" id="current-setpoint" style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;" 
+                                                   min="0" max="50" step="0.01" placeholder="Current (A)">
+                                            <button class="btn btn-primary" id="power-set-current-btn" disabled style="padding: 8px 16px;">Set</button>
                                         </div>
                                     </div>
-                                    
-                                    <!-- Current Limit Tab -->
-                                    <div class="tab-content" id="limit-tab">
-                                        <div class="current-limit-display" id="power-current-limit-setting">
-                                            Current Limit: <span>---.-- A</span>
+                                    <div class="tab-content" id="limit-tab" style="display: none;">
+                                        <div style="margin-bottom: 12px; font-size: 0.9em; color: #dc3545;">Limit: <span id="power-current-limit-setting-value">---.-- A</span></div>
+                                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                            <input type="number" id="current-limit-setpoint" style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;" 
+                                                   min="0" max="50" step="0.01" placeholder="Limit (A)">
+                                            <button class="btn btn-primary" id="power-set-current-limit-btn" disabled style="padding: 8px 16px;">Set</button>
                                         </div>
-                                        
-                                        <div class="control-form">
-                                            <div class="form-group">
-                                                <label for="current-limit-setpoint">Current Limit (A)</label>
-                                                <div class="input-group">
-                                                    <input type="number" id="current-limit-setpoint" class="form-control" 
-                                                           min="0" max="50" step="0.01" placeholder="0.00">
-                                                    <div class="input-group-append">
-                                                        <span class="input-group-text">A</span>
-                                                    </div>
-                                                </div>
-                                                <div class="input-help">Range: 0.00 - 50.00 A</div>
-                                            </div>
-                                            
-                                            <div class="limit-info">
-                                                <i class="icon-info"></i>
-                                                <span>Current limit provides overcurrent protection</span>
-                                            </div>
-                                            
-                                            <button class="btn btn-primary btn-lg" id="power-set-current-limit-btn" disabled>
-                                                <i class="icon-set"></i>
-                                                Set Current Limit
-                                            </button>
-                                        </div>
+                                        <div style="font-size: 0.8em; color: #6c757d;"><i class="icon-info"></i> Provides overcurrent protection</div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Operations Log Panel -->
-                            <div class="control-panel log-panel">
-                                <div class="panel-header">
-                                    <h3><i class="icon-log"></i> Operations Log</h3>
-                                    <div class="log-controls">
-                                        <button class="btn btn-sm btn-outline" id="power-clear-log-btn">
-                                            <i class="icon-clear"></i>
-                                            Clear
+                            <div class="control-panel log-panel" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 600; color: #495057;"><i class="icon-log" style="margin-right: 8px;"></i>Operations Log</h3>
+                                    <div class="log-controls" style="display: flex; gap: 6px;">
+                                        <button class="btn btn-sm btn-outline" id="power-clear-log-btn" style="font-size: 0.8em; padding: 4px 8px;">
+                                            <i class="icon-clear"></i> Clear
                                         </button>
-                                        <button class="btn btn-sm btn-outline" id="power-export-log-btn">
-                                            <i class="icon-export"></i>
-                                            Export
+                                        <button class="btn btn-sm btn-outline" id="power-export-log-btn" style="font-size: 0.8em; padding: 4px 8px;">
+                                            <i class="icon-export"></i> Export
                                         </button>
                                     </div>
                                 </div>
                                 
                                 <div class="panel-content">
-                                    <div class="log-viewer" id="power-log-viewer">
-                                        <div class="log-entry">
-                                            <span class="timestamp">[--:--:--]</span>
-                                            <span class="level info">INFO</span>
-                                            <span class="message">Power Control Panel initialized - EMBEDDED VERSION</span>
-                                        </div>
+                                    <div id="power-log-viewer" style="height: 120px; overflow-y: auto; padding: 8px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; font-family: monospace; font-size: 0.8em;">
+                                        <div style="color: #28a745;">[--:--:--] <span style="color: #007bff;">INFO</span> Power Control Panel initialized</div>
                                     </div>
                                 </div>
                             </div>
