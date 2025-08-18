@@ -379,6 +379,17 @@ export class RobotControlPageManager {
                         await this.updatePosition();
                         return true; // Motion completed
                     }
+                    
+                    // Check if emergency stop was triggered
+                    if (this.motionStatus === 'stopped' || this.motionStatus === 'emergency_stopped') {
+                        console.log('🛑 Emergency stop detected, stopping motion monitoring');
+                        this.updatePollingInterval(); // Switch back to normal polling
+                        
+                        // Final status refresh for emergency stop
+                        await this.refreshStatus();
+                        await this.updatePosition();
+                        return true; // Motion monitoring should stop
+                    }
                 } else {
                     console.warn('❌ Motion check failed: Invalid response', response);
                 }
@@ -720,6 +731,11 @@ export class RobotControlPageManager {
                 this.addLogEntry('warning', `Emergency stop executed for axis ${this.axisId}`);
                 this.uiManager.showNotification('Emergency stop executed successfully', 'warning');
                 console.log('🛑 [DEBUG] Emergency stop completed successfully');
+                
+                // Refresh status immediately to update servo state and position
+                await this.refreshStatus();
+                await this.updatePosition();
+                console.log('🛑 [DEBUG] Status refreshed after emergency stop');
             } else {
                 console.error('🛑 [DEBUG] Emergency stop API returned failure:', response.error);
                 throw new Error(response.error || 'Emergency stop failed');

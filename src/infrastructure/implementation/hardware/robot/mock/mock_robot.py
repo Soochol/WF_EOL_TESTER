@@ -316,6 +316,10 @@ class MockRobot(RobotService):
             # Immediate stop - no deceleration
             self._motion_status = MotionStatus.IDLE
             self._axis_velocity = 0.0
+            
+            # Disable servo for safety during emergency stop
+            self._servo_enabled = False
+            logger.info(f"Servo disabled for safety during emergency stop on axis {axis}")
 
             logger.info(
                 f"Mock robot axis {axis} emergency stopped at position {self._current_position}μm"
