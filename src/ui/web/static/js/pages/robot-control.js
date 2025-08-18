@@ -306,6 +306,7 @@ export class RobotControlPageManager {
         // Position update every 2 seconds when connected
         this.positionUpdateInterval = setInterval(() => {
             if (this.isConnected) {
+                console.log('🔄 Position polling: updating position...'); // Debug log
                 this.updatePosition();
             }
         }, 2000);
@@ -683,8 +684,11 @@ export class RobotControlPageManager {
                 this.addLogEntry('info', `Homing axis ${this.axisId} to origin`);
                 this.uiManager.showNotification('Axis homing started', 'info');
                 
-                // Update position display after homing completes
-                setTimeout(() => this.updatePosition(), 3000);
+                // Update position display and refresh full status after homing completes
+                setTimeout(() => {
+                    this.updatePosition();
+                    this.refreshStatus(); // Refresh full status including servo state
+                }, 3000);
             } else {
                 throw new Error(response.error || 'Homing failed');
             }
@@ -756,6 +760,12 @@ export class RobotControlPageManager {
                 this.updateMotionStatus('moving');
                 this.addLogEntry('info', `Moving axis ${this.axisId} to position ${position.toFixed(3)} μm`);
                 this.uiManager.showNotification(`Moving to position ${position.toFixed(3)} μm`, 'info');
+                
+                // Update position and refresh full status after movement completes
+                setTimeout(() => {
+                    this.updatePosition();
+                    this.refreshStatus(); // Refresh full status including servo state
+                }, 3000);
             } else {
                 throw new Error(response.error || 'Absolute move failed');
             }
@@ -827,6 +837,12 @@ export class RobotControlPageManager {
                 this.updateMotionStatus('moving');
                 this.addLogEntry('info', `Moving axis ${this.axisId} by distance ${distance.toFixed(3)} μm`);
                 this.uiManager.showNotification(`Moving distance ${distance.toFixed(3)} μm`, 'info');
+                
+                // Update position and refresh full status after movement completes
+                setTimeout(() => {
+                    this.updatePosition();
+                    this.refreshStatus(); // Refresh full status including servo state
+                }, 3000);
             } else {
                 throw new Error(response.error || 'Relative move failed');
             }
@@ -917,11 +933,17 @@ export class RobotControlPageManager {
      */
     async updatePosition() {
         try {
+            console.log(`📍 Fetching position for axis ${this.axisId}...`); // Debug log
             const response = await this.apiClient.get(`/hardware/robot/position?axis_id=${this.axisId}`);
+            
+            console.log('📍 Position API response:', response); // Debug log
             
             if (response.success && response.data) {
                 this.currentPosition = response.data.position;
+                console.log(`📍 Position updated: ${this.currentPosition} μm`); // Debug log
                 this.updatePositionDisplay(this.currentPosition);
+            } else {
+                console.warn('📍 Position API returned no data or failed:', response);
             }
             
         } catch (error) {
@@ -990,7 +1012,10 @@ export class RobotControlPageManager {
      */
     async refreshStatus() {
         try {
+            console.log('🔄 Refreshing robot status...'); // Debug log
             const response = await this.apiClient.get('/hardware/robot/status');
+            
+            console.log('🔄 Status API response:', response); // Debug log
             
             if (response.success && response.data) {
                 const status = response.data;
@@ -1000,13 +1025,20 @@ export class RobotControlPageManager {
                 this.isInitialized = status.initialized || false;
                 this.motionStatus = status.motion_status || 'idle';
                 
+                console.log(`🔄 Status updated - Connected: ${this.isConnected}, Servo: ${this.servoEnabled}, Motion: ${this.motionStatus}`); // Debug log
+                
                 // Update displays
                 this.updateConnectionStatus(this.isConnected);
                 this.updateServoStatus(this.servoEnabled);
                 this.updateMotionStatus(this.motionStatus);
                 this.updateInitializationStatus(this.isInitialized);
                 
-                if (status.position !== undefined) {
+                // Handle position from status response (API returns current_position)
+                if (status.current_position !== undefined) {
+                    this.currentPosition = status.current_position;
+                    this.updatePositionDisplay(this.currentPosition);
+                } else if (status.position !== undefined) {
+                    // Fallback for compatibility
                     this.currentPosition = status.position;
                     this.updatePositionDisplay(this.currentPosition);
                 }
