@@ -231,8 +231,6 @@ class AjinextekDIO(DigitalIOService):
 
             # Return hardware value directly as bool
             result = bool(hw_value)
-
-            logger.debug(f"Read input channel {channel}: {result}")
             return result
 
         except Exception as e:
@@ -277,7 +275,6 @@ class AjinextekDIO(DigitalIOService):
             success = await self._write_hardware_output(channel, hw_value)
 
             if success:
-                logger.debug(f"Write output channel {channel}: {'HIGH' if level else 'LOW'}")
                 return True
             else:
                 logger.warning(f"Failed to write output channel {channel}")

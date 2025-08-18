@@ -242,8 +242,6 @@ class DIOMonitoringService:
         try:
             # Read all input channels at once
             all_states = await self.digital_io.read_all_inputs()
-
-            logger.debug(f"Read all inputs: {len(all_states)} channels")
             return all_states
 
         except Exception as e:
