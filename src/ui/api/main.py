@@ -176,6 +176,8 @@ if __name__ == "__main__":
         "logs/api_server.log",
         rotation="1 day",
         retention="30 days",
+        enqueue=True,      # Background thread processing to prevent file lock conflicts
+        catch=True,        # Prevent logging errors from crashing the application
         level="INFO",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
     )

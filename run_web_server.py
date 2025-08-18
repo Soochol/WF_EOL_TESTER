@@ -42,6 +42,8 @@ logger.add(
     log_dir / "web_server.log",
     rotation="1 day",
     retention="30 days",
+    enqueue=True,      # Background thread processing to prevent file lock conflicts
+    catch=True,        # Prevent logging errors from crashing the application
     level="DEBUG",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
 )

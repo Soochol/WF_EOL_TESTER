@@ -334,9 +334,10 @@ def setup_logging(debug: bool = False) -> None:
 
     logger.add(
         logs_directory / EOL_TESTER_LOG_FILENAME,
-        rotation=DEFAULT_LOG_ROTATION_SIZE,
+        rotation="1 day",  # Time-based rotation for predictability
         retention=DEFAULT_LOG_RETENTION_PERIOD,
-        compression="zip",
+        enqueue=True,      # Background thread processing to prevent file lock conflicts
+        catch=True,        # Prevent logging errors from crashing the application
         level="DEBUG",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name} - {message}",
     )
