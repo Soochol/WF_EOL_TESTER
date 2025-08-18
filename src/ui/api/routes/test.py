@@ -40,7 +40,7 @@ async def start_eol_force_test(
     """Start EOL force test execution"""
     try:
         # Get use case
-        eol_test_use_case = container.eol_force_test_use_case()
+        eol_test_use_case = await container.eol_force_test_use_case()
 
         # Create DUT entity
         from domain.value_objects.identifiers import DUTId

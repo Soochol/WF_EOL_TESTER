@@ -155,7 +155,7 @@ async def get_services_status(container: DIContainer = Depends(get_container)):
 
         # Test hardware service facade
         try:
-            _ = container.hardware_service_facade()
+            _ = await container.hardware_service_facade()
             services_status["hardware_service_facade"] = "available"
         except Exception as e:
             services_status["hardware_service_facade"] = f"error: {str(e)}"
@@ -169,13 +169,13 @@ async def get_services_status(container: DIContainer = Depends(get_container)):
 
         # Test use cases
         try:
-            _ = container.eol_force_test_use_case()
+            _ = await container.eol_force_test_use_case()
             services_status["eol_force_test_use_case"] = "available"
         except Exception as e:
             services_status["eol_force_test_use_case"] = f"error: {str(e)}"
 
         try:
-            _ = container.robot_home_use_case()
+            _ = await container.robot_home_use_case()
             services_status["robot_home_use_case"] = "available"
         except Exception as e:
             services_status["robot_home_use_case"] = f"error: {str(e)}"

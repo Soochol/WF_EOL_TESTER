@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
         try:
             if hasattr(app.state, "container"):
                 # Get hardware services for cleanup
-                hardware_services = container.hardware_service_facade()
+                hardware_services = await container.hardware_service_facade()
                 if hardware_services:
                     await hardware_services.shutdown_hardware()
                     logger.info("Hardware services shutdown completed")
@@ -175,13 +175,13 @@ if __name__ == "__main__":
     # Configure logging with date-based filename
     current_date = datetime.now().strftime("%Y-%m-%d")
     api_server_log_filename = f"logs/api_server_{current_date}.log"
-    
+
     logger.add(
         api_server_log_filename,
-        rotation=None,     # No rotation needed - using date-based filenames
-        retention=None,    # Manual cleanup - no automatic retention
-        enqueue=True,      # Background thread processing to prevent file lock conflicts
-        catch=True,        # Prevent logging errors from crashing the application
+        rotation=None,  # No rotation needed - using date-based filenames
+        retention=None,  # Manual cleanup - no automatic retention
+        enqueue=True,  # Background thread processing to prevent file lock conflicts
+        catch=True,  # Prevent logging errors from crashing the application
         level="INFO",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
     )

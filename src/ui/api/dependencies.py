@@ -21,15 +21,6 @@ from application.use_cases.robot_home import RobotHomeUseCase
 from infrastructure.implementation.configuration.yaml_configuration import (
     YamlConfiguration,
 )
-from infrastructure.implementation.hardware.digital_io.mock.mock_digital_io import (
-    MockDigitalIO,
-)
-from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
-    MockLoadCell,
-)
-from infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
-from infrastructure.implementation.hardware.power.mock.mock_power import MockPower
-from infrastructure.implementation.hardware.robot.mock.mock_robot import MockRobot
 
 
 class DIContainer:
@@ -50,18 +41,27 @@ class DIContainer:
         self._eol_force_test_use_case: Optional[EOLForceTestUseCase] = None
         # Note: robot_home_use_case is created fresh each time with current config
 
-    def hardware_service_facade(self) -> HardwareServiceFacade:
+    async def hardware_service_facade(self) -> HardwareServiceFacade:
         """Get or create hardware service facade"""
         if self._hardware_service_facade is None:
             logger.info("Initializing hardware services...")
 
-            # For now, use mock implementations
-            # In production, these would be configured based on hardware_configuration.yaml
-            robot_service = MockRobot()
-            mcu_service = MockMCU()
-            loadcell_service = MockLoadCell()
-            power_service = MockPower()
-            digital_io_service = MockDigitalIO(config={})
+            # Load hardware model configuration (following CLI pattern)
+            from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
+            from infrastructure.factory import ServiceFactory
+            
+            yaml_config = YamlConfiguration()
+            hardware_model = await yaml_config.load_hardware_model()
+            hw_model_dict = hardware_model.to_dict()
+            
+            logger.info(f"Loaded hardware model configuration: {hw_model_dict}")
+
+            # Create services based on hardware model configuration
+            robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
+            mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
+            loadcell_service = ServiceFactory.create_loadcell_service({"model": hw_model_dict["loadcell"]})
+            power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
+            digital_io_service = ServiceFactory.create_digital_io_service({"model": hw_model_dict["digital_io"]})
 
             self._hardware_service_facade = HardwareServiceFacade(
                 robot_service=robot_service,
@@ -71,7 +71,7 @@ class DIContainer:
                 digital_io_service=digital_io_service,
             )
 
-            logger.info("Hardware service facade initialized")
+            logger.info("Hardware service facade initialized with model-based configuration")
 
         return self._hardware_service_facade
 
@@ -126,12 +126,12 @@ class DIContainer:
             logger.info("Exception handler initialized")
         return self._exception_handler
 
-    def eol_force_test_use_case(self) -> EOLForceTestUseCase:
+    async def eol_force_test_use_case(self) -> EOLForceTestUseCase:
         """Get or create EOL force test use case"""
         if self._eol_force_test_use_case is None:
             logger.info("Initializing EOL force test use case...")
 
-            hardware_services = self.hardware_service_facade()
+            hardware_services = await self.hardware_service_facade()
             configuration_service = self.configuration_service()
             configuration_validator = self.configuration_validator()
             test_result_evaluator = self.test_result_evaluator()
@@ -157,7 +157,7 @@ class DIContainer:
         # This ensures we always use the latest hardware config
         logger.info("Creating robot home use case with current configuration...")
 
-        hardware_services = self.hardware_service_facade()
+        hardware_services = await self.hardware_service_facade()
         configuration_service = self.configuration_service()
         
         # Load current hardware configuration
