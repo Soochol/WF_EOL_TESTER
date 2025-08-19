@@ -380,21 +380,197 @@ class LMAMCU(MCUService):
         except Exception as e:
             logger.error(f"PACKET_ANALYSIS_ERROR: {e}")
 
+    def _classify_packet(self, packet: bytes) -> str:
+        """
+        Classify packet type based on CMD byte for logging and handling
+        
+        Args:
+            packet: Raw packet bytes
+            
+        Returns:
+            String description of packet type
+        """
+        if len(packet) < 3:
+            return "INVALID_PACKET"
+            
+        cmd = packet[2]
+        if cmd == 0x07:
+            return "TEMPERATURE_RESPONSE"
+        elif cmd == 0x0B:
+            return "TEMPERATURE_REACHED_SIGNAL"
+        elif cmd == 0x00:
+            return "ACK_RESPONSE"
+        elif cmd == 0x04:
+            return "INIT_RESPONSE"
+        else:
+            return f"UNKNOWN_CMD_0x{cmd:02X}"
+    
+    def _parse_temperature_packet(self, packet: bytes) -> tuple[float, float]:
+        """
+        Parse temperature data from temperature response packet
+        
+        Args:
+            packet: Temperature response packet (CMD=0x07)
+            
+        Returns:
+            Tuple of (ir_temp, outside_temp) in Celsius
+        """
+        if len(packet) < 14 or packet[2] != 0x07:
+            raise ValueError("Invalid temperature packet")
+            
+        # Extract temperature data (8 bytes total)
+        ir_temp_data = packet[4:8]
+        outside_temp_data = packet[8:12]
+        
+        ir_temp_scaled = struct.unpack(">I", ir_temp_data)[0]
+        outside_temp_scaled = struct.unpack(">I", outside_temp_data)[0]
+        
+        # Convert to actual temperature (divide by 10)
+        ir_temp_celsius = ir_temp_scaled / 10.0
+        outside_temp_celsius = outside_temp_scaled / 10.0
+        
+        return ir_temp_celsius, outside_temp_celsius
+
     async def _send_packet(self, packet_hex: str, description: str = "") -> Optional[bytes]:
         """Async wrapper for packet transmission"""
         return self._send_packet_sync(packet_hex, description)
 
     def _wait_for_additional_response(
-        self, timeout: float = 15.0, description: str = "", quiet: bool = False
+        self, timeout: float = 15.0, description: str = "", quiet: bool = False, 
+        expected_cmd: Optional[int] = None
     ) -> Optional[bytes]:
         """
-        Wait for additional response (temperature reached signals, etc.)
-        Used for operations that require two-phase responses
+        Enhanced wait for additional response with smart packet handling and temperature monitoring
+        
+        Features:
+        - Periodic temperature requests during long waits
+        - Packet classification and intelligent logging
+        - Handles out-of-order packets gracefully
+        - Continues waiting until expected packet arrives
 
         Args:
             timeout: Maximum wait time in seconds
             description: Description of what we're waiting for
             quiet: If True, suppress intermediate logging (for long waits like heating)
+            expected_cmd: Expected CMD byte (e.g., 0x0B for temperature reached)
+        """
+        self._ensure_connected()
+
+        # First check if we have packets in the buffer from previous receive
+        if self._packet_buffer:
+            packet = self._packet_buffer.pop(0)
+            packet_type = self._classify_packet(packet)
+            
+            # Log buffered packet with classification
+            logger.info(f"Using buffered packet: {packet.hex().upper()} ({packet_type})")
+            
+            # Handle temperature response packets
+            if packet[2] == 0x07:  # Temperature response
+                self._log_temperature_data(packet)
+            
+            # If this is the expected packet, return it
+            if expected_cmd is None or (len(packet) >= 3 and packet[2] == expected_cmd):
+                return packet
+            # Otherwise, keep looking for the expected packet
+
+        if not quiet:
+            logger.info(f"WAITING for additional response: {description} (timeout: {timeout}s)")
+
+        start_time = time.time()
+        last_temp_request = 0
+        temp_request_interval = 3.0  # Request temperature every 3 seconds
+        response_data = b""
+
+        while time.time() - start_time < timeout:
+            current_time = time.time()
+            
+            # Send periodic temperature requests for long waits (heating/cooling)
+            if (current_time - last_temp_request > temp_request_interval and 
+                timeout > 10.0 and "temperature" in description.lower()):
+                try:
+                    temp_packet_hex = "FFFF0700FEFE"
+                    temp_bytes = bytes.fromhex(temp_packet_hex)
+                    if self.serial_conn:
+                        self.serial_conn.write(temp_bytes)
+                        elapsed = current_time - start_time
+                        logger.info(f"PC -> MCU: {temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)")
+                        last_temp_request = current_time
+                except Exception as e:
+                    logger.warning(f"Failed to send temperature request: {e}")
+            
+            # Check for incoming data
+            if self.serial_conn and self.serial_conn.in_waiting > 0:
+                new_data = self.serial_conn.read(self.serial_conn.in_waiting)
+                response_data += new_data
+
+                # Log raw data chunk
+                chunk_hex = new_data.hex().upper()
+                elapsed_ms = (current_time - start_time) * 1000
+                if not quiet:
+                    logger.debug(f"PC <- MCU: {chunk_hex} @ +{elapsed_ms:.1f}ms")
+
+                # Try to extract complete packet(s)
+                while response_data:
+                    valid_packet = self._extract_valid_packet(response_data)
+                    if not valid_packet:
+                        break
+                        
+                    # Remove processed packet from buffer
+                    packet_len = len(valid_packet)
+                    response_data = response_data[packet_len:]
+                    
+                    # Classify and log the packet
+                    packet_type = self._classify_packet(valid_packet)
+                    elapsed_ms = (current_time - start_time) * 1000
+                    logger.info(f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms")
+                    
+                    # Handle different packet types
+                    if valid_packet[2] == 0x07:  # Temperature response
+                        self._log_temperature_data(valid_packet)
+                    elif valid_packet[2] == 0x0B:  # Temperature reached signal
+                        logger.info("🌡️  Temperature reached signal received!")
+                    
+                    # Check if this is the packet we're waiting for
+                    if expected_cmd is None or valid_packet[2] == expected_cmd:
+                        return valid_packet
+                    else:
+                        # Not the packet we want, but log it and continue waiting
+                        if expected_cmd is not None:
+                            logger.debug(f"Received {packet_type}, but waiting for CMD=0x{expected_cmd:02X}")
+                        else:
+                            logger.debug(f"Received {packet_type} (no specific packet expected)")
+
+            # Small delay to prevent busy waiting
+            time.sleep(0.01)
+
+        # Timeout reached
+        elapsed_s = time.time() - start_time
+        if not quiet:
+            logger.warning(f"ADDITIONAL_TIMEOUT with NO additional response data received ({elapsed_s:.1f}s)")
+        
+        return None
+    
+    def _log_temperature_data(self, packet: bytes) -> None:
+        """
+        Parse and log temperature data from temperature response packet
+        
+        Args:
+            packet: Temperature response packet (CMD=0x07)
+        """
+        try:
+            if len(packet) >= 14 and packet[2] == 0x07:
+                ir_temp, outside_temp = self._parse_temperature_packet(packet)
+                logger.info(f"🌡️  Current temperature - IR: {ir_temp:.1f}°C, Outside: {outside_temp:.1f}°C")
+            else:
+                logger.warning(f"Invalid temperature packet: {packet.hex().upper()}")
+        except Exception as e:
+            logger.error(f"Failed to parse temperature data: {e}")
+
+    def _wait_for_additional_response_legacy(
+        self, timeout: float = 15.0, description: str = "", quiet: bool = False
+    ) -> Optional[bytes]:
+        """
+        Legacy version of additional response waiting (kept for compatibility)
         """
         self._ensure_connected()
 
@@ -634,7 +810,7 @@ class LMAMCU(MCUService):
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
-                timeout=10.0, description="Operating temperature reached signal"
+                timeout=10.0, description="Operating temperature reached signal", expected_cmd=0x0B
             )
 
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
@@ -678,7 +854,7 @@ class LMAMCU(MCUService):
 
             # Second response (cooling complete signal)
             cooling_response = self._wait_for_additional_response(
-                timeout=120.0, description="Cooling temperature reached signal"
+                timeout=120.0, description="Cooling temperature reached signal", expected_cmd=0x0D
             )
 
             if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0D:
@@ -851,7 +1027,7 @@ class LMAMCU(MCUService):
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
-                timeout=13.0, description="Temperature reached signal", quiet=True
+                timeout=60.0, description="Standby temperature reached signal", quiet=False, expected_cmd=0x0B
             )
 
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
