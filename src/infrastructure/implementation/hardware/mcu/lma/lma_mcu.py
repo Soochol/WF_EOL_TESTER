@@ -492,7 +492,7 @@ class LMAMCU(MCUService):
             
             # Send periodic temperature requests for long waits (heating/cooling)
             if (current_time - last_temp_request > temp_request_interval and 
-                timeout > 10.0 and "temperature" in description.lower()):
+                timeout > 10.0 and ("temperature" in description.lower() or "cooling" in description.lower())):
                 try:
                     temp_packet_hex = "FFFF0700FEFE"
                     temp_bytes = bytes.fromhex(temp_packet_hex)
