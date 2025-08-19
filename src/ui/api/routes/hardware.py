@@ -1460,17 +1460,11 @@ async def connect_loadcell(request: Dict = {}, hardware_services: HardwareServic
         parity = request.get("parity", "N") if request else "N"
         indicator_id = request.get("indicator_id", 1) if request else 1
 
-        await loadcell_service.connect(
-            port=port,
-            baudrate=baudrate,
-            timeout=timeout,
-            bytesize=bytesize,
-            stopbits=stopbits,
-            parity=parity,
-            indicator_id=indicator_id,
-        )
+        # LoadCell service is configured via dependency injection in HardwareContainer
+        # All connection parameters are provided through the constructor
+        await loadcell_service.connect()
 
-        message = f"LoadCell connected to {port} at {baudrate} baud"
+        message = "LoadCell connected successfully"
 
         logger.info(message)
         return {

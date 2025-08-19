@@ -63,29 +63,9 @@ class LoadCellController(HardwareController):
         """Connect to LoadCell"""
 
         async def connect_operation():
-            if self.loadcell_config:
-                # Use YAML configuration
-                await self.loadcell_service.connect(
-                    port=self.loadcell_config.port,
-                    baudrate=self.loadcell_config.baudrate,
-                    timeout=self.loadcell_config.timeout,
-                    bytesize=self.loadcell_config.bytesize,
-                    stopbits=self.loadcell_config.stopbits,
-                    parity=self.loadcell_config.parity,
-                    indicator_id=self.loadcell_config.indicator_id,
-                )
-            else:
-                # Fallback to Windows-compatible defaults if no config available
-                # TODO: Fix configuration loading issue - this fallback should not be used
-                await self.loadcell_service.connect(
-                    port="COM8",  # Changed from /dev/ttyUSB0 to match YAML config
-                    baudrate=9600,
-                    timeout=1.0,
-                    bytesize=8,
-                    stopbits=1,
-                    parity=None,
-                    indicator_id=1,
-                )
+            # LoadCell service is configured via dependency injection in HardwareContainer
+            # All connection parameters are provided through the constructor
+            await self.loadcell_service.connect()
             return True
 
         return await self._show_progress_with_message(
