@@ -22,36 +22,27 @@ from domain.exceptions import (
 class MockPower(PowerService):
     """Mock 전원 공급 장치 서비스 (테스트용)"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 8080,
+        timeout: float = 5.0,
+        channel: int = 1,
+    ):
         """
         초기화
-        """
-        # Initialize state
-        self._is_connected = False
-        self._output_enabled = False
-
-        logger.info("MockPower initialized")
-
-    async def connect(
-        self,
-        host: str,
-        port: int,
-        timeout: float,
-        channel: int
-    ) -> None:
-        """
-        Connect to power supply hardware (시뮬레이션)
 
         Args:
             host: IP address or hostname
             port: TCP port number
             timeout: Connection timeout in seconds
             channel: Power channel number
-
-        Raises:
-            HardwareConnectionError: If connection fails
         """
-        # Store connection parameters
+        # Initialize state
+        self._is_connected = False
+        self._output_enabled = False
+
+        # Connection parameters (injected at creation time)
         self._host = host
         self._port = port
         self._timeout = timeout
@@ -67,6 +58,16 @@ class MockPower(PowerService):
         self._max_current = 50.0
         self._voltage_accuracy = 0.01
         self._current_accuracy = 0.001
+
+        logger.info("MockPower initialized")
+
+    async def connect(self) -> None:
+        """
+        Connect to power supply hardware (시뮬레이션)
+
+        Raises:
+            HardwareConnectionError: If connection fails
+        """
 
         logger.info(f"Connecting to mock Power Supply at {self._host}:{self._port}...")
 

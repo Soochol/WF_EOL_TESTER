@@ -15,7 +15,12 @@ Key Features:
 from enum import Enum
 from typing import Any, Dict, Optional, Type
 
-from ..container.dependency_container import ServiceLifetime
+
+class ServiceLifetime(Enum):
+    """Service lifetime enumeration for dependency injection"""
+    SINGLETON = "singleton"
+    TRANSIENT = "transient"
+    SCOPED = "scoped"
 
 
 class ConfigurationMode(Enum):

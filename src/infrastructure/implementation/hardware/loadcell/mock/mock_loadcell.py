@@ -24,29 +24,18 @@ from domain.value_objects.measurements import ForceValue
 class MockLoadCell(LoadCellService):
     """Mock 로드셀 서비스 (테스트용)"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        port: str = "",
+        baudrate: int = 9600,
+        timeout: float = 1.0,
+        bytesize: int = 8,
+        stopbits: int = 1,
+        parity: Optional[str] = None,
+        indicator_id: int = 1,
+    ):
         """
         초기화
-        """
-        # State initialization
-        self._is_connected = False
-        self._zero_offset = 0.0
-        self._value_index = 0
-
-        logger.info("MockLoadCell initialized")
-
-    async def connect(
-        self,
-        port: str,
-        baudrate: int,
-        timeout: float,
-        bytesize: int,
-        stopbits: int,
-        parity: Optional[str],
-        indicator_id: int
-    ) -> None:
-        """
-        하드웨어 연결 (시뮬레이션)
 
         Args:
             port: Serial port (e.g., "COM3")
@@ -56,11 +45,13 @@ class MockLoadCell(LoadCellService):
             stopbits: Stop bits
             parity: Parity setting
             indicator_id: Indicator device ID
-
-        Raises:
-            HardwareConnectionError: If connection fails
         """
-        # Store connection parameters
+        # State initialization
+        self._is_connected = False
+        self._zero_offset = 0.0
+        self._value_index = 0
+
+        # Connection parameters (injected at creation time)
         self._port = port
         self._baudrate = baudrate
         self._timeout = timeout
@@ -68,6 +59,16 @@ class MockLoadCell(LoadCellService):
         self._stopbits = stopbits
         self._parity = parity
         self._indicator_id = indicator_id
+
+        logger.info("MockLoadCell initialized")
+
+    async def connect(self) -> None:
+        """
+        하드웨어 연결 (시뮬레이션)
+
+        Raises:
+            HardwareConnectionError: If connection fails
+        """
         
         # Mock operational defaults
         self._base_force = 10.0

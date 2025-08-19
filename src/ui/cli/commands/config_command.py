@@ -14,9 +14,7 @@ from domain.exceptions.eol_exceptions import (
     ConfigurationValidationError,
     RepositoryAccessError,
 )
-from domain.value_objects.hardware_configuration import (
-    HardwareConfiguration,
-)
+from domain.value_objects.hardware_config import HardwareConfig
 from ui.cli.commands.base import Command, CommandResult
 
 
@@ -98,9 +96,9 @@ class ConfigCommand(Command):
             if not hardware_config:
                 return CommandResult.warning("No hardware configuration found")
 
-            # Create HardwareConfiguration object for validation and display
+            # Create HardwareConfig object for validation and display
             try:
-                hw_config = HardwareConfiguration.from_dict(hardware_config)
+                hw_config = HardwareConfig.from_dict(hardware_config)
 
                 config_text = "Hardware Configuration:\\n"
                 config_text += "=" * 50 + "\\n"
@@ -191,7 +189,7 @@ class ConfigCommand(Command):
             print("\\nResetting to default configuration...")
 
             # Get default config from ServiceFactory
-            default_config = HardwareConfiguration().to_dict()
+            default_config = HardwareConfig().to_dict()
 
             # Save to file
             config_path = Path(self._config_file)
@@ -226,7 +224,7 @@ class ConfigCommand(Command):
 
         if not config_path.exists():
             logger.info(f"Config file {self._config_file} not found, using default config")
-            self._current_config = HardwareConfiguration().to_dict()
+            self._current_config = HardwareConfig().to_dict()
 
             # Create directory and save default config
             try:

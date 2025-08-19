@@ -11,7 +11,7 @@ from typing import Optional
 from rich.status import Status
 
 from application.interfaces.hardware.robot import RobotService
-from domain.value_objects.hardware_configuration import RobotConfig
+from domain.value_objects.hardware_config import RobotConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

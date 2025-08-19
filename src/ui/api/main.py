@@ -17,7 +17,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
-from ui.api.dependencies import get_container
+from infrastructure.containers import ApplicationContainer
 from ui.api.middleware.error_handler import add_error_handlers
 from ui.api.routes import (
     config_router,
@@ -61,14 +61,25 @@ async def lifespan(fastapi_app: FastAPI):
     logger.info("Starting WF EOL Tester API server...")
 
     try:
-        # Initialize dependency container
-        container = get_container()
+        # Initialize dependency injection container with safe config loading
+        container = ApplicationContainer.load_config_safely("configuration/application.yaml")
+        
+        # NOTE: Wire the container after FastAPI app initialization
+        # This avoids FastAPI signature parsing conflicts during import
+        # Routes are already imported at module level
+        container.wire(modules=[
+            "ui.api.routes.hardware",
+            "ui.api.routes.config", 
+            "ui.api.routes.status",
+            "ui.api.routes.test",
+            "ui.api.routes.websocket"
+        ])
 
         # Store container in app state for access in routes
         fastapi_app.state.container = container
         fastapi_app.state.app_state = app_state
 
-        logger.info("API server started successfully")
+        logger.info("API server started successfully with dependency injection")
         yield
 
     except Exception as e:
@@ -79,7 +90,7 @@ async def lifespan(fastapi_app: FastAPI):
 
         # Cleanup resources
         try:
-            if hasattr(app.state, "container"):
+            if hasattr(fastapi_app.state, "container"):
                 # Get hardware services for cleanup
                 hardware_services = await container.hardware_service_facade()
                 if hardware_services:

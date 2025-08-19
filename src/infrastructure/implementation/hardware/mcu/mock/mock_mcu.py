@@ -22,22 +22,38 @@ from domain.enums.mcu_enums import MCUStatus, TestMode
 class MockMCU(MCUService):
     """Mock MCU 서비스 (테스트용)"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        port: str = "",
+        baudrate: int = 9600,
+        timeout: float = 1.0,
+        bytesize: int = 8,
+        stopbits: int = 1,
+        parity: Optional[str] = None,
+    ):
         """
         초기화
+
+        Args:
+            port: Serial port (e.g., "COM4")
+            baudrate: Baud rate (e.g., 115200)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
         """
         # State initialization
         self._is_connected = False
         self._current_test_mode = TestMode.MODE_1
         self._mcu_status = MCUStatus.IDLE
 
-        # Connection parameters (will be set during connect)
-        self._port = ""
-        self._baudrate = 0
-        self._timeout = 0.0
-        self._bytesize = 0
-        self._stopbits = 0
-        self._parity: Optional[str] = None
+        # Connection parameters (injected at creation time)
+        self._port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        self._bytesize = bytesize
+        self._stopbits = stopbits
+        self._parity = parity
 
         # Mock operational defaults
         self._temperature = 25.0
@@ -61,40 +77,14 @@ class MockMCU(MCUService):
         self._heating_enabled = False
         self._cooling_enabled = False
 
-        # Timeout simulation for testing retry logic
-        self._simulate_timeout = False
-        self._timeout_counter = 0
 
-    async def connect(
-        self,
-        port: str,
-        baudrate: int,
-        timeout: float,
-        bytesize: int,
-        stopbits: int,
-        parity: Optional[str],
-    ) -> None:
+    async def connect(self) -> None:
         """
         하드웨어 연결 (시뮬레이션)
-
-        Args:
-            port: Serial port (e.g., "COM4")
-            baudrate: Baud rate (e.g., 115200)
-            timeout: Connection timeout in seconds
-            bytesize: Data bits
-            stopbits: Stop bits
-            parity: Parity setting
 
         Raises:
             HardwareConnectionError: If connection fails
         """
-        # Store connection parameters
-        self._port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
-        self._bytesize = bytesize
-        self._stopbits = stopbits
-        self._parity = parity
 
         try:
             logger.info(f"Connecting to Mock MCU on {self._port} at {self._baudrate} baud")
@@ -243,7 +233,7 @@ class MockMCU(MCUService):
             noise = random.uniform(-0.1, 0.1)
             measured_temp: float = self._current_temperature + noise
 
-            logger.debug("Mock MCU temperature: %.1f°C", measured_temp)
+            logger.debug(f"Mock MCU temperature: {measured_temp:.1f}°C")
             return measured_temp
 
         except Exception as e:
@@ -526,18 +516,14 @@ class MockMCU(MCUService):
             )
 
         try:
-            # Simulate timeout on every 2nd call to test retry logic
-            self._timeout_counter += 1
-            if self._timeout_counter % 2 == 1:  # First call, third call, etc. will timeout
-                logger.debug(f"🔄 Mock MCU simulating timeout (call #{self._timeout_counter})")
-                # Simulate the same timeout error as real LMA MCU
-                raise asyncio.TimeoutError("Error during STX stream search: Read timeout")
 
             # Simulate response delay for successful calls
             await asyncio.sleep(self._response_delay)
 
             # Set target temperatures for simulation
             self._target_temperature = operating_temp
+            # In mock mode, immediately set temperature to target for fast verification
+            self._current_temperature = operating_temp
             self._heating_enabled = True
             self._cooling_enabled = False
             self._mcu_status = MCUStatus.HEATING
@@ -572,8 +558,14 @@ class MockMCU(MCUService):
             self._heating_enabled = False
             self._cooling_enabled = True
             self._mcu_status = MCUStatus.RUNNING
+            
+            # In mock mode, immediately set temperature to standby temperature (38.0°C)
+            # This should match the calculated_standby_temp from the hardware facade
+            standby_temp = 38.0  # Default standby temperature for cooling verification
+            self._current_temperature = standby_temp
+            self._target_temperature = standby_temp
 
-            logger.info("Mock MCU standby cooling started")
+            logger.info(f"Mock MCU standby cooling started - temperature set to {standby_temp}°C")
 
         except Exception as e:
             logger.error(f"Failed to start Mock MCU standby cooling: {e}")

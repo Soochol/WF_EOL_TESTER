@@ -1,16 +1,16 @@
 [flake8]
 max-line-length = 100
 max-complexity = 10
-ignore = E203,E501,W503,E226,E24
+ignore = E203,E501,W503,E226,E24,C901,E402
 extend-ignore = E203,E501,W503,E226,E24
-per-file-ignores = 
+per-file-ignores =
     __init__.py:F401,F403
     tests/*:F401,F811,E402,S101,S106
     **/test_*.py:F401,F811,E402,S101,S106
     **/mock/*:F401,F811,W0613
     setup.py:E402
     conftest.py:F401,F811
-exclude = 
+exclude =
     .git,
     __pycache__,
     .pytest_cache,

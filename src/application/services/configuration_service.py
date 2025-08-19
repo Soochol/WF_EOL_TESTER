@@ -19,10 +19,7 @@ from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
 )
-from domain.value_objects.hardware_configuration import (
-    HardwareConfiguration,
-)
-from domain.value_objects.hardware_model import HardwareModel
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
@@ -39,7 +36,7 @@ class ConfigurationService:
     def __init__(
         self,
         configuration: Configuration,
-        profile_preference: Optional[ProfilePreference] = None,
+        profile_preference: ProfilePreference,
     ):
         self._configuration = configuration
         self._profile_preference = profile_preference
@@ -52,7 +49,7 @@ class ConfigurationService:
     @property
     def profile_preference(
         self,
-    ) -> Optional[ProfilePreference]:
+    ) -> ProfilePreference:
         """Get the profile preference"""
         return self._profile_preference
 
@@ -89,12 +86,12 @@ class ConfigurationService:
                 file_path=f"{profile_name}.yaml",
             ) from e
 
-    async def load_hardware_config(self) -> HardwareConfiguration:
+    async def load_hardware_config(self) -> HardwareConfig:
         """
         Load hardware configuration
 
         Returns:
-            HardwareConfiguration object containing the loaded hardware settings
+            HardwareConfig object containing the loaded hardware settings
 
         Raises:
             RepositoryAccessError: If hardware configuration loading fails
@@ -133,11 +130,7 @@ class ConfigurationService:
 
         try:
             # 1st priority: Last used profile from repository
-            last_used = (
-                await self._profile_preference.load_last_used_profile()
-                if self._profile_preference
-                else None
-            )
+            last_used = await self._profile_preference.load_last_used_profile()
             if last_used and self._is_valid_profile_name(last_used):
                 logger.debug(f"Using last used profile: '{last_used}'")
                 return last_used
@@ -163,11 +156,10 @@ class ConfigurationService:
 
         try:
             # Update last used profile
-            if self._profile_preference:
-                await self._profile_preference.save_last_used_profile(profile_name)
+            await self._profile_preference.save_last_used_profile(profile_name)
 
-                # Update usage history
-                await self._profile_preference.update_usage_history(profile_name)
+            # Update usage history
+            await self._profile_preference.update_usage_history(profile_name)
 
             logger.debug(f"Marked profile as used: '{profile_name}'")
 
@@ -186,16 +178,8 @@ class ConfigurationService:
         """
         try:
             current_profile = await self.get_active_profile_name()
-            last_used = (
-                await self._profile_preference.load_last_used_profile()
-                if self._profile_preference
-                else None
-            )
-            history = (
-                await self._profile_preference.get_usage_history()
-                if self._profile_preference
-                else []
-            )
+            last_used = await self._profile_preference.load_last_used_profile()
+            history = await self._profile_preference.get_usage_history()
             available_profiles = await self._configuration.list_available_profiles()
 
             return {
@@ -205,11 +189,7 @@ class ConfigurationService:
                 "available_profiles": available_profiles,
                 "history_count": len(history),
                 "unique_profiles_used": len(set(history)) if history else 0,
-                "repository_available": (
-                    await self._profile_preference.is_available()
-                    if self._profile_preference
-                    else False
-                ),
+                "repository_available": await self._profile_preference.is_available(),
             }
 
         except Exception as e:
@@ -227,8 +207,7 @@ class ConfigurationService:
             RepositoryAccessError: If clearing preferences fails
         """
         try:
-            if self._profile_preference:
-                await self._profile_preference.clear_preferences()
+            await self._profile_preference.clear_preferences()
             logger.info(
                 "All profile preferences cleared - will use environment variable or default"
             )
@@ -339,8 +318,8 @@ class ConfigurationService:
             # Extract hardware_config section if present, otherwise use the whole dict
             config_data = hardware_config_data.get("hardware_config", hardware_config_data)
 
-            # Convert dict to HardwareConfiguration object
-            hardware_config = HardwareConfiguration.from_dict(config_data)
+            # Convert dict to HardwareConfig object
+            hardware_config = HardwareConfig.from_dict(config_data)
 
             # Save using the configuration repository
             await self._configuration.save_hardware_config(hardware_config)
@@ -369,11 +348,11 @@ class ConfigurationService:
             # Extract hardware_model section if present, otherwise use the whole dict
             model_data = hardware_model_data.get("hardware_model", hardware_model_data)
 
-            # Convert dict to HardwareModel object
-            hardware_model = HardwareModel.from_dict(model_data)
+            # Convert dict to HardwareConfig object
+            hardware_config = HardwareConfig.from_dict(model_data)
 
             # Save using the configuration repository
-            await self._configuration.save_hardware_model(hardware_model)
+            await self._configuration.save_hardware_model(hardware_config)
 
             logger.info("Successfully saved hardware model configuration")
 

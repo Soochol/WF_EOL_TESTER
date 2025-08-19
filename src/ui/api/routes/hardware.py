@@ -21,10 +21,13 @@ Each hardware component follows consistent patterns:
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from ui.api.dependencies import DIContainer, get_container
+from application.services.configuration_service import ConfigurationService
+from application.services.hardware_service_facade import HardwareServiceFacade
+from infrastructure.containers import ApplicationContainer
 from ui.api.models.hardware_models import (
     DigitalIORequest,
     DigitalIOResponse,
@@ -48,12 +51,13 @@ router = APIRouter()
 
 
 @router.get("/status", response_model=HardwareStatusResponse)
-async def get_hardware_status(container: DIContainer = Depends(get_container)):
+@inject
+async def get_hardware_status(
+    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
+):
     """Get overall hardware connection status"""
     try:
-        hardware_services = await container.hardware_service_facade()
         status_dict = await hardware_services.get_hardware_status()
-
         return HardwareStatusResponse.from_status_dict(status_dict)
 
     except Exception as e:
@@ -65,14 +69,14 @@ async def get_hardware_status(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/connect")
+@inject
 async def connect_hardware(
-    request: HardwareConnectionRequest, container: DIContainer = Depends(get_container)
+    request: HardwareConnectionRequest, 
+    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Connect to hardware components"""
     try:
-        hardware_services = await container.hardware_service_facade()
-        config_service = container.configuration_service()
-
         # Load hardware configuration
         hardware_config = await config_service.load_hardware_config()
 
@@ -101,14 +105,14 @@ async def connect_hardware(
 
 
 @router.post("/initialize")
+@inject
 async def initialize_hardware(
-    request: HardwareInitializationRequest, container: DIContainer = Depends(get_container)
+    request: HardwareInitializationRequest, 
+    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Initialize hardware with configuration"""
     try:
-        hardware_services = await container.hardware_service_facade()
-        config_service = container.configuration_service()
-
         # Load configurations
         profile_name = request.profile_name or await config_service.get_active_profile_name()
         test_config = await config_service.load_configuration(profile_name)
@@ -136,10 +140,11 @@ async def initialize_hardware(
 # POWER SUPPLY CONTROL ENDPOINTS
 # =============================================================================
 @router.get("/robot/status", response_model=RobotStatusResponse)
-async def get_robot_status(axis_id: int = 0, container: DIContainer = Depends(get_container)):
+@inject
+async def get_robot_status(axis_id: int = 0, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get robot status"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         connected = await robot_service.is_connected()
@@ -181,15 +186,16 @@ async def get_robot_status(axis_id: int = 0, container: DIContainer = Depends(ge
 
 
 @router.post("/robot/control")
+@inject
 async def control_robot(
-    request: RobotControlRequest, container: DIContainer = Depends(get_container)
+    request: RobotControlRequest, 
+    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Control robot operations"""
     try:
-        hardware_services = await container.hardware_service_facade()
         robot_service = hardware_services.robot_service
-        config_service = container.configuration_service()
-
+        
         # Load hardware configuration for parameters
         hardware_config = await config_service.load_hardware_config()
         axis_id = request.axis_id or hardware_config.robot.axis_id
@@ -250,10 +256,11 @@ async def control_robot(
 # LOADCELL MONITORING AND CONTROL ENDPOINTS
 # =============================================================================
 @router.get("/power/status", response_model=PowerStatusResponse)
-async def get_power_status(container: DIContainer = Depends(get_container)):
+@inject
+async def get_power_status(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get power supply status"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         connected = await power_service.is_connected()
@@ -293,12 +300,13 @@ async def get_power_status(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/power/control")
+@inject
 async def control_power(
-    request: PowerControlRequest, container: DIContainer = Depends(get_container)
+    request: PowerControlRequest, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Control power supply"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         if request.operation == "enable":
@@ -348,10 +356,11 @@ async def control_power(
 
 # MCU endpoints
 @router.get("/mcu/status", response_model=MCUStatusResponse)
-async def get_mcu_status(container: DIContainer = Depends(get_container)):
+@inject
+async def get_mcu_status(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get MCU status"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         connected = await mcu_service.is_connected()
@@ -391,10 +400,11 @@ async def get_mcu_status(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/mcu/control")
-async def control_mcu(request: MCUControlRequest, container: DIContainer = Depends(get_container)):
+@inject
+async def control_mcu(request: MCUControlRequest, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Control MCU operations"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         if request.operation == "set_operating_temperature":
@@ -436,10 +446,11 @@ async def control_mcu(request: MCUControlRequest, container: DIContainer = Depen
 
 # Load cell endpoints
 @router.get("/loadcell/status", response_model=LoadCellResponse)
-async def get_loadcell_status(container: DIContainer = Depends(get_container)):
+@inject
+async def get_loadcell_status(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get load cell status and reading"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         connected = await loadcell_service.is_connected()
@@ -469,10 +480,11 @@ async def get_loadcell_status(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/loadcell/zero")
-async def zero_loadcell(container: DIContainer = Depends(get_container)):
+@inject
+async def zero_loadcell(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Zero the load cell"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         await loadcell_service.zero_calibration()
@@ -490,10 +502,11 @@ async def zero_loadcell(container: DIContainer = Depends(get_container)):
 
 # Digital I/O endpoints
 @router.get("/digital-io/status", response_model=DigitalIOResponse)
-async def get_digital_io_status(container: DIContainer = Depends(get_container)):
+@inject
+async def get_digital_io_status(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get digital I/O status"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         connected = await digital_io_service.is_connected()
@@ -528,12 +541,13 @@ async def get_digital_io_status(container: DIContainer = Depends(get_container))
 
 
 @router.post("/digital-io/control", response_model=DigitalIOResponse)
+@inject
 async def control_digital_io(
-    request: DigitalIORequest, container: DIContainer = Depends(get_container)
+    request: DigitalIORequest, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Control digital I/O operations"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         if request.operation == "read_input":
@@ -586,10 +600,11 @@ async def control_digital_io(
 
 # Additional robot control endpoints for web interface compatibility
 @router.post("/robot/connect")
-async def connect_robot(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def connect_robot(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Connect to robot hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         axis_id = request.get("axis_id", 0) if request else 0
@@ -607,10 +622,11 @@ async def connect_robot(request: Dict = {}, container: DIContainer = Depends(get
 
 
 @router.post("/robot/disconnect")
-async def disconnect_robot(container: DIContainer = Depends(get_container)):
+@inject
+async def disconnect_robot(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disconnect from robot hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         await robot_service.disconnect()
@@ -625,10 +641,11 @@ async def disconnect_robot(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/robot/servo/enable")
-async def enable_robot_servo(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def enable_robot_servo(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Enable robot servo"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         axis_id = request.get("axis_id", 0) if request else 0
@@ -644,10 +661,11 @@ async def enable_robot_servo(request: Dict = {}, container: DIContainer = Depend
 
 
 @router.post("/robot/servo/disable")
-async def disable_robot_servo(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def disable_robot_servo(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disable robot servo"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         axis_id = request.get("axis_id", 0) if request else 0
@@ -663,10 +681,11 @@ async def disable_robot_servo(request: Dict = {}, container: DIContainer = Depen
 
 
 @router.post("/robot/home-axis")
-async def home_robot_axis(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def home_robot_axis(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Home robot axis"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         axis_id = request.get("axis_id", 0) if request else 0
@@ -682,16 +701,17 @@ async def home_robot_axis(request: Dict = {}, container: DIContainer = Depends(g
 
 
 @router.post("/robot/move-absolute")
+@inject
 async def move_robot_absolute(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], 
+    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Move robot to absolute position"""
     try:
-        hardware_services = await container.hardware_service_facade()
         robot_service = hardware_services.robot_service
 
-        # Get configuration service to load default values
-        config_service = container.configuration_service()
+        # Load hardware configuration for default values
         hardware_config = await config_service.load_hardware_config()
 
         axis_id = request.get("axis_id", 0)
@@ -746,16 +766,17 @@ async def move_robot_absolute(
 
 
 @router.post("/robot/move-relative")
+@inject
 async def move_robot_relative(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], 
+    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Move robot by relative distance"""
     try:
-        hardware_services = await container.hardware_service_facade()
         robot_service = hardware_services.robot_service
 
-        # Get configuration service to load default values
-        config_service = container.configuration_service()
+        # Load hardware configuration for default values
         hardware_config = await config_service.load_hardware_config()
 
         axis_id = request.get("axis_id", 0)
@@ -810,10 +831,11 @@ async def move_robot_relative(
 
 
 @router.post("/robot/emergency-stop")
-async def emergency_stop_robot(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def emergency_stop_robot(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Emergency stop robot"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         axis_id = request.get("axis_id", 0) if request else 0
@@ -829,10 +851,11 @@ async def emergency_stop_robot(request: Dict = {}, container: DIContainer = Depe
 
 
 @router.post("/robot/stop-motion")
-async def stop_robot_motion(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def stop_robot_motion(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Stop robot motion with deceleration"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         axis_id = request.get("axis_id", 0) if request else 0
@@ -850,10 +873,11 @@ async def stop_robot_motion(request: Dict = {}, container: DIContainer = Depends
 
 
 @router.get("/robot/position")
-async def get_robot_position(axis_id: int = 0, container: DIContainer = Depends(get_container)):
+@inject
+async def get_robot_position(axis_id: int = 0, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get robot position"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         robot_service = hardware_services.robot_service
 
         position = await robot_service.get_position(axis_id)
@@ -867,10 +891,11 @@ async def get_robot_position(axis_id: int = 0, container: DIContainer = Depends(
 
 # Power Control specific endpoints for web interface compatibility
 @router.post("/power/connect")
-async def connect_power(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def connect_power(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Connect to power supply hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         host = request.get("host", "192.168.11.1") if request else "192.168.11.1"
@@ -908,10 +933,11 @@ async def connect_power(request: Dict = {}, container: DIContainer = Depends(get
 
 
 @router.post("/power/disconnect")
-async def disconnect_power(container: DIContainer = Depends(get_container)):
+@inject
+async def disconnect_power(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disconnect from power supply hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         await power_service.disconnect()
@@ -926,10 +952,11 @@ async def disconnect_power(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/power/enable-output")
-async def enable_power_output(container: DIContainer = Depends(get_container)):
+@inject
+async def enable_power_output(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Enable power supply output"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         await power_service.enable_output()
@@ -944,10 +971,11 @@ async def enable_power_output(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/power/disable-output")
-async def disable_power_output(container: DIContainer = Depends(get_container)):
+@inject
+async def disable_power_output(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disable power supply output"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         await power_service.disable_output()
@@ -962,12 +990,13 @@ async def disable_power_output(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/power/set-voltage")
+@inject
 async def set_power_voltage(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set power supply voltage"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         voltage = request.get("voltage")
@@ -997,12 +1026,13 @@ async def set_power_voltage(
 
 
 @router.post("/power/set-current")
+@inject
 async def set_power_current(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set power supply current"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         current = request.get("current")
@@ -1032,12 +1062,13 @@ async def set_power_current(
 
 
 @router.post("/power/set-current-limit")
+@inject
 async def set_power_current_limit(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set power supply current limit"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         current_limit = request.get("current_limit")
@@ -1067,10 +1098,11 @@ async def set_power_current_limit(
 
 
 @router.get("/power/readings")
-async def get_power_readings(container: DIContainer = Depends(get_container)):
+@inject
+async def get_power_readings(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get power supply real-time readings"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         power_service = hardware_services.power_service
 
         status_info = await power_service.get_status()
@@ -1088,10 +1120,11 @@ async def get_power_readings(container: DIContainer = Depends(get_container)):
 
 # MCU Control specific endpoints for web interface compatibility
 @router.post("/mcu/connect")
-async def connect_mcu(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def connect_mcu(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Connect to MCU hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         port = request.get("port", "COM4") if request else "COM4"
@@ -1125,10 +1158,11 @@ async def connect_mcu(request: Dict = {}, container: DIContainer = Depends(get_c
 
 
 @router.post("/mcu/disconnect")
-async def disconnect_mcu(container: DIContainer = Depends(get_container)):
+@inject
+async def disconnect_mcu(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disconnect from MCU hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         await mcu_service.disconnect()
@@ -1143,12 +1177,13 @@ async def disconnect_mcu(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/mcu/set-temperature")
+@inject
 async def set_mcu_temperature(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set MCU target temperature"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         temperature = request.get("temperature")
@@ -1169,12 +1204,13 @@ async def set_mcu_temperature(
 
 
 @router.post("/mcu/set-upper-temperature")
+@inject
 async def set_mcu_upper_temperature(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set MCU upper temperature limit"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         upper_temperature = request.get("upper_temperature")
@@ -1199,12 +1235,13 @@ async def set_mcu_upper_temperature(
 
 
 @router.post("/mcu/set-fan-speed")
+@inject
 async def set_mcu_fan_speed(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set MCU fan speed level"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         fan_speed = request.get("fan_speed")
@@ -1225,12 +1262,13 @@ async def set_mcu_fan_speed(
 
 
 @router.post("/mcu/set-test-mode")
+@inject
 async def set_mcu_test_mode(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Set MCU test mode"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         from application.interfaces.hardware.mcu import TestMode
@@ -1269,12 +1307,13 @@ async def set_mcu_test_mode(
 
 
 @router.post("/mcu/start-standby-heating")
+@inject
 async def start_mcu_standby_heating(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Start MCU standby heating mode"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         operating_temp = request.get("operating_temp")
@@ -1313,10 +1352,11 @@ async def start_mcu_standby_heating(
 
 
 @router.post("/mcu/start-standby-cooling")
-async def start_mcu_standby_cooling(container: DIContainer = Depends(get_container)):
+@inject
+async def start_mcu_standby_cooling(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Start MCU standby cooling mode"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         await mcu_service.start_standby_cooling()
@@ -1331,10 +1371,11 @@ async def start_mcu_standby_cooling(container: DIContainer = Depends(get_contain
 
 
 @router.post("/mcu/wait-boot-complete")
-async def wait_mcu_boot_complete(container: DIContainer = Depends(get_container)):
+@inject
+async def wait_mcu_boot_complete(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Wait for MCU boot process to complete"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         await mcu_service.wait_boot_complete()
@@ -1349,10 +1390,11 @@ async def wait_mcu_boot_complete(container: DIContainer = Depends(get_container)
 
 
 @router.get("/mcu/temperature")
-async def get_mcu_temperature(container: DIContainer = Depends(get_container)):
+@inject
+async def get_mcu_temperature(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get MCU current temperature reading"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         temperature = await mcu_service.get_temperature()
@@ -1365,10 +1407,11 @@ async def get_mcu_temperature(container: DIContainer = Depends(get_container)):
 
 
 @router.get("/mcu/fan-speed")
-async def get_mcu_fan_speed(container: DIContainer = Depends(get_container)):
+@inject
+async def get_mcu_fan_speed(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get MCU current fan speed"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         fan_speed = await mcu_service.get_fan_speed()
@@ -1381,10 +1424,11 @@ async def get_mcu_fan_speed(container: DIContainer = Depends(get_container)):
 
 
 @router.get("/mcu/test-mode")
-async def get_mcu_test_mode(container: DIContainer = Depends(get_container)):
+@inject
+async def get_mcu_test_mode(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get MCU current test mode"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         mcu_service = hardware_services.mcu_service
 
         test_mode = await mcu_service.get_test_mode()
@@ -1401,10 +1445,11 @@ async def get_mcu_test_mode(container: DIContainer = Depends(get_container)):
 
 # LoadCell Control specific endpoints for web interface compatibility
 @router.post("/loadcell/connect")
-async def connect_loadcell(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def connect_loadcell(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Connect to LoadCell hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         port = request.get("port", "COM3") if request else "COM3"
@@ -1445,10 +1490,11 @@ async def connect_loadcell(request: Dict = {}, container: DIContainer = Depends(
 
 
 @router.post("/loadcell/disconnect")
-async def disconnect_loadcell(container: DIContainer = Depends(get_container)):
+@inject
+async def disconnect_loadcell(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disconnect from LoadCell hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         await loadcell_service.disconnect()
@@ -1463,10 +1509,11 @@ async def disconnect_loadcell(container: DIContainer = Depends(get_container)):
 
 
 @router.post("/loadcell/zero-calibration")
-async def zero_loadcell_calibration(container: DIContainer = Depends(get_container)):
+@inject
+async def zero_loadcell_calibration(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Perform LoadCell zero point calibration"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         await loadcell_service.zero_calibration()
@@ -1481,10 +1528,11 @@ async def zero_loadcell_calibration(container: DIContainer = Depends(get_contain
 
 
 @router.post("/loadcell/hold")
-async def hold_loadcell_measurement(container: DIContainer = Depends(get_container)):
+@inject
+async def hold_loadcell_measurement(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Hold LoadCell force measurement"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         result = await loadcell_service.hold()
@@ -1499,10 +1547,11 @@ async def hold_loadcell_measurement(container: DIContainer = Depends(get_contain
 
 
 @router.post("/loadcell/hold-release")
-async def release_loadcell_hold(container: DIContainer = Depends(get_container)):
+@inject
+async def release_loadcell_hold(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Release LoadCell force measurement hold"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         result = await loadcell_service.hold_release()
@@ -1517,10 +1566,11 @@ async def release_loadcell_hold(container: DIContainer = Depends(get_container))
 
 
 @router.get("/loadcell/force")
-async def get_loadcell_force(container: DIContainer = Depends(get_container)):
+@inject
+async def get_loadcell_force(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get LoadCell force measurement"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         force_value = await loadcell_service.read_force()
@@ -1540,10 +1590,11 @@ async def get_loadcell_force(container: DIContainer = Depends(get_container)):
 
 
 @router.get("/loadcell/raw-value")
-async def get_loadcell_raw_value(container: DIContainer = Depends(get_container)):
+@inject
+async def get_loadcell_raw_value(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get LoadCell raw ADC value"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         loadcell_service = hardware_services.loadcell_service
 
         raw_value = await loadcell_service.read_raw_value()
@@ -1561,10 +1612,11 @@ async def get_loadcell_raw_value(container: DIContainer = Depends(get_container)
 
 
 @router.post("/digital-io/connect")
-async def connect_digital_io(request: Dict = {}, container: DIContainer = Depends(get_container)):
+@inject
+async def connect_digital_io(request: Dict = {}, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Connect to Digital I/O hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         # Default connection parameters
@@ -1588,10 +1640,11 @@ async def connect_digital_io(request: Dict = {}, container: DIContainer = Depend
 
 
 @router.post("/digital-io/disconnect")
-async def disconnect_digital_io(container: DIContainer = Depends(get_container)):
+@inject
+async def disconnect_digital_io(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Disconnect from Digital I/O hardware"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         await digital_io_service.disconnect()
@@ -1609,10 +1662,11 @@ async def disconnect_digital_io(container: DIContainer = Depends(get_container))
 
 
 @router.get("/digital-io/info")
-async def get_digital_io_info(container: DIContainer = Depends(get_container)):
+@inject
+async def get_digital_io_info(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Get Digital I/O hardware information"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         is_connected = await digital_io_service.is_connected()
@@ -1637,10 +1691,11 @@ async def get_digital_io_info(container: DIContainer = Depends(get_container)):
 
 
 @router.get("/digital-io/read-input")
-async def read_digital_input(channel: int, container: DIContainer = Depends(get_container)):
+@inject
+async def read_digital_input(channel: int, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Read digital input from specified channel"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         # Validate channel parameter
@@ -1667,10 +1722,11 @@ async def read_digital_input(channel: int, container: DIContainer = Depends(get_
 
 
 @router.get("/digital-io/read-all-inputs")
-async def read_all_digital_inputs(container: DIContainer = Depends(get_container)):
+@inject
+async def read_all_digital_inputs(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Read all digital inputs"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         all_inputs = await digital_io_service.read_all_inputs()
@@ -1697,12 +1753,13 @@ async def read_all_digital_inputs(container: DIContainer = Depends(get_container
 
 
 @router.post("/digital-io/write-output")
+@inject
 async def write_digital_output(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Write digital output to specified channel"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         # Extract parameters
@@ -1751,10 +1808,11 @@ async def write_digital_output(
 
 
 @router.get("/digital-io/read-output")
-async def read_digital_output(channel: int, container: DIContainer = Depends(get_container)):
+@inject
+async def read_digital_output(channel: int, hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Read digital output state from specified channel"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         # Validate channel parameter
@@ -1781,10 +1839,11 @@ async def read_digital_output(channel: int, container: DIContainer = Depends(get
 
 
 @router.get("/digital-io/read-all-outputs")
-async def read_all_digital_outputs(container: DIContainer = Depends(get_container)):
+@inject
+async def read_all_digital_outputs(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Read all digital outputs"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         all_outputs = await digital_io_service.read_all_outputs()
@@ -1811,10 +1870,11 @@ async def read_all_digital_outputs(container: DIContainer = Depends(get_containe
 
 
 @router.post("/digital-io/reset-all-outputs")
-async def reset_all_digital_outputs(container: DIContainer = Depends(get_container)):
+@inject
+async def reset_all_digital_outputs(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
     """Reset all digital outputs to LOW"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         success = await digital_io_service.reset_all_outputs()
@@ -1835,12 +1895,13 @@ async def reset_all_digital_outputs(container: DIContainer = Depends(get_contain
 
 
 @router.post("/digital-io/read-multiple-inputs")
+@inject
 async def read_multiple_digital_inputs(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Read multiple digital inputs"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         # Extract channel list
@@ -1891,12 +1952,13 @@ async def read_multiple_digital_inputs(
 
 
 @router.post("/digital-io/write-multiple-outputs")
+@inject
 async def write_multiple_digital_outputs(
-    request: Dict[str, Any], container: DIContainer = Depends(get_container)
+    request: Dict[str, Any], hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]
 ):
     """Write multiple digital outputs"""
     try:
-        hardware_services = await container.hardware_service_facade()
+        # hardware_services is already injected
         digital_io_service = hardware_services.digital_io_service
 
         # Extract pin_values dictionary

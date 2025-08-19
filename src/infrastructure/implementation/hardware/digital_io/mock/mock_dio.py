@@ -24,18 +24,20 @@ from domain.exceptions import (
 class MockDIO(DigitalIOService):
     """Mock 입력 하드웨어 서비스"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], irq_no: int = 7):
         """
         초기화
 
         Args:
             config: 설정 딕셔너리 (HardwareConfiguration의 digital_input 섹션)
+            irq_no: IRQ 번호 (기본값: 7)
         """
         # Connection/Hardware defaults (same as Ajinextek for compatibility)
         self._board_number = config.get("board_number", config.get("board_no", 0))
         self._module_position = config.get("module_position", 0)
         self._signal_type = config.get("signal_type", 2)
         self._input_count = config.get("input_count", 8)
+        self._irq_no = irq_no
 
         # Operational defaults
         self._debounce_time_ms = config.get(
@@ -81,12 +83,9 @@ class MockDIO(DigitalIOService):
         self._write_count = 0
         self._last_operation_time = 0.0
 
-    async def connect(self, irq_no: int = 7) -> None:
+    async def connect(self) -> None:
         """
         Mock 하드웨어 연결
-
-        Args:
-            irq_no: IRQ 번호 (기본값: 7) - Mock에서는 사용되지 않음
 
         Raises:
             HardwareConnectionError: If connection fails

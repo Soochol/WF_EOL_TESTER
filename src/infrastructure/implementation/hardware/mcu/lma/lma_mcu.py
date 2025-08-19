@@ -35,12 +35,32 @@ class LMAMCU(MCUService):
     Achieves 99.5% performance improvement over legacy implementation.
     """
 
-    def __init__(self):
-        """Initialize Fast LMA MCU service"""
+    def __init__(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int = 8,
+        stopbits: int = 1,
+        parity: Optional[str] = None,
+    ):
+        """Initialize Fast LMA MCU service
+        
+        Args:
+            port: Serial port (e.g., "COM3")
+            baudrate: Baud rate (e.g., 115200)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits (default: 8)
+            stopbits: Stop bits (default: 1)
+            parity: Parity setting (default: None)
+        """
         self.serial_conn: Optional[serial.Serial] = None
-        self._port = ""
-        self._baudrate = 0
-        self._timeout = DEFAULT_TIMEOUT
+        self._port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        self._bytesize = bytesize
+        self._stopbits = stopbits
+        self._parity = parity
 
         # State management
         self._is_connected = False
@@ -49,35 +69,23 @@ class LMAMCU(MCUService):
         self._current_test_mode = TestMode.MODE_1
         self._current_fan_speed = 0.0
         self._mcu_status = MCUStatus.IDLE
-        
+
         # Packet buffering for multi-response commands
         self._packet_buffer = []  # Store additional packets received during first response
 
-    async def connect(
-        self,
-        port: str,
-        baudrate: int,
-        timeout: float,
-        bytesize: int = 8,
-        stopbits: int = 1,
-        parity: Optional[str] = None,
-    ) -> None:
+    async def connect(self) -> None:
         """Connect to MCU hardware using direct serial communication"""
         try:
-            self._port = port
-            self._baudrate = baudrate
-            self._timeout = timeout
-
-            logger.info(f"Fast MCU connecting to {port} @ {baudrate}")
+            logger.info(f"Fast MCU connecting to {self._port} @ {self._baudrate}")
 
             # Direct pyserial connection for maximum performance
             self.serial_conn = serial.Serial(
-                port=port,
-                baudrate=baudrate,
-                bytesize=bytesize,
-                parity=serial.PARITY_NONE if parity is None else parity,
-                stopbits=stopbits,
-                timeout=timeout,
+                port=self._port,
+                baudrate=self._baudrate,
+                bytesize=self._bytesize,
+                parity=serial.PARITY_NONE if self._parity is None else self._parity,
+                stopbits=self._stopbits,
+                timeout=self._timeout,
             )
 
             self._is_connected = True
@@ -213,14 +221,16 @@ class LMAMCU(MCUService):
 
         packets_found = []
         i = 0
-        
+
         while i <= len(buffer) - 6:  # Minimum packet size is 6 bytes
             # Find next FFFF pattern
             ffff_pos = buffer.find(b"\xff\xff", i)
             if ffff_pos == -1:
                 break  # No more FFFF patterns found
-            
-            logger.debug(f"Found FFFF pattern at position {ffff_pos} in buffer of {len(buffer)} bytes")
+
+            logger.debug(
+                f"Found FFFF pattern at position {ffff_pos} in buffer of {len(buffer)} bytes"
+            )
 
             # Check if we have enough bytes for packet header
             if ffff_pos + 3 >= len(buffer):
@@ -244,10 +254,13 @@ class LMAMCU(MCUService):
                     i = expected_packet_end  # Move past this packet
                 else:
                     # Check if we have extra bytes after a valid 6-byte boot packet
-                    if (length == 0 and ffff_pos + 6 <= len(buffer) and 
-                        buffer[ffff_pos + 4:ffff_pos + 6] == b"\xfe\xfe"):
+                    if (
+                        length == 0
+                        and ffff_pos + 6 <= len(buffer)
+                        and buffer[ffff_pos + 4 : ffff_pos + 6] == b"\xfe\xfe"
+                    ):
                         # This is a valid 6-byte packet (FFFF + CMD + LEN + FEFE)
-                        valid_packet = buffer[ffff_pos:ffff_pos + 6]
+                        valid_packet = buffer[ffff_pos : ffff_pos + 6]
                         packets_found.append(valid_packet)
                         logger.info(
                             f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos} (6-byte)"
@@ -272,12 +285,14 @@ class LMAMCU(MCUService):
             if len(packets_found) > 1:
                 # Check for duplicate packets - this indicates a system error
                 for i, packet in enumerate(packets_found):
-                    for j, other_packet in enumerate(packets_found[i+1:], i+1):
+                    for j, other_packet in enumerate(packets_found[i + 1 :], i + 1):
                         if packet == other_packet:
                             duplicate_hex = packet.hex().upper()
-                            logger.warning(f"DUPLICATE_RESPONSE_DETECTED: {duplicate_hex} found at positions {i} and {j}")
+                            logger.warning(
+                                f"DUPLICATE_RESPONSE_DETECTED: {duplicate_hex} found at positions {i} and {j}"
+                            )
                             # Continue processing rather than raising error
-                
+
                 additional_packets = packets_found[1:]
                 self._packet_buffer.extend(additional_packets)
                 logger.info(f"Stored {len(additional_packets)} additional packets in buffer:")
@@ -442,56 +457,56 @@ class LMAMCU(MCUService):
     ) -> Optional[bytes]:
         """
         Wait for cooling complete signal
-        
+
         Args:
             target_temp: Target temperature for cooling
             timeout: Maximum wait time in seconds
-            
+
         Returns:
             Cooling complete response packet or None if timeout
         """
         self._ensure_connected()
-        
+
         # First check if we have packets in the buffer from previous receive
         if self._packet_buffer:
             packet = self._packet_buffer.pop(0)
             logger.info(f"Using buffered packet: {packet.hex().upper()}")
             return packet
-        
+
         logger.info(f"WAITING for cooling complete signal (timeout: {timeout}s)")
-        
+
         start_time = time.time()
         response_data = b""
         expected_etx = b"\xfe\xfe"
-        
+
         while time.time() - start_time < timeout:
             # Check for incoming data
             if self.serial_conn and self.serial_conn.in_waiting > 0:
                 new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                 response_data += new_data
-                
+
                 # Check for complete packet
                 if response_data.endswith(expected_etx) and len(response_data) >= 6:
                     # Extract valid packet from potentially noisy buffer
                     valid_packet = self._extract_valid_packet(response_data)
-                    
+
                     if valid_packet:
                         response_hex = valid_packet.hex().upper()
                         response_time = (time.time() - start_time) * 1000
                         logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
-                        
+
                         # Detailed packet analysis on clean packet
                         self._analyze_response_packet(valid_packet, "COOLING_COMPLETE")
-                        
+
                         return valid_packet
                     else:
                         # Buffer ends with FEFE but no valid packet found - continue waiting
                         logger.warning(
                             "COOLING_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
                         )
-            
+
             await asyncio.sleep(0.1)  # 100ms wait between checks
-        
+
         # Timeout occurred
         if response_data:
             partial_hex = response_data.hex().upper()
@@ -500,7 +515,7 @@ class LMAMCU(MCUService):
             )
         else:
             logger.warning(f"COOLING_TIMEOUT with NO response data received ({timeout}s)")
-        
+
         return None
 
     # ===== MCUService Interface Implementation =====
@@ -686,7 +701,9 @@ class LMAMCU(MCUService):
 
                 # Use ir_temp_max as the primary temperature
                 self._current_temperature = ir_temp_celsius
-                logger.info(f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C")
+                logger.info(
+                    f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C"
+                )
                 return ir_temp_celsius
             else:
                 error_msg = "Invalid temperature response or timeout"
@@ -794,7 +811,8 @@ class LMAMCU(MCUService):
 
             # First response (immediate ACK)
             response = await self._send_packet(
-                packet, f"CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms)"
+                packet,
+                f"CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms)",
             )
 
             if not response or len(response) < 6 or response[2] != 0x04:

@@ -31,7 +31,7 @@ from domain.exceptions.eol_exceptions import (
 from domain.exceptions.hardware_exceptions import (
     HardwareConnectionException,
 )
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import (
     TestMeasurements,
 )
@@ -131,7 +131,7 @@ class HardwareServiceFacade:
     # 기본 하드웨어 관리 (라이프사이클 순서)
     # ============================================================================
 
-    async def connect_all_hardware(self, hardware_config: HardwareConfiguration) -> None:
+    async def connect_all_hardware(self, hardware_config: HardwareConfig) -> None:
         """Connect all required hardware"""
         logger.info("Connecting hardware...")
 
@@ -140,51 +140,23 @@ class HardwareServiceFacade:
 
         # Check and connect each hardware service
         if not await self._robot.is_connected():
-            # Connect to robot with connection parameters from configuration
-            connection_tasks.append(
-                self._robot.connect(
-                    axis_id=hardware_config.robot.axis_id,
-                    irq_no=hardware_config.robot.irq_no,
-                )
-            )
+            # Connect to robot (configuration already injected in constructor)
+            connection_tasks.append(self._robot.connect())
             hardware_names.append("Robot")
 
         if not await self._mcu.is_connected():
-            connection_tasks.append(
-                self._mcu.connect(
-                    port=hardware_config.mcu.port,
-                    baudrate=hardware_config.mcu.baudrate,
-                    timeout=hardware_config.mcu.timeout,
-                    bytesize=hardware_config.mcu.bytesize,
-                    stopbits=hardware_config.mcu.stopbits,
-                    parity=hardware_config.mcu.parity,
-                )
-            )
+            # Connect to MCU (configuration already injected in constructor)
+            connection_tasks.append(self._mcu.connect())
             hardware_names.append("MCU")
 
         if not await self._power.is_connected():
-            connection_tasks.append(
-                self._power.connect(
-                    host=hardware_config.power.host,
-                    port=hardware_config.power.port,
-                    timeout=hardware_config.power.timeout,
-                    channel=hardware_config.power.channel,
-                )
-            )
+            # Connect to power (configuration already injected in constructor)
+            connection_tasks.append(self._power.connect())
             hardware_names.append("Power")
 
         if not await self._loadcell.is_connected():
-            connection_tasks.append(
-                self._loadcell.connect(
-                    port=hardware_config.loadcell.port,
-                    baudrate=hardware_config.loadcell.baudrate,
-                    timeout=hardware_config.loadcell.timeout,
-                    bytesize=hardware_config.loadcell.bytesize,
-                    stopbits=hardware_config.loadcell.stopbits,
-                    parity=hardware_config.loadcell.parity,
-                    indicator_id=hardware_config.loadcell.indicator_id,
-                )
-            )
+            # Connect to loadcell (configuration already injected in constructor)
+            connection_tasks.append(self._loadcell.connect())
             hardware_names.append("LoadCell")
 
         # Digital I/O connection (if connect method is available)
@@ -194,13 +166,8 @@ class HardwareServiceFacade:
                 getattr(self._digital_io, "connect")
             ):
                 try:
-                    # For digital I/O, we may not need specific connection parameters
-                    # Use configuration from hardware_config.digital_io if available
-                    if hasattr(hardware_config, "digital_io") and hardware_config.digital_io:
-                        # If digital_io config has specific connection parameters, use them
-                        connection_tasks.append(self._digital_io.connect())
-                    else:
-                        connection_tasks.append(self._digital_io.connect())
+                    # Connect to digital I/O (configuration already injected in constructor)
+                    connection_tasks.append(self._digital_io.connect())
                     hardware_names.append("DigitalIO")
                 except Exception as e:
                     logger.warning(f"Digital I/O connection preparation failed: {e}")
@@ -233,7 +200,7 @@ class HardwareServiceFacade:
         }
 
     async def shutdown_hardware(
-        self, hardware_config: Optional[HardwareConfiguration] = None
+        self, hardware_config: Optional[HardwareConfig] = None
     ) -> None:
         """Safely shutdown all hardware"""
         logger.info("Shutting down hardware...")
@@ -283,7 +250,7 @@ class HardwareServiceFacade:
     async def initialize_hardware(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> None:
         """Initialize all hardware with configuration settings"""
         logger.info("Initializing hardware with configuration...")
@@ -360,7 +327,7 @@ class HardwareServiceFacade:
     async def set_lma_standby(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> None:
         """Set LMA standby sequence - coordinate MCU and Robot for LMA standby state"""
         logger.info("Starting LMA standby sequence...")
@@ -487,7 +454,7 @@ class HardwareServiceFacade:
     async def setup_test(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> None:
         """Setup hardware for test execution"""
         logger.info("Setting up test...")
@@ -544,7 +511,7 @@ class HardwareServiceFacade:
     async def perform_force_test_sequence(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> TestMeasurements:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         logger.info("Starting force test sequence...")
@@ -720,7 +687,7 @@ class HardwareServiceFacade:
     async def teardown_test(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> None:
         """Teardown test and return hardware to safe state"""
         logger.info("Tearing down test...")

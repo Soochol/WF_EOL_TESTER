@@ -10,34 +10,20 @@ import signal
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple
 
 # Add src directory to Python path for module imports
+# This is required because main.py is in the root directory and all source code is in src/
 sys.path.append("src")
 
 # Third-party imports
 from loguru import logger
 
-# Local application imports - Services
+# Local application imports - Services (only needed for Button Monitoring and Emergency Stop)
 from application.services.button_monitoring_service import DIOMonitoringService
-from application.services.configuration_service import ConfigurationService
-from application.services.configuration_validator import ConfigurationValidator
 from application.services.emergency_stop_service import EmergencyStopService
-from application.services.exception_handler import ExceptionHandler
-from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.repository_service import RepositoryService
-from application.services.test_result_evaluator import TestResultEvaluator
 
-# Local application imports - Use Cases
-from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
-
-# Local infrastructure imports
-from infrastructure.implementation.configuration.json_profile_preference import JsonProfilePreference
-from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
-from infrastructure.factory import ServiceFactory
-from infrastructure.implementation.repositories.json_result_repository import (
-    JsonResultRepository,
-)
+# Local infrastructure imports - New Dependency Injection
+from infrastructure.containers import ApplicationContainer
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
@@ -52,95 +38,58 @@ EOL_TESTER_LOG_FILENAME = f"eol_tester_{CURRENT_DATE}.log"
 
 
 async def main() -> None:
-    """Main application entry point with simplified orchestration."""
+    """Main application entry point with ApplicationContainer dependency injection."""
     setup_logging(debug=False)
 
     try:
-        logger.info("Creating EOL Tester services...")
+        logger.info("Creating EOL Tester with ApplicationContainer...")
 
-        # Create configuration services
-        yaml_configuration, profile_preference = await create_configuration()
+        # Create and configure dependency injection container
+        container = ApplicationContainer()
+        container.config.from_yaml("configuration/application.yaml")
 
-        # Create test result repository
-        test_result_repository = await create_repositories()
+        logger.info("ApplicationContainer configured successfully")
 
-        # Load hardware model
-        hardware_model = await yaml_configuration.load_hardware_model()
+        # Get services from container
+        hardware_services = container.hardware_service_facade()
+        configuration_service = container.configuration_service()
+        eol_force_test_use_case = container.eol_force_test_use_case()
 
-        # Create digital I/O service first (needed by both hardware facade and button monitoring)
-        hw_model_dict = hardware_model.to_dict()
-        digital_io_service = ServiceFactory.create_digital_io_service(
-            {"model": hw_model_dict["digital_io"]}
-        )
+        logger.info("Core services injected from container")
+
+        # Get digital I/O service from hardware facade (needed for button monitoring)
+        digital_io_service = hardware_services.digital_io_service
 
         # Connect digital I/O service if not already connected (needed for button monitoring)
         try:
             connection_status = await digital_io_service.is_connected()
-            logger.info(f"🔧 VERIFICATION: Digital I/O service connection status: {connection_status}")
-            
+            logger.info(
+                f"🔧 VERIFICATION: Digital I/O service connection status: {connection_status}"
+            )
+
             if not connection_status:
                 logger.info("Connecting Digital I/O service for button monitoring...")
                 await digital_io_service.connect()
                 connection_status = await digital_io_service.is_connected()
-                logger.info(f"Digital I/O service connected successfully. Final status: {connection_status}")
+                logger.info(
+                    f"Digital I/O service connected successfully. Final status: {connection_status}"
+                )
             else:
                 logger.info("Digital I/O service already connected")
-                
+
             # Verify I/O capabilities
             try:
                 input_count = await digital_io_service.get_input_count()
                 logger.info(f"🔧 VERIFICATION: Available input channels: {input_count}")
             except Exception as cap_e:
                 logger.warning(f"Could not verify I/O capabilities: {cap_e}")
-                
+
         except Exception as e:
             logger.error(f"❌ VERIFICATION: Failed to connect Digital I/O service: {e}")
             logger.warning("Button monitoring may not work properly without Digital I/O connection")
 
-        # Create services
-        hardware_services = None
-        try:
-            # Create hardware services based on hardware model specifications
-            hw_model_dict = hardware_model.to_dict()
-
-            # Create services directly using model dictionary
-            robot_service = ServiceFactory.create_robot_service({"model": hw_model_dict["robot"]})
-            mcu_service = ServiceFactory.create_mcu_service({"model": hw_model_dict["mcu"]})
-            loadcell_service = ServiceFactory.create_loadcell_service(
-                {"model": hw_model_dict["loadcell"]}
-            )
-            power_service = ServiceFactory.create_power_service({"model": hw_model_dict["power"]})
-
-            hardware_services = HardwareServiceFacade(
-                robot_service=robot_service,
-                mcu_service=mcu_service,
-                loadcell_service=loadcell_service,
-                power_service=power_service,
-                digital_io_service=digital_io_service,
-            )
-
-            (
-                configuration_service,
-                test_result_service,
-                exception_handler,
-                configuration_validator,
-                test_result_evaluator,
-            ) = await create_business_services(
-                yaml_configuration, profile_preference, test_result_repository
-            )
-        except Exception as e:
-            logger.error(f"Failed to create services: {e}")
-            sys.exit(1)
-
-        # Create EOL force test use case
-        eol_force_test_use_case = EOLForceTestUseCase(
-            hardware_services=hardware_services,
-            configuration_service=configuration_service,
-            configuration_validator=configuration_validator,
-            repository_service=test_result_service,
-            test_result_evaluator=test_result_evaluator,
-            exception_handler=exception_handler,
-        )
+        # Services are now injected from the ApplicationContainer
+        logger.info("All services successfully injected from ApplicationContainer")
 
         # Create Emergency Stop Service
         emergency_stop_service = EmergencyStopService(
@@ -153,26 +102,36 @@ async def main() -> None:
         try:
             logger.info("🔧 VERIFICATION: Loading hardware configuration for button monitoring...")
             hardware_config = await configuration_service.load_hardware_config()
-            
+
             # Verify hardware configuration details
-            logger.info(f"🔧 VERIFICATION: Hardware config loaded successfully")
-            logger.info(f"  - Emergency stop button: pin {hardware_config.digital_io.emergency_stop_button.pin_number}, "
-                       f"type {hardware_config.digital_io.emergency_stop_button.contact_type}, "
-                       f"edge {hardware_config.digital_io.emergency_stop_button.edge_type}")
-            logger.info(f"  - Left button: pin {hardware_config.digital_io.operator_start_button_left.pin_number}, "
-                       f"type {hardware_config.digital_io.operator_start_button_left.contact_type}, "
-                       f"edge {hardware_config.digital_io.operator_start_button_left.edge_type}")
-            logger.info(f"  - Right button: pin {hardware_config.digital_io.operator_start_button_right.pin_number}, "
-                       f"type {hardware_config.digital_io.operator_start_button_right.contact_type}, "
-                       f"edge {hardware_config.digital_io.operator_start_button_right.edge_type}")
-            logger.info(f"  - Safety sensors: door pin {hardware_config.digital_io.safety_door_closed_sensor.pin_number}, "
-                       f"clamp pin {hardware_config.digital_io.dut_clamp_safety_sensor.pin_number}, "
-                       f"chain pin {hardware_config.digital_io.dut_chain_safety_sensor.pin_number}")
+            logger.info("🔧 VERIFICATION: Hardware config loaded successfully")
+            logger.info(
+                f"  - Emergency stop button: pin {hardware_config.digital_io.emergency_stop_button.pin_number}, "
+                f"type {hardware_config.digital_io.emergency_stop_button.contact_type}, "
+                f"edge {hardware_config.digital_io.emergency_stop_button.edge_type}"
+            )
+            logger.info(
+                f"  - Left button: pin {hardware_config.digital_io.operator_start_button_left.pin_number}, "
+                f"type {hardware_config.digital_io.operator_start_button_left.contact_type}, "
+                f"edge {hardware_config.digital_io.operator_start_button_left.edge_type}"
+            )
+            logger.info(
+                f"  - Right button: pin {hardware_config.digital_io.operator_start_button_right.pin_number}, "
+                f"type {hardware_config.digital_io.operator_start_button_right.contact_type}, "
+                f"edge {hardware_config.digital_io.operator_start_button_right.edge_type}"
+            )
+            logger.info(
+                f"  - Safety sensors: door pin {hardware_config.digital_io.safety_door_closed_sensor.pin_number}, "
+                f"clamp pin {hardware_config.digital_io.dut_clamp_safety_sensor.pin_number}, "
+                f"chain pin {hardware_config.digital_io.dut_chain_safety_sensor.pin_number}"
+            )
 
             # Create callback function for button press
             async def start_button_callback():
                 """Execute EOL test when both buttons are pressed"""
-                logger.info("🎯 VERIFICATION: Button press callback triggered - Starting EOL test...")
+                logger.info(
+                    "🎯 VERIFICATION: Button press callback triggered - Starting EOL test..."
+                )
                 logger.info("🎯 VERIFICATION: Callback function successfully invoked")
 
                 try:
@@ -225,8 +184,10 @@ async def main() -> None:
                     logger.debug(f"Emergency stop traceback: {traceback.format_exc()}")
 
             logger.info("🔧 VERIFICATION: Creating DIOMonitoringService...")
-            logger.info("🔧 VERIFICATION: Callback functions prepared - start_button_callback, emergency_stop_callback")
-            
+            logger.info(
+                "🔧 VERIFICATION: Callback functions prepared - start_button_callback, emergency_stop_callback"
+            )
+
             button_monitoring_service = DIOMonitoringService(
                 digital_io_service=digital_io_service,
                 hardware_config=hardware_config,
@@ -234,18 +195,20 @@ async def main() -> None:
                 callback=start_button_callback,
                 emergency_stop_callback=emergency_stop_callback,
             )
-            
+
             logger.info("🔧 VERIFICATION: DIOMonitoringService instance created successfully")
 
             # Start button monitoring in background
             logger.info("🔧 VERIFICATION: Starting button monitoring in background...")
             await button_monitoring_service.start_monitoring()
-            logger.info("✅ VERIFICATION: Button monitoring service created and started successfully")
-            
+            logger.info(
+                "✅ VERIFICATION: Button monitoring service created and started successfully"
+            )
+
             # Verify monitoring status
             is_monitoring = button_monitoring_service.is_monitoring()
             logger.info(f"🔧 VERIFICATION: Monitoring active status: {is_monitoring}")
-            
+
             # Run comprehensive verification report
             logger.info("🔍 VERIFICATION: Running comprehensive verification report...")
             await button_monitoring_service.print_verification_report()
@@ -254,11 +217,14 @@ async def main() -> None:
             button_monitoring_service = None
 
         # Create and run enhanced command line interface with Rich UI
+        # Services are now injected from ApplicationContainer
         try:
             command_line_interface = EnhancedEOLTesterCLI(
                 eol_force_test_use_case, hardware_services, configuration_service
             )
-            logger.info("Starting Enhanced EOL Tester application with Rich UI")
+            logger.info(
+                "Starting Enhanced EOL Tester application with Rich UI (ApplicationContainer)"
+            )
             await command_line_interface.run_interactive()
             logger.info("Enhanced EOL Tester application finished")
         except Exception as e:
@@ -299,7 +265,7 @@ def setup_logging(debug: bool = False) -> None:
     # Custom formatter for noise detection warnings and MCU packet logs
     def custom_formatter(record):
         message = record["message"]
-        
+
         if "🔧 NOISE" in message:
             # Noise detection warnings - yellow bold
             return (
@@ -337,74 +303,21 @@ def setup_logging(debug: bool = False) -> None:
 
     logger.add(
         logs_directory / EOL_TESTER_LOG_FILENAME,
-        rotation=None,     # No rotation needed - using date-based filenames
-        retention=None,    # Manual cleanup - no automatic retention
-        enqueue=True,      # Background thread processing to prevent file lock conflicts
-        catch=True,        # Prevent logging errors from crashing the application
+        rotation=None,  # No rotation needed - using date-based filenames
+        retention=None,  # Manual cleanup - no automatic retention
+        enqueue=True,  # Background thread processing to prevent file lock conflicts
+        catch=True,  # Prevent logging errors from crashing the application
         level="DEBUG",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name} - {message}",
     )
 
 
-async def create_configuration() -> Tuple[YamlConfiguration, JsonProfilePreference]:
-    """Create configuration-related services.
-
-    Returns:
-        Tuple containing yaml_configuration and profile_preference services.
-    """
-    yaml_configuration = YamlConfiguration()
-    profile_preference = JsonProfilePreference()
-    return yaml_configuration, profile_preference
-
-
-async def create_repositories() -> JsonResultRepository:
-    """Create repository for storing test results.
-
-    Returns:
-        JsonResultRepository instance for test result storage.
-    """
-    test_result_repository = JsonResultRepository()
-    return test_result_repository
-
-
-async def create_business_services(
-    yaml_configuration: YamlConfiguration,
-    profile_preference: JsonProfilePreference,
-    test_result_repository: JsonResultRepository,
-) -> Tuple[
-    ConfigurationService,
-    RepositoryService,
-    ExceptionHandler,
-    ConfigurationValidator,
-    TestResultEvaluator,
-]:
-    """Create business logic services.
-
-    Args:
-        yaml_configuration: YAML configuration service instance.
-        profile_preference: JSON profile preference service instance.
-        test_result_repository: JSON test result repository instance.
-
-    Returns:
-        Tuple containing all business service instances.
-    """
-    configuration_service = ConfigurationService(
-        configuration=yaml_configuration,  # test_configuration, hardware_configuration
-        profile_preference=profile_preference,
-    )
-
-    test_result_service = RepositoryService(test_repository=test_result_repository)
-    exception_handler = ExceptionHandler()
-    configuration_validator = ConfigurationValidator()
-    test_result_evaluator = TestResultEvaluator()
-
-    return (
-        configuration_service,
-        test_result_service,
-        exception_handler,
-        configuration_validator,
-        test_result_evaluator,
-    )
+# Service creation functions completely removed - now using ApplicationContainer for dependency injection
+# The following functions are no longer needed:
+# - create_configuration()
+# - create_repositories()
+# - create_business_services()
+# All services are now injected via ApplicationContainer from configuration/application.yaml
 
 
 def setup_signal_handlers():

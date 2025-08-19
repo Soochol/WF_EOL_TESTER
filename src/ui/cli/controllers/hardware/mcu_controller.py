@@ -9,7 +9,7 @@ from typing import Optional
 
 from application.interfaces.hardware.mcu import MCUService
 from domain.enums.mcu_enums import TestMode
-from domain.value_objects.hardware_configuration import MCUConfig
+from domain.value_objects.hardware_config import MCUConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

@@ -13,7 +13,7 @@ from application.services.configuration_service import ConfigurationService
 from application.services.configuration_validator import ConfigurationValidator
 from domain.exceptions import MultiConfigurationValidationError
 from domain.exceptions.test_exceptions import TestExecutionException
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import TestConfiguration
 
 from .constants import TestExecutionConstants
@@ -33,7 +33,7 @@ class TestConfigurationLoader:
         # Configuration state
         self._profile_name: Optional[str] = None
         self._test_config: Optional[TestConfiguration] = None
-        self._hardware_config: Optional[HardwareConfiguration] = None
+        self._hardware_config: Optional[HardwareConfig] = None
 
     @property
     def profile_name(self) -> Optional[str]:
@@ -46,7 +46,7 @@ class TestConfigurationLoader:
         return self._test_config
 
     @property
-    def hardware_config(self) -> Optional[HardwareConfiguration]:
+    def hardware_config(self) -> Optional[HardwareConfig]:
         """Get loaded hardware configuration"""
         return self._hardware_config
 

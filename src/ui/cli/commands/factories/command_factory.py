@@ -13,7 +13,7 @@ from ui.cli.commands.interfaces.command_interface import (
     ICommandMiddleware,
     CommandMetadata,
 )
-from ui.cli.container.dependency_container import DependencyContainer
+from infrastructure.containers.application_container import ApplicationContainer
 
 # Type variable for command creation
 T = TypeVar("T", bound=ICommand)
@@ -26,7 +26,7 @@ class CommandFactory:
     configuration management, and lifecycle support.
     """
 
-    def __init__(self, container: DependencyContainer):
+    def __init__(self, container: ApplicationContainer):
         """Initialize command factory.
 
         Args:
@@ -339,7 +339,7 @@ class CommandFactory:
         self._middleware_configurations.clear()
         logger.debug("Cleared all factory configurations")
 
-    def set_container(self, container: DependencyContainer) -> None:
+    def set_container(self, container: ApplicationContainer) -> None:
         """Set or update the dependency injection container.
 
         Args:

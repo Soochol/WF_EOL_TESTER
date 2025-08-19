@@ -34,6 +34,8 @@ dependencies = [
     "structlog>=23.0.0",
     "pandas>=2.0.0",
     "openpyxl>=3.1.0",
+    # Dependency Injection
+    "dependency-injector[yaml]>=4.41.0",
 ]
 
 [project.optional-dependencies]
@@ -258,6 +260,7 @@ init-hook = 'import sys; sys.path.append("src")'
 jobs = 0
 persistent = true
 fail-under = 6.0
+extension-pkg-allow-list = ["dependency_injector"]
 
 [tool.pylint."messages control"]
 disable = [
@@ -297,6 +300,8 @@ disable = [
     "no-else-raise",
     "no-else-break",
     "no-else-continue",
+    "c-extension-no-member",
+    "no-member",
 ]
 
 [tool.pylint.format]

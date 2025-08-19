@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
-from ui.cli.container.dependency_container import DependencyContainer
+from infrastructure.containers.application_container import ApplicationContainer
 
 
 class CommandExecutionContext(ICommandExecutionContext):
@@ -21,7 +21,7 @@ class CommandExecutionContext(ICommandExecutionContext):
 
     def __init__(
         self,
-        container: DependencyContainer,
+        container: ApplicationContainer,
         user_id: Optional[str] = None,
         session_data: Optional[Dict[str, Any]] = None,
         configuration: Optional[Dict[str, Any]] = None,

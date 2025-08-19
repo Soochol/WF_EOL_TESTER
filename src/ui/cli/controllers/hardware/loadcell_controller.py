@@ -9,7 +9,7 @@ import asyncio
 from typing import Optional
 
 from application.interfaces.hardware.loadcell import LoadCellService
-from domain.value_objects.hardware_configuration import LoadCellConfig
+from domain.value_objects.hardware_config import LoadCellConfig
 
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu

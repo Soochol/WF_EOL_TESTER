@@ -23,9 +23,13 @@ from domain.exceptions import (
 class MockRobot(RobotService):
     """Mock 로봇 서비스 (테스트용)"""
 
-    def __init__(self):
+    def __init__(self, axis_id: int = 0, irq_no: int = 7):
         """
         초기화
+
+        Args:
+            axis_id: Axis ID number
+            irq_no: IRQ number
         """
         self._is_connected = True  # Mock robot은 항상 연결된 상태로 시작
         self._current_position: float = 0.0
@@ -33,9 +37,9 @@ class MockRobot(RobotService):
         self._axis_velocity: float = 0.0
         self._servo_enabled = False  # Servo 상태 추적
 
-        # Connection parameters - will be set during connect
-        self._axis_id = 0
-        self._irq_no = 7
+        # Connection parameters (injected at creation time)
+        self._axis_id = axis_id
+        self._irq_no = irq_no
 
         # Mock-specific settings
         self._model = "MOCK"
@@ -46,22 +50,15 @@ class MockRobot(RobotService):
 
         logger.info("MockRobot initialized and connected (mock environment)")
 
-    async def connect(self, axis_id: int, irq_no: int) -> None:
+    async def connect(self) -> None:
         """
         하드웨어 연결 (시뮬레이션)
-
-        Args:
-            axis_id: Axis ID number
-            irq_no: IRQ number for connection
 
         Raises:
             HardwareConnectionError: If connection fails
         """
-        # Store connection parameters
-        self._axis_id = axis_id
-        self._irq_no = irq_no
 
-        logger.info(f"Connecting to Mock Robot (IRQ: {irq_no}, Axis: {axis_id})...")
+        logger.info(f"Connecting to Mock Robot (IRQ: {self._irq_no}, Axis: {self._axis_id})...")
 
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._response_delay * 2)

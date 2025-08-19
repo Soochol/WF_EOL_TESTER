@@ -24,16 +24,22 @@ from driver.tcp.exceptions import TCPError
 class OdaPower(PowerService):
     """ODA 전원 공급 장치 통합 서비스"""
 
-    def __init__(self):
+    def __init__(self, host: str, port: int, timeout: float, channel: int):
         """
         초기화
+
+        Args:
+            host: IP address or hostname
+            port: TCP port number
+            timeout: Connection timeout in seconds
+            channel: Power channel number
         """
 
-        # Connection parameters (will be set during connect)
-        self._host = ""
-        self._port = 0
-        self._timeout = 0.0
-        self._channel = 0
+        # Connection parameters
+        self._host = host
+        self._port = port
+        self._timeout = timeout
+        self._channel = channel
 
         # State initialization
         self._is_connected = False
@@ -41,31 +47,19 @@ class OdaPower(PowerService):
         self._device_identity: Optional[str] = None  # Store device identification response
         self._tcp_comm: Optional[TCPCommunication] = None
 
-    async def connect(self, host: str, port: int, timeout: float, channel: int) -> None:
+    async def connect(self) -> None:
         """
         Connect to power supply hardware
-
-        Args:
-            host: IP address or hostname
-            port: TCP port number
-            timeout: Connection timeout in seconds
-            channel: Power channel number
 
         Raises:
             HardwareConnectionError: If connection fails
         """
 
         try:
-            # Store connection parameters
-            self._host = host
-            self._port = port
-            self._timeout = timeout
-            self._channel = channel
-
             # Create TCP connection with config values
-            self._tcp_comm = TCPCommunication(host, port, timeout)
+            self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
 
-            logger.info(f"Connecting to ODA Power Supply at {host}:{port} (Channel: {channel})")
+            logger.info(f"Connecting to ODA Power Supply at {self._host}:{self._port} (Channel: {self._channel})")
 
             await self._tcp_comm.connect()
 

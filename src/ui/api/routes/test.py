@@ -7,14 +7,15 @@ Provides REST endpoints for test execution and management.
 from datetime import datetime
 from typing import Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from loguru import logger
+from dependency_injector.wiring import Provide, inject
 
-from application.use_cases.eol_force_test import EOLForceTestCommand
-from application.use_cases.robot_home import RobotHomeCommand
+from application.use_cases.eol_force_test import EOLForceTestCommand, EOLForceTestUseCase
+from application.use_cases.robot_home import RobotHomeCommand, RobotHomeUseCase
 from domain.entities.dut import DUT
 from domain.value_objects.dut_command_info import DUTCommandInfo
-from ui.api.dependencies import DIContainer, get_container
+from infrastructure.containers import ApplicationContainer
 from ui.api.models.test_models import (
     RobotHomeRequest,
     RobotHomeResponse,
@@ -32,15 +33,14 @@ cancelled_tests: set = set()
 
 
 @router.post("/eol-force-test", response_model=TestExecutionResponse)
+@inject
 async def start_eol_force_test(
     request: TestExecutionRequest,
     background_tasks: BackgroundTasks,
-    container: DIContainer = Depends(get_container),
+    eol_test_use_case: EOLForceTestUseCase = Provide[ApplicationContainer.eol_force_test_use_case],
 ):
     """Start EOL force test execution"""
     try:
-        # Get use case
-        eol_test_use_case = await container.eol_force_test_use_case()
 
         # Create DUT entity
         from domain.value_objects.identifiers import DUTId
@@ -244,12 +244,13 @@ async def cancel_test(test_id: str, request: TestCancellationRequest):
 
 
 @router.post("/robot-home", response_model=RobotHomeResponse)
+@inject
 async def execute_robot_home(
-    request: RobotHomeRequest, container: DIContainer = Depends(get_container)
+    request: RobotHomeRequest, 
+    robot_home_use_case: RobotHomeUseCase = Provide[ApplicationContainer.robot_home_use_case]
 ):
     """Execute robot homing operation"""
     try:
-        robot_home_use_case = await container.robot_home_use_case()
 
         # Create command
         command = RobotHomeCommand(operator_id=request.operator_id)

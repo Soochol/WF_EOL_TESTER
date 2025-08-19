@@ -6,9 +6,8 @@ Defines the interface contract for configuration implementations.
 
 from typing import Protocol, List, Dict, Any, Optional
 
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import TestConfiguration
-from domain.value_objects.hardware_model import HardwareModel
 
 
 class Configuration(Protocol):
@@ -18,11 +17,11 @@ class Configuration(Protocol):
         """Load test configuration profile"""
         ...
     
-    async def load_hardware_config(self) -> HardwareConfiguration:
+    async def load_hardware_config(self) -> HardwareConfig:
         """Load hardware configuration"""
         ...
     
-    async def load_hardware_model(self) -> HardwareModel:
+    async def load_hardware_model(self) -> HardwareConfig:
         """Load hardware model configuration"""
         ...
     
@@ -38,11 +37,11 @@ class Configuration(Protocol):
         """Save test configuration profile"""
         ...
     
-    async def save_hardware_config(self, hardware_config: HardwareConfiguration) -> None:
+    async def save_hardware_config(self, hardware_config: HardwareConfig) -> None:
         """Save hardware configuration"""
         ...
     
-    async def save_hardware_model(self, hardware_model: HardwareModel) -> None:
+    async def save_hardware_model(self, hardware_config: HardwareConfig) -> None:
         """Save hardware model configuration"""
         ...
     

@@ -9,7 +9,7 @@ from loguru import logger
 
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.exceptions.test_exceptions import TestExecutionException
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 
@@ -25,7 +25,7 @@ class HardwareTestExecutor:
     def validate_configurations_loaded(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> None:
         """
         Validate that all required configurations are loaded
@@ -46,7 +46,7 @@ class HardwareTestExecutor:
     async def execute_hardware_test_phases(
         self,
         test_config: TestConfiguration,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
     ) -> TestMeasurements:
         """
         Execute all hardware test phases and collect measurements

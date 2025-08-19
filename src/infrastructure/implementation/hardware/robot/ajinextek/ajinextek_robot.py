@@ -50,10 +50,18 @@ from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
 class AjinextekRobot(RobotService):
     """AJINEXTEK 로봇 통합 서비스"""
 
-    def __init__(self):
+    def __init__(self, axis_id: int, irq_no: int):
         """
         초기화
+
+        Args:
+            axis_id: Axis ID number
+            irq_no: IRQ number for connection
         """
+
+        # Connection parameters
+        self._axis_id = axis_id
+        self._irq_no = irq_no
 
         # Library information
         self.version: str = "Unknown"
@@ -67,19 +75,15 @@ class AjinextekRobot(RobotService):
         self._error_message = None
 
         # Initialize AXL wrapper (싱글톤 인스턴스 사용)
-        from infrastructure.factory import AXLWrapperFactory
+        from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
 
-        self._axl = AXLWrapperFactory.get_axl_wrapper()
+        self._axl = AXLWrapper.get_instance()
 
         logger.info("AjinextekRobotAdapter initialized")
 
-    async def connect(self, axis_id: int, irq_no: int) -> None:
+    async def connect(self) -> None:
         """
         하드웨어 연결
-
-        Args:
-            axis_id: Axis ID number
-            irq_no: IRQ number for connection
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -87,7 +91,7 @@ class AjinextekRobot(RobotService):
 
         try:
             logger.info(
-                f"Connecting to AJINEXTEK robot controller (IRQ: {irq_no}, Axis: {axis_id})"
+                f"Connecting to AJINEXTEK robot controller (IRQ: {self._irq_no}, Axis: {self._axis_id})"
             )
 
             # Verify DLL installation before attempting to load
@@ -103,7 +107,7 @@ class AjinextekRobot(RobotService):
             #     )
 
             # 중앙화된 연결 관리 사용
-            self._axl.connect(irq_no)
+            self._axl.connect(self._irq_no)
 
             # Get board count for verification (with error handling)
             try:
@@ -135,7 +139,7 @@ class AjinextekRobot(RobotService):
             # Software limits are now managed by robot controller via .mot file
 
             # Load robot parameters from configuration file for this axis
-            await self._load_robot_parameters(axis_id)
+            await self._load_robot_parameters(self._axis_id)
 
             # Motion parameters are now loaded from .prm file via AxmMotLoadParaAll
             logger.info("Motion parameters initialized from .prm file")
@@ -144,7 +148,7 @@ class AjinextekRobot(RobotService):
             self._motion_status = MotionStatus.IDLE
 
             logger.info(
-                f"AJINEXTEK robot controller connected successfully (IRQ: {irq_no}, Axis: {axis_id}, Total Axes: {self._axis_count})"
+                f"AJINEXTEK robot controller connected successfully (IRQ: {self._irq_no}, Axis: {self._axis_id}, Total Axes: {self._axis_count})"
             )
 
         except Exception as e:

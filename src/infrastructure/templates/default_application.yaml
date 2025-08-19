@@ -1,0 +1,94 @@
+# Default Application Configuration for WF EOL Tester
+# This file is auto-generated when no configuration exists
+# All hardware components are set to 'mock' mode for safe development/testing
+
+application:
+  name: "WF EOL Tester"
+  version: "1.0.0"
+  environment: "development"  # development, production, testing
+
+# Hardware configuration - All set to mock for safe operation
+hardware:
+  robot:
+    model: "mock"  # ajinextek, mock
+    axis_id: 0
+    irq_no: 7
+    timeout: 30.0
+    polling_interval: 250  # ms for fast polling during motion
+    
+  power:
+    model: "mock"  # oda, mock
+    host: "192.168.11.1"
+    port: 5000
+    channel: 1
+    timeout: 10.0
+    
+  mcu:
+    model: "mock"  # lma, mock
+    port: "COM3"
+    baudrate: 115200
+    timeout: 5.0
+    bytesize: 8
+    stopbits: 1
+    parity: null
+    
+  loadcell:
+    model: "mock"  # bs205, mock
+    port: "COM4"
+    baudrate: 9600
+    timeout: 3.0
+    bytesize: 8
+    stopbits: 1
+    parity: null
+    indicator_id: 1
+    
+  digital_io:
+    model: "mock"  # ajinextek, mock
+    board_id: 0
+    input_channels: 16
+    output_channels: 16
+
+# Service configuration
+services:
+  configuration:
+    auto_load_profiles: true
+    default_profile: "default"
+    
+  hardware_facade:
+    enable_health_checks: true
+    health_check_interval: 30.0
+    
+  repository:
+    results_path: "ResultsLog"
+    auto_save: true
+    
+# Use case configuration
+use_cases:
+  eol_force_test:
+    enable_auto_validation: true
+    save_raw_data: true
+    
+  robot_home:
+    enable_safety_checks: true
+    home_timeout: 60.0
+
+# Development settings
+development:
+  enable_debug_logging: true
+  mock_delays: true
+  simulate_hardware_errors: false
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "detailed"
+  enable_file_logging: true
+  enable_console_logging: true
+
+# Metadata
+metadata:
+  description: "Default configuration with mock hardware for safe development"
+  version: "1.0"
+  auto_generated: true
+  created_time: "${timestamp}"
+  note: "This file was auto-generated. Modify as needed for your environment."

@@ -11,9 +11,8 @@ from typing import List, Dict, Any, Optional
 
 from loguru import logger
 
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import TestConfiguration
-from domain.value_objects.hardware_model import HardwareModel
 
 
 class YamlConfiguration:
@@ -61,44 +60,43 @@ class YamlConfiguration:
         
         return TestConfiguration.from_structured_dict(data)
     
-    async def load_hardware_config(self) -> HardwareConfiguration:
-        """Load hardware configuration"""
-        config_path = self.config_dir / "hardware_configuration.yaml"
+    async def load_hardware_config(self) -> HardwareConfig:
+        """Load unified hardware configuration from application.yaml"""
+        app_config_path = self.config_dir / "application.yaml"
         
-        if not config_path.exists():
-            # Create default hardware configuration when file is missing
-            from datetime import datetime
+        if not app_config_path.exists():
+            # Fallback to hardware_configuration.yaml if application.yaml doesn't exist
+            config_path = self.config_dir / "hardware_configuration.yaml"
             
-            logger.info(f"Hardware configuration file not found, creating default: {config_path}")
+            if config_path.exists():
+                logger.info(f"Using fallback hardware config file: {config_path}")
+                with open(config_path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                hw_config_data = data.get("hardware_config", data)
+                return HardwareConfig.from_dict(hw_config_data)
             
-            # Create default HardwareConfiguration with default values
-            default_hardware_config = HardwareConfiguration()
-            
-            # Convert to structured dictionary format for better readability
-            config_data = default_hardware_config.to_structured_dict()
-            
-            # Add metadata
-            config_data["metadata"] = {
-                "description": "Hardware configuration with detailed parameter explanations",
-                "version": "1.1",
-                "created_by": "YamlConfiguration (auto-generated)",
-                "created_time": datetime.now().isoformat(),
-                "note": "Verify all connection parameters match your physical hardware setup"
-            }
-            
-            # Save the default configuration for future use
-            with open(config_path, "w", encoding="utf-8") as f:
-                yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
-            
-            logger.info(f"Created default hardware configuration: {config_path}")
-            return default_hardware_config
+            # Create default hardware configuration if no config files exist
+            logger.info("No hardware configuration found, creating default")
+            return HardwareConfig()  # Default constructor creates all mock hardware
         
-        with open(config_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        
-        # Extract hardware_config section if present
-        hw_config_data = data.get("hardware_config", data)
-        return HardwareConfiguration.from_dict(hw_config_data)
+        # Load from application.yaml
+        try:
+            with open(app_config_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            
+            # Extract hardware section from application.yaml
+            hardware_data = data.get("hardware", {})
+            
+            if not hardware_data:
+                logger.warning("No hardware section found in application.yaml, using defaults")
+                return HardwareConfig()
+            
+            return HardwareConfig.from_dict(hardware_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to load hardware configuration from {app_config_path}: {e}")
+            logger.info("Using default hardware configuration")
+            return HardwareConfig()
     
     async def list_available_profiles(self) -> List[str]:
         """List available configuration profiles"""
@@ -112,44 +110,9 @@ class YamlConfiguration:
         
         return sorted(profiles)
     
-    async def load_hardware_model(self) -> HardwareModel:
-        """Load hardware model configuration"""
-        model_path = self.config_dir / "hardware_model.yaml"
-        
-        if not model_path.exists():
-            # Create default hardware model configuration when file is missing
-            from datetime import datetime
-            
-            logger.info(f"Hardware model file not found, creating default: {model_path}")
-            
-            # Create default HardwareModel with all components set to "mock"
-            default_hardware_model = HardwareModel()
-            
-            # Convert to structured dictionary format for better readability
-            model_data = default_hardware_model.to_structured_dict()
-            
-            # Add metadata
-            model_data["metadata"] = {
-                "description": "Hardware model configuration with detailed explanations",
-                "version": "1.1",
-                "created_by": "YamlConfiguration (auto-generated)",
-                "created_time": datetime.now().isoformat(),
-                "note": "Use mock mode for development and testing, real hardware for production"
-            }
-            
-            # Save the default model for future use
-            with open(model_path, "w", encoding="utf-8") as f:
-                yaml.dump(model_data, f, default_flow_style=False, sort_keys=False)
-            
-            logger.info(f"Created default hardware model configuration: {model_path}")
-            return default_hardware_model
-        
-        with open(model_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        
-        # Extract hardware_model section if present
-        model_data = data.get("hardware_model", data)
-        return HardwareModel.from_dict(model_data)
+    async def load_hardware_model(self) -> HardwareConfig:
+        """Load hardware configuration from application.yaml (legacy method name for compatibility)"""
+        return await self.load_hardware_config()
     
     async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
         """Load DUT default values"""
@@ -210,29 +173,43 @@ class YamlConfiguration:
         
         logger.info(f"Saved test profile: {profile_path}")
     
-    async def save_hardware_config(self, hardware_config: HardwareConfiguration) -> None:
-        """Save hardware configuration"""
-        config_path = self.config_dir / "hardware_configuration.yaml"
+    async def save_hardware_config(self, hardware_config: HardwareConfig) -> None:
+        """Save unified hardware configuration to application.yaml"""
+        app_config_path = self.config_dir / "application.yaml"
         
-        # Convert to structured dictionary for better readability
-        config_data = hardware_config.to_structured_dict()
-        
-        with open(config_path, "w", encoding="utf-8") as f:
-            yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
-        
-        logger.info(f"Saved hardware configuration: {config_path}")
+        try:
+            # Load existing application.yaml
+            if app_config_path.exists():
+                with open(app_config_path, "r", encoding="utf-8") as f:
+                    app_data = yaml.safe_load(f) or {}
+            else:
+                app_data = {}
+            
+            # Update hardware section with unified configuration
+            app_data["hardware"] = hardware_config.to_dict()
+            
+            # Save updated application.yaml
+            with open(app_config_path, "w", encoding="utf-8") as f:
+                yaml.dump(app_data, f, default_flow_style=False, sort_keys=False)
+            
+            logger.info(f"Saved hardware configuration to: {app_config_path}")
+            
+        except Exception as e:
+            # Fallback: save to hardware_configuration.yaml if application.yaml update fails
+            logger.warning(f"Failed to update application.yaml: {e}")
+            logger.info("Falling back to hardware_configuration.yaml")
+            
+            config_path = self.config_dir / "hardware_configuration.yaml"
+            config_data = hardware_config.to_structured_dict()
+            
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
+            
+            logger.info(f"Saved hardware configuration to fallback file: {config_path}")
     
-    async def save_hardware_model(self, hardware_model: HardwareModel) -> None:
-        """Save hardware model configuration"""
-        model_path = self.config_dir / "hardware_model.yaml"
-        
-        # Convert to structured dictionary for better readability
-        model_data = hardware_model.to_structured_dict()
-        
-        with open(model_path, "w", encoding="utf-8") as f:
-            yaml.dump(model_data, f, default_flow_style=False, sort_keys=False)
-        
-        logger.info(f"Saved hardware model: {model_path}")
+    async def save_hardware_model(self, hardware_config: HardwareConfig) -> None:
+        """Save hardware configuration to application.yaml (legacy method name for compatibility)"""
+        await self.save_hardware_config(hardware_config)
     
     async def save_dut_defaults(self, dut_defaults_data: Dict[str, Any], profile_name: str = "default") -> None:
         """Save DUT defaults configuration"""

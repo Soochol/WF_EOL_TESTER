@@ -15,7 +15,7 @@ Key Features:
 from typing import Any, Optional, Type, TypeVar
 from loguru import logger
 
-from ..container.dependency_container import DependencyContainer
+from infrastructure.containers.application_container import ApplicationContainer
 from ..config.component_config import ComponentConfig, ConfigurationMode
 
 # Type variable for generic factory methods
@@ -32,7 +32,7 @@ class ComponentFactory:
 
     def __init__(
         self,
-        container: DependencyContainer,
+        container: ApplicationContainer,
         config: ComponentConfig,
     ):
         """Initialize component factory.
@@ -129,7 +129,7 @@ class ComponentFactory:
         return self._container.is_registered(service_type)
 
     @property
-    def container(self) -> DependencyContainer:
+    def container(self) -> ApplicationContainer:
         """Get the dependency injection container.
 
         Returns:
@@ -161,7 +161,7 @@ class CLIComponentFactory(ComponentFactory):
         Args:
             mode: Configuration mode for component creation
         """
-        container = DependencyContainer()
+        container = ApplicationContainer()
         config = ComponentConfig(mode)
         super().__init__(container, config)
 

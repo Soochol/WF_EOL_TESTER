@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional
 from loguru import logger
 
 from application.interfaces.hardware.digital_io import DigitalIOService
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 
 if TYPE_CHECKING:
     from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
@@ -29,7 +29,7 @@ class DIOMonitoringService:
     def __init__(
         self,
         digital_io_service: DigitalIOService,
-        hardware_config: HardwareConfiguration,
+        hardware_config: HardwareConfig,
         eol_use_case: Optional["EOLForceTestUseCase"] = None,
         callback: Optional[Union[Callable[[], None], Callable[[], Awaitable[None]]]] = None,
         emergency_stop_callback: Optional[

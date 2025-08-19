@@ -11,8 +11,6 @@ from typing import Dict, Optional, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
-
-from ui.api.dependencies import get_container
 from ui.api.models.websocket_models import (
     DigitalInputMessage,
     HardwareEventMessage,
@@ -204,13 +202,18 @@ async def digital_input_monitor():
     logger.info("Starting digital input monitor")
 
     try:
-        # Get container for hardware access
-        container = get_container()
+        # Import container for hardware access
+        from infrastructure.containers import ApplicationContainer
+        
+        # Create container instance with safe config loading
+        container = ApplicationContainer.load_config_safely("configuration/application.yaml")
+        
+        # Get hardware service facade
+        hardware_services = container.hardware_service_facade()
+        digital_io_service = hardware_services.digital_io_service
 
         while active_connections["digital-input"]:
             try:
-                hardware_services = await container.hardware_service_facade()
-                digital_io_service = hardware_services.digital_io_service
 
                 # Check if digital I/O is connected
                 if await digital_io_service.is_connected():
@@ -283,11 +286,17 @@ async def system_status_monitor():
     last_status = None
 
     try:
-        container = get_container()
+        # Import container for hardware access
+        from infrastructure.containers import ApplicationContainer
+        
+        # Create container instance with safe config loading
+        container = ApplicationContainer.load_config_safely("configuration/application.yaml")
+        
+        # Get hardware service facade
+        hardware_services = container.hardware_service_facade()
 
         while active_connections["system-status"]:
             try:
-                hardware_services = await container.hardware_service_facade()
                 hardware_status = await hardware_services.get_hardware_status()
 
                 # Create system status message

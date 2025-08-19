@@ -13,7 +13,7 @@ from loguru import logger
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.enums.test_status import TestStatus
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
-from domain.value_objects.hardware_configuration import HardwareConfiguration
+from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration
 
@@ -53,7 +53,7 @@ class RobotHomeUseCase:
     """
 
     def __init__(
-        self, hardware_services: HardwareServiceFacade, hardware_config: HardwareConfiguration
+        self, hardware_services: HardwareServiceFacade, hardware_config: HardwareConfig
     ):
         """
         Initialize Robot Home Use Case

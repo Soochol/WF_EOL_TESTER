@@ -42,19 +42,37 @@ from infrastructure.implementation.hardware.loadcell.bs205.error_codes import (
 class BS205LoadCell(LoadCellService):
     """BS205 로드셀 통합 서비스"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        bytesize: int,
+        stopbits: int,
+        parity: Optional[str],
+        indicator_id: int,
+    ):
         """
         초기화
+
+        Args:
+            port: Serial port (e.g., "COM3")
+            baudrate: Baud rate (e.g., 9600)
+            timeout: Connection timeout in seconds
+            bytesize: Data bits
+            stopbits: Stop bits
+            parity: Parity setting
+            indicator_id: Indicator device ID
         """
 
-        # Connection parameters (will be set during connect)
-        self._port = ""
-        self._baudrate = 0
-        self._timeout = 0.0
-        self._bytesize = 0
-        self._stopbits = 0
-        self._parity: Optional[str] = None
-        self._indicator_id = 0
+        # Connection parameters
+        self._port = port
+        self._baudrate = baudrate
+        self._timeout = timeout
+        self._bytesize = bytesize
+        self._stopbits = stopbits
+        self._parity = parity
+        self._indicator_id = indicator_id
 
         # State initialization
         self._connection: Optional[SerialConnection] = None
@@ -65,43 +83,15 @@ class BS205LoadCell(LoadCellService):
         self._min_command_interval = 0.2  # 200ms minimum between commands
         self._command_lock = asyncio.Lock()
 
-    async def connect(
-        self,
-        port: str,
-        baudrate: int,
-        timeout: float,
-        bytesize: int,
-        stopbits: int,
-        parity: Optional[str],
-        indicator_id: int,
-    ) -> None:
+    async def connect(self) -> None:
         """
         하드웨어 연결
-
-        Args:
-            port: Serial port (e.g., "COM3")
-            baudrate: Baud rate (e.g., 9600)
-            timeout: Connection timeout in seconds
-            bytesize: Data bits
-            stopbits: Stop bits
-            parity: Parity setting
-            indicator_id: Indicator device ID
 
         Raises:
             HardwareConnectionError: If connection fails
         """
 
         try:
-
-            # Store actual values being used
-            self._port = port
-            self._baudrate = baudrate
-            self._timeout = timeout
-            self._bytesize = bytesize
-            self._stopbits = stopbits
-            self._parity = parity
-            self._indicator_id = indicator_id
-
             # 사용 가능한 COM 포트 체크
             try:
                 import serial.tools.list_ports
@@ -112,17 +102,17 @@ class BS205LoadCell(LoadCellService):
                 logger.warning("Cannot check available ports - pyserial not fully installed")
 
             logger.info(
-                f"Connecting to BS205 LoadCell - Port: {port}, Baud: {baudrate}, Timeout: {timeout}, "
-                f"ByteSize: {bytesize}, StopBits: {stopbits}, Parity: {parity}, ID: {indicator_id}"
+                f"Connecting to BS205 LoadCell - Port: {self._port}, Baud: {self._baudrate}, Timeout: {self._timeout}, "
+                f"ByteSize: {self._bytesize}, StopBits: {self._stopbits}, Parity: {self._parity}, ID: {self._indicator_id}"
             )
 
             self._connection = await SerialManager.create_connection(
-                port=port,
-                baudrate=baudrate,
-                timeout=timeout,
-                bytesize=bytesize,
-                stopbits=stopbits,
-                parity=parity,
+                port=self._port,
+                baudrate=self._baudrate,
+                timeout=self._timeout,
+                bytesize=self._bytesize,
+                stopbits=self._stopbits,
+                parity=self._parity,
             )
 
             # Serial 연결 성공하면 바로 연결된 것으로 간주

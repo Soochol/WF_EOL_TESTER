@@ -7,10 +7,10 @@ Provides REST endpoints for configuration and profile management.
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from loguru import logger
 
-from ui.api.dependencies import DIContainer, get_container
+from application.services.configuration_service import ConfigurationService
 from ui.api.models.config_models import (
     ConfigurationResponse,
     ConfigurationUpdateRequest,
@@ -29,10 +29,10 @@ router = APIRouter()
 
 
 @router.get("/profiles", response_model=ProfileListResponse)
-async def list_profiles(container: DIContainer = Depends(get_container)):
+async def list_profiles(request: Request):
     """List all available configuration profiles"""
     try:
-        config_service = container.configuration_service()
+        config_service = request.app.state.container.configuration_service()
 
         available_profiles = await config_service.list_available_profiles()
         current_profile = await config_service.get_active_profile_name()
@@ -52,10 +52,10 @@ async def list_profiles(container: DIContainer = Depends(get_container)):
 
 
 @router.get("/current")
-async def get_current_configuration(container: DIContainer = Depends(get_container)):
+async def get_current_configuration(request: Request):
     """Get current active test configuration with motion parameters"""
     try:
-        config_service = container.configuration_service()
+        config_service = request.app.state.container.configuration_service()
         
         # Get current active profile name
         profile_name = await config_service.get_active_profile_name()
@@ -83,10 +83,10 @@ async def get_current_configuration(container: DIContainer = Depends(get_contain
 
 
 @router.get("/profiles/usage", response_model=ProfileUsageResponse)
-async def get_profile_usage(container: DIContainer = Depends(get_container)):
+@inject
+async def get_profile_usage(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Get profile usage information"""
     try:
-        config_service = container.configuration_service()
         usage_info = await config_service.get_profile_usage_info()
 
         return ProfileUsageResponse(**usage_info)
@@ -100,12 +100,12 @@ async def get_profile_usage(container: DIContainer = Depends(get_container)):
 
 
 @router.get("/profiles/{profile_name}", response_model=ConfigurationResponse)
+@inject
 async def get_profile_configuration(
-    profile_name: str, container: DIContainer = Depends(get_container)
+    profile_name: str, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Get configuration for a specific profile"""
     try:
-        config_service = container.configuration_service()
 
         # Load test configuration
         test_config = await config_service.load_configuration(profile_name)
@@ -136,12 +136,12 @@ async def get_profile_configuration(
 
 
 @router.get("/profiles/{profile_name}/validate", response_model=ConfigurationValidationResponse)
+@inject
 async def validate_profile_configuration(
-    profile_name: str, container: DIContainer = Depends(get_container)
+    profile_name: str, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Validate a configuration profile"""
     try:
-        config_service = container.configuration_service()
 
         validation_errors = []
         validation_warnings = []
@@ -208,10 +208,10 @@ async def validate_profile_configuration(
 
 
 @router.get("/hardware", response_model=dict)
-async def get_hardware_configuration(container: DIContainer = Depends(get_container)):
+@inject
+async def get_hardware_configuration(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Get hardware configuration"""
     try:
-        config_service = container.configuration_service()
         hardware_config = await config_service.load_hardware_config()
 
         return {
@@ -228,12 +228,12 @@ async def get_hardware_configuration(container: DIContainer = Depends(get_contai
 
 
 @router.get("/dut-defaults", response_model=DUTDefaultsResponse)
+@inject
 async def get_dut_defaults(
-    profile_name: Optional[str] = None, container: DIContainer = Depends(get_container)
+    profile_name: Optional[str] = None, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Get DUT default values"""
     try:
-        config_service = container.configuration_service()
 
         # Use provided profile or get active profile
         if not profile_name:
@@ -259,10 +259,10 @@ async def get_dut_defaults(
 
 
 @router.post("/profiles/clear-preferences")
-async def clear_profile_preferences(container: DIContainer = Depends(get_container)):
+@inject
+async def clear_profile_preferences(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Clear all profile preferences"""
     try:
-        config_service = container.configuration_service()
         await config_service.clear_profile_preferences()
 
         logger.info("Profile preferences cleared")
@@ -280,14 +280,14 @@ async def clear_profile_preferences(container: DIContainer = Depends(get_contain
 
 
 @router.put("/profiles/{profile_name}")
+@inject
 async def update_profile_configuration(
     profile_name: str,
     request: ConfigurationUpdateRequest,
-    container: DIContainer = Depends(get_container),
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Update test profile configuration"""
     try:
-        config_service = container.configuration_service()
 
         # Validate configuration data if provided
         validation_errors = []
@@ -375,10 +375,10 @@ async def restore_configurations():
 
 
 @router.get("/hardware-config", response_model=HardwareConfigurationModel)
-async def get_hardware_config(container: DIContainer = Depends(get_container)):
+@inject
+async def get_hardware_config(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Get hardware configuration"""
     try:
-        config_service = container.configuration_service()
         hardware_config = await config_service.load_hardware_config()
 
         return HardwareConfigurationModel(
@@ -395,12 +395,12 @@ async def get_hardware_config(container: DIContainer = Depends(get_container)):
 
 
 @router.put("/hardware-config")
+@inject
 async def update_hardware_config(
-    config: HardwareConfigurationModel, container: DIContainer = Depends(get_container)
+    config: HardwareConfigurationModel, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Update hardware configuration"""
     try:
-        config_service = container.configuration_service()
 
         # Save the updated configuration
         await config_service.save_hardware_configuration(config.hardware_config)
@@ -430,10 +430,10 @@ async def update_hardware_config(
 
 
 @router.get("/hardware-model", response_model=HardwareModelConfiguration)
-async def get_hardware_model(container: DIContainer = Depends(get_container)):
+@inject
+async def get_hardware_model(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Get hardware model configuration"""
     try:
-        config_service = container.configuration_service()
         # Load hardware model from the YAML configuration
         hardware_model = await config_service._configuration.load_hardware_model()
 
@@ -451,12 +451,12 @@ async def get_hardware_model(container: DIContainer = Depends(get_container)):
 
 
 @router.put("/hardware-model")
+@inject
 async def update_hardware_model(
-    config: HardwareModelConfiguration, container: DIContainer = Depends(get_container)
+    config: HardwareModelConfiguration, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Update hardware model configuration"""
     try:
-        config_service = container.configuration_service()
 
         # Save the updated configuration
         await config_service.save_hardware_model(config.hardware_model)
@@ -486,7 +486,8 @@ async def update_hardware_model(
 
 
 @router.get("/dut-defaults-config", response_model=DUTDefaultsConfiguration)
-async def get_dut_defaults_config(container: DIContainer = Depends(get_container)):
+@inject
+async def get_dut_defaults_config(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Get DUT defaults configuration"""
     try:
         # Load the full DUT defaults file structure
@@ -529,12 +530,12 @@ async def get_dut_defaults_config(container: DIContainer = Depends(get_container
 
 
 @router.put("/dut-defaults-config")
+@inject
 async def update_dut_defaults_config(
-    config: DUTDefaultsConfiguration, container: DIContainer = Depends(get_container)
+    config: DUTDefaultsConfiguration, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Update DUT defaults configuration"""
     try:
-        config_service = container.configuration_service()
 
         # Prepare data for saving
         dut_data = {"active_profile": config.active_profile, "default": config.default}
@@ -567,8 +568,9 @@ async def update_dut_defaults_config(
 
 
 @router.post("/validate")
+@inject
 async def validate_configuration(
-    request: ConfigurationValidationRequest, container: DIContainer = Depends(get_container)
+    request: ConfigurationValidationRequest, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
 ):
     """Validate a configuration"""
     try:
@@ -594,11 +596,9 @@ async def validate_configuration(
 
         elif request.config_type == "hardware_config":
             try:
-                from domain.value_objects.hardware_configuration import (
-                    HardwareConfiguration,
-                )
+                from domain.value_objects.hardware_config import HardwareConfig
 
-                hardware_config = HardwareConfiguration.from_dict(request.configuration)
+                hardware_config = HardwareConfig.from_dict(request.configuration)
 
                 if not hardware_config.is_valid():
                     is_valid = False
@@ -610,10 +610,10 @@ async def validate_configuration(
 
         elif request.config_type == "hardware_model":
             try:
-                from domain.value_objects.hardware_model import HardwareModel
+                from domain.value_objects.hardware_config import HardwareConfig
 
-                # Validate that hardware model can be created from configuration
-                HardwareModel.from_dict(request.configuration)
+                # Validate that hardware config can be created from configuration
+                HardwareConfig.from_dict(request.configuration)
                 # Hardware model doesn't have complex validation currently
 
             except Exception as e:

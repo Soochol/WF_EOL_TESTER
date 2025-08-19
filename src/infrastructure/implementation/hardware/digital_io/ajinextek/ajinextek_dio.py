@@ -36,18 +36,24 @@ from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes imp
 class AjinextekDIO(DigitalIOService):
     """Ajinextek DIO 카드 통합 서비스"""
 
-    def __init__(self):
+    def __init__(self, irq_no: int = 7):
         """
-        초기화 (기본 Ajinextek 설정 사용)
+        초기화
+
+        Args:
+            irq_no: IRQ 번호 (기본값: 7)
         """
+
+        # Connection parameters
+        self._irq_no = irq_no
 
         # State tracking
         self._is_connected = False
 
         # AXL library interface (싱글톤 인스턴스 사용)
-        from infrastructure.factory import AXLWrapperFactory
+        from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
 
-        self._axl_lib = AXLWrapperFactory.get_axl_wrapper()
+        self._axl_lib = AXLWrapper.get_instance()
         self._detected_modules: Dict[int, Dict[str, Any]] = {}
         self._module_input_counts: Dict[int, int] = {}
         self._module_output_counts: Dict[int, int] = {}
@@ -66,12 +72,9 @@ class AjinextekDIO(DigitalIOService):
     # Connection & Lifecycle Management
     # ========================================================================
 
-    async def connect(self, irq_no: int = 7) -> None:
+    async def connect(self) -> None:
         """
         DIO 하드웨어 연결
-
-        Args:
-            irq_no: IRQ 번호 (기본값: 7)
 
         Raises:
             AjinextekHardwareError: 하드웨어 연결 실패
@@ -80,7 +83,7 @@ class AjinextekDIO(DigitalIOService):
             logger.info("Connecting to Ajinextek DIO hardware")
 
             # 중앙화된 연결 관리 사용
-            self._axl_lib.connect(irq_no)
+            self._axl_lib.connect(self._irq_no)
 
             # Check if DIO modules exist
             if not self._axl_lib.is_dio_module():
