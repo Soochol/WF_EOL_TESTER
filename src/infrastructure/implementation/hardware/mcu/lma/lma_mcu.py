@@ -398,10 +398,16 @@ class LMAMCU(MCUService):
             return "TEMPERATURE_RESPONSE"
         elif cmd == 0x0B:
             return "TEMPERATURE_REACHED_SIGNAL"
+        elif cmd == 0x0C:
+            return "COOLING_COMPLETE_SIGNAL"
+        elif cmd == 0x0D:
+            return "COOLING_TEMPERATURE_REACHED_SIGNAL"
         elif cmd == 0x00:
             return "ACK_RESPONSE"
         elif cmd == 0x04:
             return "INIT_RESPONSE"
+        elif cmd == 0x08:
+            return "STROKE_INIT_COMPLETE_RESPONSE"
         else:
             return f"UNKNOWN_CMD_0x{cmd:02X}"
     
@@ -529,6 +535,10 @@ class LMAMCU(MCUService):
                         self._log_temperature_data(valid_packet)
                     elif valid_packet[2] == 0x0B:  # Temperature reached signal
                         logger.info("🌡️  Temperature reached signal received!")
+                    elif valid_packet[2] == 0x0C:  # Cooling complete signal
+                        logger.info("❄️  Cooling complete signal received!")
+                    elif valid_packet[2] == 0x0D:  # Cooling temperature reached signal
+                        logger.info("❄️  Cooling temperature reached signal received!")
                     
                     # Check if this is the packet we're waiting for
                     if expected_cmd is None or valid_packet[2] == expected_cmd:
@@ -661,7 +671,27 @@ class LMAMCU(MCUService):
         self, target_temp: float, timeout: float = 120.0
     ) -> Optional[bytes]:
         """
-        Wait for cooling complete signal
+        Wait for cooling complete signal (enhanced with temperature monitoring)
+
+        Args:
+            target_temp: Target temperature for cooling
+            timeout: Maximum wait time in seconds
+
+        Returns:
+            Cooling complete response packet or None if timeout
+        """
+        # Use enhanced method with temperature monitoring for cooling complete signal (CMD=0x0C)
+        return self._wait_for_additional_response(
+            timeout=timeout, 
+            description=f"Cooling complete to {target_temp:.1f}°C signal", 
+            expected_cmd=0x0C
+        )
+
+    async def _wait_for_cooling_complete_legacy(
+        self, target_temp: float, timeout: float = 120.0
+    ) -> Optional[bytes]:
+        """
+        Legacy wait for cooling complete signal (kept for reference)
 
         Args:
             target_temp: Target temperature for cooling
@@ -1073,9 +1103,8 @@ class LMAMCU(MCUService):
                 )
 
             # Second response (cooling complete)
-            standby_target_temp = 35.0  # Standard standby temperature
-            cooling_response = await self._wait_for_cooling_complete(
-                target_temp=standby_target_temp, timeout=120.0
+            cooling_response = self._wait_for_additional_response(
+                timeout=120.0, description="Standby cooling complete signal", expected_cmd=0x0C
             )
 
             if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
