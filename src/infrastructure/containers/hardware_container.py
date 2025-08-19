@@ -46,7 +46,7 @@ class HardwareContainer(containers.DeclarativeContainer):
             axis_id=config.robot.axis_id,
             irq_no=config.robot.irq_no,
         ),
-        AJINEXTEK=providers.Factory(
+        ajinextek=providers.Factory(
             AjinextekRobot,
             axis_id=config.robot.axis_id,
             irq_no=config.robot.irq_no,
@@ -63,7 +63,7 @@ class HardwareContainer(containers.DeclarativeContainer):
             timeout=config.power.timeout,
             channel=config.power.channel,
         ),
-        ODA=providers.Factory(
+        oda=providers.Factory(
             OdaPower,
             host=config.power.host,
             port=config.power.port,
@@ -84,7 +84,7 @@ class HardwareContainer(containers.DeclarativeContainer):
             stopbits=config.mcu.stopbits,
             parity=config.mcu.parity,
         ),
-        LMA=providers.Factory(
+        lma=providers.Factory(
             LMAMCU,
             port=config.mcu.port,
             baudrate=config.mcu.baudrate,
@@ -105,7 +105,7 @@ class HardwareContainer(containers.DeclarativeContainer):
             parity=config.loadcell.parity,
             indicator_id=config.loadcell.indicator_id,
         ),
-        BS205=providers.Factory(
+        bs205=providers.Factory(
             BS205LoadCell,
             port=config.loadcell.port,
             baudrate=config.loadcell.baudrate,
@@ -125,7 +125,7 @@ class HardwareContainer(containers.DeclarativeContainer):
             config=config.digital_io,
             irq_no=config.robot.irq_no,  # DIO uses same IRQ as robot
         ),
-        AJINEXTEK=providers.Factory(
+        ajinextek=providers.Factory(
             AjinextekDIO,
             irq_no=config.robot.irq_no,  # DIO uses same IRQ as robot
         ),
