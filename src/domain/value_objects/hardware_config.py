@@ -196,7 +196,7 @@ class MCUConfig:
     # Serial communication parameters
     port: str = "COM10"  # Serial port (Windows: COMx, Linux: /dev/ttyUSBx)
     baudrate: int = 115200  # Communication speed (115200 bps for LMA)
-    timeout: float = 60.0  # Read timeout in seconds (longer for complex operations)
+    timeout: float = 10.0  # Read timeout in seconds (longer for complex operations)
 
     # Serial protocol settings
     bytesize: int = 8  # Data bits (8-bit data)
@@ -385,13 +385,14 @@ class DigitalIOConfig:
     def from_dict(cls, data: Dict[str, Any]) -> "DigitalIOConfig":
         """
         Create DigitalIOConfig from dictionary
-        
+
         Args:
             data: Dictionary containing digital I/O configuration
-            
+
         Returns:
             DigitalIOConfig instance
         """
+
         # Helper function to create DigitalPin from dict or use default
         def create_digital_pin(pin_data: Any, default_pin: DigitalPin) -> DigitalPin:
             if isinstance(pin_data, dict):
@@ -437,7 +438,7 @@ class DigitalIOConfig:
 @dataclass(frozen=True)
 class HardwareConfig:
     """
-    Unified hardware configuration value object containing both model selection 
+    Unified hardware configuration value object containing both model selection
     and detailed connection parameters for all hardware devices
 
     This immutable value object represents the complete hardware system configuration,
@@ -461,13 +462,15 @@ class HardwareConfig:
         Returns:
             True if all components use mock implementations
         """
-        return all([
-            self.robot.model == "mock",
-            self.loadcell.model == "mock",
-            self.mcu.model == "mock",
-            self.power.model == "mock",
-            self.digital_io.model == "mock",
-        ])
+        return all(
+            [
+                self.robot.model == "mock",
+                self.loadcell.model == "mock",
+                self.mcu.model == "mock",
+                self.power.model == "mock",
+                self.digital_io.model == "mock",
+            ]
+        )
 
     def is_real_hardware(self) -> bool:
         """Check if any real hardware components are configured
