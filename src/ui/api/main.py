@@ -63,17 +63,19 @@ async def lifespan(fastapi_app: FastAPI):
     try:
         # Initialize dependency injection container with safe config loading
         container = ApplicationContainer.load_config_safely("configuration/application.yaml")
-        
+
         # NOTE: Wire the container after FastAPI app initialization
         # This avoids FastAPI signature parsing conflicts during import
         # Routes are already imported at module level
-        container.wire(modules=[
-            "ui.api.routes.hardware",
-            "ui.api.routes.config", 
-            "ui.api.routes.status",
-            "ui.api.routes.test",
-            "ui.api.routes.websocket"
-        ])
+        container.wire(
+            modules=[
+                "ui.api.routes.hardware",
+                "ui.api.routes.config",
+                "ui.api.routes.status",
+                "ui.api.routes.test",
+                "ui.api.routes.websocket",
+            ]
+        )
 
         # Store container in app state for access in routes
         fastapi_app.state.container = container
@@ -92,7 +94,7 @@ async def lifespan(fastapi_app: FastAPI):
         try:
             if hasattr(fastapi_app.state, "container"):
                 # Get hardware services for cleanup
-                hardware_services = await container.hardware_service_facade()
+                hardware_services = container.hardware_service_facade()
                 if hardware_services:
                     await hardware_services.shutdown_hardware()
                     logger.info("Hardware services shutdown completed")

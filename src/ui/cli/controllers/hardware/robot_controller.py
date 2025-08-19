@@ -105,7 +105,7 @@ class RobotController(HardwareController):
             if is_connected:
                 try:
                     # Get robot status information
-                    status = await self.robot_service.get_status()
+                    status = await self.robot_service.get_status(axis_id=self.axis_id)
                     is_initialized = status.get("initialized", False)
                     current_position = status.get("position", "Unknown")
 

@@ -75,7 +75,9 @@ class AjinextekRobot(RobotService):
         self._error_message = None
 
         # Initialize AXL wrapper (싱글톤 인스턴스 사용)
-        from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
+        from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
+            AXLWrapper,
+        )
 
         self._axl = AXLWrapper.get_instance()
 
@@ -726,7 +728,7 @@ class AjinextekRobot(RobotService):
         if is_connected:
             status["axis_count"] = self._axis_count
             status["version"] = self.version
-            
+
             # Check actual hardware motion status
             try:
                 is_moving = await self.is_moving(axis_id)
@@ -735,7 +737,7 @@ class AjinextekRobot(RobotService):
             except Exception as e:
                 logger.warning(f"Failed to get motion status for axis {axis_id}: {e}")
                 status["is_moving"] = self._motion_status == MotionStatus.MOVING
-            
+
             # Position 정보도 추가 (실제 하드웨어에서 읽어오는 로직 필요)
             try:
                 current_pos = await self.get_position(axis_id)

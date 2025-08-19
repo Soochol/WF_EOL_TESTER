@@ -11,6 +11,7 @@ from typing import Dict, Optional, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
+
 from ui.api.models.websocket_models import (
     DigitalInputMessage,
     HardwareEventMessage,
@@ -204,10 +205,10 @@ async def digital_input_monitor():
     try:
         # Import container for hardware access
         from infrastructure.containers import ApplicationContainer
-        
+
         # Create container instance with safe config loading
         container = ApplicationContainer.load_config_safely("configuration/application.yaml")
-        
+
         # Get hardware service facade
         hardware_services = container.hardware_service_facade()
         digital_io_service = hardware_services.digital_io_service
@@ -288,10 +289,10 @@ async def system_status_monitor():
     try:
         # Import container for hardware access
         from infrastructure.containers import ApplicationContainer
-        
+
         # Create container instance with safe config loading
         container = ApplicationContainer.load_config_safely("configuration/application.yaml")
-        
+
         # Get hardware service facade
         hardware_services = container.hardware_service_facade()
 

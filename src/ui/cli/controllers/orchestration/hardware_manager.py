@@ -329,6 +329,88 @@ class HardwareControlManager:
         """Get list of available controller names"""
         return list(self.controllers.keys())
 
+    def _validate_robot_prerequisites(self) -> Optional[str]:
+        """Validate robot prerequisites and return error message if any"""
+        # Get robot controller and service
+        robot_controller = self.controllers.get("Robot")
+        if not robot_controller:
+            return "Robot controller not available. Please check system configuration."
+
+        # Cast to RobotController to access robot_service attribute
+        from ..hardware.robot_controller import RobotController as RobotControllerType
+
+        if not isinstance(robot_controller, RobotControllerType):
+            return "Robot controller type mismatch. Please check system configuration."
+
+        if not robot_controller.robot_service:
+            return "Robot service not available. Please check hardware configuration."
+        return None  # No errors
+
+    async def _execute_robot_preparation(self, robot_service) -> bool:
+        """Execute robot connection and servo preparation steps"""
+        # Step 1: Robot Connect - Verify/establish connection
+        self.formatter.print_message(
+            "Step 1/3: Checking robot connection...", message_type="info", title="🔗 Robot Connect"
+        )
+
+        try:
+            # Check if robot is already connected
+            is_connected = await robot_service.is_connected()
+
+            if not is_connected:
+                logger.info("Robot not connected, attempting to connect...")
+                self.formatter.print_message(
+                    "Robot not connected. Establishing connection...", message_type="warning"
+                )
+                # Attempt to connect - parameters are configured via dependency injection
+                await robot_service.connect()
+                # Verify connection was successful
+                is_connected = await robot_service.is_connected()
+
+            if is_connected:
+                self.formatter.print_message(
+                    "✅ Robot connection verified successfully", message_type="success"
+                )
+                logger.info("Robot connection verified")
+            else:
+                raise HardwareConnectionException("Failed to establish robot connection")
+
+        except Exception as connect_error:
+            logger.error(f"Robot connection failed: {connect_error}")
+            self.formatter.print_message(
+                f"❌ Robot connection failed: {str(connect_error)}",
+                message_type="error",
+                title="Connection Error",
+            )
+            return False
+
+        # Step 2: Robot Servo On - Enable servo for movement
+        self.formatter.print_message(
+            "Step 2/3: Enabling robot servo...", message_type="info", title="⚡ Robot Servo On"
+        )
+
+        try:
+            # Use configured axis_id from hardware configuration
+            axis_id = self.axis_id
+            logger.info(f"Enabling servo for axis {axis_id}")
+
+            await robot_service.enable_servo(axis_id)
+
+            self.formatter.print_message(
+                f"✅ Robot servo enabled successfully (axis {axis_id})", message_type="success"
+            )
+            logger.info(f"Robot servo enabled for axis {axis_id}")
+            return True
+
+        except Exception as servo_error:
+            logger.error(f"Robot servo enable failed: {servo_error}")
+            self.formatter.print_message(
+                f"❌ Robot servo enable failed: {str(servo_error)}",
+                message_type="error",
+                title="Servo Error",
+            )
+            return False
+
     async def execute_robot_home(self) -> bool:
         """Execute complete Robot Home sequence: Connect → Servo On → Home.
 
@@ -341,147 +423,53 @@ class HardwareControlManager:
             bool: True if complete sequence succeeded, False otherwise
         """
         try:
-            # Import here to avoid circular imports
-            from application.use_cases.robot_home import (
-                RobotHomeCommand,
-                RobotHomeUseCase,
-            )
-
-            # Get robot controller and service
-            robot_controller = self.controllers.get("Robot")
-            if not robot_controller:
-                logger.error("Robot controller not available")
-                self.formatter.print_message(
-                    "Robot controller not available. Please check system configuration.",
-                    message_type="error",
-                    title="Robot Controller Error",
-                )
+            # Validate prerequisites
+            error_msg = self._validate_robot_prerequisites()
+            if error_msg:
+                logger.error(error_msg)
+                self.formatter.print_message(error_msg, message_type="error", title="Setup Error")
                 return False
 
-            # Cast to RobotController to access robot_service attribute
-            from ..hardware.robot_controller import RobotController
-            if isinstance(robot_controller, RobotController):
+            # Get robot service
+            robot_controller = self.controllers["Robot"]  # We know it exists from validation
+            from ..hardware.robot_controller import (
+                RobotController as RobotControllerType,
+            )
+
+            # Cast to specific type to access robot_service
+            if isinstance(robot_controller, RobotControllerType):
                 robot_service = robot_controller.robot_service
             else:
-                logger.error("Robot controller is not of type RobotController")
-                self.formatter.print_message(
-                    "Robot controller type mismatch. Please check system configuration.",
-                    message_type="error",
-                    title="Controller Type Error",
-                )
-                return False
-            if not robot_service:
-                logger.error("Robot service not available")
-                self.formatter.print_message(
-                    "Robot service not available. Please check hardware configuration.",
-                    message_type="error",
-                    title="Robot Service Error",
-                )
+                raise RuntimeError("Robot controller is not of expected type")
+
+            # Execute robot preparation steps
+            success = await self._execute_robot_preparation(robot_service)
+            if not success:
                 return False
 
-            # Step 1: Robot Connect - Verify/establish connection
+            # Execute robot home operation
+            return await self._execute_robot_home_operation(robot_service)
+
+        except Exception as e:
+            logger.error(f"Robot home sequence error: {e}")
             self.formatter.print_message(
-                "Step 1/3: Checking robot connection...",
-                message_type="info",
-                title="🔗 Robot Connect",
+                f"❌ Robot home sequence failed: {str(e)}",
+                message_type="error",
+                title="Sequence Error",
             )
+            return False
 
-            try:
-                # Check if robot is already connected
-                is_connected = await robot_service.is_connected()
+    async def _execute_robot_home_operation(self, robot_service) -> bool:
+        """Execute the final robot home operation"""
+        # Step 3: Robot Home - Move robot to home position
+        self.formatter.print_message(
+            "Step 3/3: Executing robot home operation...",
+            message_type="info",
+            title="🏠 Robot Home",
+        )
 
-                if not is_connected:
-                    logger.info("Robot not connected, attempting to connect...")
-                    self.formatter.print_message(
-                        "Robot not connected. Establishing connection...", message_type="warning"
-                    )
-
-                    # Attempt to connect with required parameters
-                    if not self.hardware_config:
-                        logger.error("Hardware configuration not available for robot connection")
-                        raise ValueError("Hardware configuration required for robot connection")
-
-                    await robot_service.connect(
-                        axis_id=self.axis_id, irq_no=self.hardware_config.robot.irq_no
-                    )
-
-                    # Verify connection was successful
-                    is_connected = await robot_service.is_connected()
-
-                if is_connected:
-                    self.formatter.print_message(
-                        "✅ Robot connection verified successfully", message_type="success"
-                    )
-                    logger.info("Robot connection verified")
-                else:
-                    raise HardwareConnectionException("Failed to establish robot connection")
-
-            except Exception as connect_error:
-                logger.error(f"Robot connection failed: {connect_error}")
-                self.formatter.print_message(
-                    f"❌ Robot connection failed: {str(connect_error)}",
-                    message_type="error",
-                    title="Connection Error",
-                )
-                return False
-
-            # Step 2: Robot Servo On - Enable servo for movement
-            self.formatter.print_message(
-                "Step 2/3: Enabling robot servo...", message_type="info", title="⚡ Robot Servo On"
-            )
-
-            try:
-                # Use configured axis_id from hardware configuration
-                axis_id = self.axis_id
-                logger.info(f"Enabling servo for axis {axis_id}")
-
-                await robot_service.enable_servo(axis_id)
-
-                self.formatter.print_message(
-                    f"✅ Robot servo enabled successfully (axis {axis_id})", message_type="success"
-                )
-                logger.info(f"Robot servo enabled for axis {axis_id}")
-
-            except Exception as servo_error:
-                logger.error(f"Robot servo enable failed: {servo_error}")
-                self.formatter.print_message(
-                    f"❌ Robot servo enable failed: {str(servo_error)}",
-                    message_type="error",
-                    title="Servo Error",
-                )
-                return False
-
-            # Step 3: Robot Home - Move robot to home position
-            self.formatter.print_message(
-                "Step 3/3: Executing robot home operation...",
-                message_type="info",
-                title="🏠 Robot Home",
-            )
-
-            # Create a minimal hardware facade for the Robot Home use case
-            from infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
-                MockDIO,
-            )
-            from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
-                MockLoadCell,
-            )
-            from infrastructure.implementation.hardware.mcu.mock.mock_mcu import (
-                MockMCU,
-            )
-            from infrastructure.implementation.hardware.power.mock.mock_power import (
-                MockPower,
-            )
-
-            # Create minimal facade with real robot service and mock others for robot home operation
-            facade = HardwareServiceFacade(
-                robot_service=robot_service,
-                mcu_service=MockMCU(),
-                loadcell_service=MockLoadCell(),
-                power_service=MockPower(),
-                digital_io_service=MockDIO({}),
-            )
-
-            # Create Robot Home use case
+        try:
+            # Validate hardware config
             if not self.hardware_config:
                 logger.error("Hardware configuration not available for robot home operation")
                 self.formatter.print_message(
@@ -490,25 +478,18 @@ class HardwareControlManager:
                     title="Configuration Error",
                 )
                 return False
-            
-            robot_home_use_case = RobotHomeUseCase(facade, self.hardware_config)
 
-            # Create Robot Home command
-            command = RobotHomeCommand(operator_id="cli_user")
-
-            # Execute Robot Home operation
-            logger.info("Executing robot homing operation...")
-            result = await robot_home_use_case.execute(command)
+            # Create minimal facade and execute home operation
+            result = await self._create_and_execute_home_use_case(robot_service)
 
             if result.is_success:
+                duration = result.execution_duration.seconds
                 self.formatter.print_message(
-                    f"✅ Robot home operation completed successfully in {result.execution_duration.seconds:.2f}s",
+                    f"✅ Robot home operation completed successfully in {duration:.2f}s",
                     message_type="success",
                     title="Home Complete",
                 )
-                logger.info(
-                    f"Robot homing completed successfully in {result.execution_duration.seconds:.2f}s"
-                )
+                logger.info(f"Robot homing completed successfully in {duration:.2f}s")
 
                 # Display complete sequence success
                 self.formatter.print_message(
@@ -519,22 +500,50 @@ class HardwareControlManager:
                     message_type="success",
                     title="Robot Home Sequence Complete",
                 )
-
                 return True
-            else:
-                logger.error(f"Robot homing failed: {result.error_message}")
-                self.formatter.print_message(
-                    f"❌ Robot home operation failed: {result.error_message}",
-                    message_type="error",
-                    title="Home Failed",
-                )
-                return False
-
-        except Exception as e:
-            logger.error(f"Robot home sequence error: {e}")
+            logger.error(f"Robot homing failed: {result.error_message}")
             self.formatter.print_message(
-                f"❌ Robot home sequence failed: {str(e)}",
+                f"❌ Robot home operation failed: {result.error_message}",
                 message_type="error",
-                title="Sequence Error",
+                title="Home Failed",
             )
             return False
+        except Exception as e:
+            logger.error(f"Robot home operation error: {e}")
+            self.formatter.print_message(
+                f"❌ Robot home operation failed: {str(e)}",
+                message_type="error",
+                title="Home Operation Error",
+            )
+            return False
+
+    async def _create_and_execute_home_use_case(self, robot_service):
+        """Create and execute robot home use case"""
+        from application.use_cases.robot_home import RobotHomeCommand, RobotHomeUseCase
+        from infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
+            MockDIO,
+        )
+        from infrastructure.implementation.hardware.loadcell.mock.mock_loadcell import (
+            MockLoadCell,
+        )
+        from infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
+        from infrastructure.implementation.hardware.power.mock.mock_power import (
+            MockPower,
+        )
+
+        # Create minimal facade with real robot service and mock others
+        facade = HardwareServiceFacade(
+            robot_service=robot_service,
+            mcu_service=MockMCU(),
+            loadcell_service=MockLoadCell(),
+            power_service=MockPower(),
+            digital_io_service=MockDIO({}),
+        )
+
+        # Create and execute Robot Home use case (we know hardware_config is not None from validation)
+        assert self.hardware_config is not None  # For type checker
+        robot_home_use_case = RobotHomeUseCase(facade, self.hardware_config)
+        command = RobotHomeCommand(operator_id="cli_user")
+
+        logger.info("Executing robot homing operation...")
+        return await robot_home_use_case.execute(command)

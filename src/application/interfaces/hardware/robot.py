@@ -14,17 +14,12 @@ class RobotService(ABC):
     """Abstract interface for robot control operations"""
 
     @abstractmethod
-    async def connect(
-        self,
-        axis_id: int,
-        irq_no: int
-    ) -> None:
+    async def connect(self) -> None:
         """
         Connect to robot hardware
 
-        Args:
-            axis_id: Axis ID number
-            irq_no: IRQ number for connection
+        All connection parameters are configured via dependency injection
+        in the hardware container.
 
         Raises:
             HardwareConnectionError: If connection fails
@@ -50,8 +45,6 @@ class RobotService(ABC):
             True if connected, False otherwise
         """
         ...
-
-
 
     @abstractmethod
     async def move_relative(
@@ -156,8 +149,6 @@ class RobotService(ABC):
         """
         ...
 
-
-
     @abstractmethod
     async def get_motion_status(self) -> MotionStatus:
         """
@@ -210,7 +201,6 @@ class RobotService(ABC):
         """
         ...
 
-
     @abstractmethod
     async def home_axis(self, axis: int) -> None:
         """
@@ -229,9 +219,12 @@ class RobotService(ABC):
     # home_all_axes method removed - use individual home_axis() for each axis in separate threads
 
     @abstractmethod
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self, axis_id: int = 0) -> Dict[str, Any]:
         """
         Get robot status information
+
+        Args:
+            axis_id: Axis ID number (defaults to 0)
 
         Returns:
             Dictionary containing robot status

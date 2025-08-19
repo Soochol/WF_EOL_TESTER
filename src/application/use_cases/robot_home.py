@@ -52,9 +52,7 @@ class RobotHomeUseCase:
     This is a simple operation that enables servo and executes homing sequence.
     """
 
-    def __init__(
-        self, hardware_services: HardwareServiceFacade, hardware_config: HardwareConfig
-    ):
+    def __init__(self, hardware_services: HardwareServiceFacade, hardware_config: HardwareConfig):
         """
         Initialize Robot Home Use Case
 
@@ -97,7 +95,7 @@ class RobotHomeUseCase:
             try:
                 # Check if already connected, if not connect
                 if not await self._hardware_services.digital_io_service.is_connected():
-                    await self._hardware_services.digital_io_service.connect(irq_no=irq_no)
+                    await self._hardware_services.digital_io_service.connect()
                     logger.info("Digital I/O service connected successfully")
                 else:
                     logger.info("Digital I/O service already connected")
@@ -105,7 +103,9 @@ class RobotHomeUseCase:
                 # Verify connection by checking status
                 # Note: Digital I/O service may not have explicit status check, so we rely on is_connected()
                 if not await self._hardware_services.digital_io_service.is_connected():
-                    raise Exception("Digital I/O service connection verification failed")
+                    raise HardwareConnectionException(
+                        "Digital I/O service connection verification failed"
+                    )
                 logger.info("Digital I/O service connection verified")
 
             except Exception as dio_connect_error:
@@ -145,13 +145,15 @@ class RobotHomeUseCase:
             try:
                 # Check if already connected, if not connect
                 if not await self._hardware_services.robot_service.is_connected():
-                    await self._hardware_services.robot_service.connect(axis_id=axis_id, irq_no=irq_no)
+                    await self._hardware_services.robot_service.connect()
                     logger.info("Robot connected successfully")
                 else:
                     logger.info("Robot already connected")
 
                 # Verify connection with status check
-                await self._hardware_services.robot_service.get_status()
+                await self._hardware_services.robot_service.get_status(
+                    axis_id=self._hardware_config.robot.axis_id
+                )
                 logger.info("Robot connection verified")
 
             except Exception as connect_error:
@@ -237,7 +239,9 @@ class RobotHomeUseCase:
             robot_connected = hardware_status.get("robot", False)
 
             if robot_connected:
-                robot_status = await self._hardware_services.robot_service.get_status()
+                robot_status = await self._hardware_services.robot_service.get_status(
+                    axis_id=self._hardware_config.robot.axis_id
+                )
                 return {
                     "connected": True,
                     "robot_details": robot_status,

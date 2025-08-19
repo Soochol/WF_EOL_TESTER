@@ -29,7 +29,7 @@ class SimpleMCUTestCommand:
 class SimpleMCUTestResult:
     """Simple MCU Test Result"""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         test_id: TestId,
         test_status: TestStatus,
@@ -107,14 +107,7 @@ class SimpleMCUTestUseCase:
             logger.info(
                 f"Connecting to MCU - Port: {hardware_config.mcu.port}, Baudrate: {hardware_config.mcu.baudrate}"
             )
-            await mcu_service.connect(
-                port=hardware_config.mcu.port,
-                baudrate=hardware_config.mcu.baudrate,
-                timeout=hardware_config.mcu.timeout,
-                bytesize=hardware_config.mcu.bytesize,
-                stopbits=hardware_config.mcu.stopbits,
-                parity=hardware_config.mcu.parity,
-            )
+            await mcu_service.connect()
 
             # Wait for boot complete
             logger.info("Waiting for MCU boot complete...")
@@ -149,7 +142,7 @@ class SimpleMCUTestUseCase:
                 {
                     "name": "start_standby_cooling",
                     "description": "CMD_STROKE_INIT_COMPLETE",
-                    "command": lambda: mcu_service.start_standby_cooling(),
+                    "command": mcu_service.start_standby_cooling,
                 },
             ]
 

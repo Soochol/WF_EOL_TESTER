@@ -12,21 +12,12 @@ class PowerService(ABC):
     """Abstract interface for power supply operations"""
 
     @abstractmethod
-    async def connect(
-        self,
-        host: str,
-        port: int,
-        timeout: float,
-        channel: int
-    ) -> None:
+    async def connect(self) -> None:
         """
         Connect to power supply hardware
 
-        Args:
-            host: IP address or hostname
-            port: TCP port number
-            timeout: Connection timeout in seconds
-            channel: Power channel number
+        All connection parameters are configured via dependency injection
+        in the hardware container.
 
         Raises:
             HardwareConnectionError: If connection fails

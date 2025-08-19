@@ -5,7 +5,7 @@ Interface for MCU (Microcontroller Unit) operations and control.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from domain.enums.mcu_enums import TestMode
 
@@ -14,29 +14,17 @@ class MCUService(ABC):
     """Abstract interface for MCU operations"""
 
     @abstractmethod
-    async def connect(
-        self,
-        port: str,
-        baudrate: int,
-        timeout: float,
-        bytesize: int,
-        stopbits: int,
-        parity: Optional[str]
-    ) -> None:
+    async def connect(self) -> None:
         """
         Connect to MCU hardware
 
-        Args:
-            port: Serial port (e.g., "COM4")
-            baudrate: Baud rate (e.g., 115200)
-            timeout: Connection timeout in seconds
-            bytesize: Data bits
-            stopbits: Stop bits
-            parity: Parity setting
+        All connection parameters are configured via dependency injection
+        in the hardware container.
 
         Raises:
             HardwareConnectionError: If connection fails
         """
+        ...
 
     @abstractmethod
     async def disconnect(self) -> None:
