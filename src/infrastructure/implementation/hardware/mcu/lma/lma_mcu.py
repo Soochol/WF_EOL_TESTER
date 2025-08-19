@@ -356,6 +356,21 @@ class LMAMCU(MCUService):
                 elif description.startswith("CMD_REQUEST_TEMP") and length == 8:
                     # Temperature data parsing handled in get_temperature method
                     pass
+                elif description.startswith("ADDITIONAL_Temperature reached signal"):
+                    expected_status = 0x0B  # STATUS_TEMPERATURE_REACHED
+                    logger.info(
+                        f"   Expected Status: 0x{expected_status:02X} (Temperature Reached), Received: 0x{cmd:02X} {'OK' if cmd == expected_status else 'ERROR'}"
+                    )
+                    if cmd != expected_status:
+                        # Provide helpful information about common status codes
+                        status_meanings = {
+                            0x04: "ACK (Acknowledgment)",
+                            0x0B: "Temperature Reached Signal", 
+                            0x01: "Test Mode Complete",
+                            0x05: "Operating Temp OK"
+                        }
+                        meaning = status_meanings.get(cmd, "Unknown Status")
+                        logger.warning(f"   Received Status Meaning: {meaning}")
 
             else:
                 logger.warning(
@@ -445,6 +460,20 @@ class LMAMCU(MCUService):
             logger.warning(f"Additional data chunks received: {len(data_chunks)}")
             for i, chunk in enumerate(data_chunks):
                 logger.warning(f"   [{i+1}] {chunk}")
+            
+            # Try to analyze what we received even if incomplete
+            if len(response_data) >= 3:
+                cmd = response_data[2]
+                status_meanings = {
+                    0x04: "ACK (Acknowledgment) - MCU received command but may not have completed operation",
+                    0x0B: "Temperature Reached Signal",
+                    0x01: "Test Mode Complete",
+                    0x05: "Operating Temp OK"
+                }
+                meaning = status_meanings.get(cmd, f"Unknown Status (0x{cmd:02X})")
+                logger.warning(f"   Last received status: {meaning}")
+                if description == "Temperature reached signal" and cmd == 0x04:
+                    logger.warning("   → MCU acknowledged command but temperature target may not be reached yet")
         else:
             logger.warning(
                 f"ADDITIONAL_TIMEOUT with NO additional response data received ({timeout}s)"
@@ -830,8 +859,12 @@ class LMAMCU(MCUService):
             else:
                 # 타임아웃 또는 잘못된 응답을 에러로 처리
                 if temp_response:
+                    received_cmd = temp_response[2] if len(temp_response) >= 3 else None
                     error_msg = (
-                        f"Invalid temperature reached response: {temp_response.hex().upper()}"
+                        f"Invalid temperature reached response: {temp_response.hex().upper()} "
+                        f"(received CMD=0x{received_cmd:02X}, expected CMD=0x0B)"
+                        if received_cmd is not None
+                        else f"Invalid temperature reached response: {temp_response.hex().upper()} (packet too short)"
                     )
                 else:
                     error_msg = "Temperature reached signal not received within timeout"

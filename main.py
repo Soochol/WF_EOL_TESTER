@@ -44,9 +44,8 @@ async def main() -> None:
     try:
         logger.info("Creating EOL Tester with ApplicationContainer...")
 
-        # Create and configure dependency injection container
-        container = ApplicationContainer()
-        container.config.from_yaml("configuration/application.yaml")
+        # Create and configure dependency injection container with safe loading
+        container = ApplicationContainer.load_config_safely("configuration/application.yaml")
 
         logger.info("ApplicationContainer configured successfully")
 
