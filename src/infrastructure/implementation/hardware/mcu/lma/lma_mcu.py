@@ -120,12 +120,20 @@ class LMAMCU(MCUService):
         if not self._is_connected or not self.serial_conn or not self.serial_conn.is_open:
             raise HardwareConnectionError("fast_lma_mcu", "Not connected")
 
-    def _send_packet_sync(self, packet_hex: str, description: str = "") -> Optional[bytes]:
+    def _send_packet_sync(self, packet_hex: str, description: str = "", timeout: Optional[float] = None) -> Optional[bytes]:
         """
         Send packet and receive response (synchronous)
         Optimized for maximum performance with minimal overhead
+        
+        Args:
+            packet_hex: Hex string of packet to send
+            description: Description for logging
+            timeout: Timeout in seconds (uses self._timeout if None)
         """
         self._ensure_connected()
+        
+        # Use provided timeout or fall back to instance timeout
+        actual_timeout = timeout if timeout is not None else self._timeout
 
         # Clear packet buffer on new command to prevent mixing with previous commands
         if self._packet_buffer:
@@ -148,7 +156,7 @@ class LMAMCU(MCUService):
             last_data_time = start_time
             data_chunks = []
 
-            while time.time() - start_time < self._timeout:
+            while time.time() - start_time < actual_timeout:
                 if self.serial_conn and self.serial_conn.in_waiting > 0:
                     new_data = self.serial_conn.read(self.serial_conn.in_waiting)
                     response_data += new_data
@@ -437,9 +445,9 @@ class LMAMCU(MCUService):
         
         return ir_temp_celsius, outside_temp_celsius
 
-    async def _send_packet(self, packet_hex: str, description: str = "") -> Optional[bytes]:
+    async def _send_packet(self, packet_hex: str, description: str = "", timeout: Optional[float] = None) -> Optional[bytes]:
         """Async wrapper for packet transmission"""
-        return self._send_packet_sync(packet_hex, description)
+        return self._send_packet_sync(packet_hex, description, timeout)
 
     def _wait_for_additional_response(
         self, timeout: float = 15.0, description: str = "", quiet: bool = False, 
@@ -831,7 +839,7 @@ class LMAMCU(MCUService):
             packet = f"FFFF0504{temp_scaled:08X}FEFE"
 
             # First response (immediate ACK)
-            response = await self._send_packet(packet, f"CMD_SET_OPERATING_TEMP ({target_temp}°C)")
+            response = await self._send_packet(packet, f"CMD_SET_OPERATING_TEMP ({target_temp}°C)", timeout=self._timeout)
 
             if not response or len(response) < 6 or response[2] != 0x05:
                 raise HardwareOperationError(
@@ -875,7 +883,7 @@ class LMAMCU(MCUService):
             packet = f"FFFF0604{temp_scaled:08X}FEFE"
 
             # First response (immediate ACK)
-            response = await self._send_packet(packet, f"CMD_SET_COOLING_TEMP ({target_temp}°C)")
+            response = await self._send_packet(packet, f"CMD_SET_COOLING_TEMP ({target_temp}°C)", timeout=self._timeout)
 
             if not response or len(response) < 6 or response[2] != 0x06:
                 raise HardwareOperationError(
@@ -918,7 +926,7 @@ class LMAMCU(MCUService):
             # Temperature request packet (CMD_REQUEST_TEMP)
             packet = "FFFF0700FEFE"
 
-            response = await self._send_packet(packet, "CMD_REQUEST_TEMP")
+            response = await self._send_packet(packet, "CMD_REQUEST_TEMP", timeout=self._timeout)
 
             if response and len(response) >= 14 and response[2] == 0x07:
                 # Extract temperature data (8 bytes total)
@@ -966,7 +974,7 @@ class LMAMCU(MCUService):
 
             packet = f"FFFF0104{mode_value:08X}FEFE"
 
-            response = await self._send_packet(packet, f"CMD_ENTER_TEST_MODE (mode {mode_value})")
+            response = await self._send_packet(packet, f"CMD_ENTER_TEST_MODE (mode {mode_value})", timeout=self._timeout)
 
             if not response or len(response) < 6 or response[2] != 0x01:
                 raise HardwareOperationError("fast_lma_mcu", "set_test_mode", "Invalid response")
@@ -991,7 +999,7 @@ class LMAMCU(MCUService):
             temp_scaled = int(upper_temp * TEMP_SCALE_FACTOR)
             packet = f"FFFF0204{temp_scaled:08X}FEFE"
 
-            response = await self._send_packet(packet, f"CMD_SET_UPPER_TEMP ({upper_temp}°C)")
+            response = await self._send_packet(packet, f"CMD_SET_UPPER_TEMP ({upper_temp}°C)", timeout=self._timeout)
 
             if not response or len(response) < 6 or response[2] != 0x02:
                 raise HardwareOperationError(
@@ -1012,7 +1020,7 @@ class LMAMCU(MCUService):
         try:
             packet = f"FFFF0304{fan_level:08X}FEFE"
 
-            response = await self._send_packet(packet, f"CMD_SET_FAN_SPEED (level {fan_level})")
+            response = await self._send_packet(packet, f"CMD_SET_FAN_SPEED (level {fan_level})", timeout=self._timeout)
 
             if not response or len(response) < 6 or response[2] != 0x03:
                 raise HardwareOperationError("fast_lma_mcu", "set_fan_speed", "Invalid response")
@@ -1048,6 +1056,7 @@ class LMAMCU(MCUService):
             response = await self._send_packet(
                 packet,
                 f"CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms)",
+                timeout=self._timeout
             )
 
             if not response or len(response) < 6 or response[2] != 0x04:
@@ -1057,7 +1066,7 @@ class LMAMCU(MCUService):
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
-                timeout=60.0, description="Standby temperature reached signal", quiet=False, expected_cmd=0x0B
+                timeout=13.0, description="Standby temperature reached signal", quiet=False, expected_cmd=0x0B
             )
 
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
@@ -1095,7 +1104,7 @@ class LMAMCU(MCUService):
             packet = "FFFF0800FEFE"
 
             # First response (immediate ACK)
-            response = await self._send_packet(packet, "CMD_STROKE_INIT_COMPLETE")
+            response = await self._send_packet(packet, "CMD_STROKE_INIT_COMPLETE", timeout=self._timeout)
 
             if not response or len(response) < 6 or response[2] != 0x08:
                 raise HardwareOperationError(
