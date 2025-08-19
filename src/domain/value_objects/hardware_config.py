@@ -15,12 +15,12 @@ from domain.exceptions.validation_exceptions import (
 )
 
 # Supported hardware models
-SUPPORTED_ROBOT_MODELS: Set[str] = {"AJINEXTEK", "mock"}
-SUPPORTED_LOADCELL_MODELS: Set[str] = {"BS205", "mock"}
-SUPPORTED_MCU_MODELS: Set[str] = {"LMA", "mock"}
-SUPPORTED_POWER_MODELS: Set[str] = {"ODA", "mock"}
+SUPPORTED_ROBOT_MODELS: Set[str] = {"ajinextek", "mock"}
+SUPPORTED_LOADCELL_MODELS: Set[str] = {"bs205", "mock"}
+SUPPORTED_MCU_MODELS: Set[str] = {"lma", "mock"}
+SUPPORTED_POWER_MODELS: Set[str] = {"oda", "mock"}
 SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {
-    "AJINEXTEK",
+    "ajinextek",
     "mock",
 }
 
