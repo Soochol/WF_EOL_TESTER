@@ -63,27 +63,9 @@ class MCUController(HardwareController):
         """Connect to MCU"""
 
         async def connect_operation():
-            if self.mcu_config:
-                # Use YAML configuration
-                await self.mcu_service.connect(
-                    port=self.mcu_config.port,
-                    baudrate=self.mcu_config.baudrate,
-                    timeout=self.mcu_config.timeout,
-                    bytesize=self.mcu_config.bytesize,
-                    stopbits=self.mcu_config.stopbits,
-                    parity=self.mcu_config.parity,
-                )
-            else:
-                # Fallback to Windows-compatible defaults if no config available
-                # TODO: Fix configuration loading issue - this fallback should not be used
-                await self.mcu_service.connect(
-                    port="COM4",  # Changed from /dev/ttyUSB1 to match YAML config
-                    baudrate=115200,
-                    timeout=2.0,
-                    bytesize=8,
-                    stopbits=1,
-                    parity=None,
-                )
+            # MCU service is configured via dependency injection in HardwareContainer
+            # All connection parameters are provided through the constructor
+            await self.mcu_service.connect()
             return True
 
         return await self._show_progress_with_message(

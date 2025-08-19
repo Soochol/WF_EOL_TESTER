@@ -66,20 +66,9 @@ class PowerController(HardwareController):
         """Connect to Power supply"""
 
         async def connect_operation():
-            if self.power_config:
-                # Use YAML configuration
-                await self.power_service.connect(
-                    host=self.power_config.host,
-                    port=self.power_config.port,
-                    timeout=self.power_config.timeout,
-                    channel=self.power_config.channel,
-                )
-            else:
-                # Fallback to YAML-compatible defaults if no config available
-                # TODO: Fix configuration loading issue - this fallback should not be used
-                await self.power_service.connect(
-                    host="192.168.11.1", port=5000, timeout=5.0, channel=1  # Match YAML config
-                )
+            # Power service is configured via dependency injection in HardwareContainer
+            # All connection parameters are provided through the constructor
+            await self.power_service.connect()
 
             # Get and display device identity if available
             device_identity = None

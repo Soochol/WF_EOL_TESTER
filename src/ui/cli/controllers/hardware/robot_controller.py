@@ -67,14 +67,9 @@ class RobotController(HardwareController):
         """Connect to robot"""
 
         async def connect_operation():
-            if self.robot_config:
-                # Use YAML configuration
-                await self.robot_service.connect(
-                    axis_id=self.robot_config.axis_id, irq_no=self.robot_config.irq_no
-                )
-            else:
-                # Fallback to defaults if no config available
-                await self.robot_service.connect(axis_id=0, irq_no=7)
+            # Robot service is configured via dependency injection in HardwareContainer
+            # All connection parameters are provided through the constructor
+            await self.robot_service.connect()
             return True
 
         return await self._show_progress_with_message(
