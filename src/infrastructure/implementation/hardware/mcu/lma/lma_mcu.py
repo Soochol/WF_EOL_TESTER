@@ -484,7 +484,7 @@ class LMAMCU(MCUService):
 
         start_time = time.time()
         last_temp_request = 0
-        temp_request_interval = 3.0  # Request temperature every 3 seconds
+        temp_request_interval = 1.0  # Request temperature every 1 second
         response_data = b""
 
         while time.time() - start_time < timeout:
