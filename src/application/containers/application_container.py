@@ -5,15 +5,11 @@ Main dependency injection container for the WF EOL Tester application.
 Manages all application services, use cases, and hardware dependencies.
 """
 
-import os
-import yaml
-from datetime import datetime
-from pathlib import Path
-
 from dependency_injector import containers, providers
 from loguru import logger
 
 # Application Layer Imports
+from application.services.configuration_manager import ConfigurationManager
 from application.services.configuration_service import ConfigurationService
 from application.services.configuration_validator import ConfigurationValidator
 from application.services.exception_handler import ExceptionHandler
@@ -138,13 +134,45 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # ============================================================================
 
     @classmethod
-    def load_config_safely(
-        cls, 
-        application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware.yaml"
+    def create(
+        cls,
+        config_manager: ConfigurationManager | None = None,
     ) -> "ApplicationContainer":
         """
-        Create container and load configuration safely with fallback.
+        Create container with configuration loaded via ConfigurationManager.
+
+        Args:
+            config_manager: Optional ConfigurationManager instance. If None, creates default.
+
+        Returns:
+            Configured ApplicationContainer instance
+        """
+        container = cls()
+        
+        if config_manager is None:
+            config_manager = ConfigurationManager.create_default()
+        
+        try:
+            # Load all configurations via ConfigurationManager
+            config_data = config_manager.load_all_configurations()
+            container.config.from_dict(config_data)
+            logger.info("Container created successfully with loaded configuration")
+            
+        except Exception as e:
+            logger.error(f"Failed to create container: {e}")
+            logger.info("Using fallback configuration")
+            cls._apply_fallback_config(container)
+
+        return container
+
+    @classmethod 
+    def create_with_paths(
+        cls,
+        application_config_path: str = "configuration/application.yaml",
+        hardware_config_path: str = "configuration/hardware.yaml",
+    ) -> "ApplicationContainer":
+        """
+        Create container with custom configuration paths.
 
         Args:
             application_config_path: Path to application configuration file
@@ -153,49 +181,17 @@ class ApplicationContainer(containers.DeclarativeContainer):
         Returns:
             Configured ApplicationContainer instance
         """
-        container = cls()
-
-        try:
-            # Ensure config files exist (create from templates if needed)
-            cls._ensure_config_from_template(application_config_path, "application.template.yaml")
-            cls._ensure_config_from_template(hardware_config_path, "hardware.template.yaml")
-
-            # Load application configuration
-            try:
-                app_config_data = cls._load_yaml_file(application_config_path)
-                container.config.from_dict(app_config_data)
-                logger.info(f"Application configuration loaded from: {application_config_path}")
-            except Exception as e:
-                logger.error(f"Failed to load application config: {e}")
-                logger.info("Using default application configuration")
-                default_app = ApplicationConfig()
-                container.config.from_dict(default_app.to_dict())
-
-            # Load hardware configuration
-            try:
-                hw_config_data = cls._load_yaml_file(hardware_config_path)
-                container.config.from_dict({"hardware": hw_config_data})
-                logger.info(f"Hardware configuration loaded from: {hardware_config_path}")
-            except Exception as e:
-                logger.error(f"Failed to load hardware config: {e}")
-                logger.info("Using default hardware configuration")
-                default_hw = HardwareConfig()
-                container.config.from_dict({"hardware": default_hw.to_dict()})
-
-            logger.info("Configuration loading completed")
-
-        except Exception as e:
-            logger.error(f"Failed to load configuration: {e}")
-            logger.info("Using in-memory default configuration")
-            cls._apply_fallback_config(container)
-
-        return container
+        config_manager = ConfigurationManager.create_with_paths(
+            application_config_path, 
+            hardware_config_path
+        )
+        return cls.create(config_manager)
 
     @classmethod
     def ensure_config_exists(
-        cls, 
+        cls,
         application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware.yaml"
+        hardware_config_path: str = "configuration/hardware.yaml",
     ) -> None:
         """
         Ensure configuration files exist, create from templates if missing.
@@ -204,16 +200,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
             application_config_path: Path to application configuration file
             hardware_config_path: Path to hardware configuration file
         """
-        try:
-            # Create config files from templates if they don't exist
-            cls._ensure_config_from_template(application_config_path, "application.template.yaml")
-            cls._ensure_config_from_template(hardware_config_path, "hardware.template.yaml")
-            
-            logger.info("Configuration files ensured successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to ensure configuration files exist: {e}")
-            logger.info("Application will continue with in-memory defaults")
+        config_manager = ConfigurationManager.create_with_paths(
+            application_config_path, 
+            hardware_config_path
+        )
+        config_manager.ensure_configurations_exist()
 
     @classmethod
     def _apply_fallback_config(cls, container: "ApplicationContainer") -> None:
@@ -221,75 +212,33 @@ class ApplicationContainer(containers.DeclarativeContainer):
         # Use default configurations separately
         app_config = ApplicationConfig()
         hardware_config = HardwareConfig()
-        
+
         # Apply configurations separately
         container.config.from_dict(app_config.to_dict())
         container.config.from_dict({"hardware": hardware_config.to_dict()})
-        
+
         logger.info("In-memory default configuration applied successfully")
 
+    # Legacy support method - delegates to create_with_paths
     @classmethod
-    def _ensure_config_from_template(cls, target_path: str, template_name: str) -> None:
+    def load_config_safely(
+        cls,
+        application_config_path: str = "configuration/application.yaml",
+        hardware_config_path: str = "configuration/hardware.yaml",
+    ) -> "ApplicationContainer":
         """
-        Create configuration file from template if it doesn't exist.
+        Legacy method - Create container and load configuration safely with fallback.
         
-        Args:
-            target_path: Path where config file should be created
-            template_name: Name of template file to use
-        """
-        target_file = Path(target_path)
-        
-        if target_file.exists():
-            logger.debug(f"Configuration file already exists: {target_path}")
-            return
-            
-        # Get template path
-        template_path = Path(__file__).parent.parent.parent / "infrastructure" / "templates" / template_name
-        
-        if not template_path.exists():
-            logger.error(f"Template file not found: {template_path}")
-            raise FileNotFoundError(f"Template not found: {template_path}")
-            
-        try:
-            # Create target directory
-            target_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Read template content
-            with open(template_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # Replace timestamp placeholder
-            content = content.replace("${timestamp}", datetime.now().isoformat())
-            
-            # Write to target file
-            target_file.write_text(content, encoding='utf-8')
-            logger.info(f"Created configuration from template: {target_path}")
-            
-        except Exception as e:
-            logger.error(f"Failed to create config from template: {e}")
-            raise
+        Deprecated: Use create() or create_with_paths() instead.
 
-    @classmethod
-    def _load_yaml_file(cls, file_path: str) -> dict:
-        """
-        Load YAML configuration file.
-        
         Args:
-            file_path: Path to YAML file
-            
+            application_config_path: Path to application configuration file
+            hardware_config_path: Path to hardware configuration file
+
         Returns:
-            Dictionary containing loaded configuration
+            Configured ApplicationContainer instance
         """
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f)
-                
-            if config_data is None:
-                logger.warning(f"Empty YAML file: {file_path}")
-                return {}
-                
-            return config_data
-            
-        except Exception as e:
-            logger.error(f"Failed to load YAML file {file_path}: {e}")
-            raise
+        logger.warning(
+            "load_config_safely() is deprecated. Use create() or create_with_paths() instead."
+        )
+        return cls.create_with_paths(application_config_path, hardware_config_path)

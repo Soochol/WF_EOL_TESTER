@@ -42,8 +42,8 @@ async def main() -> None:
     try:
         logger.info("Creating CLI-only EOL Tester with ApplicationContainer...")
 
-        # Create and configure dependency injection container with safe loading
-        container = ApplicationContainer.load_config_safely("configuration/application.yaml")
+        # Create and configure dependency injection container
+        container = ApplicationContainer.create()
         logger.info("ApplicationContainer configured successfully")
 
         # Get core services from container
