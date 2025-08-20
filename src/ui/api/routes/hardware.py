@@ -27,7 +27,7 @@ from loguru import logger
 
 from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
-from infrastructure.containers import ApplicationContainer
+from application.containers import ApplicationContainer
 from ui.api.models.hardware_models import (
     DigitalIORequest,
     DigitalIOResponse,

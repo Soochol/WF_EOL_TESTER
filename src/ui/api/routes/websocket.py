@@ -204,7 +204,7 @@ async def digital_input_monitor():
 
     try:
         # Import container for hardware access
-        from infrastructure.containers import ApplicationContainer
+        from application.containers import ApplicationContainer
 
         # Create container instance with safe config loading
         container = ApplicationContainer.load_config_safely("configuration/application.yaml")
@@ -288,7 +288,7 @@ async def system_status_monitor():
 
     try:
         # Import container for hardware access
-        from infrastructure.containers import ApplicationContainer
+        from application.containers import ApplicationContainer
 
         # Create container instance with safe config loading
         container = ApplicationContainer.load_config_safely("configuration/application.yaml")

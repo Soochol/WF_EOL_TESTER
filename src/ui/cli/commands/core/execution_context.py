@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 
 from ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
-from infrastructure.containers.application_container import ApplicationContainer
+from application.containers.application_container import ApplicationContainer
 
 
 class CommandExecutionContext(ICommandExecutionContext):

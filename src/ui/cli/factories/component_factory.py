@@ -15,7 +15,7 @@ Key Features:
 from typing import Any, Optional, Type, TypeVar
 from loguru import logger
 
-from infrastructure.containers.application_container import ApplicationContainer
+from application.containers.application_container import ApplicationContainer
 from ..config.component_config import ComponentConfig, ConfigurationMode
 
 # Type variable for generic factory methods

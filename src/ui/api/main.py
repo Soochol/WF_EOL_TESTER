@@ -17,7 +17,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
-from infrastructure.containers import ApplicationContainer
+from application.containers import ApplicationContainer
 from ui.api.middleware.error_handler import add_error_handlers
 from ui.api.routes import (
     config_router,

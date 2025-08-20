@@ -10,10 +10,10 @@ from typing import Optional
 
 from loguru import logger
 
+from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.enums.test_status import TestStatus
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
-from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration
 
@@ -52,16 +52,16 @@ class RobotHomeUseCase:
     This is a simple operation that enables servo and executes homing sequence.
     """
 
-    def __init__(self, hardware_services: HardwareServiceFacade, hardware_config: HardwareConfig):
+    def __init__(self, hardware_services: HardwareServiceFacade, configuration_service: ConfigurationService):
         """
         Initialize Robot Home Use Case
 
         Args:
             hardware_services: Hardware service facade for robot control
-            hardware_config: Hardware configuration containing robot and digital I/O settings
+            configuration_service: Configuration service for loading hardware settings
         """
         self._hardware_services = hardware_services
-        self._hardware_config = hardware_config
+        self._configuration_service = configuration_service
 
     async def execute(self, command: RobotHomeCommand) -> RobotHomeResult:
         """
@@ -81,15 +81,18 @@ class RobotHomeUseCase:
 
         logger.info(f"Starting robot homing operation - ID: {operation_id}")
 
+        # Load hardware configuration dynamically
+        hardware_config = await self._configuration_service.load_hardware_config()
+
         try:
             # Step 0: Enable servo brake release digital output for robot homing preparation
-            servo_brake_channel = self._hardware_config.digital_io.servo1_brake_release
+            servo_brake_channel = hardware_config.digital_io.servo1_brake_release
             logger.info(
                 f"Enabling servo brake release on Digital Output channel {servo_brake_channel} for robot homing preparation..."
             )
 
             # Step 0.1: Connect to Digital I/O service if not already connected
-            irq_no = self._hardware_config.robot.irq_no
+            irq_no = hardware_config.robot.irq_no
             logger.info(f"Checking Digital I/O service connection with irq_no={irq_no}...")
 
             try:
@@ -138,8 +141,8 @@ class RobotHomeUseCase:
                 )
 
             # Step 2: Connect to robot explicitly
-            axis_id = self._hardware_config.robot.axis_id
-            irq_no = self._hardware_config.robot.irq_no
+            axis_id = hardware_config.robot.axis_id
+            irq_no = hardware_config.robot.irq_no
             logger.info(f"Connecting to robot with axis_id={axis_id}, irq_no={irq_no}...")
 
             try:
@@ -152,7 +155,7 @@ class RobotHomeUseCase:
 
                 # Verify connection with status check
                 await self._hardware_services.robot_service.get_status(
-                    axis_id=self._hardware_config.robot.axis_id
+                    axis_id=hardware_config.robot.axis_id
                 )
                 logger.info("Robot connection verified")
 
@@ -235,12 +238,15 @@ class RobotHomeUseCase:
             Dictionary containing robot status information
         """
         try:
+            # Load hardware configuration
+            hardware_config = await self._configuration_service.load_hardware_config()
+
             hardware_status = await self._hardware_services.get_hardware_status()
             robot_connected = hardware_status.get("robot", False)
 
             if robot_connected:
                 robot_status = await self._hardware_services.robot_service.get_status(
-                    axis_id=self._hardware_config.robot.axis_id
+                    axis_id=hardware_config.robot.axis_id
                 )
                 return {
                     "connected": True,

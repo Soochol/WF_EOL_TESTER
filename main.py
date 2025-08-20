@@ -23,7 +23,7 @@ from application.services.button_monitoring_service import DIOMonitoringService
 from application.services.emergency_stop_service import EmergencyStopService
 
 # Local infrastructure imports - New Dependency Injection
-from infrastructure.containers import ApplicationContainer
+from application.containers import ApplicationContainer
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI

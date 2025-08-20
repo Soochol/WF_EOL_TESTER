@@ -13,7 +13,7 @@ from ui.cli.commands.interfaces.command_interface import (
     ICommandMiddleware,
     CommandMetadata,
 )
-from infrastructure.containers.application_container import ApplicationContainer
+from application.containers.application_container import ApplicationContainer
 
 # Type variable for command creation
 T = TypeVar("T", bound=ICommand)

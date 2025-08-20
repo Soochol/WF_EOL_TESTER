@@ -1,9 +1,9 @@
 """
-Hardware Services Container
+Hardware Services Factory
 
-Container for hardware service providers using dependency-injector.
-Manages robot, power, MCU, loadcell, and digital I/O services.
-Uses pure dependency-injector patterns without intermediate factory layers.
+Factory for creating hardware service instances using dependency-injector.
+Manages robot, power, MCU, loadcell, and digital I/O services creation.
+Uses Abstract Factory pattern to select appropriate hardware implementations.
 """
 
 from dependency_injector import containers, providers
@@ -32,8 +32,8 @@ from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot impo
 from infrastructure.implementation.hardware.robot.mock.mock_robot import MockRobot
 
 
-class HardwareContainer(containers.DeclarativeContainer):
-    """Container for hardware services using pure dependency-injector patterns"""
+class HardwareFactory(containers.DeclarativeContainer):
+    """Factory for creating hardware services based on configuration"""
 
     # Configuration
     config = providers.Configuration()

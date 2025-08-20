@@ -15,7 +15,7 @@ from application.use_cases.eol_force_test import EOLForceTestCommand, EOLForceTe
 from application.use_cases.robot_home import RobotHomeCommand, RobotHomeUseCase
 from domain.entities.dut import DUT
 from domain.value_objects.dut_command_info import DUTCommandInfo
-from infrastructure.containers import ApplicationContainer
+from application.containers import ApplicationContainer
 from ui.api.models.test_models import (
     RobotHomeRequest,
     RobotHomeResponse,

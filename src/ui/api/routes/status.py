@@ -14,7 +14,7 @@ from dependency_injector.wiring import Provide, inject
 
 from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
-from infrastructure.containers import ApplicationContainer
+from application.containers import ApplicationContainer
 
 router = APIRouter()
 

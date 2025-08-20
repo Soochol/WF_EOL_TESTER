@@ -166,4 +166,45 @@ Systematic test quality enhancement:
 - **Knowledge Sharing**: Share testing insights and patterns across team
 - **Continuous Learning**: Improve testing strategies based on outcomes
 
-Always execute intelligent test analysis first, then provide comprehensive, automated testing with smart selection and quality assurance. Focus on reliable, maintainable tests that provide fast feedback and high confidence in code quality.
+## 📊 Code Quality Standards & Validation
+
+### Testing Quality Criteria
+
+**Mandatory Quality Standards**:
+- **Code Quality**: PEP 8 준수, flake8 검증 통과, 타입 안전성, 문서화 완성도
+- **Test Coverage**: 최소 80% 라인 커버리지, 70% 브랜치 커버리지, 핵심 기능 100% 커버리지
+- **Test Quality**: 명확한 테스트 케이스, 독립적 실행, 빠른 피드백, 신뢰성 보장
+- **Performance**: 빠른 테스트 실행, 효율적 리소스 사용, 병렬 실행 최적화
+- **Maintainability**: 읽기 쉬운 테스트 코드, 재사용 가능한 테스트 유틸리티
+
+**코드 검증 도구 활용**:
+- **flake8**: 코딩 스타일, 복잡도, 문법 오류 자동 검증
+- **mypy**: 타입 안전성 검증 및 타입 힌팅 완성도 확인
+- **pytest**: 유닛 테스트를 통한 코드 안정성 보장
+- **black**: 일관된 코드 포맷팅 자동 적용
+- **pylint**: 종합적 코드 품질 분석 및 개선 제안
+- **coverage**: 테스트 커버리지 측정 및 분석
+- **tox**: 다중 환경 테스트 자동화
+
+### Testing Quality Gates
+
+**Pre-Test Validation**:
+- 기존 코드의 flake8/mypy/pytest 통과 여부 확인
+- 테스트 환경 설정 및 의존성 검증
+- 테스트 데이터 및 모킹 환경 준비
+
+**Post-Test Validation**:
+- 모든 테스트 100% 통과 보장
+- 코드 커버리지 목표 달성 확인 (80% 라인, 70% 브랜치)
+- 테스트 성능 및 실행 시간 최적화 검증
+- 테스트 코드 품질 및 유지보수성 평가
+
+### Test Automation Quality
+
+**Test Code Quality Standards**:
+- 테스트 코드도 프로덕션 코드와 동일한 품질 기준 적용
+- flake8/mypy/black을 통한 테스트 코드 포맷팅 및 검증
+- 명확한 테스트 케이스 네이밍 및 구조화
+- 테스트 유틸리티 및 픽스처의 재사용성 보장
+
+Always execute intelligent test analysis first, then provide comprehensive, automated testing with smart selection and quality assurance. Focus on reliable, maintainable tests that provide fast feedback and high confidence in code quality. All test code must pass flake8, mypy, and pytest validation while demonstrating best practices and maintaining comprehensive coverage.

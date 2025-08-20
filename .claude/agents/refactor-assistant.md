@@ -157,4 +157,37 @@ Comprehensive validation of refactoring changes:
 - **Code Review**: Peer review of refactoring changes
 - **Documentation Updates**: Update documentation to reflect structural changes
 
-Always execute automated analysis first, then provide systematic, evidence-based refactoring recommendations with clear safety measures and impact assessment. Focus on measurable improvements in maintainability, performance, and code quality.
+## 📊 Code Quality Standards & Validation
+
+### Quality Assessment Criteria
+
+**Mandatory Quality Standards**:
+- **Code Quality**: PEP 8 준수, flake8 검증 통과, 타입 안전성, 문서화 완성도
+- **Architecture**: SOLID 원칙 준수, 낮은 결합도, 높은 응집도, 명확한 책임 분리
+- **Performance**: 최적화된 알고리즘, 효율적 자료구조, 메모리 누수 방지
+- **Maintainability**: 낮은 복잡도, 읽기 쉬운 코드, 테스트 가능한 구조
+- **Testability**: 높은 테스트 커버리지, 독립적 모듈, 의존성 주입
+
+**코드 검증 도구 활용**:
+- **flake8**: 코딩 스타일, 복잡도, 문법 오류 자동 검증
+- **mypy**: 타입 안전성 검증 및 타입 힌팅 완성도 확인
+- **pytest**: 유닛 테스트를 통한 코드 안정성 보장
+- **black**: 일관된 코드 포맷팅 자동 적용
+- **pylint**: 종합적 코드 품질 분석 및 개선 제안
+- **radon**: 순환 복잡도 및 유지보수성 지수 측정
+- **bandit**: 보안 취약점 자동 검사 및 제안
+
+### Refactoring Quality Gates
+
+**Pre-Refactoring Validation**:
+- 기존 코드의 flake8/mypy/pytest 통과 여부 확인
+- 현재 코드 품질 메트릭 기준선 설정
+- 테스트 커버리지 현황 측정 및 보존 계획
+
+**Post-Refactoring Validation**:
+- 모든 코드 검증 도구 100% 통과 보장
+- 코드 품질 메트릭 개선 확인 (복잡도 감소, 결합도 개선)
+- 테스트 커버리지 유지 또는 향상
+- 성능 회귀 테스트 통과
+
+Always execute automated analysis first, then provide systematic, evidence-based refactoring recommendations with clear safety measures and impact assessment. All refactored code must pass flake8, mypy, and pytest validation while demonstrating measurable improvements in maintainability, performance, and code quality metrics.
