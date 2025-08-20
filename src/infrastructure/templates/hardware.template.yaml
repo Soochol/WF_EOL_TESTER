@@ -1,0 +1,73 @@
+# Hardware Configuration Template
+# This template is used to create initial hardware configuration files
+# Modify this template to change default hardware settings
+
+digital_io:
+  beep: 7
+  dut_chain_safety_sensor:
+    contact_type: A
+    edge_type: rising
+    name: chain_sensor
+    pin_number: 15
+  dut_clamp_safety_sensor:
+    contact_type: A
+    edge_type: rising
+    name: clamp_sensor
+    pin_number: 14
+  emergency_stop_button:
+    contact_type: A
+    edge_type: rising
+    name: emergency_stop
+    pin_number: 3
+  model: mock
+  operator_start_button_left:
+    contact_type: B
+    edge_type: falling
+    name: left_button
+    pin_number: 8
+  operator_start_button_right:
+    contact_type: B
+    edge_type: falling
+    name: right_button
+    pin_number: 9
+  safety_door_closed_sensor:
+    contact_type: B
+    edge_type: rising
+    name: door_sensor
+    pin_number: 10
+  servo1_brake_release: 0
+  tower_lamp_green: 6
+  tower_lamp_red: 4
+  tower_lamp_yellow: 5
+loadcell:
+  baudrate: 9600
+  bytesize: 8
+  indicator_id: 0
+  model: mock
+  parity: even
+  port: COM8
+  stopbits: 1
+  timeout: 1.0
+mcu:
+  baudrate: 115200
+  bytesize: 8
+  model: mock
+  parity: null
+  port: COM10
+  stopbits: 1
+  timeout: 10.0
+power:
+  channel: 1
+  delimiter: '
+
+    '
+  host: 192.168.11.1
+  model: mock
+  port: 5000
+  timeout: 5.0
+robot:
+  axis_id: 0
+  irq_no: 7
+  model: mock
+  polling_interval: 250
+  timeout: 30.0

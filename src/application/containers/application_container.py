@@ -6,10 +6,9 @@ Manages all application services, use cases, and hardware dependencies.
 """
 
 import os
-import shutil
+import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from dependency_injector import containers, providers
 from loguru import logger
@@ -23,6 +22,10 @@ from application.services.repository_service import RepositoryService
 from application.services.test_result_evaluator import TestResultEvaluator
 from application.use_cases.eol_force_test import EOLForceTestUseCase
 from application.use_cases.robot_home import RobotHomeUseCase
+from domain.value_objects.application_config import ApplicationConfig
+
+# Domain Layer Imports
+from domain.value_objects.hardware_config import HardwareConfig
 
 # Infrastructure Layer Imports
 from infrastructure.factories.hardware_factory import HardwareFactory
@@ -58,10 +61,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # HARDWARE LAYER
     # ============================================================================
 
-    hardware = providers.Container(
-        HardwareFactory,
-        config=config.hardware
-    )
+    hardware = providers.Container(HardwareFactory, config=config.hardware)
 
     # ============================================================================
     # INFRASTRUCTURE SERVICES
@@ -94,8 +94,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Business Services
     repository_service = providers.Singleton(
-        RepositoryService,
-        test_repository=json_result_repository
+        RepositoryService, test_repository=json_result_repository
     )
 
     exception_handler = providers.Singleton(ExceptionHandler)
@@ -140,38 +139,53 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     @classmethod
     def load_config_safely(
-        cls,
-        config_path: str = "configuration/application.yaml"
-    ) -> 'ApplicationContainer':
+        cls, 
+        application_config_path: str = "configuration/application.yaml",
+        hardware_config_path: str = "configuration/hardware.yaml"
+    ) -> "ApplicationContainer":
         """
         Create container and load configuration safely with fallback.
 
         Args:
-            config_path: Path to configuration file
+            application_config_path: Path to application configuration file
+            hardware_config_path: Path to hardware configuration file
 
         Returns:
             Configured ApplicationContainer instance
         """
-        # Ensure config file exists
-        cls.ensure_config_exists(config_path)
-
-        # Create container instance
         container = cls()
 
-        # Load configuration with error handling
-        config_file = Path(config_path)
+        try:
+            # Ensure config files exist (create from templates if needed)
+            cls._ensure_config_from_template(application_config_path, "application.template.yaml")
+            cls._ensure_config_from_template(hardware_config_path, "hardware.template.yaml")
 
-        if config_file.exists():
+            # Load application configuration
             try:
-                container.config.from_yaml(config_path)
-                logger.info(f"Configuration loaded from: {config_path}")
-
+                app_config_data = cls._load_yaml_file(application_config_path)
+                container.config.from_dict(app_config_data)
+                logger.info(f"Application configuration loaded from: {application_config_path}")
             except Exception as e:
-                logger.error(f"Failed to parse configuration from {config_path}: {e}")
-                logger.info("Using in-memory default configuration due to parse error")
-                cls._apply_fallback_config(container)
-        else:
-            logger.warning(f"Configuration file does not exist: {config_path}")
+                logger.error(f"Failed to load application config: {e}")
+                logger.info("Using default application configuration")
+                default_app = ApplicationConfig()
+                container.config.from_dict(default_app.to_dict())
+
+            # Load hardware configuration
+            try:
+                hw_config_data = cls._load_yaml_file(hardware_config_path)
+                container.config.from_dict({"hardware": hw_config_data})
+                logger.info(f"Hardware configuration loaded from: {hardware_config_path}")
+            except Exception as e:
+                logger.error(f"Failed to load hardware config: {e}")
+                logger.info("Using default hardware configuration")
+                default_hw = HardwareConfig()
+                container.config.from_dict({"hardware": default_hw.to_dict()})
+
+            logger.info("Configuration loading completed")
+
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}")
             logger.info("Using in-memory default configuration")
             cls._apply_fallback_config(container)
 
@@ -179,165 +193,103 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     @classmethod
     def ensure_config_exists(
-        cls,
-        config_path: str = "configuration/application.yaml"
+        cls, 
+        application_config_path: str = "configuration/application.yaml",
+        hardware_config_path: str = "configuration/hardware.yaml"
     ) -> None:
         """
-        Ensure configuration file exists, create from template if missing.
+        Ensure configuration files exist, create from templates if missing.
 
         Args:
-            config_path: Path to configuration file
+            application_config_path: Path to application configuration file
+            hardware_config_path: Path to hardware configuration file
         """
-        config_file = Path(config_path)
-
-        if config_file.exists():
-            logger.debug(f"Configuration file found: {config_path}")
-            return
-
-        logger.warning(f"Configuration file not found: {config_path}")
-
         try:
-            # Create configuration directory
-            config_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Try to copy from template
-            template_path = (
-                Path(__file__).parent.parent.parent /
-                "infrastructure" / "templates" / "default_application.yaml"
-            )
-
-            if template_path.exists():
-                cls._create_from_template(template_path, config_file)
-            else:
-                logger.error(f"Template file not found: {template_path}")
-                cls._create_minimal_config(config_file)
-
-            logger.info(f"Created default configuration file: {config_path}")
+            # Create config files from templates if they don't exist
+            cls._ensure_config_from_template(application_config_path, "application.template.yaml")
+            cls._ensure_config_from_template(hardware_config_path, "hardware.template.yaml")
+            
+            logger.info("Configuration files ensured successfully")
 
         except Exception as e:
-            logger.error(f"Failed to create configuration file: {e}")
+            logger.error(f"Failed to ensure configuration files exist: {e}")
             logger.info("Application will continue with in-memory defaults")
 
     @classmethod
-    def _create_from_template(cls, template_path: Path, config_file: Path) -> None:
-        """Create configuration file from template."""
-        # Copy template to config location
-        shutil.copy2(template_path, config_file)
-
-        # Replace timestamp placeholder
-        content = config_file.read_text()
-        content = content.replace("${timestamp}", datetime.now().isoformat())
-        config_file.write_text(content)
-
-    @classmethod
-    def _create_minimal_config(cls, config_file: Path) -> None:
-        """Create minimal configuration if template is not available."""
-        minimal_config = """# Minimal default configuration
-application:
-  name: "WF EOL Tester"
-  version: "1.0.0"
-  environment: "development"
-
-hardware:
-  robot:
-    model: "mock"
-    axis_id: 0
-    irq_no: 7
-  power:
-    model: "mock"
-    host: "localhost"
-    port: 8080
-    channel: 1
-    timeout: 10.0
-  mcu:
-    model: "mock"
-    port: "COM3"
-    baudrate: 115200
-    timeout: 5.0
-    bytesize: 8
-    stopbits: 1
-    parity: null
-  loadcell:
-    model: "mock"
-    port: "COM4"
-    baudrate: 9600
-    timeout: 3.0
-    bytesize: 8
-    stopbits: 1
-    parity: null
-    indicator_id: 1
-  digital_io:
-    model: "mock"
-
-services:
-  repository:
-    results_path: "ResultsLog"
-    auto_save: true
-
-logging:
-  level: "INFO"
-"""
-        try:
-            config_file.write_text(minimal_config)
-            logger.info(f"Created minimal configuration file: {config_file}")
-        except Exception as e:
-            logger.error(f"Failed to create minimal configuration: {e}")
-
-    @classmethod
-    def _apply_fallback_config(cls, container: 'ApplicationContainer') -> None:
+    def _apply_fallback_config(cls, container: "ApplicationContainer") -> None:
         """Apply fallback configuration to container."""
-        fallback_config = {
-            "application": {
-                "name": "WF EOL Tester",
-                "version": "1.0.0",
-                "environment": "development"
-            },
-            "hardware": {
-                "robot": {
-                    "model": "mock",
-                    "axis_id": 0,
-                    "irq_no": 7
-                },
-                "power": {
-                    "model": "mock",
-                    "host": "localhost",
-                    "port": 8080,
-                    "channel": 1,
-                    "timeout": 10.0
-                },
-                "mcu": {
-                    "model": "mock",
-                    "port": "COM3",
-                    "baudrate": 115200,
-                    "timeout": 5.0,
-                    "bytesize": 8,
-                    "stopbits": 1,
-                    "parity": None
-                },
-                "loadcell": {
-                    "model": "mock",
-                    "port": "COM4",
-                    "baudrate": 9600,
-                    "timeout": 3.0,
-                    "bytesize": 8,
-                    "stopbits": 1,
-                    "parity": None,
-                    "indicator_id": 1
-                },
-                "digital_io": {
-                    "model": "mock"
-                }
-            },
-            "services": {
-                "repository": {
-                    "results_path": "ResultsLog",
-                    "auto_save": True
-                }
-            },
-            "logging": {
-                "level": "INFO"
-            }
-        }
-
-        container.config.from_dict(fallback_config)
+        # Use default configurations separately
+        app_config = ApplicationConfig()
+        hardware_config = HardwareConfig()
+        
+        # Apply configurations separately
+        container.config.from_dict(app_config.to_dict())
+        container.config.from_dict({"hardware": hardware_config.to_dict()})
+        
         logger.info("In-memory default configuration applied successfully")
+
+    @classmethod
+    def _ensure_config_from_template(cls, target_path: str, template_name: str) -> None:
+        """
+        Create configuration file from template if it doesn't exist.
+        
+        Args:
+            target_path: Path where config file should be created
+            template_name: Name of template file to use
+        """
+        target_file = Path(target_path)
+        
+        if target_file.exists():
+            logger.debug(f"Configuration file already exists: {target_path}")
+            return
+            
+        # Get template path
+        template_path = Path(__file__).parent.parent.parent / "infrastructure" / "templates" / template_name
+        
+        if not template_path.exists():
+            logger.error(f"Template file not found: {template_path}")
+            raise FileNotFoundError(f"Template not found: {template_path}")
+            
+        try:
+            # Create target directory
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Read template content
+            with open(template_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Replace timestamp placeholder
+            content = content.replace("${timestamp}", datetime.now().isoformat())
+            
+            # Write to target file
+            target_file.write_text(content, encoding='utf-8')
+            logger.info(f"Created configuration from template: {target_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create config from template: {e}")
+            raise
+
+    @classmethod
+    def _load_yaml_file(cls, file_path: str) -> dict:
+        """
+        Load YAML configuration file.
+        
+        Args:
+            file_path: Path to YAML file
+            
+        Returns:
+            Dictionary containing loaded configuration
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                config_data = yaml.safe_load(f)
+                
+            if config_data is None:
+                logger.warning(f"Empty YAML file: {file_path}")
+                return {}
+                
+            return config_data
+            
+        except Exception as e:
+            logger.error(f"Failed to load YAML file {file_path}: {e}")
+            raise

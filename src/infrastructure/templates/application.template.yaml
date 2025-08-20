@@ -1,0 +1,17 @@
+# Application Configuration Template
+# This template is used to create initial application configuration files
+# Modify this template to change default application settings
+
+application:
+  name: "WF EOL Tester"
+  version: "1.0.0"
+  environment: "development"  # development, production, testing
+  created_at: "${timestamp}"
+
+services:
+  repository:
+    results_path: "ResultsLog"
+    auto_save: true
+
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL

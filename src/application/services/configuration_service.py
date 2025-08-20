@@ -5,8 +5,10 @@ Service layer that manages configuration and profile preference operations.
 Uses Exception First principles for error handling.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import yaml
 from loguru import logger
 
 from application.interfaces.configuration.configuration import (
@@ -19,6 +21,7 @@ from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
 )
+from domain.value_objects.application_config import ApplicationConfig
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import (
     TestConfiguration,
@@ -389,4 +392,140 @@ class ConfigurationService:
                 operation="save_dut_defaults",
                 reason=str(e),
                 file_path="dut_defaults.yaml",
+            ) from e
+
+    async def load_application_config(self, app_config_path: str = "configuration/application.yaml") -> ApplicationConfig:
+        """
+        Load application configuration from file
+        
+        Args:
+            app_config_path: Path to application configuration file
+            
+        Returns:
+            ApplicationConfig object
+            
+        Raises:
+            RepositoryAccessError: If loading fails
+        """
+        try:
+            app_config_file = Path(app_config_path)
+            
+            if not app_config_file.exists():
+                logger.warning(f"Application config not found: {app_config_path}")
+                return ApplicationConfig()  # Return default
+                
+            with open(app_config_file, 'r') as f:
+                config_data = yaml.safe_load(f)
+                
+            return ApplicationConfig.from_dict(config_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to load application config from {app_config_path}: {e}")
+            raise RepositoryAccessError(
+                operation="load_application_config",
+                reason=str(e),
+                file_path=app_config_path,
+            ) from e
+
+    async def ensure_application_config_exists(self, app_config_path: str = "configuration/application.yaml") -> None:
+        """
+        Ensure application configuration file exists, create with defaults if missing
+        
+        Args:
+            app_config_path: Path to application configuration file
+        """
+        app_config_file = Path(app_config_path)
+        
+        if app_config_file.exists():
+            logger.debug(f"Application config already exists: {app_config_path}")
+            return
+            
+        logger.info(f"Creating default application config: {app_config_path}")
+        
+        try:
+            # Create directory if needed
+            app_config_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create default application config
+            default_config = ApplicationConfig().with_timestamp()
+            config_dict = default_config.to_dict()
+            
+            # Write to YAML file
+            yaml_content = yaml.dump(config_dict, default_flow_style=False, indent=2)
+            app_config_file.write_text(f"# Application configuration\n{yaml_content}")
+            
+            logger.info(f"Created default application config: {app_config_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create application config: {e}")
+            raise RepositoryAccessError(
+                operation="ensure_application_config_exists",
+                reason=str(e),
+                file_path=app_config_path,
+            ) from e
+
+    async def ensure_hardware_config_exists(self, hw_config_path: str = "configuration/hardware.yaml") -> None:
+        """
+        Ensure hardware configuration file exists, create with defaults if missing
+        
+        Args:
+            hw_config_path: Path to hardware configuration file
+        """
+        hw_config_file = Path(hw_config_path)
+        
+        if hw_config_file.exists():
+            logger.debug(f"Hardware config already exists: {hw_config_path}")
+            return
+            
+        logger.info(f"Creating default hardware config: {hw_config_path}")
+        
+        try:
+            # Create directory if needed
+            hw_config_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create default hardware config
+            default_hw_config = HardwareConfig()
+            config_dict = default_hw_config.to_dict()
+            
+            # Write to YAML file
+            yaml_content = yaml.dump(config_dict, default_flow_style=False, indent=2)
+            hw_config_file.write_text(f"# Hardware configuration\n{yaml_content}")
+            
+            logger.info(f"Created default hardware config: {hw_config_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create hardware config: {e}")
+            raise RepositoryAccessError(
+                operation="ensure_hardware_config_exists",
+                reason=str(e),
+                file_path=hw_config_path,
+            ) from e
+
+    async def save_application_config(self, app_config: ApplicationConfig, app_config_path: str = "configuration/application.yaml") -> None:
+        """
+        Save application configuration to file
+        
+        Args:
+            app_config: ApplicationConfig object to save
+            app_config_path: Path to save the configuration
+            
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            app_config_file = Path(app_config_path)
+            app_config_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            config_dict = app_config.to_dict()
+            yaml_content = yaml.dump(config_dict, default_flow_style=False, indent=2)
+            app_config_file.write_text(f"# Application configuration\n{yaml_content}")
+            
+            logger.info(f"Successfully saved application config: {app_config_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save application config: {e}")
+            raise RepositoryAccessError(
+                operation="save_application_config",
+                reason=str(e),
+                file_path=app_config_path,
             ) from e
