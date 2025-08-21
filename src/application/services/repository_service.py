@@ -97,12 +97,21 @@ class RepositoryService:
                 logger.warning(f"No measurement data found for test {test.test_id}")
                 return
 
+            # Debug: Log the actual_results structure
+            logger.info(f"DEBUG - actual_results keys: {list(test.test_result.actual_results.keys())}")
+            logger.info(f"DEBUG - actual_results type: {type(test.test_result.actual_results)}")
+            logger.info(f"DEBUG - actual_results content: {test.test_result.actual_results}")
+            
             measurements_dict = test.test_result.actual_results.get("measurements", {})
             if not measurements_dict:
                 logger.warning(f"No measurements data found for test {test.test_id}")
+                logger.warning(f"Available keys in actual_results: {list(test.test_result.actual_results.keys())}")
                 return
 
-            logger.debug(f"Extracting force data for test {test.test_id}")
+            logger.info(f"DEBUG - Extracting force data for test {test.test_id}")
+            logger.info(f"DEBUG - measurements_dict keys: {list(measurements_dict.keys()) if measurements_dict else 'None'}")
+            logger.info(f"DEBUG - measurements_dict type: {type(measurements_dict)}")
+            logger.info(f"DEBUG - measurements_dict content: {measurements_dict}")
 
             # Write CSV file
             with open(filepath, "w", newline="", encoding="utf-8") as csvfile:
