@@ -838,8 +838,18 @@ class LMAMCU(MCUService):
             temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
             packet = f"FFFF0504{temp_scaled:08X}FEFE"
 
-            # First response (immediate ACK)
-            response = await self._send_packet(packet, f"CMD_SET_OPERATING_TEMP ({target_temp}°C)", timeout=self._timeout)
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))")
+
+            # Wait for the correct ACK response (0x05), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_SET_OPERATING_TEMP ACK", expected_cmd=0x05
+            )
 
             if not response or len(response) < 6 or response[2] != 0x05:
                 raise HardwareOperationError(
@@ -882,8 +892,18 @@ class LMAMCU(MCUService):
             temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
             packet = f"FFFF0604{temp_scaled:08X}FEFE"
 
-            # First response (immediate ACK)
-            response = await self._send_packet(packet, f"CMD_SET_COOLING_TEMP ({target_temp}°C)", timeout=self._timeout)
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))")
+
+            # Wait for the correct ACK response (0x06), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_SET_COOLING_TEMP ACK", expected_cmd=0x06
+            )
 
             if not response or len(response) < 6 or response[2] != 0x06:
                 raise HardwareOperationError(
@@ -974,7 +994,18 @@ class LMAMCU(MCUService):
 
             packet = f"FFFF0104{mode_value:08X}FEFE"
 
-            response = await self._send_packet(packet, f"CMD_ENTER_TEST_MODE (mode {mode_value})", timeout=self._timeout)
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_ENTER_TEST_MODE (mode {mode_value}))")
+
+            # Wait for the correct ACK response (0x01), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_ENTER_TEST_MODE ACK", expected_cmd=0x01
+            )
 
             if not response or len(response) < 6 or response[2] != 0x01:
                 raise HardwareOperationError("fast_lma_mcu", "set_test_mode", "Invalid response")
@@ -999,7 +1030,18 @@ class LMAMCU(MCUService):
             temp_scaled = int(upper_temp * TEMP_SCALE_FACTOR)
             packet = f"FFFF0204{temp_scaled:08X}FEFE"
 
-            response = await self._send_packet(packet, f"CMD_SET_UPPER_TEMP ({upper_temp}°C)", timeout=self._timeout)
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_SET_UPPER_TEMP ({upper_temp}°C))")
+
+            # Wait for the correct ACK response (0x02), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_SET_UPPER_TEMP ACK", expected_cmd=0x02
+            )
 
             if not response or len(response) < 6 or response[2] != 0x02:
                 raise HardwareOperationError(
@@ -1020,7 +1062,18 @@ class LMAMCU(MCUService):
         try:
             packet = f"FFFF0304{fan_level:08X}FEFE"
 
-            response = await self._send_packet(packet, f"CMD_SET_FAN_SPEED (level {fan_level})", timeout=self._timeout)
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_SET_FAN_SPEED (level {fan_level}))")
+
+            # Wait for the correct ACK response (0x03), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_SET_FAN_SPEED ACK", expected_cmd=0x03
+            )
 
             if not response or len(response) < 6 or response[2] != 0x03:
                 raise HardwareOperationError("fast_lma_mcu", "set_fan_speed", "Invalid response")
@@ -1052,11 +1105,17 @@ class LMAMCU(MCUService):
             data = f"{op_temp_scaled:08X}{standby_temp_scaled:08X}{hold_time_ms:08X}"
             packet = f"FFFF040C{data}FEFE"
 
-            # First response (immediate ACK)
-            response = await self._send_packet(
-                packet,
-                f"CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms)",
-                timeout=self._timeout
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms))")
+
+            # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_LMA_INIT ACK", expected_cmd=0x04
             )
 
             if not response or len(response) < 6 or response[2] != 0x04:
@@ -1103,8 +1162,18 @@ class LMAMCU(MCUService):
         try:
             packet = "FFFF0800FEFE"
 
-            # First response (immediate ACK)
-            response = await self._send_packet(packet, "CMD_STROKE_INIT_COMPLETE", timeout=self._timeout)
+            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+            if self.serial_conn:
+                self.serial_conn.write(packet_bytes)
+            else:
+                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+            logger.info(f"PC -> MCU: {packet} (CMD_STROKE_INIT_COMPLETE)")
+
+            # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
+            response = self._wait_for_additional_response(
+                timeout=self._timeout, description="CMD_STROKE_INIT_COMPLETE ACK", expected_cmd=0x08
+            )
 
             if not response or len(response) < 6 or response[2] != 0x08:
                 raise HardwareOperationError(
