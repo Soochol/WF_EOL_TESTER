@@ -79,18 +79,11 @@ class RepositoryService:
             raw_data_dir = Path("TestResults/raw_data")
             raw_data_dir.mkdir(parents=True, exist_ok=True)
 
-            # Generate filename
+            # Generate daily filename (date-based accumulation)
             serial_number = test.dut.serial_number or "Unknown"
-            timestamp = test.created_at.datetime.strftime("%Y%m%d_%H%M%S")
-            filename = f"{serial_number}_{timestamp}_raw.csv"
+            date_str = test.created_at.datetime.strftime("%Y%m%d")
+            filename = f"{serial_number}_{date_str}.csv"
             filepath = raw_data_dir / filename
-
-            # Ensure unique filename
-            counter = 1
-            while filepath.exists():
-                base_name = f"{serial_number}_{timestamp}_raw_{counter:03d}.csv"
-                filepath = raw_data_dir / base_name
-                counter += 1
 
             # Extract measurement data
             if not test.test_result or not test.test_result.actual_results:
@@ -104,8 +97,15 @@ class RepositoryService:
 
             logger.debug(f"Extracting force data for test {test.test_id}")
 
+            # Determine write mode: append if file exists, create new if not
+            is_new_file = not filepath.exists()
+            write_mode = "w" if is_new_file else "a"
+            
             # Write CSV file
-            with open(filepath, "w", newline="", encoding="utf-8") as csvfile:
+            with open(filepath, write_mode, newline="", encoding="utf-8") as csvfile:
+                # Add blank line separator if appending to existing file
+                if not is_new_file:
+                    csvfile.write("\n\n")
                 # Write test information header
                 csvfile.write("# Test Information\n")
                 csvfile.write(f"Test ID: {test.test_id}\n")
@@ -152,7 +152,8 @@ class RepositoryService:
 
                     writer.writerow(row)
 
-            logger.debug(f"Measurement raw data saved to {filepath}")
+            action = "created" if is_new_file else "appended to"
+            logger.info(f"Measurement raw data {action} daily file: {filepath}")
 
         except Exception as e:
             logger.error(f"Failed to save measurement raw data: {e}")
