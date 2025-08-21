@@ -542,7 +542,8 @@ class HardwareControlManager:
 
         # Create and execute Robot Home use case (we know hardware_config is not None from validation)
         assert self.hardware_config is not None  # For type checker
-        robot_home_use_case = RobotHomeUseCase(facade, self.hardware_config)
+        assert self.configuration_service is not None  # For type checker
+        robot_home_use_case = RobotHomeUseCase(facade, self.configuration_service)
         command = RobotHomeCommand(operator_id="cli_user")
 
         logger.info("Executing robot homing operation...")
