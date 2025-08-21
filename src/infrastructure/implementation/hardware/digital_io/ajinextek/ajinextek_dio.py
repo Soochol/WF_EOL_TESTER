@@ -158,7 +158,7 @@ class AjinextekDIO(DigitalIOService):
 
             self._is_connected = True
             logger.info(
-                f"AJINEXTEK DIO hardware connected successfully (IRQ: {irq_no}, Modules: {self._module_count})"
+                f"AJINEXTEK DIO hardware connected successfully (IRQ: {self._irq_no}, Modules: {self._module_count})"
             )
 
         except AjinextekHardwareError:
