@@ -199,9 +199,7 @@ class HardwareServiceFacade:
             "digital_io": await self._digital_io.is_connected(),
         }
 
-    async def shutdown_hardware(
-        self, hardware_config: Optional[HardwareConfig] = None
-    ) -> None:
+    async def shutdown_hardware(self, hardware_config: Optional[HardwareConfig] = None) -> None:
         """Safely shutdown all hardware"""
         logger.info("Shutting down hardware...")
 
@@ -533,27 +531,20 @@ class HardwareServiceFacade:
                 await self._loadcell.hold()
                 logger.info("Loadcell is holding")
 
-                # MCU set upper temperature
-                await self._mcu.set_upper_temperature(test_config.upper_temperature)
-                logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
-                await asyncio.sleep(
-                    test_config.mcu_command_stabilization
-                )  # MCU stabilization delay
-                logger.info(f"Upper temperature set to {test_config.upper_temperature}°C")
+                # # MCU set upper temperature
+                # await self._mcu.set_upper_temperature(test_config.upper_temperature)
+                # logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                # await asyncio.sleep(
+                #     test_config.mcu_command_stabilization
+                # )  # MCU stabilization delay
+                # logger.info(f"Upper temperature set to {test_config.upper_temperature}°C")
 
-                await self._mcu.set_fan_speed(test_config.fan_speed)
-                logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
-                await asyncio.sleep(test_config.mcu_command_stabilization)
+                # await self._mcu.set_fan_speed(test_config.fan_speed)
+                # logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
+                # await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 # MCU heat up
-                # Calculate standby temperature: minimum of configured standby temp and test temperature list minimum
-                min_test_temp = min(test_config.temperature_list)
-                calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
-
-                await self._mcu.start_standby_heating(
-                    operating_temp=temperature,
-                    standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
-                )
+                await self._mcu.set_operating_temperature(temperature)
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(
                     test_config.mcu_command_stabilization
@@ -607,9 +598,9 @@ class HardwareServiceFacade:
                 logger.info("Loadcell released the hold after measurements")
 
                 # mcu standy heating
-                min_test_temp = min(test_config.temperature_list)
-                calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
-
+                # min_test_temp = min(test_config.temperature_list)
+                # calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
+                calculated_standby_temp = test_config.standby_temperature
                 # MCU configuration before standby heating
                 await self._mcu.set_upper_temperature(test_config.upper_temperature)
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
@@ -620,13 +611,13 @@ class HardwareServiceFacade:
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum
-                max_test_temp = max(test_config.temperature_list)
-                calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
-
+                # max_test_temp = max(test_config.temperature_list)
+                # calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
+                calculated_operating_temp = test_config.activation_temperature
                 # MCU start standby heating
                 await self._mcu.start_standby_heating(
-                    operating_temp=calculated_operating_temp,
-                    standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
+                    operating_temp=test_config.activation_temperature,
+                    standby_temp=test_config.standby_temperature,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
                 )
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(
