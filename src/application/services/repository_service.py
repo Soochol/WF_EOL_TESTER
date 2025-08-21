@@ -97,21 +97,12 @@ class RepositoryService:
                 logger.warning(f"No measurement data found for test {test.test_id}")
                 return
 
-            # Debug: Log the actual_results structure
-            logger.info(f"DEBUG - actual_results keys: {list(test.test_result.actual_results.keys())}")
-            logger.info(f"DEBUG - actual_results type: {type(test.test_result.actual_results)}")
-            logger.info(f"DEBUG - actual_results content: {test.test_result.actual_results}")
-            
             measurements_dict = test.test_result.actual_results.get("measurements", {})
             if not measurements_dict:
                 logger.warning(f"No measurements data found for test {test.test_id}")
-                logger.warning(f"Available keys in actual_results: {list(test.test_result.actual_results.keys())}")
                 return
 
-            logger.info(f"DEBUG - Extracting force data for test {test.test_id}")
-            logger.info(f"DEBUG - measurements_dict keys: {list(measurements_dict.keys()) if measurements_dict else 'None'}")
-            logger.info(f"DEBUG - measurements_dict type: {type(measurements_dict)}")
-            logger.info(f"DEBUG - measurements_dict content: {measurements_dict}")
+            logger.debug(f"Extracting force data for test {test.test_id}")
 
             # Write CSV file
             with open(filepath, "w", newline="", encoding="utf-8") as csvfile:
@@ -145,11 +136,10 @@ class RepositoryService:
                     temp_measurements = measurements_dict[temp]
 
                     for pos in sorted_positions:
-                        pos_str = str(pos)
-                        if pos_str in temp_measurements:
-                            position_data = temp_measurements[pos_str]
+                        if pos in temp_measurements:
+                            position_data = temp_measurements[pos]
                             # Extract force value using multiple strategies
-                            force_value = self._extract_force_value(position_data, temp, pos_str)
+                            force_value = self._extract_force_value(position_data, temp, str(pos))
 
                             # Add force value to row
                             if force_value is not None and isinstance(force_value, (int, float)):
