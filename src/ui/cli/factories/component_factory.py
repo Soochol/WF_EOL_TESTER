@@ -221,7 +221,7 @@ class CLIComponentFactory(ComponentFactory):
         hardware_manager = None
         if hardware_facade:
             hardware_manager = HardwareControlManager(
-                hardware_facade, console, configuration_service
+                hardware_facade, configuration_service, console
             )
 
         # Create dependency injected CLI application

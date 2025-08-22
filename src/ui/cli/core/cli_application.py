@@ -115,8 +115,8 @@ class CLIApplication(ICLIApplication):
         if self._hardware_facade:
             self._hardware_manager = HardwareControlManager(
                 self._hardware_facade,
-                self._console,
-                self._configuration_service
+                self._configuration_service,
+                self._console
             )
             self._menu_system.set_hardware_manager(self._hardware_manager)
 
