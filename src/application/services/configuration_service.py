@@ -316,7 +316,7 @@ class ConfigurationService:
         try:
             # Ensure profile system is initialized
             await self._ensure_profile_system_initialized()
-            
+
             # 1st priority: Last used profile from repository
             last_used = await self._configuration.load_last_used_profile()
             if last_used and self._is_valid_profile_name(last_used):
@@ -397,28 +397,28 @@ class ConfigurationService:
                 operation="set_active_profile",
                 reason="Configuration repository not available",
             )
-        
+
         # Validate profile name
         if not self._is_valid_profile_name(profile_name):
             raise RepositoryAccessError(
                 operation="set_active_profile",
                 reason=f"Invalid profile name: {profile_name}",
             )
-        
+
         try:
             # Ensure profile system is initialized
             await self._ensure_profile_system_initialized()
-            
+
             # Check if profile exists
             available_profiles = await self.list_available_profiles()
             if profile_name not in available_profiles:
                 raise ConfigurationNotFoundError(profile_name, available_profiles)
-            
+
             # Save as last used profile
             await self._configuration.save_last_used_profile(profile_name)
-            
+
             logger.info(f"Active profile set to: {profile_name}")
-            
+
         except ConfigurationNotFoundError:
             raise
         except Exception as e:
@@ -445,13 +445,13 @@ class ConfigurationService:
             # Check if default profile exists, if not this will create it
             default_profile = "default"
             available_profiles = await self.list_available_profiles()
-            
+
             if default_profile not in available_profiles:
                 logger.info(f"Default profile '{default_profile}' not found, creating it...")
                 # Loading a non-existent profile will auto-create it via YamlConfiguration
                 await self.load_test_config(default_profile)
                 logger.info(f"Default profile '{default_profile}' created successfully")
-            
+
         except Exception as e:
             logger.warning(f"Failed to initialize profile system: {e}")
 
