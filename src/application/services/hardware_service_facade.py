@@ -338,8 +338,6 @@ class HardwareServiceFacade:
             if not test_config.temperature_list:
                 raise ValueError("Temperature list cannot be empty")
 
-            min_test_temp = min(test_config.temperature_list)
-            calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
 
             try:
                 # MCU configuration before standby heating
@@ -353,26 +351,22 @@ class HardwareServiceFacade:
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
-                # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum
-                max_test_temp = max(test_config.temperature_list)
-                calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
-
                 await self._mcu.start_standby_heating(
-                    operating_temp=calculated_operating_temp,
-                    standby_temp=calculated_standby_temp,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
+                    operating_temp=test_config.activation_temperature,
+                    standby_temp=test_config.standby_temperature,
                 )
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info(
-                    f"MCU standby heating started - operating: {calculated_operating_temp}°C, standby: {calculated_standby_temp}°C"
+                    f"MCU standby heating started - operating: {test_config.activation_temperature}°C, standby: {test_config.standby_temperature}°C"
                 )
 
                 # Verify MCU temperature reached operating temperature
-                await self.verify_mcu_temperature(calculated_operating_temp, test_config)
+                await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
                 logger.info(
-                    f"Temperature verification passed for operating temperature {calculated_operating_temp}°C"
+                    f"Temperature verification passed for operating temperature {test_config.activation_temperature}°C"
                 )
             except Exception as e:
                 logger.error(f"MCU standby heating failed - {e}")
@@ -423,9 +417,9 @@ class HardwareServiceFacade:
                 logger.info("MCU standby cooling started")
 
                 # Verify MCU temperature reached standby temperature
-                await self.verify_mcu_temperature(calculated_standby_temp, test_config)
+                await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
                 logger.info(
-                    f"Temperature verification passed for standby temperature {calculated_standby_temp}°C"
+                    f"Temperature verification passed for standby temperature {test_config.standby_temperature}°C"
                 )
             except Exception as e:
                 logger.error(f"MCU standby cooling failed - {e}")
@@ -597,10 +591,6 @@ class HardwareServiceFacade:
                 await self._loadcell.hold_release()
                 logger.info("Loadcell released the hold after measurements")
 
-                # mcu standy heating
-                # min_test_temp = min(test_config.temperature_list)
-                # calculated_standby_temp = min(test_config.standby_temperature, min_test_temp)
-                calculated_standby_temp = test_config.standby_temperature
                 # MCU configuration before standby heating
                 await self._mcu.set_upper_temperature(test_config.upper_temperature)
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
@@ -611,26 +601,23 @@ class HardwareServiceFacade:
                 await asyncio.sleep(test_config.mcu_command_stabilization)
 
                 # Calculate operating temperature: maximum of configured activation temp and test temperature list maximum
-                # max_test_temp = max(test_config.temperature_list)
-                # calculated_operating_temp = max(test_config.activation_temperature, max_test_temp)
-                calculated_operating_temp = test_config.activation_temperature
                 # MCU start standby heating
                 await self._mcu.start_standby_heating(
                     operating_temp=test_config.activation_temperature,
-                    standby_temp=test_config.standby_temperature,  # 대기온도는 설정값과 테스트 최소온도 중 작은 값
+                    standby_temp=test_config.standby_temperature,
                 )
                 logger.info(f"MCU stabilization delay: {test_config.mcu_command_stabilization}s...")
                 await asyncio.sleep(
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
                 logger.info(
-                    f"MCU standby heating started - operating: {calculated_operating_temp}°C"
+                    f"MCU standby heating started - operating: {test_config.activation_temperature}°C"
                 )
 
                 # Verify MCU temperature reached operating temperature
-                await self.verify_mcu_temperature(calculated_operating_temp, test_config)
+                await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
                 logger.info(
-                    f"Temperature verification passed for operating temperature {calculated_operating_temp}°C"
+                    f"Temperature verification passed for operating temperature {test_config.activation_temperature}°C"
                 )
 
                 # Robot to initial stroke position
@@ -650,12 +637,12 @@ class HardwareServiceFacade:
                 await asyncio.sleep(
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
-                logger.info(f"MCU standby cooling started - standby: {calculated_standby_temp}°C")
+                logger.info(f"MCU standby cooling started - standby: {test_config.standby_temperature}°C")
 
                 # Verify MCU temperature reached standby temperature
-                await self.verify_mcu_temperature(calculated_standby_temp, test_config)
+                await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
                 logger.info(
-                    f"Temperature verification passed for standby temperature {calculated_standby_temp}°C"
+                    f"Temperature verification passed for standby temperature {test_config.standby_temperature}°C"
                 )
 
                 logger.info(f"Completed all positions for temperature {temperature}°C")
