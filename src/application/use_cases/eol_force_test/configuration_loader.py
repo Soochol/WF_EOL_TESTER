@@ -68,7 +68,7 @@ class TestConfigurationLoader:
         self._profile_name = await self._configuration_service.get_active_profile_name()
 
         # Load test configuration
-        self._test_config = await self._configuration_service.load_configuration(self._profile_name)
+        self._test_config = await self._configuration_service.load_test_config(self._profile_name)
 
         # Load hardware configuration
         self._hardware_config = await self._configuration_service.load_hardware_config()
@@ -86,8 +86,8 @@ class TestConfigurationLoader:
 
         # Mark profile as used (non-critical operation - don't fail test on error)
         try:
-            await self._configuration_service.mark_profile_as_used(self._profile_name)
-            logger.debug("Profile '{}' marked as used successfully", self._profile_name)
+            # Profile usage tracking removed - no longer needed
+            logger.debug("Profile '{}' loaded successfully", self._profile_name)
         except Exception as pref_error:
             # Profile usage tracking failure should not interrupt test execution
             logger.warning(

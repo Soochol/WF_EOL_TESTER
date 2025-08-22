@@ -61,7 +61,7 @@ async def get_current_configuration(request: Request):
         profile_name = await config_service.get_active_profile_name()
         
         # Load current test configuration
-        test_config = await config_service.load_configuration(profile_name)
+        test_config = await config_service.load_test_config(profile_name)
         
         # Return motion parameters for UI
         return {
@@ -87,9 +87,9 @@ async def get_current_configuration(request: Request):
 async def get_profile_usage(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
     """Get profile usage information"""
     try:
-        usage_info = await config_service.get_profile_usage_info()
+        profile_info = await config_service.get_profile_info()
 
-        return ProfileUsageResponse(**usage_info)
+        return ProfileUsageResponse(**profile_info)
 
     except Exception as e:
         logger.error(f"Failed to get profile usage: {e}")
@@ -108,13 +108,13 @@ async def get_profile_configuration(
     try:
 
         # Load test configuration
-        test_config = await config_service.load_configuration(profile_name)
+        test_config = await config_service.load_test_config(profile_name)
 
         # Load hardware configuration
         hardware_config = await config_service.load_hardware_config()
 
         # Mark profile as used
-        await config_service.mark_profile_as_used(profile_name)
+        # Profile usage tracking removed - no longer needed
 
         return ConfigurationResponse(
             profile_name=profile_name,
@@ -149,7 +149,7 @@ async def validate_profile_configuration(
 
         try:
             # Load and validate test configuration
-            test_config = await config_service.load_configuration(profile_name)
+            test_config = await config_service.load_test_config(profile_name)
 
             # The TestConfiguration.__post_init__ will validate the configuration
             if not test_config.is_valid():
@@ -174,7 +174,7 @@ async def validate_profile_configuration(
 
         # Add some additional validation warnings
         if is_valid:
-            test_config = await config_service.load_configuration(profile_name)
+            test_config = await config_service.load_test_config(profile_name)
 
             # Check for potentially long test durations
             estimated_duration = test_config.estimate_test_duration_seconds()
@@ -403,7 +403,7 @@ async def update_hardware_config(
     try:
 
         # Save the updated configuration
-        await config_service.save_hardware_configuration(config.hardware_config)
+        await config_service.save_hardware_config(config.hardware_config)
 
         return ConfigurationUpdateResponse(
             success=True,
@@ -435,7 +435,7 @@ async def get_hardware_model(config_service: ConfigurationService = Provide[Appl
     """Get hardware model configuration"""
     try:
         # Load hardware model from the YAML configuration
-        hardware_model = await config_service._configuration.load_hardware_model()
+        hardware_model = await config_service.load_hardware_config()
 
         return HardwareModelConfiguration(
             hardware_model=hardware_model.to_dict(),
@@ -459,7 +459,7 @@ async def update_hardware_model(
     try:
 
         # Save the updated configuration
-        await config_service.save_hardware_model(config.hardware_model)
+        await config_service.save_hardware_config(config.hardware_model)
 
         return ConfigurationUpdateResponse(
             success=True,

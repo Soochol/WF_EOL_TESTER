@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from application.services.hardware_service_facade import HardwareServiceFacade
     from application.use_cases.eol_force_test import EOLForceTestUseCase
 
+    from .config_reader import CLIConfigReader
+
 
 # Re-export validation components for backward compatibility
 __all__ = ["ValidationConstants", "InputValidator", "EnhancedEOLTesterCLI"]
@@ -42,6 +44,8 @@ class EnhancedEOLTesterCLI:
 
     DEPRECATED: Use application_factory functions directly for new development.
     """
+
+    _config_reader: Optional["CLIConfigReader"]
 
     def __init__(
         self,

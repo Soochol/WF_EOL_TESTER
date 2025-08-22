@@ -34,8 +34,8 @@ class HardwareControlManager:
     def __init__(
         self,
         hardware_facade: HardwareServiceFacade,
+        configuration_service: ConfigurationService,
         console: Optional[Console] = None,
-        configuration_service: Optional[ConfigurationService] = None,
     ):
         self.console = console or Console()
         self.formatter = RichFormatter(self.console)
@@ -126,10 +126,7 @@ class HardwareControlManager:
         logger.debug("Starting hardware configuration loading process")
 
         try:
-            if not self.configuration_service:
-                logger.error("Configuration service is None - cannot load hardware config!")
-                logger.error("This indicates a CLI initialization problem.")
-                return None
+            # Configuration service is guaranteed to be available from constructor
 
             logger.debug(
                 f"Configuration service available: {type(self.configuration_service).__name__}"
@@ -158,11 +155,9 @@ class HardwareControlManager:
                             new_loop = asyncio.new_event_loop()
                             try:
                                 asyncio.set_event_loop(new_loop)
-                                if self.configuration_service is not None:
-                                    return new_loop.run_until_complete(
-                                        self.configuration_service.load_hardware_config()
-                                    )
-                                return None
+                                return new_loop.run_until_complete(
+                                    self.configuration_service.load_hardware_config()
+                                )
                             finally:
                                 new_loop.close()
 
@@ -184,17 +179,13 @@ class HardwareControlManager:
                         return None
                 else:
                     logger.debug("Loading hardware config using existing event loop")
-                    if self.configuration_service is not None:
-                        hw_config = loop.run_until_complete(
-                            self.configuration_service.load_hardware_config()
-                        )
-                        logger.info(
-                            "Successfully loaded hardware configurations from YAML using existing loop"
-                        )
-                        return hw_config
-                    else:
-                        logger.error("Configuration service is None")
-                        return None
+                    hw_config = loop.run_until_complete(
+                        self.configuration_service.load_hardware_config()
+                    )
+                    logger.info(
+                        "Successfully loaded hardware configurations from YAML using existing loop"
+                    )
+                    return hw_config
 
             except RuntimeError as e:
                 logger.debug(f"RuntimeError in event loop: {e} - creating new loop")
@@ -541,8 +532,11 @@ class HardwareControlManager:
         )
 
         # Create and execute Robot Home use case (we know hardware_config is not None from validation)
-        assert self.hardware_config is not None  # For type checker
-        assert self.configuration_service is not None  # For type checker
+        if self.hardware_config is None:
+            raise RuntimeError(
+                "Hardware configuration not loaded - cannot execute robot home operation"
+            )
+
         robot_home_use_case = RobotHomeUseCase(facade, self.configuration_service)
         command = RobotHomeCommand(operator_id="cli_user")
 

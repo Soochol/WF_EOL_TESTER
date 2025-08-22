@@ -9,7 +9,6 @@ from dependency_injector import containers, providers
 from loguru import logger
 
 # Application Layer Imports
-from application.services.configuration_manager import ConfigurationManager
 from application.services.configuration_service import ConfigurationService
 from application.services.configuration_validator import ConfigurationValidator
 from application.services.exception_handler import ExceptionHandler
@@ -25,11 +24,11 @@ from domain.value_objects.hardware_config import HardwareConfig
 
 # Infrastructure Layer Imports
 from infrastructure.factories.hardware_factory import HardwareFactory
-from infrastructure.implementation.configuration.json_profile_preference import (
-    JsonProfilePreference,
-)
 from infrastructure.implementation.configuration.yaml_configuration import (
     YamlConfiguration,
+)
+from infrastructure.implementation.configuration.yaml_container_configuration import (
+    YamlContainerConfigurationLoader,
 )
 from infrastructure.implementation.repositories.json_result_repository import (
     JsonResultRepository,
@@ -66,8 +65,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # Configuration Infrastructure
     yaml_configuration = providers.Singleton(YamlConfiguration)
 
-    json_profile_preference = providers.Singleton(JsonProfilePreference)
-
     # Repository Infrastructure
     json_result_repository = providers.Singleton(
         JsonResultRepository,
@@ -83,7 +80,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
     configuration_service = providers.Singleton(
         ConfigurationService,
         configuration=yaml_configuration,
-        profile_preference=json_profile_preference,
     )
 
     configuration_validator = providers.Singleton(ConfigurationValidator)
@@ -134,30 +130,24 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # ============================================================================
 
     @classmethod
-    def create(
-        cls,
-        config_manager: ConfigurationManager | None = None,
-    ) -> "ApplicationContainer":
+    def create(cls) -> "ApplicationContainer":
         """
-        Create container with configuration loaded via ConfigurationManager.
-
-        Args:
-            config_manager: Optional ConfigurationManager instance. If None, creates default.
+        Create container with configuration loaded via ConfigurationService.
 
         Returns:
             Configured ApplicationContainer instance
         """
         container = cls()
-        
-        if config_manager is None:
-            config_manager = ConfigurationManager.create_default()
-        
+
         try:
-            # Load all configurations via ConfigurationManager
-            config_data = config_manager.load_all_configurations()
+            # Create configuration loader for container initialization
+            config_loader = YamlContainerConfigurationLoader()
+
+            # Load all configurations via configuration loader
+            config_data = config_loader.load_all_configurations()
             container.config.from_dict(config_data)
             logger.info("Container created successfully with loaded configuration")
-            
+
         except Exception as e:
             logger.error(f"Failed to create container: {e}")
             logger.info("Using fallback configuration")
@@ -165,46 +155,44 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
         return container
 
-    @classmethod 
+    @classmethod
     def create_with_paths(
         cls,
         application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware.yaml",
+        hardware_config_path: str = "configuration/hardware_config.yaml",
     ) -> "ApplicationContainer":
         """
-        Create container with custom configuration paths.
+        Create container with configuration paths (legacy method for compatibility).
+
+        Note: Paths are now fixed in ConfigPaths and cannot be customized.
 
         Args:
-            application_config_path: Path to application configuration file
-            hardware_config_path: Path to hardware configuration file
+            application_config_path: Ignored - uses ConfigPaths.DEFAULT_APPLICATION_CONFIG
+            hardware_config_path: Ignored - uses ConfigPaths.DEFAULT_HARDWARE_CONFIG
 
         Returns:
             Configured ApplicationContainer instance
         """
-        config_manager = ConfigurationManager.create_with_paths(
-            application_config_path, 
-            hardware_config_path
-        )
-        return cls.create(config_manager)
+        return cls.create()
 
     @classmethod
     def ensure_config_exists(
         cls,
         application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware.yaml",
+        hardware_config_path: str = "configuration/hardware_config.yaml",
     ) -> None:
         """
-        Ensure configuration files exist, create from templates if missing.
+        Ensure configuration files exist, create from defaults if missing.
 
         Args:
             application_config_path: Path to application configuration file
             hardware_config_path: Path to hardware configuration file
         """
-        config_manager = ConfigurationManager.create_with_paths(
-            application_config_path, 
-            hardware_config_path
+        config_loader = YamlContainerConfigurationLoader(
+            application_config_path=application_config_path,
+            hardware_config_path=hardware_config_path,
         )
-        config_manager.ensure_configurations_exist()
+        config_loader.ensure_configurations_exist()
 
     @classmethod
     def _apply_fallback_config(cls, container: "ApplicationContainer") -> None:
@@ -224,11 +212,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
     def load_config_safely(
         cls,
         application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware.yaml",
+        hardware_config_path: str = "configuration/hardware_config.yaml",
     ) -> "ApplicationContainer":
         """
         Legacy method - Create container and load configuration safely with fallback.
-        
+
         Deprecated: Use create() or create_with_paths() instead.
 
         Args:

@@ -121,7 +121,7 @@ async def initialize_hardware(
     try:
         # Load configurations
         profile_name = request.profile_name or await config_service.get_active_profile_name()
-        test_config = await config_service.load_configuration(profile_name)
+        test_config = await config_service.load_test_config(profile_name)
         hardware_config = await config_service.load_hardware_config()
 
         # Connect hardware if needed

@@ -1,6 +1,6 @@
 """Configuration module"""
 
 from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
-from infrastructure.implementation.configuration.json_profile_preference import JsonProfilePreference
+from infrastructure.implementation.configuration.yaml_container_configuration import YamlContainerConfigurationLoader
 
-__all__ = ["YamlConfiguration", "JsonProfilePreference"]
+__all__ = ["YamlConfiguration", "YamlContainerConfigurationLoader"]

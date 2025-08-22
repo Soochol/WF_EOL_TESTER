@@ -78,7 +78,7 @@ async def main() -> None:
 async def setup_optional_hardware_connection(hardware_services) -> None:
     """
     Setup hardware connections with graceful fallback for CLI-only mode.
-    
+
     This function attempts to connect hardware services but continues
     operation even if hardware is not available.
     """
@@ -97,7 +97,7 @@ async def setup_optional_hardware_connection(hardware_services) -> None:
                 connection_status = await digital_io_service.is_connected()
                 if connection_status:
                     logger.info("✅ Digital I/O service connected successfully")
-                    
+
                     # Verify I/O capabilities if connected
                     try:
                         input_count = await digital_io_service.get_input_count()
@@ -135,7 +135,7 @@ def setup_logging(debug: bool = False) -> None:
     # Simplified formatter for CLI mode
     def cli_formatter(record):
         message = record["message"]
-        
+
         # Special formatting for different message types
         if "✅" in message or "🔧" in message:
             # Success and verification messages - green

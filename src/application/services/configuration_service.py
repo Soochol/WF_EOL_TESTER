@@ -11,12 +11,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 from loguru import logger
 
-from application.interfaces.configuration.configuration import (
-    Configuration,
-)
-from application.interfaces.configuration.profile_preference import (
-    ProfilePreference,
-)
+from application.interfaces.configuration.configuration import Configuration
 from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
@@ -28,6 +23,18 @@ from domain.value_objects.test_configuration import (
 )
 
 
+class ConfigPaths:
+    """Configuration file paths constants"""
+
+    # Default configuration file paths
+    DEFAULT_APPLICATION_CONFIG = "configuration/application.yaml"
+    DEFAULT_HARDWARE_CONFIG = "configuration/hardware_config.yaml"
+
+    # Default paths for repositories
+    DEFAULT_PROFILE_PREFERENCE_PATH = "configuration/profile_preferences.json"
+    DEFAULT_TEST_PROFILES_DIR = "configuration/test_profiles"
+
+
 class ConfigurationService:
     """
     Service for managing configuration and profile preference operations
@@ -36,27 +43,28 @@ class ConfigurationService:
     It coordinates between ConfigurationRepository and ProfilePreferenceRepository.
     """
 
+    # ============================================================================
+    # INITIALIZATION & PROPERTIES
+    # ============================================================================
+
     def __init__(
         self,
-        configuration: Configuration,
-        profile_preference: ProfilePreference,
+        configuration: Optional[Configuration] = None,
     ):
         self._configuration = configuration
-        self._profile_preference = profile_preference
+        self.application_config_path = ConfigPaths.DEFAULT_APPLICATION_CONFIG
+        self.hardware_config_path = ConfigPaths.DEFAULT_HARDWARE_CONFIG
 
     @property
-    def configuration(self) -> Configuration:
+    def configuration(self) -> Optional[Configuration]:
         """Get the configuration"""
         return self._configuration
 
-    @property
-    def profile_preference(
-        self,
-    ) -> ProfilePreference:
-        """Get the profile preference"""
-        return self._profile_preference
+    # ============================================================================
+    # CORE CONFIGURATION LOADING
+    # ============================================================================
 
-    async def load_configuration(self, profile_name: str) -> TestConfiguration:
+    async def load_test_config(self, profile_name: str) -> TestConfiguration:
         """
         Load test configuration from repository
 
@@ -70,6 +78,12 @@ class ConfigurationService:
             ConfigurationNotFoundError: If profile doesn't exist
             RepositoryAccessError: If loading fails
         """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="load_test_config",
+                reason="Configuration repository not available",
+            )
+
         logger.debug(f"Loading configuration from profile: '{profile_name}'")
 
         try:
@@ -84,7 +98,7 @@ class ConfigurationService:
         except Exception as e:
             logger.error(f"Failed to load configurations from profile '{profile_name}': {e}")
             raise RepositoryAccessError(
-                operation="load_configuration",
+                operation="load_test_config",
                 reason=str(e),
                 file_path=f"{profile_name}.yaml",
             ) from e
@@ -99,6 +113,12 @@ class ConfigurationService:
         Raises:
             RepositoryAccessError: If hardware configuration loading fails
         """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="load_hardware_config",
+                reason="Configuration repository not available",
+            )
+
         try:
             return await self._configuration.load_hardware_config()
         except Exception as e:
@@ -106,8 +126,165 @@ class ConfigurationService:
             raise RepositoryAccessError(
                 operation="load_hardware_config",
                 reason=str(e),
-                file_path="hardware_configuration.yaml",
+                file_path="hardware_config.yaml",
             ) from e
+
+    async def load_application_config(
+        self, app_config_path: str = None
+    ) -> ApplicationConfig:
+        """
+        Load application configuration from file
+
+        Args:
+            app_config_path: Path to application configuration file
+
+        Returns:
+            ApplicationConfig object
+
+        Raises:
+            RepositoryAccessError: If loading fails
+        """
+        try:
+            if app_config_path is None:
+                app_config_path = ConfigPaths.DEFAULT_APPLICATION_CONFIG
+            app_config_file = Path(app_config_path)
+
+            if not app_config_file.exists():
+                logger.warning(f"Application config not found: {app_config_path}")
+                return ApplicationConfig()  # Return default
+
+            with open(app_config_file, "r", encoding="utf-8") as f:
+                config_data = yaml.safe_load(f)
+
+            return ApplicationConfig.from_dict(config_data)
+
+        except Exception as e:
+            logger.error(f"Failed to load application config from {app_config_path}: {e}")
+            raise RepositoryAccessError(
+                operation="load_application_config",
+                reason=str(e),
+                file_path=app_config_path,
+            ) from e
+
+    async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
+        """
+        Load DUT default values from configuration file
+
+        Args:
+            profile_name: Specific profile to load, defaults to active profile from config
+
+        Returns:
+            Dictionary containing DUT default values
+
+        Raises:
+            ConfigurationNotFoundError: If DUT defaults file is not found
+            RepositoryAccessError: If DUT defaults cannot be loaded
+        """
+        try:
+            # Delegate to Configuration repository for file operations
+            return await self._configuration.load_dut_defaults(profile_name)
+
+        except Exception as e:
+            logger.error(f"Unexpected error loading DUT defaults: {e}")
+            raise RepositoryAccessError(
+                operation="load_dut_defaults", reason=f"Failed to load DUT defaults: {str(e)}"
+            ) from e
+
+    # ============================================================================
+    # CORE CONFIGURATION SAVING
+    # ============================================================================
+
+    async def save_test_profile(self, profile_name: str, config_data: Dict[str, Any]) -> None:
+        """
+        Save test profile configuration
+
+        Args:
+            profile_name: Name of the profile to save
+            config_data: Configuration data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            # Convert dict to TestConfiguration object
+            test_config = TestConfiguration.from_structured_dict(config_data)
+
+            # Save using the configuration repository
+            await self._configuration.save_profile(profile_name, test_config)
+
+            logger.info(f"Successfully saved test profile: {profile_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to save test profile {profile_name}: {e}")
+            raise RepositoryAccessError(
+                operation="save_test_profile",
+                reason=str(e),
+                file_path=f"{profile_name}.yaml",
+            ) from e
+
+    async def save_hardware_config(self, hardware_config_data: Dict[str, Any]) -> None:
+        """
+        Save hardware configuration to hardware_config.yaml
+
+        Args:
+            hardware_config_data: Hardware configuration data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="save_hardware_config",
+                reason="Configuration repository not available",
+            )
+
+        try:
+            # Convert dict to HardwareConfig object
+            hardware_config = HardwareConfig.from_dict(hardware_config_data)
+
+            # Save using the configuration repository
+            await self._configuration.save_hardware_config(hardware_config)
+
+            logger.info("Successfully saved hardware configuration to hardware_config.yaml")
+
+        except Exception as e:
+            logger.error(f"Failed to save hardware configuration: {e}")
+            raise RepositoryAccessError(
+                operation="save_hardware_config",
+                reason=str(e),
+                file_path="hardware_config.yaml",
+            ) from e
+
+    async def save_dut_defaults_configuration(self, dut_defaults_data: Dict[str, Any]) -> None:
+        """
+        Save DUT defaults configuration
+
+        Args:
+            dut_defaults_data: DUT defaults data dictionary
+
+        Raises:
+            RepositoryAccessError: If save operation fails
+        """
+        try:
+            # Extract profile name if present
+            profile_name = dut_defaults_data.get("active_profile", "default")
+
+            # Save using the configuration repository
+            await self._configuration.save_dut_defaults(dut_defaults_data, profile_name)
+
+            logger.info("Successfully saved DUT defaults configuration")
+
+        except Exception as e:
+            logger.error(f"Failed to save DUT defaults configuration: {e}")
+            raise RepositoryAccessError(
+                operation="save_dut_defaults",
+                reason=str(e),
+                file_path="dut_defaults.yaml",
+            ) from e
+
+    # ============================================================================
+    # PROFILE MANAGEMENT
+    # ============================================================================
 
     async def list_available_profiles(self) -> List[str]:
         """
@@ -123,22 +300,35 @@ class ConfigurationService:
         Get the profile name that should be used, following business priority rules
 
         Priority:
-        1. Last used profile (if available)
-        2. Default fallback
+        1. Last used profile (if available and exists)
+        2. Active profile from profile.yaml (if exists)
+        3. Default fallback
 
         Returns:
             Profile name to use for configuration loading
         """
         fallback_profile = "default"
 
-        try:
-            # 1st priority: Last used profile from repository
-            last_used = await self._profile_preference.load_last_used_profile()
-            if last_used and self._is_valid_profile_name(last_used):
-                logger.debug(f"Using last used profile: '{last_used}'")
-                return last_used
+        if not self._configuration:
+            logger.warning("Configuration repository not available, using fallback")
+            return fallback_profile
 
-            # 2nd priority: Default fallback
+        try:
+            # Ensure profile system is initialized
+            await self._ensure_profile_system_initialized()
+            
+            # 1st priority: Last used profile from repository
+            last_used = await self._configuration.load_last_used_profile()
+            if last_used and self._is_valid_profile_name(last_used):
+                # Verify the profile actually exists before using it
+                available_profiles = await self.list_available_profiles()
+                if last_used in available_profiles:
+                    logger.debug(f"Using last used profile: '{last_used}'")
+                    return last_used
+                else:
+                    logger.warning(f"Last used profile '{last_used}' no longer exists, falling back")
+
+            # 2nd priority: Default fallback (which should exist after initialization)
             logger.debug(f"Using fallback profile: '{fallback_profile}'")
             return fallback_profile
 
@@ -146,59 +336,29 @@ class ConfigurationService:
             logger.warning(f"Error determining active profile, using fallback: {e}")
             return fallback_profile
 
-    async def mark_profile_as_used(self, profile_name: str) -> None:
+    async def get_profile_info(self) -> Dict[str, Any]:
         """
-        Mark a profile as used, updating last used and history
-
-        Args:
-            profile_name: Name of the profile that was used
-        """
-        if not profile_name or not self._is_valid_profile_name(profile_name):
-            logger.warning(f"Invalid profile name for usage tracking: '{profile_name}'")
-            return
-
-        try:
-            # Update last used profile
-            await self._profile_preference.save_last_used_profile(profile_name)
-
-            # Update usage history
-            await self._profile_preference.update_usage_history(profile_name)
-
-            logger.debug(f"Marked profile as used: '{profile_name}'")
-
-        except Exception as e:
-            # Don't let preference saving break the main workflow
-            logger.warning(f"Failed to mark profile '{profile_name}' as used: {e}")
-
-    async def get_profile_usage_info(
-        self,
-    ) -> Dict[str, Any]:
-        """
-        Get comprehensive profile usage information
+        Get basic profile information without usage history
 
         Returns:
-            Dictionary with current profile, usage history, and available profiles
+            Dictionary with current profile and available profiles
         """
         try:
             current_profile = await self.get_active_profile_name()
-            last_used = await self._profile_preference.load_last_used_profile()
-            history = await self._profile_preference.get_usage_history()
-            available_profiles = await self._configuration.list_available_profiles()
+            available_profiles = await self.list_available_profiles() if self._configuration else []
 
             return {
                 "current_profile": current_profile,
-                "last_used_profile": last_used,
-                "usage_history": history,
                 "available_profiles": available_profiles,
-                "history_count": len(history),
-                "unique_profiles_used": len(set(history)) if history else 0,
-                "repository_available": await self._profile_preference.is_available(),
+                "repository_available": self._configuration is not None,
             }
 
         except Exception as e:
-            logger.warning(f"Failed to get profile usage info: {e}")
+            logger.warning(f"Failed to get profile info: {e}")
             return {
                 "current_profile": "default",
+                "available_profiles": [],
+                "repository_available": False,
                 "error": str(e),
             }
 
@@ -210,7 +370,7 @@ class ConfigurationService:
             RepositoryAccessError: If clearing preferences fails
         """
         try:
-            await self._profile_preference.clear_preferences()
+            await self._configuration.clear_preferences()
             logger.info(
                 "All profile preferences cleared - will use environment variable or default"
             )
@@ -220,6 +380,80 @@ class ConfigurationService:
                 operation="clear_profile_preferences",
                 reason=str(e),
             ) from e
+
+    async def set_active_profile(self, profile_name: str) -> None:
+        """
+        Set the active profile for the system
+        
+        Args:
+            profile_name: Name of the profile to activate
+            
+        Raises:
+            ConfigurationNotFoundError: If profile doesn't exist
+            RepositoryAccessError: If setting active profile fails
+        """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="set_active_profile",
+                reason="Configuration repository not available",
+            )
+        
+        # Validate profile name
+        if not self._is_valid_profile_name(profile_name):
+            raise RepositoryAccessError(
+                operation="set_active_profile",
+                reason=f"Invalid profile name: {profile_name}",
+            )
+        
+        try:
+            # Ensure profile system is initialized
+            await self._ensure_profile_system_initialized()
+            
+            # Check if profile exists
+            available_profiles = await self.list_available_profiles()
+            if profile_name not in available_profiles:
+                raise ConfigurationNotFoundError(profile_name, available_profiles)
+            
+            # Save as last used profile
+            await self._configuration.save_last_used_profile(profile_name)
+            
+            logger.info(f"Active profile set to: {profile_name}")
+            
+        except ConfigurationNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to set active profile to '{profile_name}': {e}")
+            raise RepositoryAccessError(
+                operation="set_active_profile",
+                reason=str(e),
+            ) from e
+
+    # ============================================================================
+    # PRIVATE HELPER METHODS
+    # ============================================================================
+
+    async def _ensure_profile_system_initialized(self) -> None:
+        """
+        Ensure the profile system is properly initialized
+        
+        This method ensures that:
+        1. Profile configuration files exist
+        2. Default profile exists in test_profiles/
+        3. Profile system is ready for use
+        """
+        try:
+            # Check if default profile exists, if not this will create it
+            default_profile = "default"
+            available_profiles = await self.list_available_profiles()
+            
+            if default_profile not in available_profiles:
+                logger.info(f"Default profile '{default_profile}' not found, creating it...")
+                # Loading a non-existent profile will auto-create it via YamlConfiguration
+                await self.load_test_config(default_profile)
+                logger.info(f"Default profile '{default_profile}' created successfully")
+            
+        except Exception as e:
+            logger.warning(f"Failed to initialize profile system: {e}")
 
     def _is_valid_profile_name(self, profile_name: str) -> bool:
         """
@@ -254,278 +488,3 @@ class ConfigurationService:
             return False
 
         return True
-
-    async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
-        """
-        Load DUT default values from configuration file
-
-        Args:
-            profile_name: Specific profile to load, defaults to active profile from config
-
-        Returns:
-            Dictionary containing DUT default values
-
-        Raises:
-            ConfigurationNotFoundError: If DUT defaults file is not found
-            RepositoryAccessError: If DUT defaults cannot be loaded
-        """
-        try:
-            # Delegate to Configuration repository for file operations
-            return await self._configuration.load_dut_defaults(profile_name)
-
-        except Exception as e:
-            logger.error(f"Unexpected error loading DUT defaults: {e}")
-            raise RepositoryAccessError(
-                operation="load_dut_defaults", reason=f"Failed to load DUT defaults: {str(e)}"
-            ) from e
-
-    async def save_test_profile(self, profile_name: str, config_data: Dict[str, Any]) -> None:
-        """
-        Save test profile configuration
-
-        Args:
-            profile_name: Name of the profile to save
-            config_data: Configuration data dictionary
-
-        Raises:
-            RepositoryAccessError: If save operation fails
-        """
-        try:
-            # Convert dict to TestConfiguration object
-            test_config = TestConfiguration.from_structured_dict(config_data)
-
-            # Save using the configuration repository
-            await self._configuration.save_profile(profile_name, test_config)
-
-            logger.info(f"Successfully saved test profile: {profile_name}")
-
-        except Exception as e:
-            logger.error(f"Failed to save test profile {profile_name}: {e}")
-            raise RepositoryAccessError(
-                operation="save_test_profile",
-                reason=str(e),
-                file_path=f"{profile_name}.yaml",
-            ) from e
-
-    async def save_hardware_configuration(self, hardware_config_data: Dict[str, Any]) -> None:
-        """
-        Save hardware configuration
-
-        Args:
-            hardware_config_data: Hardware configuration data dictionary
-
-        Raises:
-            RepositoryAccessError: If save operation fails
-        """
-        try:
-            # Extract hardware_config section if present, otherwise use the whole dict
-            config_data = hardware_config_data.get("hardware_config", hardware_config_data)
-
-            # Convert dict to HardwareConfig object
-            hardware_config = HardwareConfig.from_dict(config_data)
-
-            # Save using the configuration repository
-            await self._configuration.save_hardware_config(hardware_config)
-
-            logger.info("Successfully saved hardware configuration")
-
-        except Exception as e:
-            logger.error(f"Failed to save hardware configuration: {e}")
-            raise RepositoryAccessError(
-                operation="save_hardware_configuration",
-                reason=str(e),
-                file_path="hardware_configuration.yaml",
-            ) from e
-
-    async def save_hardware_model(self, hardware_model_data: Dict[str, Any]) -> None:
-        """
-        Save hardware model configuration
-
-        Args:
-            hardware_model_data: Hardware model data dictionary
-
-        Raises:
-            RepositoryAccessError: If save operation fails
-        """
-        try:
-            # Extract hardware_model section if present, otherwise use the whole dict
-            model_data = hardware_model_data.get("hardware_model", hardware_model_data)
-
-            # Convert dict to HardwareConfig object
-            hardware_config = HardwareConfig.from_dict(model_data)
-
-            # Save using the configuration repository
-            await self._configuration.save_hardware_model(hardware_config)
-
-            logger.info("Successfully saved hardware model configuration")
-
-        except Exception as e:
-            logger.error(f"Failed to save hardware model configuration: {e}")
-            raise RepositoryAccessError(
-                operation="save_hardware_model",
-                reason=str(e),
-                file_path="hardware_model.yaml",
-            ) from e
-
-    async def save_dut_defaults_configuration(self, dut_defaults_data: Dict[str, Any]) -> None:
-        """
-        Save DUT defaults configuration
-
-        Args:
-            dut_defaults_data: DUT defaults data dictionary
-
-        Raises:
-            RepositoryAccessError: If save operation fails
-        """
-        try:
-            # Extract profile name if present
-            profile_name = dut_defaults_data.get("active_profile", "default")
-
-            # Save using the configuration repository
-            await self._configuration.save_dut_defaults(dut_defaults_data, profile_name)
-
-            logger.info("Successfully saved DUT defaults configuration")
-
-        except Exception as e:
-            logger.error(f"Failed to save DUT defaults configuration: {e}")
-            raise RepositoryAccessError(
-                operation="save_dut_defaults",
-                reason=str(e),
-                file_path="dut_defaults.yaml",
-            ) from e
-
-    async def load_application_config(self, app_config_path: str = "configuration/application.yaml") -> ApplicationConfig:
-        """
-        Load application configuration from file
-        
-        Args:
-            app_config_path: Path to application configuration file
-            
-        Returns:
-            ApplicationConfig object
-            
-        Raises:
-            RepositoryAccessError: If loading fails
-        """
-        try:
-            app_config_file = Path(app_config_path)
-            
-            if not app_config_file.exists():
-                logger.warning(f"Application config not found: {app_config_path}")
-                return ApplicationConfig()  # Return default
-                
-            with open(app_config_file, 'r') as f:
-                config_data = yaml.safe_load(f)
-                
-            return ApplicationConfig.from_dict(config_data)
-            
-        except Exception as e:
-            logger.error(f"Failed to load application config from {app_config_path}: {e}")
-            raise RepositoryAccessError(
-                operation="load_application_config",
-                reason=str(e),
-                file_path=app_config_path,
-            ) from e
-
-    async def ensure_application_config_exists(self, app_config_path: str = "configuration/application.yaml") -> None:
-        """
-        Ensure application configuration file exists, create with defaults if missing
-        
-        Args:
-            app_config_path: Path to application configuration file
-        """
-        app_config_file = Path(app_config_path)
-        
-        if app_config_file.exists():
-            logger.debug(f"Application config already exists: {app_config_path}")
-            return
-            
-        logger.info(f"Creating default application config: {app_config_path}")
-        
-        try:
-            # Create directory if needed
-            app_config_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Create default application config
-            default_config = ApplicationConfig().with_timestamp()
-            config_dict = default_config.to_dict()
-            
-            # Write to YAML file
-            yaml_content = yaml.dump(config_dict, default_flow_style=False, indent=2)
-            app_config_file.write_text(f"# Application configuration\n{yaml_content}")
-            
-            logger.info(f"Created default application config: {app_config_path}")
-            
-        except Exception as e:
-            logger.error(f"Failed to create application config: {e}")
-            raise RepositoryAccessError(
-                operation="ensure_application_config_exists",
-                reason=str(e),
-                file_path=app_config_path,
-            ) from e
-
-    async def ensure_hardware_config_exists(self, hw_config_path: str = "configuration/hardware.yaml") -> None:
-        """
-        Ensure hardware configuration file exists, create with defaults if missing
-        
-        Args:
-            hw_config_path: Path to hardware configuration file
-        """
-        hw_config_file = Path(hw_config_path)
-        
-        if hw_config_file.exists():
-            logger.debug(f"Hardware config already exists: {hw_config_path}")
-            return
-            
-        logger.info(f"Creating default hardware config: {hw_config_path}")
-        
-        try:
-            # Create directory if needed
-            hw_config_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Create default hardware config
-            default_hw_config = HardwareConfig()
-            config_dict = default_hw_config.to_dict()
-            
-            # Write to YAML file
-            yaml_content = yaml.dump(config_dict, default_flow_style=False, indent=2)
-            hw_config_file.write_text(f"# Hardware configuration\n{yaml_content}")
-            
-            logger.info(f"Created default hardware config: {hw_config_path}")
-            
-        except Exception as e:
-            logger.error(f"Failed to create hardware config: {e}")
-            raise RepositoryAccessError(
-                operation="ensure_hardware_config_exists",
-                reason=str(e),
-                file_path=hw_config_path,
-            ) from e
-
-    async def save_application_config(self, app_config: ApplicationConfig, app_config_path: str = "configuration/application.yaml") -> None:
-        """
-        Save application configuration to file
-        
-        Args:
-            app_config: ApplicationConfig object to save
-            app_config_path: Path to save the configuration
-            
-        Raises:
-            RepositoryAccessError: If save operation fails
-        """
-        try:
-            app_config_file = Path(app_config_path)
-            app_config_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            config_dict = app_config.to_dict()
-            yaml_content = yaml.dump(config_dict, default_flow_style=False, indent=2)
-            app_config_file.write_text(f"# Application configuration\n{yaml_content}")
-            
-            logger.info(f"Successfully saved application config: {app_config_path}")
-            
-        except Exception as e:
-            logger.error(f"Failed to save application config: {e}")
-            raise RepositoryAccessError(
-                operation="save_application_config",
-                reason=str(e),
-                file_path=app_config_path,
-            ) from e

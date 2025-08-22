@@ -118,14 +118,13 @@ async def get_configuration_status(config_service: ConfigurationService = Provid
         # Get profile information
         current_profile = await config_service.get_active_profile_name()
         available_profiles = await config_service.list_available_profiles()
-        usage_info = await config_service.get_profile_usage_info()
 
         # Try to load current configuration to verify it's valid
         config_valid = True
         config_error = None
 
         try:
-            _ = await config_service.load_configuration(current_profile)
+            _ = await config_service.load_test_config(current_profile)
             _ = await config_service.load_hardware_config()
         except Exception as e:
             config_valid = False

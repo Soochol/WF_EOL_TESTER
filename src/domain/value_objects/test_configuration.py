@@ -53,7 +53,7 @@ class TestConfiguration:
     # ========================================================================
     # MOTION CONTROL SETTINGS
     # ========================================================================
-    velocity: float = 60000.0  # Operating velocity (μm/s)
+    velocity: float = 100000.0  # Operating velocity (μm/s)
     acceleration: float = 60000.0  # Operating acceleration (μm/s²)
     deceleration: float = 60000.0  # Operating deceleration (μm/s²)
 
@@ -327,7 +327,7 @@ class TestConfiguration:
                 "Deceleration must be positive",
             )
 
-        if self.max_velocity <= self.velocity:
+        if self.max_velocity < self.velocity:
             raise ValidationException(
                 "max_velocity",
                 self.max_velocity,
