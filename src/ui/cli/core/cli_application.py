@@ -31,13 +31,13 @@ from ..enhanced_cli_integration import (
 )
 from ..execution.test_executor import TestExecutor
 from ..hardware_controller import HardwareControlManager
+from ..interfaces.application_interface import ICLIApplication
+from ..interfaces.validation_interface import IInputValidator
 from ..menu.menu_system import MenuSystem
 from ..rich_formatter import RichFormatter
 from ..session.session_manager import SessionManager
 from ..usecase_manager import UseCaseManager
 from ..validation.input_validator import InputValidator
-from ..interfaces.application_interface import ICLIApplication
-from ..interfaces.validation_interface import IInputValidator
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
@@ -70,11 +70,7 @@ class CLIApplication(ICLIApplication):
         self._configuration_service = configuration_service
 
         # Initialize core components
-        self._console = Console(
-            force_terminal=True,
-            legacy_windows=False,
-            color_system="truecolor"
-        )
+        self._console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
         self._formatter = RichFormatter(self._console)
         self._validator = InputValidator()
 
@@ -86,21 +82,11 @@ class CLIApplication(ICLIApplication):
 
         # Initialize specialized components
         self._session_manager = SessionManager(self._console, self._formatter)
-        self._menu_system = MenuSystem(
-            self._console,
-            self._formatter,
-            self._enhanced_menu
-        )
+        self._menu_system = MenuSystem(self._console, self._formatter, self._enhanced_menu)
         self._test_executor = TestExecutor(
-            self._console,
-            self._formatter,
-            self._use_case,
-            self._input_integrator
+            self._console, self._formatter, self._use_case, self._input_integrator
         )
-        self._usecase_manager = UseCaseManager(
-            self._console,
-            self._configuration_service
-        )
+        self._usecase_manager = UseCaseManager(self._console, self._configuration_service)
 
         # Setup component relationships
         self._session_manager.set_menu_system(self._menu_system)
@@ -112,11 +98,9 @@ class CLIApplication(ICLIApplication):
         self._hardware_manager: Optional[Any] = None
         self._config_reader: Optional[CLIConfigReader] = None
 
-        if self._hardware_facade:
+        if self._hardware_facade and self._configuration_service:
             self._hardware_manager = HardwareControlManager(
-                self._hardware_facade,
-                self._configuration_service,
-                self._console
+                self._hardware_facade, self._configuration_service, self._console
             )
             self._menu_system.set_hardware_manager(self._hardware_manager)
 
@@ -135,9 +119,7 @@ class CLIApplication(ICLIApplication):
         except Exception as e:
             logger.error(f"CLI Application error: {e}")
             self._formatter.print_message(
-                f"Application error: {str(e)}",
-                message_type="error",
-                title="System Error"
+                f"Application error: {str(e)}", message_type="error", title="System Error"
             )
         finally:
             logger.info("CLI Application shutdown complete")

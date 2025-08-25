@@ -130,7 +130,7 @@ class ConfigurationService:
             ) from e
 
     async def load_application_config(
-        self, app_config_path: str = None
+        self, app_config_path: Optional[str] = None
     ) -> ApplicationConfig:
         """
         Load application configuration from file
@@ -180,6 +180,12 @@ class ConfigurationService:
             ConfigurationNotFoundError: If DUT defaults file is not found
             RepositoryAccessError: If DUT defaults cannot be loaded
         """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="load_dut_defaults",
+                reason="Configuration repository not available",
+            )
+
         try:
             # Delegate to Configuration repository for file operations
             return await self._configuration.load_dut_defaults(profile_name)
@@ -205,6 +211,12 @@ class ConfigurationService:
         Raises:
             RepositoryAccessError: If save operation fails
         """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="save_test_profile",
+                reason="Configuration repository not available",
+            )
+
         try:
             # Convert dict to TestConfiguration object
             test_config = TestConfiguration.from_structured_dict(config_data)
@@ -265,6 +277,12 @@ class ConfigurationService:
         Raises:
             RepositoryAccessError: If save operation fails
         """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="save_dut_defaults_configuration",
+                reason="Configuration repository not available",
+            )
+
         try:
             # Extract profile name if present
             profile_name = dut_defaults_data.get("active_profile", "default")
@@ -293,6 +311,8 @@ class ConfigurationService:
         Returns:
             List of available profile names
         """
+        if not self._configuration:
+            return []
         return await self._configuration.list_available_profiles()
 
     async def get_active_profile_name(self) -> str:
@@ -326,7 +346,9 @@ class ConfigurationService:
                     logger.debug(f"Using last used profile: '{last_used}'")
                     return last_used
                 else:
-                    logger.warning(f"Last used profile '{last_used}' no longer exists, falling back")
+                    logger.warning(
+                        f"Last used profile '{last_used}' no longer exists, falling back"
+                    )
 
             # 2nd priority: Default fallback (which should exist after initialization)
             logger.debug(f"Using fallback profile: '{fallback_profile}'")
@@ -369,6 +391,12 @@ class ConfigurationService:
         Raises:
             RepositoryAccessError: If clearing preferences fails
         """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="clear_profile_preferences",
+                reason="Configuration repository not available",
+            )
+
         try:
             await self._configuration.clear_preferences()
             logger.info(
@@ -384,10 +412,10 @@ class ConfigurationService:
     async def set_active_profile(self, profile_name: str) -> None:
         """
         Set the active profile for the system
-        
+
         Args:
             profile_name: Name of the profile to activate
-            
+
         Raises:
             ConfigurationNotFoundError: If profile doesn't exist
             RepositoryAccessError: If setting active profile fails
@@ -435,7 +463,7 @@ class ConfigurationService:
     async def _ensure_profile_system_initialized(self) -> None:
         """
         Ensure the profile system is properly initialized
-        
+
         This method ensures that:
         1. Profile configuration files exist
         2. Default profile exists in test_profiles/

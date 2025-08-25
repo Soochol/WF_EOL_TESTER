@@ -13,9 +13,11 @@ Key Features:
 """
 
 from typing import Any, Optional, Type, TypeVar
+
 from loguru import logger
 
 from application.containers.application_container import ApplicationContainer
+
 from ..config.component_config import ComponentConfig, ConfigurationMode
 
 # Type variable for generic factory methods
@@ -67,7 +69,9 @@ class ComponentFactory:
 
             if implementation or factory:
                 # Ensure lifetime has a default value
-                service_lifetime = lifetime if lifetime is not None else self._config.get_lifetime(interface_type)
+                service_lifetime = (
+                    lifetime if lifetime is not None else self._config.get_lifetime(interface_type)
+                )
 
                 self._container.register(
                     interface_type=interface_type,
@@ -105,7 +109,7 @@ class ComponentFactory:
             return instance
         except Exception as e:
             logger.error(f"Failed to create {service_type.__name__}: {e}")
-            raise ValueError(f"Failed to create {service_type.__name__}: {e}")
+            raise ValueError(f"Failed to create {service_type.__name__}: {e}") from e
 
     def register_instance(self, service_type: Type[T], instance: T) -> None:
         """Register a specific instance in the container.
@@ -183,31 +187,42 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             CLI application instance with dependencies injected
         """
-        from ..core.dependency_injected_cli_application import DependencyInjectedCLIApplication
-        from ..usecase_manager import UseCaseManager
-        from ..hardware_controller import HardwareControlManager
         from rich.console import Console
+
+        from ..core.dependency_injected_cli_application import (
+            DependencyInjectedCLIApplication,
+        )
+        from ..hardware_controller import HardwareControlManager
+        from ..usecase_manager import UseCaseManager
 
         # Create core components directly with proper dependencies
         console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
 
         # Create formatter
         from ..rich_formatter import RichFormatter
+
         formatter = RichFormatter(console)
 
         # Create validator
         from ..validation.input_validator import InputValidator
+
         validator = InputValidator()
 
         # Create enhanced CLI integrator
-        from ..enhanced_cli_integration import create_enhanced_cli_integrator, create_enhanced_menu_system
-        enhanced_integrator = create_enhanced_cli_integrator(console, formatter, configuration_service)
+        from ..enhanced_cli_integration import (
+            create_enhanced_cli_integrator,
+            create_enhanced_menu_system,
+        )
+
+        enhanced_integrator = create_enhanced_cli_integrator(
+            console, formatter, configuration_service
+        )
         enhanced_menu = create_enhanced_menu_system(enhanced_integrator)
 
         # Create components with proper dependencies
-        from ..session.session_manager import SessionManager
-        from ..menu.menu_system import MenuSystem
         from ..execution.test_executor import TestExecutor
+        from ..menu.menu_system import MenuSystem
+        from ..session.session_manager import SessionManager
 
         session_manager = SessionManager(console, formatter)
         menu_system = MenuSystem(console, formatter, enhanced_menu)
@@ -219,7 +234,7 @@ class CLIComponentFactory(ComponentFactory):
             usecase_manager = UseCaseManager(console, configuration_service)
 
         hardware_manager = None
-        if hardware_facade:
+        if hardware_facade and configuration_service:
             hardware_manager = HardwareControlManager(
                 hardware_facade, configuration_service, console
             )
@@ -248,7 +263,8 @@ class CLIComponentFactory(ComponentFactory):
             Session manager instance
         """
         from ..interfaces import ISessionManager
-        return self.create(ISessionManager)
+
+        return self.create(ISessionManager)  # type: ignore[type-abstract]
 
     def create_menu_system(self) -> Any:
         """Create a menu system with dependencies.
@@ -257,7 +273,8 @@ class CLIComponentFactory(ComponentFactory):
             Menu system instance
         """
         from ..interfaces import IMenuSystem
-        return self.create(IMenuSystem)
+
+        return self.create(IMenuSystem)  # type: ignore[type-abstract]
 
     def create_test_executor(self) -> Any:
         """Create a test executor with dependencies.
@@ -266,7 +283,8 @@ class CLIComponentFactory(ComponentFactory):
             Test executor instance
         """
         from ..interfaces import ITestExecutor
-        return self.create(ITestExecutor)
+
+        return self.create(ITestExecutor)  # type: ignore[type-abstract]
 
     def create_input_validator(self) -> Any:
         """Create an input validator with dependencies.
@@ -275,7 +293,8 @@ class CLIComponentFactory(ComponentFactory):
             Input validator instance
         """
         from ..interfaces import IInputValidator
-        return self.create(IInputValidator)
+
+        return self.create(IInputValidator)  # type: ignore[type-abstract]
 
     def create_formatter(self) -> Any:
         """Create a formatter with dependencies.
@@ -284,7 +303,8 @@ class CLIComponentFactory(ComponentFactory):
             Formatter instance
         """
         from ..interfaces import IFormatter
-        return self.create(IFormatter)
+
+        return self.create(IFormatter)  # type: ignore[type-abstract]
 
     @classmethod
     def create_production_factory(cls) -> "CLIComponentFactory":
