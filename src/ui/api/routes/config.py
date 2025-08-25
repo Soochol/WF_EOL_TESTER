@@ -7,9 +7,11 @@ Provides REST endpoints for configuration and profile management.
 from datetime import datetime
 from typing import Optional
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, HTTPException, Request, status
 from loguru import logger
 
+from application.containers.application_container import ApplicationContainer
 from application.services.configuration_service import ConfigurationService
 from ui.api.models.config_models import (
     ConfigurationResponse,
@@ -56,13 +58,10 @@ async def get_current_configuration(request: Request):
     """Get current active test configuration with motion parameters"""
     try:
         config_service = request.app.state.container.configuration_service()
-        
         # Get current active profile name
         profile_name = await config_service.get_active_profile_name()
-        
         # Load current test configuration
         test_config = await config_service.load_test_config(profile_name)
-        
         # Return motion parameters for UI
         return {
             "profile_name": profile_name,
@@ -71,9 +70,8 @@ async def get_current_configuration(request: Request):
             "deceleration": test_config.deceleration,
             "max_velocity": test_config.max_velocity,
             "max_acceleration": test_config.max_acceleration,
-            "max_deceleration": test_config.max_deceleration
+            "max_deceleration": test_config.max_deceleration,
         }
-        
     except Exception as e:
         logger.error(f"Failed to get current configuration: {e}")
         raise HTTPException(
@@ -84,7 +82,9 @@ async def get_current_configuration(request: Request):
 
 @router.get("/profiles/usage", response_model=ProfileUsageResponse)
 @inject
-async def get_profile_usage(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def get_profile_usage(
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
+):
     """Get profile usage information"""
     try:
         profile_info = await config_service.get_profile_info()
@@ -102,7 +102,8 @@ async def get_profile_usage(config_service: ConfigurationService = Provide[Appli
 @router.get("/profiles/{profile_name}", response_model=ConfigurationResponse)
 @inject
 async def get_profile_configuration(
-    profile_name: str, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    profile_name: str,
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Get configuration for a specific profile"""
     try:
@@ -138,7 +139,8 @@ async def get_profile_configuration(
 @router.get("/profiles/{profile_name}/validate", response_model=ConfigurationValidationResponse)
 @inject
 async def validate_profile_configuration(
-    profile_name: str, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    profile_name: str,
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Validate a configuration profile"""
     try:
@@ -209,7 +211,9 @@ async def validate_profile_configuration(
 
 @router.get("/hardware", response_model=dict)
 @inject
-async def get_hardware_configuration(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def get_hardware_configuration(
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
+):
     """Get hardware configuration"""
     try:
         hardware_config = await config_service.load_hardware_config()
@@ -230,7 +234,8 @@ async def get_hardware_configuration(config_service: ConfigurationService = Prov
 @router.get("/dut-defaults", response_model=DUTDefaultsResponse)
 @inject
 async def get_dut_defaults(
-    profile_name: Optional[str] = None, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    profile_name: Optional[str] = None,
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Get DUT default values"""
     try:
@@ -260,7 +265,9 @@ async def get_dut_defaults(
 
 @router.post("/profiles/clear-preferences")
 @inject
-async def clear_profile_preferences(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def clear_profile_preferences(
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
+):
     """Clear all profile preferences"""
     try:
         await config_service.clear_profile_preferences()
@@ -376,7 +383,9 @@ async def restore_configurations():
 
 @router.get("/hardware-config", response_model=HardwareConfigurationModel)
 @inject
-async def get_hardware_config(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def get_hardware_config(
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
+):
     """Get hardware configuration"""
     try:
         hardware_config = await config_service.load_hardware_config()
@@ -397,7 +406,8 @@ async def get_hardware_config(config_service: ConfigurationService = Provide[App
 @router.put("/hardware-config")
 @inject
 async def update_hardware_config(
-    config: HardwareConfigurationModel, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    config: HardwareConfigurationModel,
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Update hardware configuration"""
     try:
@@ -431,7 +441,9 @@ async def update_hardware_config(
 
 @router.get("/hardware-model", response_model=HardwareModelConfiguration)
 @inject
-async def get_hardware_model(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def get_hardware_model(
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
+):
     """Get hardware model configuration"""
     try:
         # Load hardware model from the YAML configuration
@@ -453,7 +465,8 @@ async def get_hardware_model(config_service: ConfigurationService = Provide[Appl
 @router.put("/hardware-model")
 @inject
 async def update_hardware_model(
-    config: HardwareModelConfiguration, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    config: HardwareModelConfiguration,
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Update hardware model configuration"""
     try:
@@ -486,8 +499,7 @@ async def update_hardware_model(
 
 
 @router.get("/dut-defaults-config", response_model=DUTDefaultsConfiguration)
-@inject
-async def get_dut_defaults_config(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def get_dut_defaults_config():
     """Get DUT defaults configuration"""
     try:
         # Load the full DUT defaults file structure
@@ -532,7 +544,8 @@ async def get_dut_defaults_config(config_service: ConfigurationService = Provide
 @router.put("/dut-defaults-config")
 @inject
 async def update_dut_defaults_config(
-    config: DUTDefaultsConfiguration, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    config: DUTDefaultsConfiguration,
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Update DUT defaults configuration"""
     try:
@@ -568,10 +581,7 @@ async def update_dut_defaults_config(
 
 
 @router.post("/validate")
-@inject
-async def validate_configuration(
-    request: ConfigurationValidationRequest, config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
-):
+async def validate_configuration(request: ConfigurationValidationRequest):
     """Validate a configuration"""
     try:
         validation_errors = []

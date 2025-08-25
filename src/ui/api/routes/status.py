@@ -8,13 +8,13 @@ import os
 from datetime import datetime
 
 import psutil
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter
 from loguru import logger
-from dependency_injector.wiring import Provide, inject
 
+from application.containers import ApplicationContainer
 from application.services.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
-from application.containers import ApplicationContainer
 
 router = APIRouter()
 
@@ -76,7 +76,11 @@ async def get_system_status():
 
 @router.get("/hardware")
 @inject
-async def get_hardware_system_status(hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade]):
+async def get_hardware_system_status(
+    hardware_services: HardwareServiceFacade = Provide[
+        ApplicationContainer.hardware_service_facade
+    ],
+):
     """Get hardware system status"""
     try:
         hardware_status = await hardware_services.get_hardware_status()
@@ -111,7 +115,9 @@ async def get_hardware_system_status(hardware_services: HardwareServiceFacade = 
 
 @router.get("/configuration")
 @inject
-async def get_configuration_status(config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]):
+async def get_configuration_status(
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
+):
     """Get configuration system status"""
     try:
 
@@ -129,6 +135,12 @@ async def get_configuration_status(config_service: ConfigurationService = Provid
         except Exception as e:
             config_valid = False
             config_error = str(e)
+
+        # Get profile usage information
+        try:
+            usage_info = await config_service.get_profile_info()
+        except Exception:
+            usage_info = None
 
         return {
             "timestamp": datetime.now().isoformat(),
@@ -152,8 +164,10 @@ async def get_configuration_status(config_service: ConfigurationService = Provid
 @router.get("/services")
 @inject
 async def get_services_status(
-    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
-    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    hardware_services: HardwareServiceFacade = Provide[
+        ApplicationContainer.hardware_service_facade
+    ],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Get application services status"""
     try:
@@ -207,8 +221,10 @@ async def get_services_status(
 @router.get("/comprehensive")
 @inject
 async def get_comprehensive_status(
-    hardware_services: HardwareServiceFacade = Provide[ApplicationContainer.hardware_service_facade],
-    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service]
+    hardware_services: HardwareServiceFacade = Provide[
+        ApplicationContainer.hardware_service_facade
+    ],
+    config_service: ConfigurationService = Provide[ApplicationContainer.configuration_service],
 ):
     """Get comprehensive system status"""
     try:
@@ -218,9 +234,8 @@ async def get_comprehensive_status(
         hardware_status = {
             "timestamp": datetime.now().isoformat(),
             "hardware_status": await hardware_services.get_hardware_status(),
-            "overall_status": "available"
+            "overall_status": "available",
         }
-        
         # Get configuration status
         try:
             current_profile = await config_service.get_active_profile_name()
@@ -229,23 +244,22 @@ async def get_comprehensive_status(
                 "timestamp": datetime.now().isoformat(),
                 "current_profile": current_profile,
                 "available_profiles": available_profiles,
-                "configuration_valid": True
+                "configuration_valid": True,
             }
         except Exception as e:
             config_status = {
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "configuration_valid": False
+                "configuration_valid": False,
             }
-            
         # Services status
         services_status = {
             "timestamp": datetime.now().isoformat(),
             "services": {
                 "hardware_service_facade": "available",
-                "configuration_service": "available"
+                "configuration_service": "available",
             },
-            "services_health": "healthy"
+            "services_health": "healthy",
         }
 
         # Calculate overall health
