@@ -486,3 +486,59 @@ class MockPower(PowerService):
         except Exception as e:
             logger.error(f"Failed to get mock Power Supply current limit: {e}")
             raise HardwareOperationError("mock_power", "get_current_limit", str(e)) from e
+
+    async def get_all_measurements(self) -> Dict[str, Any]:
+        """
+        Get all measurements at once (mock simulation)
+        
+        Simulates simultaneous voltage and current measurement for testing purposes.
+        Includes small random variations to simulate real hardware behavior.
+        
+        Returns:
+            Dictionary containing:
+            - 'voltage': Simulated voltage in volts  
+            - 'current': Simulated current in amperes
+            - 'power': Calculated power in watts (V × A)
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If measurement simulation fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError(
+                "mock_power",
+                "Power Supply is not connected",
+            )
+
+        try:
+            # Simulate communication delay (faster than individual calls)
+            await asyncio.sleep(self._response_delay * 0.5)  # 50% of individual call delay
+            
+            # Simulate voltage with small noise
+            voltage = self._voltage + random.uniform(-self._voltage_noise, self._voltage_noise)
+            
+            # Simulate current based on output state and some randomness
+            if self._output_enabled:
+                # When output is enabled, simulate actual current draw
+                base_current = random.uniform(0.5, self._current_limit * 0.8)
+            else:
+                # When output is disabled, very small leakage current
+                base_current = random.uniform(0.0, 0.01)
+                
+            current = base_current + random.uniform(-self._current_accuracy, self._current_accuracy)
+            current = max(0.0, current)  # Ensure non-negative
+            
+            # Calculate power
+            power = voltage * current
+            
+            logger.debug(f"Mock all measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
+            
+            return {
+                'voltage': voltage,
+                'current': current, 
+                'power': power
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get mock Power Supply measurements: {e}")
+            raise HardwareOperationError("mock_power", "get_all_measurements", str(e)) from e

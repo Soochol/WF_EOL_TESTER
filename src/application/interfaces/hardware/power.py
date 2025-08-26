@@ -161,3 +161,23 @@ class PowerService(ABC):
         Returns:
             Dictionary containing status information
         """
+        ...
+
+    @abstractmethod
+    async def get_all_measurements(self) -> Dict[str, float]:
+        """
+        Get all measurements at once (voltage, current, power)
+        
+        Uses efficient single-command approach when available (e.g., MEAS:ALL?)
+        to reduce communication overhead and ensure simultaneous measurements.
+
+        Returns:
+            Dictionary containing:
+            - 'voltage': Output voltage in volts
+            - 'current': Output current in amperes  
+            - 'power': Calculated power in watts (V × A)
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If measurement fails
+        """

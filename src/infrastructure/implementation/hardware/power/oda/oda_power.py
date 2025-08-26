@@ -514,3 +514,70 @@ class OdaPower(PowerService):
             raise HardwareOperationError("oda_power", "get_current_limit", str(e)) from e
         except Exception as e:
             raise HardwareOperationError("oda_power", "get_current_limit", str(e)) from e
+
+    async def get_all_measurements(self) -> Dict[str, float]:
+        """
+        Get all measurements at once using MEAS:ALL? command
+        
+        Uses SCPI MEAS:ALL? command to retrieve voltage and current simultaneously,
+        reducing communication overhead and ensuring consistent measurement timing.
+        
+        Returns:
+            Dictionary containing:
+            - 'voltage': Output voltage in volts
+            - 'current': Output current in amperes
+            - 'power': Calculated power in watts (V × A)
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If measurement fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("oda_power", "Power Supply is not connected")
+
+        try:
+            # Send MEAS:ALL? command for simultaneous voltage and current measurement
+            logger.debug("Sending MEAS:ALL? command for simultaneous measurements")
+            response = await self._send_command("MEAS:ALL?")
+
+            if response is None:
+                raise HardwareOperationError(
+                    "oda_power",
+                    "get_all_measurements", 
+                    "No response from MEAS:ALL? command"
+                )
+
+            # Parse response format: "voltage,current" e.g. "10.0000,1.0000"
+            values = response.strip().split(',')
+            
+            if len(values) != 2:
+                raise HardwareOperationError(
+                    "oda_power",
+                    "get_all_measurements",
+                    f"Unexpected MEAS:ALL? response format: '{response}'. Expected 'voltage,current'"
+                )
+
+            voltage = float(values[0])
+            current = float(values[1])
+            power = voltage * current
+
+            logger.debug(f"MEAS:ALL? measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
+
+            return {
+                'voltage': voltage,
+                'current': current,
+                'power': power
+            }
+
+        except ValueError as e:
+            raise HardwareOperationError(
+                "oda_power",
+                "get_all_measurements",
+                f"Failed to parse MEAS:ALL? response '{response}': {e}"
+            ) from e
+        except TCPError as e:
+            logger.error(f"TCP error during MEAS:ALL?: {e}")
+            raise HardwareOperationError("oda_power", "get_all_measurements", str(e)) from e
+        except Exception as e:
+            logger.error(f"Unexpected error during MEAS:ALL?: {e}")
+            raise HardwareOperationError("oda_power", "get_all_measurements", str(e)) from e
