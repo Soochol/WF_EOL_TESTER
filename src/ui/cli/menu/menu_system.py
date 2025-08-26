@@ -130,10 +130,12 @@ class MenuSystem(IMenuSystem):
             elif choice == "2":
                 await self._execute_simple_mcu_test()
             elif choice == "3":
-                await self._execute_robot_home()
+                await self._execute_heating_cooling_test()
             elif choice == "4":
-                await self._hardware_control_center()
+                await self._execute_robot_home()
             elif choice == "5":
+                await self._hardware_control_center()
+            elif choice == "6":
                 if self._session_manager:
                     self._session_manager.stop_session()
                 self._formatter.print_message(
@@ -141,7 +143,7 @@ class MenuSystem(IMenuSystem):
                 )
             else:
                 self._formatter.print_message(
-                    f"Invalid option '{choice}'. Please select a number between 1-5.",
+                    f"Invalid option '{choice}'. Please select a number between 1-6.",
                     message_type="warning",
                 )
         except Exception as e:
@@ -301,6 +303,95 @@ class MenuSystem(IMenuSystem):
                 f"UseCase execution error: {str(e)}", message_type="error"
             )
             logger.error(f"UseCase execution error: {e}")
+
+    async def _execute_heating_cooling_test(self) -> None:
+        """Execute Heating/Cooling Time Test through usecase manager.
+
+        Delegates Heating/Cooling Time Test execution to the usecase manager component
+        with proper error handling.
+        """
+        if not self._usecase_manager:
+            self._formatter.print_message(
+                "UseCase manager not available. Please check system configuration.",
+                message_type="error",
+                title="UseCase Manager Unavailable",
+            )
+            return
+
+        try:
+            self._formatter.print_header(
+                "Heating/Cooling Time Test", "MCU temperature transition timing measurement"
+            )
+
+            # Create Heating/Cooling Time Test UseCase instance
+            from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
+
+            # Try to get hardware services from the test executor's use case
+            hardware_services = None
+            if self._test_executor:
+                # Access the use case from test executor (if available)
+                try:
+                    # Get hardware services from the test executor
+                    # Access hardware services through the use case
+                    if hasattr(self._test_executor, "_use_case"):
+                        use_case = getattr(self._test_executor, "_use_case")
+                        if hasattr(use_case, "_hardware_services"):
+                            hardware_services = getattr(use_case, "_hardware_services")
+                except AttributeError:
+                    pass
+
+            # Try to get hardware services from hardware manager
+            if not hardware_services and self._hardware_manager:
+                try:
+                    if hasattr(self._hardware_manager, "get_hardware_services"):
+                        hardware_services = self._hardware_manager.get_hardware_services()
+                    elif hasattr(self._hardware_manager, "_hardware_facade"):
+                        hardware_services = getattr(self._hardware_manager, "_hardware_facade")
+                except AttributeError:
+                    pass
+
+            if not hardware_services:
+                self._formatter.print_message(
+                    "Hardware services not available for Heating/Cooling Test.",
+                    message_type="error",
+                    title="Hardware Services Unavailable",
+                )
+                return
+
+            # Get configuration service from usecase manager
+            configuration_service = getattr(self._usecase_manager, "configuration_service", None)
+            if not configuration_service:
+                self._formatter.print_message(
+                    "Configuration service not available for Heating/Cooling Test.",
+                    message_type="error",
+                    title="Configuration Service Unavailable",
+                )
+                return
+
+            # Create controller for user interaction
+            from ui.cli.controllers.test.heating_cooling_test_controller import (
+                HeatingCoolingTestController,
+            )
+            
+            heating_cooling_usecase = HeatingCoolingTimeTestUseCase(hardware_services, configuration_service)
+            controller = HeatingCoolingTestController(heating_cooling_usecase, self._formatter, self._console)
+
+            # Get cycle count from user
+            cycle_count = controller.get_recommended_cycle_count()
+            
+            self._formatter.print_message(f"Starting test with {cycle_count} cycles...", message_type="info")
+
+            # Run the test through controller
+            await controller.run_test(cycle_count)
+
+            # Wait for user acknowledgment
+            await self._wait_for_user_acknowledgment()
+
+        except Exception as e:
+            logger.error(f"Heating/Cooling Time Test execution error: {e}")
+            self._formatter.print_message(
+                f"Heating/Cooling Time Test error: {str(e)}", message_type="error", title="Test Error"
+            )
 
     async def _execute_robot_home(self) -> None:
         """Execute Robot Home operation.

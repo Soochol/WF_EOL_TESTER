@@ -64,9 +64,10 @@ class EnhancedInputIntegrator:
             "main_menu": {
                 "1": "Execute EOL Test",
                 "2": "Execute Simple MCU Test",
-                "3": "Robot Home",
-                "4": "Hardware Control Center",
-                "5": "Exit",
+                "3": "Heating/Cooling Time Test",
+                "4": "Robot Home",
+                "5": "Hardware Control Center",
+                "6": "Exit",
             },
             "hardware_menu": {
                 "1": "Robot Control",
@@ -75,7 +76,11 @@ class EnhancedInputIntegrator:
                 "4": "Power Control",
                 "b": "Back to Main Menu",
             },
-            "usecase_menu": {"1": "Simple MCU Test", "b": "Back to Main Menu"},
+            "usecase_menu": {
+                "1": "Simple MCU Test", 
+                "2": "Heating/Cooling Time Test",
+                "b": "Back to Main Menu"
+            },
         }
 
         logger.info("Enhanced CLI Integration initialized")
@@ -264,14 +269,16 @@ class EnhancedMenuSystem:
         menu_text.append("2.", style="bold cyan")
         menu_text.append(" Execute Simple MCU Test\n")
         menu_text.append("3.", style="bold cyan")
-        menu_text.append(" Robot Home\n")
+        menu_text.append(" Heating/Cooling Time Test\n")
         menu_text.append("4.", style="bold cyan")
-        menu_text.append(" Hardware Control Center\n")
+        menu_text.append(" Robot Home\n")
         menu_text.append("5.", style="bold cyan")
+        menu_text.append(" Hardware Control Center\n")
+        menu_text.append("6.", style="bold cyan")
         menu_text.append(" Exit\n")
         menu_text.append("help", style="bold cyan")
         menu_text.append(" Show input help\n\n")
-        menu_text.append("Please select an option (1-5) or type 'help':")
+        menu_text.append("Please select an option (1-6) or type 'help':")
 
         # Create panel with properly styled content
         self.console.print("\n")

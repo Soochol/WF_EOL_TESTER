@@ -338,7 +338,6 @@ class HardwareServiceFacade:
             if not test_config.temperature_list:
                 raise ValueError("Temperature list cannot be empty")
 
-
             try:
                 # MCU configuration before standby heating
                 await self._mcu.set_upper_temperature(test_config.upper_temperature)
@@ -637,7 +636,9 @@ class HardwareServiceFacade:
                 await asyncio.sleep(
                     test_config.mcu_command_stabilization
                 )  # MCU stabilization delay
-                logger.info(f"MCU standby cooling started - standby: {test_config.standby_temperature}°C")
+                logger.info(
+                    f"MCU standby cooling started - standby: {test_config.standby_temperature}°C"
+                )
 
                 # Verify MCU temperature reached standby temperature
                 await self.verify_mcu_temperature(test_config.standby_temperature, test_config)

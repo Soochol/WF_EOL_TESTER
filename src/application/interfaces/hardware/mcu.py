@@ -189,3 +189,21 @@ class MCUService(ABC):
         Raises:
             HardwareOperationError: If cooling start fails
         """
+        ...
+
+    def clear_timing_history(self) -> None:
+        """
+        Clear timing history for new test sessions
+        
+        This is a non-async method for clearing internal timing data.
+        """
+        ...
+
+    def get_all_timing_data(self) -> Dict[str, Any]:
+        """
+        Get all heating/cooling timing data
+        
+        Returns:
+            Dictionary containing timing data for heating and cooling transitions
+        """
+        ...

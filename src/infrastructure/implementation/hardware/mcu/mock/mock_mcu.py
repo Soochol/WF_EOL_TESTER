@@ -675,3 +675,19 @@ class MockMCU(MCUService):
         """Disable verification mode to allow normal temperature simulation"""
         self._verification_mode = False
         logger.debug("Mock MCU verification mode disabled - normal temperature simulation resumed")
+
+    def clear_timing_history(self) -> None:
+        """Clear timing history for new test sessions (mock implementation)"""
+        logger.debug("Mock MCU timing history cleared")
+        # Mock implementation - no actual timing data to clear
+
+    def get_all_timing_data(self) -> Dict[str, Any]:
+        """Get all heating/cooling timing data (mock implementation)"""
+        logger.debug("Mock MCU returning mock timing data")
+        # Return mock timing data for testing
+        return {
+            "heating_transitions": [],
+            "cooling_transitions": [],
+            "total_heating_count": 0,
+            "total_cooling_count": 0
+        }

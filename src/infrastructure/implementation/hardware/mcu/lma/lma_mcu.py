@@ -9,7 +9,8 @@ Achieves 99.5% performance improvement over traditional implementation.
 import asyncio
 import struct
 import time
-from typing import Any, Dict, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import serial
 from loguru import logger
@@ -65,6 +66,14 @@ class LMAMCU(MCUService):
         # State management
         self._is_connected = False
         self._current_temperature = 0.0
+        
+        # Temperature transition timing history
+        self._heating_timing_history: List[Dict[str, Any]] = []
+        self._cooling_timing_history: List[Dict[str, Any]] = []
+        
+        # Current temperature settings tracking
+        self._current_operating_temp: Optional[float] = None
+        self._current_standby_temp: Optional[float] = None
         self._target_temperature = 0.0
         self._current_test_mode = TestMode.MODE_1
         self._current_fan_speed = 0.0
@@ -1095,6 +1104,10 @@ class LMAMCU(MCUService):
     ) -> None:
         """Start standby heating mode"""
         self._ensure_connected()
+        
+        # Store temperature settings for cooling to use
+        self._current_operating_temp = operating_temp
+        self._current_standby_temp = standby_temp
 
         try:
             # Temperature scaling
@@ -1105,18 +1118,25 @@ class LMAMCU(MCUService):
             data = f"{op_temp_scaled:08X}{standby_temp_scaled:08X}{hold_time_ms:08X}"
             packet = f"FFFF040C{data}FEFE"
 
+            # Start timing measurement
+            start_time = time.perf_counter()
+
             # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
             packet_bytes = bytes.fromhex(packet.replace(" ", ""))
             if self.serial_conn:
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"PC -> MCU: {packet} (CMD_LMA_INIT (operating:{operating_temp}°C, standby:{standby_temp}°C, timeout:{hold_time_ms}ms))")
+            
+            command_sent_time = time.perf_counter()
+            logger.info(f"PC -> MCU: {packet} (Heating: {standby_temp}°C → {operating_temp}°C)")
 
             # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
             response = self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_LMA_INIT ACK", expected_cmd=0x04
             )
+            
+            ack_received_time = time.perf_counter()
 
             if not response or len(response) < 6 or response[2] != 0x04:
                 raise HardwareOperationError(
@@ -1125,11 +1145,13 @@ class LMAMCU(MCUService):
 
             # Second response (temperature reached)
             temp_response = self._wait_for_additional_response(
-                timeout=13.0, description="Standby temperature reached signal", quiet=False, expected_cmd=0x0B
+                timeout=13.0, description="Operating temperature reached", quiet=False, expected_cmd=0x0B
             )
+            
+            final_response_time = time.perf_counter()
 
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
-                logger.info("Operating temperature reached confirmed")
+                logger.info(f"✅ Heating complete: {standby_temp}°C → {operating_temp}°C")
             else:
                 # 타임아웃 또는 잘못된 응답을 에러로 처리
                 if temp_response:
@@ -1144,6 +1166,19 @@ class LMAMCU(MCUService):
                     error_msg = "Temperature reached signal not received within timeout"
                 logger.error(error_msg)
                 raise HardwareOperationError("fast_lma_mcu", "start_standby_heating", error_msg)
+
+            # Store timing data
+            timing_data = {
+                "transition": f"{standby_temp}°C → {operating_temp}°C",
+                "from_temperature": standby_temp,
+                "to_temperature": operating_temp,
+                "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
+                "total_duration_ms": (final_response_time - start_time) * 1000,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            self._heating_timing_history.append(timing_data)
+            logger.info(f"⏱️ Heating time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms")
 
             self._mcu_status = MCUStatus.HEATING
             logger.info(
@@ -1161,6 +1196,13 @@ class LMAMCU(MCUService):
 
         try:
             packet = "FFFF0800FEFE"
+            
+            # Use stored temperature information
+            from_temp = self._current_operating_temp or "unknown"
+            to_temp = self._current_standby_temp or "unknown"
+
+            # Start timing measurement
+            start_time = time.perf_counter()
 
             # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
             packet_bytes = bytes.fromhex(packet.replace(" ", ""))
@@ -1168,12 +1210,16 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"PC -> MCU: {packet} (CMD_STROKE_INIT_COMPLETE)")
+            
+            command_sent_time = time.perf_counter()
+            logger.info(f"PC -> MCU: {packet} (Cooling: {from_temp}°C → {to_temp}°C)")
 
             # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
             response = self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_STROKE_INIT_COMPLETE ACK", expected_cmd=0x08
             )
+            
+            ack_received_time = time.perf_counter()
 
             if not response or len(response) < 6 or response[2] != 0x08:
                 raise HardwareOperationError(
@@ -1182,11 +1228,13 @@ class LMAMCU(MCUService):
 
             # Second response (cooling complete)
             cooling_response = self._wait_for_additional_response(
-                timeout=120.0, description="Standby cooling complete signal", expected_cmd=0x0C
+                timeout=120.0, description="Standby temperature reached", expected_cmd=0x0C
             )
+            
+            final_response_time = time.perf_counter()
 
             if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
-                logger.info("Standby temperature reached confirmed")
+                logger.info(f"✅ Cooling complete: {from_temp}°C → {to_temp}°C")
             else:
                 # 타임아웃 또는 잘못된 응답을 에러로 처리
                 if cooling_response:
@@ -1198,17 +1246,46 @@ class LMAMCU(MCUService):
                 logger.error(error_msg)
                 raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg)
 
+            # Store timing data
+            timing_data = {
+                "transition": f"{from_temp}°C → {to_temp}°C",
+                "from_temperature": from_temp,
+                "to_temperature": to_temp,
+                "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
+                "total_duration_ms": (final_response_time - start_time) * 1000,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            self._cooling_timing_history.append(timing_data)
+            logger.info(f"⏱️ Cooling time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms")
+
             self._mcu_status = MCUStatus.COOLING
-            logger.info("Standby cooling started")
 
         except Exception as e:
             error_msg = f"Standby cooling start failed: {e}"
             logger.error(error_msg)
             raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg) from e
 
+    def get_all_timing_data(self) -> Dict[str, Any]:
+        """Get all heating/cooling timing data"""
+        return {
+            "heating_transitions": self._heating_timing_history,
+            "cooling_transitions": self._cooling_timing_history,
+            "total_heating_count": len(self._heating_timing_history),
+            "total_cooling_count": len(self._cooling_timing_history)
+        }
+
+    def clear_timing_history(self) -> None:
+        """Clear timing history (for new test sessions)"""
+        self._heating_timing_history = []
+        self._cooling_timing_history = []
+        self._current_operating_temp = None
+        self._current_standby_temp = None
+        logger.debug("Timing history cleared")
+
     async def get_status(self) -> Dict[str, Any]:
         """Get hardware status information"""
-        return {
+        status = {
             "connected": await self.is_connected(),
             "port": self._port,
             "baudrate": self._baudrate,
@@ -1228,4 +1305,8 @@ class LMAMCU(MCUService):
             "hardware_type": "FastLMA",
             "implementation": "Fast & Optimized",
             "performance_improvement": "99.5%",
+            "timing_data": self.get_all_timing_data(),
+            "current_operating_temp": self._current_operating_temp,
+            "current_standby_temp": self._current_standby_temp,
         }
+        return status

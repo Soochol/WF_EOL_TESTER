@@ -63,6 +63,135 @@ class RobotHomeUseCase:
         self._hardware_services = hardware_services
         self._configuration_service = configuration_service
 
+    async def _setup_digital_io(self, hardware_config) -> None:
+        """
+        Setup Digital I/O service for servo brake release
+
+        Args:
+            hardware_config: Hardware configuration containing digital I/O settings
+
+        Raises:
+            HardwareConnectionException: If Digital I/O setup fails
+        """
+        servo_brake_channel = hardware_config.digital_io.servo1_brake_release
+        irq_no = hardware_config.robot.irq_no
+
+        logger.info(
+            f"Enabling servo brake release on Digital Output channel {servo_brake_channel} for robot homing preparation..."
+        )
+        logger.info(f"Checking Digital I/O service connection with irq_no={irq_no}...")
+
+        try:
+            # Check if already connected, if not connect
+            if not await self._hardware_services.digital_io_service.is_connected():
+                await self._hardware_services.digital_io_service.connect()
+                logger.info("Digital I/O service connected successfully")
+            else:
+                logger.info("Digital I/O service already connected")
+
+            # Verify connection by checking status
+            if not await self._hardware_services.digital_io_service.is_connected():
+                raise HardwareConnectionException(
+                    "Digital I/O service connection verification failed"
+                )
+            logger.info("Digital I/O service connection verified")
+
+            # Enable servo brake release
+            await self._hardware_services.digital_io_service.write_output(
+                servo_brake_channel, True
+            )
+            logger.info(
+                f"Digital Output channel {servo_brake_channel} (servo brake release) enabled successfully"
+            )
+
+        except Exception as dio_error:
+            if "connection" in str(dio_error).lower():
+                logger.error(f"Digital I/O service connection failed: {dio_error}")
+                raise HardwareConnectionException(
+                    f"Failed to connect to Digital I/O service: {str(dio_error)}",
+                    details={"irq_no": irq_no, "error": str(dio_error)},
+                ) from dio_error
+            else:
+                logger.error(
+                    f"Failed to enable Digital Output channel {servo_brake_channel} (servo brake release): {dio_error}"
+                )
+                raise HardwareConnectionException(
+                    f"Failed to enable servo brake release on Digital Output channel {servo_brake_channel} for robot homing: {str(dio_error)}",
+                    details={"dio_channel": servo_brake_channel, "dio_error": str(dio_error)},
+                ) from dio_error
+
+    async def _setup_robot(self, hardware_config) -> None:
+        """
+        Setup robot connection and enable servo
+
+        Args:
+            hardware_config: Hardware configuration containing robot settings
+
+        Raises:
+            HardwareConnectionException: If robot setup fails
+        """
+        # Check if robot service is available
+        if not self._hardware_services.robot_service:
+            raise HardwareConnectionException(
+                "Robot service is not available. Please check system configuration.",
+                details={"robot_service": None},
+            )
+
+        axis_id = hardware_config.robot.axis_id
+        irq_no = hardware_config.robot.irq_no
+        logger.info(f"Connecting to robot with axis_id={axis_id}, irq_no={irq_no}...")
+
+        try:
+            # Connect to robot if not already connected
+            if not await self._hardware_services.robot_service.is_connected():
+                await self._hardware_services.robot_service.connect()
+                logger.info("Robot connected successfully")
+            else:
+                logger.info("Robot already connected")
+
+            # Verify connection with status check
+            await self._hardware_services.robot_service.get_status(axis_id=axis_id)
+            logger.info("Robot connection verified")
+
+            # Enable servo for the robot axis
+            logger.info(f"Enabling servo for axis {axis_id}...")
+            await self._hardware_services.robot_service.enable_servo(axis_id)
+            logger.info("Robot servo enabled successfully")
+
+        except Exception as robot_error:
+            if "servo" in str(robot_error).lower():
+                logger.error(f"Servo enable failed: {robot_error}")
+                raise HardwareConnectionException(
+                    f"Failed to enable servo for axis {axis_id}: {str(robot_error)}",
+                    details={"axis_id": axis_id, "servo_error": str(robot_error)},
+                ) from robot_error
+            else:
+                logger.error(f"Robot connection failed: {robot_error}")
+                raise HardwareConnectionException(
+                    f"Failed to connect to robot: {str(robot_error)}",
+                    details={"axis_id": axis_id, "irq_no": irq_no, "error": str(robot_error)},
+                ) from robot_error
+
+    async def _cleanup_on_error(self, axis_id: Optional[int] = None) -> None:
+        """
+        Cleanup operations when an error occurs
+
+        Args:
+            axis_id: Robot axis ID for servo cleanup
+        """
+        try:
+            if axis_id is None:
+                axis_id = 0  # Default fallback
+
+            if self._hardware_services.robot_service:
+                try:
+                    await self._hardware_services.robot_service.disable_servo(axis_id)
+                    logger.info("Robot servo disabled after error")
+                except Exception as servo_error:
+                    logger.warning(f"Failed to disable servo after error: {servo_error}")
+        except Exception as cleanup_error:
+            logger.warning(f"Error during cleanup: {cleanup_error}")
+
     async def execute(self, command: RobotHomeCommand) -> RobotHomeResult:
         """
         Execute robot homing operation
@@ -83,102 +212,16 @@ class RobotHomeUseCase:
 
         # Load hardware configuration dynamically
         hardware_config = await self._configuration_service.load_hardware_config()
+        axis_id = hardware_config.robot.axis_id
 
         try:
-            # Step 0: Enable servo brake release digital output for robot homing preparation
-            servo_brake_channel = hardware_config.digital_io.servo1_brake_release
-            logger.info(
-                f"Enabling servo brake release on Digital Output channel {servo_brake_channel} for robot homing preparation..."
-            )
+            # Setup Digital I/O for servo brake release
+            await self._setup_digital_io(hardware_config)
 
-            # Step 0.1: Connect to Digital I/O service if not already connected
-            irq_no = hardware_config.robot.irq_no
-            logger.info(f"Checking Digital I/O service connection with irq_no={irq_no}...")
+            # Setup robot connection and enable servo
+            await self._setup_robot(hardware_config)
 
-            try:
-                # Check if already connected, if not connect
-                if not await self._hardware_services.digital_io_service.is_connected():
-                    await self._hardware_services.digital_io_service.connect()
-                    logger.info("Digital I/O service connected successfully")
-                else:
-                    logger.info("Digital I/O service already connected")
-
-                # Verify connection by checking status
-                # Note: Digital I/O service may not have explicit status check, so we rely on is_connected()
-                if not await self._hardware_services.digital_io_service.is_connected():
-                    raise HardwareConnectionException(
-                        "Digital I/O service connection verification failed"
-                    )
-                logger.info("Digital I/O service connection verified")
-
-            except Exception as dio_connect_error:
-                logger.error(f"Digital I/O service connection failed: {dio_connect_error}")
-                raise HardwareConnectionException(
-                    f"Failed to connect to Digital I/O service: {str(dio_connect_error)}",
-                    details={"irq_no": irq_no, "error": str(dio_connect_error)},
-                ) from dio_connect_error
-
-            try:
-                await self._hardware_services.digital_io_service.write_output(
-                    servo_brake_channel, True
-                )
-                logger.info(
-                    f"Digital Output channel {servo_brake_channel} (servo brake release) enabled successfully"
-                )
-            except Exception as dio_error:
-                logger.error(
-                    f"Failed to enable Digital Output channel {servo_brake_channel} (servo brake release): {dio_error}"
-                )
-                raise HardwareConnectionException(
-                    f"Failed to enable servo brake release on Digital Output channel {servo_brake_channel} for robot homing: {str(dio_error)}",
-                    details={"dio_channel": servo_brake_channel, "dio_error": str(dio_error)},
-                ) from dio_error
-            # Step 1: Check if robot service is available
-            if not self._hardware_services.robot_service:
-                raise HardwareConnectionException(
-                    "Robot service is not available. Please check system configuration.",
-                    details={"robot_service": None},
-                )
-
-            # Step 2: Connect to robot explicitly
-            axis_id = hardware_config.robot.axis_id
-            irq_no = hardware_config.robot.irq_no
-            logger.info(f"Connecting to robot with axis_id={axis_id}, irq_no={irq_no}...")
-
-            try:
-                # Check if already connected, if not connect
-                if not await self._hardware_services.robot_service.is_connected():
-                    await self._hardware_services.robot_service.connect()
-                    logger.info("Robot connected successfully")
-                else:
-                    logger.info("Robot already connected")
-
-                # Verify connection with status check
-                await self._hardware_services.robot_service.get_status(
-                    axis_id=hardware_config.robot.axis_id
-                )
-                logger.info("Robot connection verified")
-
-            except Exception as connect_error:
-                logger.error(f"Robot connection failed: {connect_error}")
-                raise HardwareConnectionException(
-                    f"Failed to connect to robot: {str(connect_error)}",
-                    details={"axis_id": axis_id, "irq_no": irq_no, "error": str(connect_error)},
-                ) from connect_error
-
-            # Step 3: Enable servo for the robot axis
-            logger.info(f"Enabling servo for axis {axis_id}...")
-            try:
-                await self._hardware_services.robot_service.enable_servo(axis_id)
-                logger.info("Robot servo enabled successfully")
-            except Exception as servo_error:
-                logger.error(f"Servo enable failed: {servo_error}")
-                raise HardwareConnectionException(
-                    f"Failed to enable servo for axis {axis_id}: {str(servo_error)}",
-                    details={"axis_id": axis_id, "servo_error": str(servo_error)},
-                ) from servo_error
-
-            # Step 4: Execute homing operation
+            # Execute homing operation
             logger.info(f"Starting homing operation for axis {axis_id}...")
             await self._hardware_services.robot_service.home_axis(axis_id)
             logger.info("Robot homing completed successfully")
@@ -207,20 +250,8 @@ class RobotHomeUseCase:
             error_message = f"Robot homing failed: {str(e)}"
             logger.error(error_message)
 
-            # Try to cleanup on error for safety
-            try:
-                axis_id = locals().get("axis_id", 0)
-                if self._hardware_services.robot_service:
-                    # Try to disable servo if it was enabled
-                    try:
-                        await self._hardware_services.robot_service.disable_servo(axis_id)
-                        logger.info("Robot servo disabled after error")
-                    except Exception as servo_error:
-                        logger.warning(f"Failed to disable servo after error: {servo_error}")
-
-                    # Note: We don't disconnect as the robot connection is managed elsewhere
-            except Exception as cleanup_error:
-                logger.warning(f"Error during cleanup: {cleanup_error}")
+            # Cleanup on error for safety
+            await self._cleanup_on_error(axis_id)
 
             return RobotHomeResult(
                 operation_id,
