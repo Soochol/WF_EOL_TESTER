@@ -221,8 +221,18 @@ class HeatingCoolingTestController:
         peak_power = full_cycle_power.get("peak_power_watts", 0)
         min_power = full_cycle_power.get("min_power_watts", 0)
         total_energy = full_cycle_power.get("total_energy_wh", 0)
-        duration = full_cycle_power.get("duration_seconds", 0)
         samples = full_cycle_power.get("sample_count", 0)
+        
+        # Calculate actual work duration from heating/cooling measurements
+        heating_measurements = measurements.get("heating_measurements", [])
+        cooling_measurements = measurements.get("cooling_measurements", [])
+        
+        total_heating_time_s = sum(h.get("total_duration_ms", 0) for h in heating_measurements) / 1000
+        total_cooling_time_s = sum(c.get("total_duration_ms", 0) for c in cooling_measurements) / 1000
+        actual_work_duration = total_heating_time_s + total_cooling_time_s
+        
+        # Use actual work duration if available, otherwise fallback to monitoring period
+        duration = actual_work_duration if actual_work_duration > 0 else full_cycle_power.get("duration_seconds", 0)
         
         power_analysis_table.add_row(
             "Average Power", 
@@ -242,12 +252,12 @@ class HeatingCoolingTestController:
         power_analysis_table.add_row(
             "Total Energy", 
             f"{total_energy:.4f}Wh", 
-            "Complete test energy consumption"
+            "Energy for actual heating/cooling work"
         )
         power_analysis_table.add_row(
             "Measurement Duration", 
             f"{duration:.1f}s", 
-            f"Power monitoring period"
+            f"Actual heating/cooling work time"
         )
         power_analysis_table.add_row(
             "Sample Count", 
