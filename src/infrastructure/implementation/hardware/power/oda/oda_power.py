@@ -578,7 +578,7 @@ class OdaPower(PowerService):
                 
             power = voltage * current
 
-            logger.info(f"⚡ MEAS:ALL? → <green>V:{voltage:.4f}V</green> <yellow>I:{current:.4f}A</yellow> <red>P:{power:.4f}W</red>")
+            logger.info(f"⚡ MEAS:ALL? → <fg #00ff00>V:{voltage:.4f}V</fg> <fg #ffff00>I:{current:.4f}A</fg> <fg #ff0000>P:{power:.4f}W</fg>")
 
             return {
                 'voltage': voltage,
