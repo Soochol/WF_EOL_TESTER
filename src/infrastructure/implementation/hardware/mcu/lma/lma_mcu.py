@@ -265,7 +265,7 @@ class LMAMCU(MCUService):
                 if buffer[expected_packet_end - 2 : expected_packet_end] == b"\xfe\xfe":
                     valid_packet = buffer[ffff_pos:expected_packet_end]
                     packets_found.append(valid_packet)
-                    logger.info(
+                    logger.debug(
                         f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos}"
                     )
                     i = expected_packet_end  # Move past this packet
@@ -279,7 +279,7 @@ class LMAMCU(MCUService):
                         # This is a valid 6-byte packet (FFFF + CMD + LEN + FEFE)
                         valid_packet = buffer[ffff_pos : ffff_pos + 6]
                         packets_found.append(valid_packet)
-                        logger.info(
+                        logger.debug(
                             f"VALID_PACKET_FOUND: {valid_packet.hex().upper()} at position {ffff_pos} (6-byte)"
                         )
                         i = ffff_pos + 6  # Move past this packet
