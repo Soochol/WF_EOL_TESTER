@@ -376,8 +376,8 @@ class MenuSystem(IMenuSystem):
             heating_cooling_usecase = HeatingCoolingTimeTestUseCase(hardware_services, configuration_service)
             controller = HeatingCoolingTestController(heating_cooling_usecase, self._formatter, self._console)
 
-            # Get cycle count from user
-            cycle_count = controller.get_recommended_cycle_count()
+            # Get cycle count from configuration file
+            cycle_count = controller.get_cycle_count_from_config()
             
             self._formatter.print_message(f"Starting test with {cycle_count} cycles...", message_type="info")
 

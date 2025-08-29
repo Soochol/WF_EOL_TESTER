@@ -5,6 +5,7 @@ CLI controller for managing heating/cooling time measurement tests.
 """
 
 import json
+import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
@@ -18,6 +19,7 @@ from application.use_cases.heating_cooling_time_test import (
     HeatingCoolingTimeTestResult,
     HeatingCoolingTimeTestUseCase,
 )
+from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 from ui.cli.rich_formatter import RichFormatter
 
 
@@ -397,32 +399,23 @@ This test measures the time taken for MCU temperature transitions:
 
         self.console.print(help_text)
 
-    def get_recommended_cycle_count(self) -> int:
-        """Get recommended number of test cycles"""
-        self.console.print("\n[bold cyan]Test Cycle Recommendations[/bold cyan]")
-
-        recommendations = """
-[bold]Recommended cycle counts:[/bold]
-• [green]Quick Test:[/green] 1-3 cycles (development/debugging)
-• [yellow]Standard Test:[/yellow] 5-10 cycles (regular validation)
-• [red]Thorough Test:[/red] 15+ cycles (performance characterization)
-
-[dim]Note: Each cycle includes both heating and cooling measurements[/dim]
-"""
-
-        self.console.print(recommendations)
-
-        # Get user input
+    def get_cycle_count_from_config(self) -> int:
+        """Get cycle count from configuration file"""
+        config_file = Path("configuration/heating_cooling_time_test.yaml")
+        
         try:
-            while True:
-                cycle_count = input("\nEnter number of cycles (1-50): ").strip()
-                if cycle_count.isdigit():
-                    count = int(cycle_count)
-                    if 1 <= count <= 50:
-                        return count
-                    else:
-                        print("Please enter a number between 1 and 50")
-                else:
-                    print("Please enter a valid number")
-        except KeyboardInterrupt:
-            return 1  # Default to 1 cycle if interrupted
+            if config_file.exists():
+                self.formatter.print_message(f"Loading cycle count from {config_file}", message_type="info")
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    yaml_data = yaml.safe_load(f)
+                
+                repeat_count = yaml_data.get('repeat_count', 1)
+                self.formatter.print_message(f"Configuration: {repeat_count} cycles", message_type="info")
+                return repeat_count
+            else:
+                self.formatter.print_message("Configuration file not found, using default: 1 cycle", message_type="warning")
+                return 1
+                
+        except Exception as e:
+            self.formatter.print_message(f"Failed to load configuration: {e}, using default: 1 cycle", message_type="warning")
+            return 1
