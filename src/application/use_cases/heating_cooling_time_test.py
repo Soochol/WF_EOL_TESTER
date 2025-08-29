@@ -198,15 +198,31 @@ class HeatingCoolingTimeTestUseCase:
                 # 8.1 Heating measurement with power monitoring (standby → activation)
                 logger.info(f"Heating: {standby_temp}°C → {activation_temp}°C")
                 
+                # Verify Power Monitor state before starting
+                logger.info(f"Power Monitor object: {self._power_monitor} (type: {type(self._power_monitor)})")
+                logger.info(f"Power Monitor is_monitoring: {self._power_monitor.is_monitoring()}")
+                
                 # Start power monitoring for heating
-                await self._power_monitor.start_monitoring(interval=0.5)
+                logger.info("🔋 Starting power monitoring for HEATING cycle...")
+                try:
+                    await self._power_monitor.start_monitoring(interval=0.5)
+                    logger.info("✅ Power monitoring started successfully for heating")
+                except Exception as e:
+                    logger.error(f"❌ Failed to start power monitoring for heating: {e}")
+                    logger.exception("Power monitoring start exception details:")
                 
                 await mcu_service.start_standby_heating(
                     operating_temp=activation_temp, standby_temp=standby_temp
                 )
                 
                 # Stop power monitoring and get data
-                heating_power_data = await self._power_monitor.stop_monitoring()
+                logger.info("🔋 Stopping power monitoring for heating cycle...")
+                try:
+                    heating_power_data = await self._power_monitor.stop_monitoring()
+                    logger.info(f"✅ Power monitoring stopped for heating. Data: {heating_power_data}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to stop power monitoring for heating: {e}")
+                    heating_power_data = {"error": str(e), "sample_count": 0}
 
                 # Get timing data from MCU
                 timing_data = mcu_service.get_all_timing_data()
@@ -226,12 +242,24 @@ class HeatingCoolingTimeTestUseCase:
                 logger.info(f"Cooling: {activation_temp}°C → {standby_temp}°C")
                 
                 # Start power monitoring for cooling
-                await self._power_monitor.start_monitoring(interval=0.5)
+                logger.info("🔋 Starting power monitoring for COOLING cycle...")
+                try:
+                    await self._power_monitor.start_monitoring(interval=0.5)
+                    logger.info("✅ Power monitoring started successfully for cooling")
+                except Exception as e:
+                    logger.error(f"❌ Failed to start power monitoring for cooling: {e}")
+                    logger.exception("Power monitoring start exception details:")
                 
                 await mcu_service.start_standby_cooling()
                 
                 # Stop power monitoring and get data
-                cooling_power_data = await self._power_monitor.stop_monitoring()
+                logger.info("🔋 Stopping power monitoring for cooling cycle...")
+                try:
+                    cooling_power_data = await self._power_monitor.stop_monitoring()
+                    logger.info(f"✅ Power monitoring stopped for cooling. Data: {cooling_power_data}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to stop power monitoring for cooling: {e}")
+                    cooling_power_data = {"error": str(e), "sample_count": 0}
 
                 # Get timing data from MCU
                 timing_data = mcu_service.get_all_timing_data()

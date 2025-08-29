@@ -43,16 +43,44 @@ class PowerMonitor:
         Args:
             interval: Sampling interval in seconds (default: 0.5s)
         """
+        logger.info(f"🔋 PowerMonitor.start_monitoring() called with interval={interval}s")
+        
         if self._is_monitoring:
             logger.warning("Power monitoring is already active")
             return
 
-        logger.debug(f"Starting power monitoring with {interval}s interval")
+        # Verify power service is available
+        if not self._power_service:
+            logger.error("❌ Power service is None - cannot start monitoring")
+            raise RuntimeError("Power service is not initialized")
+        
+        logger.info(f"Power service object: {self._power_service} (type: {type(self._power_service)})")
+        
+        try:
+            # Test power service connection
+            is_connected = await self._power_service.is_connected()
+            logger.info(f"Power service connection status: {'✅ CONNECTED' if is_connected else '❌ DISCONNECTED'}")
+            
+            if not is_connected:
+                logger.error("❌ Power service is not connected - cannot start monitoring")
+                raise RuntimeError("Power service is not connected")
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to check power service connection: {e}")
+            raise RuntimeError(f"Power service connection check failed: {e}") from e
+
+        logger.info(f"Starting power monitoring with {interval}s interval")
         self._is_monitoring = True
         self._power_data = []
         self._start_time = time.perf_counter()
 
-        self._monitoring_task = asyncio.create_task(self._monitor_loop(interval))
+        try:
+            self._monitoring_task = asyncio.create_task(self._monitor_loop(interval))
+            logger.info("✅ Power monitoring task created successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to create monitoring task: {e}")
+            self._is_monitoring = False
+            raise RuntimeError(f"Failed to create monitoring task: {e}") from e
 
     async def stop_monitoring(self) -> Dict[str, Any]:
         """
@@ -61,21 +89,28 @@ class PowerMonitor:
         Returns:
             Dictionary containing power analysis results
         """
+        logger.info("🔋 PowerMonitor.stop_monitoring() called")
+        
         if not self._is_monitoring:
-            logger.warning("Power monitoring is not active")
+            logger.warning("⚠️  Power monitoring is not active")
             return {}
 
-        logger.debug("Stopping power monitoring")
+        logger.info("🔋 Stopping power monitoring...")
         self._is_monitoring = False
 
         if self._monitoring_task:
             try:
+                logger.info("🔋 Waiting for monitoring task to complete...")
                 await self._monitoring_task
+                logger.info("✅ Monitoring task completed")
             except asyncio.CancelledError:
-                pass
+                logger.info("🔋 Monitoring task was cancelled")
+            except Exception as e:
+                logger.error(f"❌ Error while stopping monitoring task: {e}")
 
         analysis_result = self._analyze_power_data()
-        logger.debug(f"Power monitoring completed: {len(self._power_data)} samples collected")
+        logger.info(f"✅ Power monitoring completed: {len(self._power_data)} samples collected")
+        logger.info(f"📊 Analysis result summary: {analysis_result.get('sample_count', 0)} samples, {analysis_result.get('average_power_watts', 0):.4f}W avg")
 
         return analysis_result
 
@@ -89,8 +124,12 @@ class PowerMonitor:
         failures = 0
         max_failures = 3
 
+        logger.info(f"🔋 Power monitoring loop started with {interval}s interval")
+        
         while self._is_monitoring:
             try:
+                logger.debug(f"📊 Taking power measurement sample #{len(self._power_data)}...")
+                
                 # Get all measurements at once using MEAS:ALL? command
                 measurements = await self._power_service.get_all_measurements()
                 voltage = measurements["voltage"]
@@ -99,8 +138,8 @@ class PowerMonitor:
                 timestamp = time.perf_counter() - self._start_time
 
                 # Log detailed measurement info for debugging
-                if len(self._power_data) % 10 == 0:  # Log every 10th measurement to avoid spam
-                    logger.debug(f"Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
+                if len(self._power_data) % 5 == 0:  # Log every 5th measurement (reduced from 10)
+                    logger.info(f"📊 Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
 
                 # Store data point
                 self._power_data.append(
@@ -111,13 +150,15 @@ class PowerMonitor:
 
             except Exception as e:
                 failures += 1
-                logger.warning(f"Power measurement failed ({failures}/{max_failures}): {e}")
+                logger.warning(f"⚠️  Power measurement failed ({failures}/{max_failures}): {e}")
 
                 if failures >= max_failures:
-                    logger.error("Power monitoring stopped due to repeated failures")
+                    logger.error("❌ Power monitoring stopped due to repeated failures")
                     break
 
             await asyncio.sleep(interval)
+        
+        logger.info(f"🔋 Power monitoring loop ended. Total samples collected: {len(self._power_data)}")
 
     def _analyze_power_data(self) -> Dict[str, Any]:
         """
