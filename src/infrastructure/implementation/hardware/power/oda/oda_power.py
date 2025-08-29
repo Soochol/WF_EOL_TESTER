@@ -536,11 +536,17 @@ class OdaPower(PowerService):
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
         try:
+            # Check power output status first
+            output_enabled = await self.is_output_enabled()
+            logger.info(f"Power output status before measurement: {'ENABLED' if output_enabled else 'DISABLED'}")
+            
             # Send MEAS:ALL? command for simultaneous voltage and current measurement
-            logger.debug("Sending MEAS:ALL? command for simultaneous measurements")
+            logger.info("Sending MEAS:ALL? command for simultaneous measurements")
             response = await self._send_command("MEAS:ALL?")
+            logger.info(f"Raw MEAS:ALL? response: '{response}' (type: {type(response)})")
 
             if response is None:
+                logger.error("MEAS:ALL? command returned None response")
                 raise HardwareOperationError(
                     "oda_power",
                     "get_all_measurements", 
@@ -548,20 +554,31 @@ class OdaPower(PowerService):
                 )
 
             # Parse response format: "voltage,current" e.g. "10.0000,1.0000"
-            values = response.strip().split(',')
+            response_clean = response.strip()
+            logger.info(f"Cleaned response: '{response_clean}' (length: {len(response_clean)})")
+            
+            values = response_clean.split(',')
+            logger.info(f"Split values: {values} (count: {len(values)})")
             
             if len(values) != 2:
+                logger.error(f"Invalid MEAS:ALL? response format. Expected 2 values, got {len(values)}")
                 raise HardwareOperationError(
                     "oda_power",
                     "get_all_measurements",
                     f"Unexpected MEAS:ALL? response format: '{response}'. Expected 'voltage,current'"
                 )
 
-            voltage = float(values[0])
-            current = float(values[1])
+            try:
+                voltage = float(values[0])
+                current = float(values[1])
+                logger.info(f"Parsed values - Voltage: {voltage}, Current: {current}")
+            except (ValueError, IndexError) as e:
+                logger.error(f"Failed to parse voltage/current values: {values}, error: {e}")
+                raise
+                
             power = voltage * current
 
-            logger.debug(f"MEAS:ALL? measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
+            logger.info(f"MEAS:ALL? measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
 
             return {
                 'voltage': voltage,
@@ -570,14 +587,47 @@ class OdaPower(PowerService):
             }
 
         except ValueError as e:
-            raise HardwareOperationError(
-                "oda_power",
-                "get_all_measurements",
-                f"Failed to parse MEAS:ALL? response '{response}': {e}"
-            ) from e
+            logger.error(f"Failed to parse MEAS:ALL? response, trying fallback individual measurements: {e}")
+            return await self._get_measurements_fallback()
+        except HardwareOperationError as e:
+            logger.error(f"MEAS:ALL? command failed, trying fallback individual measurements: {e}")
+            return await self._get_measurements_fallback()
         except TCPError as e:
-            logger.error(f"TCP error during MEAS:ALL?: {e}")
-            raise HardwareOperationError("oda_power", "get_all_measurements", str(e)) from e
+            logger.error(f"TCP error during MEAS:ALL?, trying fallback individual measurements: {e}")
+            return await self._get_measurements_fallback()
         except Exception as e:
-            logger.error(f"Unexpected error during MEAS:ALL?: {e}")
-            raise HardwareOperationError("oda_power", "get_all_measurements", str(e)) from e
+            logger.error(f"Unexpected error during MEAS:ALL?, trying fallback individual measurements: {e}")
+            return await self._get_measurements_fallback()
+
+    async def _get_measurements_fallback(self) -> Dict[str, float]:
+        """
+        Fallback method to get measurements using individual commands
+        
+        Used when MEAS:ALL? command fails or returns invalid response.
+        Makes separate calls for voltage and current measurements.
+        
+        Returns:
+            Dictionary containing voltage, current, and calculated power
+            
+        Raises:
+            HardwareOperationError: If individual measurements also fail
+        """
+        try:
+            logger.info("Using fallback individual measurements (MEAS:VOLT? + MEAS:CURR?)")
+            
+            # Get voltage and current separately
+            voltage = await self.get_voltage()
+            current = await self.get_current()
+            power = voltage * current
+            
+            logger.info(f"Fallback measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
+            
+            return {
+                'voltage': voltage,
+                'current': current,
+                'power': power
+            }
+            
+        except Exception as e:
+            logger.error(f"Fallback individual measurements also failed: {e}")
+            raise HardwareOperationError("oda_power", "_get_measurements_fallback", str(e)) from e

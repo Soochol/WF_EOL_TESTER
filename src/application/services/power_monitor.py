@@ -98,6 +98,10 @@ class PowerMonitor:
                 power = measurements["power"]
                 timestamp = time.perf_counter() - self._start_time
 
+                # Log detailed measurement info for debugging
+                if len(self._power_data) % 10 == 0:  # Log every 10th measurement to avoid spam
+                    logger.debug(f"Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
+
                 # Store data point
                 self._power_data.append(
                     {"timestamp": timestamp, "voltage": voltage, "current": current, "power": power}

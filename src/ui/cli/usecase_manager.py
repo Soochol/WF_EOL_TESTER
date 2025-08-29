@@ -93,12 +93,12 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
         """Get MCU test parameters with operator input"""
         try:
             formatter.console.print("[bold cyan]MCU Test Configuration[/bold cyan]")
-            
+
             # Get operator ID from user input
             operator = input("Operator ID [cli_user]: ").strip()
             if not operator:
                 operator = "cli_user"
-            
+
             formatter.console.print(f"[green]Configuration:[/green]")
             formatter.console.print(f"  Operator: {operator}")
             formatter.console.print(f"  Port/Baudrate: Will be loaded from hardware configuration")
@@ -141,11 +141,11 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
         for test_result in result.test_results:
             step_status = "✅ PASS" if test_result["success"] else "❌ FAIL"
             response_time = test_result["response_time_ms"]
-            
+
             formatter.console.print(
                 f"  [{test_result['step']}] {test_result['description']} - {step_status} ({response_time:.1f}ms)"
             )
-            
+
             if test_result["error"]:
                 formatter.console.print(f"      Error: {test_result['error']}", style="red")
 
@@ -177,7 +177,9 @@ class UseCaseManager:
         )
 
         self.discovered_usecases.append(simple_mcu_usecase_info)
-        self.executors[simple_mcu_usecase_info.name] = SimpleMCUTestExecutor(self.configuration_service)
+        self.executors[simple_mcu_usecase_info.name] = SimpleMCUTestExecutor(
+            self.configuration_service
+        )
 
         logger.info(f"Initialized {len(self.discovered_usecases)} UseCases")
 
