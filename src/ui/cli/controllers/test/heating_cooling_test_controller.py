@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from application.use_cases.heating_cooling_time_test import (
@@ -62,19 +61,8 @@ class HeatingCoolingTestController:
                 operator_id="cli_user", repeat_count=repeat_count
             )
 
-            # Show progress during test execution
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=self.console,
-                transient=True,
-                refresh_per_second=1,  # Reduce refresh rate to avoid log interference
-            ) as progress:
-                task = progress.add_task("Running heating/cooling test...", total=None)
-
-                result = await self.use_case.execute(command)
-
-                progress.update(task, description="Test completed!")
+            # Execute test without spinner to avoid log interference
+            result = await self.use_case.execute(command)
 
             # Display results
             self._display_test_results(result)
