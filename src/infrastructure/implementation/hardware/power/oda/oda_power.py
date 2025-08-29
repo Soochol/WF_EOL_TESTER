@@ -379,7 +379,7 @@ class OdaPower(PowerService):
             if response:
                 response = response.strip()
 
-            logger.info(f"ODA command: {command} -> response: {response}")
+            logger.debug(f"ODA command: {command} -> response: {response}")
 
             # Add small delay after each command to prevent overwhelming the device
             await asyncio.sleep(0.05)  # 50ms delay between commands
@@ -530,7 +530,7 @@ class OdaPower(PowerService):
             # Send MEAS:ALL? command for simultaneous voltage and current measurement
             logger.info("Sending MEAS:ALL? command for simultaneous measurements")
             response = await self._send_command("MEAS:ALL?")
-            logger.info(f"Raw MEAS:ALL? response: '{response}' (type: {type(response)})")
+            logger.debug(f"Raw MEAS:ALL? response: '{response}'")
 
             if response is None:
                 logger.error("MEAS:ALL? command returned None response")
@@ -542,7 +542,7 @@ class OdaPower(PowerService):
 
             # Parse response format: "voltage,current" e.g. "10.0000,1.0000"
             response_clean = response.strip()
-            logger.info(f"Cleaned response: '{response_clean}' (length: {len(response_clean)})")
+            logger.debug(f"Cleaned response: '{response_clean}' (length: {len(response_clean)})")
             
             values = response_clean.split(',')
             logger.debug(f"Split values: {values} (count: {len(values)})")
@@ -565,7 +565,7 @@ class OdaPower(PowerService):
                 
             power = voltage * current
 
-            logger.info(f"⚡ MEAS:ALL? → <fg #00ff00>V:{voltage:.4f}V</fg> <fg #ffff00>I:{current:.4f}A</fg> <fg #ff0000>P:{power:.4f}W</fg>")
+            logger.info(f"⚡ MEAS:ALL? → [green]V:{voltage:.4f}V[/green] [yellow]I:{current:.4f}A[/yellow] [red]P:{power:.4f}W[/red]")
 
             return {
                 'voltage': voltage,
