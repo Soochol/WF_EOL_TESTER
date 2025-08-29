@@ -6,7 +6,10 @@ Tests temperature transitions between standby and activation temperatures.
 """
 
 import asyncio
+import os
+from pathlib import Path
 from typing import Any, Dict, Optional
+import yaml
 
 from loguru import logger
 
@@ -17,6 +20,7 @@ from domain.enums.mcu_enums import TestMode
 from domain.enums.test_status import TestStatus
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration
+from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 
 
 class HeatingCoolingTimeTestCommand:
@@ -132,11 +136,13 @@ class HeatingCoolingTimeTestUseCase:
             logger.info("Loading configurations...")
             await self._configuration_service.load_hardware_config()  # Validate config exists
             test_config = await self._configuration_service.load_test_config("default")
+            
+            # Load heating/cooling specific configuration
+            hc_config = await self._load_heating_cooling_config()
 
-            # 2. Get temperature settings
-            activation_temp = test_config.activation_temperature
-            standby_temp = test_config.standby_temperature
-            logger.info(f"Temperature range: {standby_temp}°C ↔ {activation_temp}°C")
+            # 2. Get temperature settings from hc_config
+            logger.info(f"Temperature range: {hc_config.standby_temperature}°C ↔ {hc_config.activation_temperature}°C")
+            logger.info(f"Wait times - Heating: {hc_config.heating_wait_time}s, Cooling: {hc_config.cooling_wait_time}s, Stabilization: {hc_config.stabilization_wait_time}s")
 
             # 3. Connect hardware (Power Supply + MCU)
             logger.info("Connecting hardware...")
@@ -151,9 +157,9 @@ class HeatingCoolingTimeTestUseCase:
             logger.info("Power monitor initialized")
 
             # 4. Power supply setup
-            logger.info(f"Setting up power supply: {test_config.voltage}V, {test_config.current}A")
-            await power_service.set_voltage(test_config.voltage)
-            await power_service.set_current(test_config.current)
+            logger.info(f"Setting up power supply: {hc_config.voltage}V, {hc_config.current}A")
+            await power_service.set_voltage(hc_config.voltage)
+            await power_service.set_current(hc_config.current)
             await power_service.enable_output()
             await asyncio.sleep(test_config.poweron_stabilization)
 
@@ -167,115 +173,91 @@ class HeatingCoolingTimeTestUseCase:
             await mcu_service.set_test_mode(TestMode.MODE_1)
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
-            await mcu_service.set_upper_temperature(test_config.upper_temperature)
+            await mcu_service.set_upper_temperature(hc_config.upper_temperature)
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
-            await mcu_service.set_fan_speed(test_config.fan_speed)
+            await mcu_service.set_fan_speed(hc_config.fan_speed)
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
             # 7. Initial temperature setup (set to standby)
             logger.info("Setting initial temperature to standby...")
             await mcu_service.start_standby_heating(
-                operating_temp=activation_temp, standby_temp=standby_temp
+                operating_temp=hc_config.activation_temperature, standby_temp=hc_config.standby_temperature
             )
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
             # Cool down to standby temperature
             await mcu_service.start_standby_cooling()
-            logger.info(f"Initial cooling to standby temperature ({standby_temp}°C)...")
+            logger.info(f"Initial cooling to standby temperature ({hc_config.standby_temperature}°C)...")
             await asyncio.sleep(test_config.mcu_temperature_stabilization)
 
             # Clear timing history (exclude initial setup)
             mcu_service.clear_timing_history()
 
-            # 8. Perform test cycles
+            # 8. Perform test cycles with full-cycle power monitoring
             heating_results = []
             cooling_results = []
+            
+            # Override repeat count from hc_config if different
+            actual_repeat_count = hc_config.repeat_count if hc_config.repeat_count != 1 else command.repeat_count
+            logger.info(f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, command: {command.repeat_count})")
 
-            for i in range(command.repeat_count):
-                logger.info(f"=== Test Cycle {i+1}/{command.repeat_count} ===")
-
-                # 8.1 Heating measurement with power monitoring (standby → activation)
-                logger.info(f"Heating: {standby_temp}°C → {activation_temp}°C")
-                
-                # Verify Power Monitor state before starting
+            # Start power monitoring for ENTIRE test cycle
+            if hc_config.power_monitoring_enabled:
+                logger.info("🔋 Starting power monitoring for ENTIRE test cycle...")
                 logger.info(f"Power Monitor object: {self._power_monitor} (type: {type(self._power_monitor)})")
                 logger.info(f"Power Monitor is_monitoring: {self._power_monitor.is_monitoring()}")
                 
-                # Start power monitoring for heating
-                logger.info("🔋 Starting power monitoring for HEATING cycle...")
                 try:
-                    await self._power_monitor.start_monitoring(interval=0.5)
-                    logger.info("✅ Power monitoring started successfully for heating")
+                    await self._power_monitor.start_monitoring(interval=hc_config.power_monitoring_interval)
+                    logger.info("✅ Power monitoring started successfully for full cycle")
                 except Exception as e:
-                    logger.error(f"❌ Failed to start power monitoring for heating: {e}")
+                    logger.error(f"❌ Failed to start power monitoring: {e}")
                     logger.exception("Power monitoring start exception details:")
-                
+
+            for i in range(actual_repeat_count):
+                logger.info(f"=== Test Cycle {i+1}/{actual_repeat_count} ===")
+
+                # 8.1 Heating phase (standby → activation)
+                logger.info(f"Heating: {hc_config.standby_temperature}°C → {hc_config.activation_temperature}°C")
                 await mcu_service.start_standby_heating(
-                    operating_temp=activation_temp, standby_temp=standby_temp
+                    operating_temp=hc_config.activation_temperature, standby_temp=hc_config.standby_temperature
                 )
                 
-                # Stop power monitoring and get data
-                logger.info("🔋 Stopping power monitoring for heating cycle...")
-                try:
-                    heating_power_data = await self._power_monitor.stop_monitoring()
-                    logger.info(f"✅ Power monitoring stopped for heating. Data: {heating_power_data}")
-                except Exception as e:
-                    logger.error(f"❌ Failed to stop power monitoring for heating: {e}")
-                    heating_power_data = {"error": str(e), "sample_count": 0}
+                # Wait after heating completion
+                logger.info(f"Heating wait time: {hc_config.heating_wait_time}s")
+                await asyncio.sleep(hc_config.heating_wait_time)
 
-                # Get timing data from MCU
-                timing_data = mcu_service.get_all_timing_data()
-                if timing_data["heating_transitions"]:
-                    latest_heating = timing_data["heating_transitions"][-1]
-                    # Add power consumption data to timing result
-                    latest_heating["power_consumption"] = heating_power_data
-                    heating_results.append(latest_heating)
-                    
-                    avg_power = heating_power_data.get("average_power_watts", 0)
-                    logger.info(f"Heating time: {latest_heating['total_duration_ms']:.1f}ms, Avg power: {avg_power:.1f}W")
-
-                # Temperature stabilization
-                await asyncio.sleep(test_config.mcu_temperature_stabilization)
-
-                # 8.2 Cooling measurement with power monitoring (activation → standby)
-                logger.info(f"Cooling: {activation_temp}°C → {standby_temp}°C")
-                
-                # Start power monitoring for cooling
-                logger.info("🔋 Starting power monitoring for COOLING cycle...")
-                try:
-                    await self._power_monitor.start_monitoring(interval=0.5)
-                    logger.info("✅ Power monitoring started successfully for cooling")
-                except Exception as e:
-                    logger.error(f"❌ Failed to start power monitoring for cooling: {e}")
-                    logger.exception("Power monitoring start exception details:")
-                
+                # 8.2 Cooling phase (activation → standby)
+                logger.info(f"Cooling: {hc_config.activation_temperature}°C → {hc_config.standby_temperature}°C")
                 await mcu_service.start_standby_cooling()
                 
-                # Stop power monitoring and get data
-                logger.info("🔋 Stopping power monitoring for cooling cycle...")
+                # Wait after cooling completion  
+                logger.info(f"Cooling wait time: {hc_config.cooling_wait_time}s")
+                await asyncio.sleep(hc_config.cooling_wait_time)
+
+                # Stabilization wait between cycles
+                if i < actual_repeat_count - 1:  # Don't wait after last cycle
+                    logger.info(f"Stabilization wait time: {hc_config.stabilization_wait_time}s")
+                    await asyncio.sleep(hc_config.stabilization_wait_time)
+
+            # Stop power monitoring and get full cycle data
+            full_cycle_power_data = {}
+            if hc_config.power_monitoring_enabled:
+                logger.info("🔋 Stopping power monitoring for full cycle...")
                 try:
-                    cooling_power_data = await self._power_monitor.stop_monitoring()
-                    logger.info(f"✅ Power monitoring stopped for cooling. Data: {cooling_power_data}")
+                    full_cycle_power_data = await self._power_monitor.stop_monitoring()
+                    logger.info(f"✅ Power monitoring stopped. Data: {full_cycle_power_data}")
                 except Exception as e:
-                    logger.error(f"❌ Failed to stop power monitoring for cooling: {e}")
-                    cooling_power_data = {"error": str(e), "sample_count": 0}
+                    logger.error(f"❌ Failed to stop power monitoring: {e}")
+                    full_cycle_power_data = {"error": str(e), "sample_count": 0}
 
-                # Get timing data from MCU
-                timing_data = mcu_service.get_all_timing_data()
-                if timing_data["cooling_transitions"]:
-                    latest_cooling = timing_data["cooling_transitions"][-1]
-                    # Add power consumption data to timing result
-                    latest_cooling["power_consumption"] = cooling_power_data
-                    cooling_results.append(latest_cooling)
-                    
-                    avg_power = cooling_power_data.get("average_power_watts", 0)
-                    logger.info(f"Cooling time: {latest_cooling['total_duration_ms']:.1f}ms, Avg power: {avg_power:.1f}W")
+            # Get timing data from MCU for all cycles
+            timing_data = mcu_service.get_all_timing_data()
+            heating_results = timing_data.get("heating_transitions", [])
+            cooling_results = timing_data.get("cooling_transitions", [])
 
-                # Temperature stabilization
-                await asyncio.sleep(test_config.mcu_temperature_stabilization)
-
-            # 9. Calculate statistics (including power consumption)
+            # 9. Calculate statistics (including full cycle power consumption)
             avg_heating_time = (
                 sum(h["total_duration_ms"] for h in heating_results) / len(heating_results)
                 if heating_results
@@ -297,20 +279,13 @@ class HeatingCoolingTimeTestUseCase:
                 else 0
             )
             
-            # Power consumption statistics
-            avg_heating_power = (
-                sum(h["power_consumption"].get("average_power_watts", 0) for h in heating_results) / len(heating_results)
-                if heating_results
-                else 0
-            )
-            avg_cooling_power = (
-                sum(c["power_consumption"].get("average_power_watts", 0) for c in cooling_results) / len(cooling_results)
-                if cooling_results
-                else 0
-            )
-            total_energy_heating = sum(h["power_consumption"].get("total_energy_wh", 0) for h in heating_results)
-            total_energy_cooling = sum(c["power_consumption"].get("total_energy_wh", 0) for c in cooling_results)
-            total_energy_consumed = total_energy_heating + total_energy_cooling
+            # Full cycle power consumption statistics
+            full_cycle_avg_power = full_cycle_power_data.get("average_power_watts", 0)
+            full_cycle_peak_power = full_cycle_power_data.get("peak_power_watts", 0)
+            full_cycle_min_power = full_cycle_power_data.get("min_power_watts", 0)
+            total_energy_consumed = full_cycle_power_data.get("total_energy_wh", 0)
+            sample_count = full_cycle_power_data.get("sample_count", 0)
+            duration_seconds = full_cycle_power_data.get("duration_seconds", 0)
 
             # 10. Create result
             end_time = asyncio.get_event_loop().time()
@@ -318,39 +293,47 @@ class HeatingCoolingTimeTestUseCase:
 
             measurements = {
                 "configuration": {
-                    "activation_temperature": activation_temp,
-                    "standby_temperature": standby_temp,
-                    "voltage": test_config.voltage,
-                    "current": test_config.current,
-                    "fan_speed": test_config.fan_speed,
-                    "repeat_count": command.repeat_count,
+                    "activation_temperature": hc_config.activation_temperature,
+                    "standby_temperature": hc_config.standby_temperature,
+                    "voltage": hc_config.voltage,
+                    "current": hc_config.current,
+                    "fan_speed": hc_config.fan_speed,
+                    "repeat_count": actual_repeat_count,
+                    "heating_wait_time": hc_config.heating_wait_time,
+                    "cooling_wait_time": hc_config.cooling_wait_time,
+                    "stabilization_wait_time": hc_config.stabilization_wait_time,
+                    "power_monitoring_interval": hc_config.power_monitoring_interval,
+                    "power_monitoring_enabled": hc_config.power_monitoring_enabled,
                 },
                 "heating_measurements": heating_results,
                 "cooling_measurements": cooling_results,
+                "full_cycle_power_data": full_cycle_power_data,
                 "statistics": {
                     "average_heating_time_ms": avg_heating_time,
                     "average_cooling_time_ms": avg_cooling_time,
                     "average_heating_ack_ms": avg_heating_ack,
                     "average_cooling_ack_ms": avg_cooling_ack,
-                    "average_heating_power_watts": avg_heating_power,
-                    "average_cooling_power_watts": avg_cooling_power,
-                    "total_energy_heating_wh": total_energy_heating,
-                    "total_energy_cooling_wh": total_energy_cooling,
+                    "full_cycle_average_power_watts": full_cycle_avg_power,
+                    "full_cycle_peak_power_watts": full_cycle_peak_power,
+                    "full_cycle_min_power_watts": full_cycle_min_power,
                     "total_energy_consumed_wh": total_energy_consumed,
-                    "power_ratio_heating_to_cooling": avg_heating_power / avg_cooling_power if avg_cooling_power > 0 else 0,
-                    "total_cycles": command.repeat_count,
+                    "power_sample_count": sample_count,
+                    "measurement_duration_seconds": duration_seconds,
+                    "total_cycles": actual_repeat_count,
                     "total_heating_cycles": len(heating_results),
                     "total_cooling_cycles": len(cooling_results),
                 },
             }
 
             logger.info("=== Test Summary ===")
-            logger.info(f"Cycles completed: {command.repeat_count}")
+            logger.info(f"Cycles completed: {actual_repeat_count}")
             logger.info(f"Average heating time: {avg_heating_time:.1f}ms")
             logger.info(f"Average cooling time: {avg_cooling_time:.1f}ms")
-            logger.info(f"Average heating power: {avg_heating_power:.1f}W")
-            logger.info(f"Average cooling power: {avg_cooling_power:.1f}W")
+            logger.info(f"Full cycle average power: {full_cycle_avg_power:.1f}W")
+            logger.info(f"Full cycle peak power: {full_cycle_peak_power:.1f}W")
             logger.info(f"Total energy consumed: {total_energy_consumed:.3f}Wh")
+            logger.info(f"Power samples collected: {sample_count}")
+            logger.info(f"Measurement duration: {duration_seconds:.1f}s")
 
             result = HeatingCoolingTimeTestResult(
                 test_id=test_id,
@@ -394,3 +377,51 @@ class HeatingCoolingTimeTestUseCase:
 
             self._is_running = False
             logger.info(f"Heating/Cooling Time Test completed - ID: {test_id}")
+
+    async def _load_heating_cooling_config(self) -> HeatingCoolingConfiguration:
+        """
+        Load heating/cooling configuration from YAML file or create with defaults
+        
+        Returns:
+            HeatingCoolingConfiguration object
+        """
+        config_file = Path("configuration/heating_cooling_time_test.yaml")
+        
+        if config_file.exists():
+            logger.info(f"Loading heating/cooling configuration from {config_file}")
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    yaml_data = yaml.safe_load(f)
+                
+                # Extract configuration parameters, using defaults for missing values
+                return HeatingCoolingConfiguration(
+                    repeat_count=yaml_data.get('repeat_count', 1),
+                    heating_wait_time=yaml_data.get('heating_wait_time', 2.0),
+                    cooling_wait_time=yaml_data.get('cooling_wait_time', 2.0),
+                    stabilization_wait_time=yaml_data.get('stabilization_wait_time', 1.0),
+                    power_monitoring_interval=yaml_data.get('power_monitoring_interval', 0.5),
+                    power_monitoring_enabled=yaml_data.get('power_monitoring_enabled', True),
+                    activation_temperature=yaml_data.get('activation_temperature', 52.0),
+                    standby_temperature=yaml_data.get('standby_temperature', 38.0),
+                    voltage=yaml_data.get('voltage', 38.0),
+                    current=yaml_data.get('current', 25.0),
+                    fan_speed=yaml_data.get('fan_speed', 10),
+                    upper_temperature=yaml_data.get('upper_temperature', 80.0),
+                    calculate_statistics=yaml_data.get('calculate_statistics', True),
+                    show_detailed_results=yaml_data.get('show_detailed_results', True)
+                )
+                
+            except Exception as e:
+                logger.warning(f"Failed to load configuration from {config_file}: {e}")
+                logger.info("Using default configuration")
+                return HeatingCoolingConfiguration()
+        else:
+            logger.info(f"Configuration file {config_file} not found")
+            logger.info("Creating default configuration file")
+            
+            # Create default configuration
+            default_config = HeatingCoolingConfiguration()
+            
+            # Configuration file should already exist from our previous creation
+            # But if it doesn't, we use the default values
+            return default_config
