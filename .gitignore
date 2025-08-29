@@ -19,6 +19,9 @@ node_modules/
 # configuration folders (environment-specific, should not be versioned)
 /configuration/
 !configuration/*.template
+
+# Explicitly exclude heating/cooling test configuration (user-specific settings)
+configuration/heating_cooling_time_test.yaml
 # Environment variables
 .env
 
