@@ -516,7 +516,7 @@ class LMAMCU(MCUService):
                     if self.serial_conn:
                         self.serial_conn.write(temp_bytes)
                         elapsed = current_time - start_time
-                        logger.info(f"PC -> MCU: {temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)")
+                        logger.debug(f"PC -> MCU: {temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)")
                         last_temp_request = current_time
                 except Exception as e:
                     logger.warning(f"Failed to send temperature request: {e}")
@@ -545,11 +545,15 @@ class LMAMCU(MCUService):
                     # Classify and log the packet
                     packet_type = self._classify_packet(valid_packet)
                     elapsed_ms = (current_time - start_time) * 1000
-                    logger.info(f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms")
+                    # Only show temperature responses at DEBUG level, others at INFO
+                    if valid_packet[2] == 0x07:  # Temperature response
+                        logger.debug(f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms")
+                    else:
+                        logger.info(f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms")
                     
                     # Handle different packet types
                     if valid_packet[2] == 0x07:  # Temperature response
-                        self._log_temperature_data(valid_packet)
+                        self._log_temperature_data_with_time(valid_packet, elapsed_ms)
                     elif valid_packet[2] == 0x0B:  # Temperature reached signal
                         logger.info("🌡️  Temperature reached signal received!")
                     elif valid_packet[2] == 0x0C:  # Cooling complete signal
@@ -588,6 +592,23 @@ class LMAMCU(MCUService):
             if len(packet) >= 14 and packet[2] == 0x07:
                 ir_temp, outside_temp = self._parse_temperature_packet(packet)
                 logger.info(f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m")
+            else:
+                logger.warning(f"Invalid temperature packet: {packet.hex().upper()}")
+        except Exception as e:
+            logger.error(f"Failed to parse temperature data: {e}")
+
+    def _log_temperature_data_with_time(self, packet: bytes, elapsed_ms: float) -> None:
+        """
+        Parse and log temperature data with elapsed time from temperature response packet
+        
+        Args:
+            packet: Temperature response packet (CMD=0x07)
+            elapsed_ms: Elapsed time in milliseconds
+        """
+        try:
+            if len(packet) >= 14 and packet[2] == 0x07:
+                ir_temp, outside_temp = self._parse_temperature_packet(packet)
+                logger.info(f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m @ +{elapsed_ms:.1f}ms")
             else:
                 logger.warning(f"Invalid temperature packet: {packet.hex().upper()}")
         except Exception as e:
