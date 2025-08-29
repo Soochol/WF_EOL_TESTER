@@ -294,23 +294,10 @@ class OdaPower(PowerService):
         if not await self.is_connected():
             raise HardwareConnectionError("oda_power", "Power Supply is not connected")
 
-        try:
-            # Query actual hardware state using OUTP? command
-            response = await self._send_command("OUTP?")
-            if response:
-                # According to manual: "0" = OFF, "1" = ON
-                hardware_state = response.strip() == "1"
-                self._output_enabled = hardware_state  # Sync software state with hardware
-                logger.debug(
-                    "ODA output state queried: %s (hardware: %s)", hardware_state, response.strip()
-                )
-                return hardware_state
-            else:
-                logger.warning("No response from OUTP? query, using cached state")
-                return self._output_enabled
-        except Exception as e:
-            logger.error(f"Failed to query ODA output state: {e}")
-            return self._output_enabled  # Return cached state on error
+        # Return cached state directly to avoid unnecessary hardware queries during monitoring
+        # Hardware state is synchronized when enable_output()/disable_output() is called
+        logger.debug(f"ODA output state (cached): {'ENABLED' if self._output_enabled else 'DISABLED'}")
+        return self._output_enabled
 
     async def get_device_identity(self) -> Optional[str]:
         """
