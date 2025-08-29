@@ -232,8 +232,8 @@ class HeatingCoolingTestController:
         total_cooling_time_s = sum(c.get("total_duration_ms", 0) for c in cooling_measurements) / 1000
         actual_work_duration = total_heating_time_s + total_cooling_time_s
         
-        # Use actual work duration if available, otherwise fallback to monitoring period
-        duration = actual_work_duration if actual_work_duration > 0 else full_cycle_power.get("duration_seconds", 0)
+        # Use full monitoring period (includes delays) to match energy calculation basis
+        duration = full_cycle_power.get("duration_seconds", 0)
         
         power_analysis_table.add_row(
             "Average Power", 
@@ -253,12 +253,12 @@ class HeatingCoolingTestController:
         power_analysis_table.add_row(
             "Total Energy", 
             f"{total_energy:.4f}Wh", 
-            "Energy for actual heating/cooling work"
+            "Energy consumed during complete test cycle"
         )
         power_analysis_table.add_row(
             "Measurement Duration", 
             f"{duration:.1f}s", 
-            f"Actual heating/cooling work time"
+            f"Complete power monitoring period (includes delays)"
         )
         power_analysis_table.add_row(
             "Sample Count", 
