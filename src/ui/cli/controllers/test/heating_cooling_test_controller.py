@@ -68,6 +68,7 @@ class HeatingCoolingTestController:
                 TextColumn("[progress.description]{task.description}"),
                 console=self.console,
                 transient=True,
+                refresh_per_second=1,  # Reduce refresh rate to avoid log interference
             ) as progress:
                 task = progress.add_task("Running heating/cooling test...", total=None)
 
