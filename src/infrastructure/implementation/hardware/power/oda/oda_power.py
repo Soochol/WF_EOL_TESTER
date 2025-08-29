@@ -366,7 +366,7 @@ class OdaPower(PowerService):
             command_with_terminator = f"{command}\n"
             logger.debug(f"Adding LF terminator to command: {command!r}")
 
-            logger.info(f"Sending command: {command}")
+            logger.debug(f"Sending command: {command}")
 
             # Use query() method for commands that expect responses
             if command.endswith("?"):
@@ -525,10 +525,10 @@ class OdaPower(PowerService):
         try:
             # Check power output status first
             output_enabled = await self.is_output_enabled()
-            logger.info(f"Power output status before measurement: {'ENABLED' if output_enabled else 'DISABLED'}")
+            logger.debug(f"Power output status before measurement: {'ENABLED' if output_enabled else 'DISABLED'}")
             
             # Send MEAS:ALL? command for simultaneous voltage and current measurement
-            logger.info("Sending MEAS:ALL? command for simultaneous measurements")
+            logger.debug("Sending MEAS:ALL? command for simultaneous measurements")
             response = await self._send_command("MEAS:ALL?")
             logger.debug(f"Raw MEAS:ALL? response: '{response}'")
 
