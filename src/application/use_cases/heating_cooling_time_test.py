@@ -283,9 +283,22 @@ class HeatingCoolingTimeTestUseCase:
             full_cycle_avg_power = full_cycle_power_data.get("average_power_watts", 0)
             full_cycle_peak_power = full_cycle_power_data.get("peak_power_watts", 0)
             full_cycle_min_power = full_cycle_power_data.get("min_power_watts", 0)
-            total_energy_consumed = full_cycle_power_data.get("total_energy_wh", 0)
             sample_count = full_cycle_power_data.get("sample_count", 0)
             duration_seconds = full_cycle_power_data.get("duration_seconds", 0)
+
+            # Calculate energy for ACTUAL heating/cooling work time only (not total test time)
+            # Use MCU-measured heating/cooling durations instead of full monitoring period
+            total_heating_time_s = sum(h["total_duration_ms"] for h in heating_results) / 1000 if heating_results else 0
+            total_cooling_time_s = sum(c["total_duration_ms"] for c in cooling_results) / 1000 if cooling_results else 0
+            actual_work_time_s = total_heating_time_s + total_cooling_time_s
+            
+            # Recalculate energy based on actual work time (not total monitoring time)
+            if actual_work_time_s > 0 and full_cycle_avg_power > 0:
+                total_energy_consumed = (full_cycle_avg_power * actual_work_time_s) / 3600  # Wh
+                logger.info(f"Energy calculation - Work time: {actual_work_time_s:.1f}s, Avg power: {full_cycle_avg_power:.1f}W")
+                logger.info(f"Corrected energy (work time only): {total_energy_consumed:.4f}Wh vs Original (full period): {full_cycle_power_data.get('total_energy_wh', 0):.4f}Wh")
+            else:
+                total_energy_consumed = full_cycle_power_data.get("total_energy_wh", 0)  # Fallback to original
 
             # 10. Create result
             end_time = asyncio.get_event_loop().time()
