@@ -37,6 +37,11 @@ EOL_TESTER_CLI_LOG_FILENAME = f"eol_tester_cli_{CURRENT_DATE}.log"
 
 async def main() -> None:
     """CLI-only application entry point with ApplicationContainer dependency injection."""
+    # Force unbuffered output for real-time logging (Python environment variable equivalent)
+    # This ensures logs appear immediately without keyboard input
+    import os
+    os.environ['PYTHONUNBUFFERED'] = '1'
+    
     setup_logging(debug=False)
 
     try:
@@ -166,6 +171,8 @@ def setup_logging(debug: bool = False) -> None:
         sys.stderr,
         level=log_level,
         format=cli_formatter,
+        enqueue=False,  # Disable background queue for real-time output
+        colorize=True,  # Enable color output
     )
 
     # File logging setup
@@ -176,7 +183,7 @@ def setup_logging(debug: bool = False) -> None:
         logs_directory / EOL_TESTER_CLI_LOG_FILENAME,
         rotation=None,  # No rotation needed - using date-based filenames
         retention=None,  # Manual cleanup - no automatic retention
-        enqueue=True,  # Background thread processing to prevent file lock conflicts
+        enqueue=False,  # Disable queue for consistent timing with console output
         catch=True,  # Prevent logging errors from crashing the application
         level="DEBUG",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name} - {message}",
