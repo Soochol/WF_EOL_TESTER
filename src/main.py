@@ -12,16 +12,15 @@ from datetime import datetime
 from pathlib import Path
 
 # Module imports now work directly since main.py is in the src/ directory
-
 # Third-party imports
 from loguru import logger
+
+# Local infrastructure imports - New Dependency Injection
+from application.containers import ApplicationContainer
 
 # Local application imports - Services (only needed for Button Monitoring and Emergency Stop)
 from application.services.button_monitoring_service import DIOMonitoringService
 from application.services.emergency_stop_service import EmergencyStopService
-
-# Local infrastructure imports - New Dependency Injection
-from application.containers import ApplicationContainer
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI

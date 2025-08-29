@@ -46,7 +46,7 @@ class LMAMCU(MCUService):
         parity: Optional[str] = None,
     ):
         """Initialize Fast LMA MCU service
-        
+
         Args:
             port: Serial port (e.g., "COM3")
             baudrate: Baud rate (e.g., 115200)
@@ -66,11 +66,11 @@ class LMAMCU(MCUService):
         # State management
         self._is_connected = False
         self._current_temperature = 0.0
-        
+
         # Temperature transition timing history
         self._heating_timing_history: List[Dict[str, Any]] = []
         self._cooling_timing_history: List[Dict[str, Any]] = []
-        
+
         # Current temperature settings tracking
         self._current_operating_temp: Optional[float] = None
         self._current_standby_temp: Optional[float] = None
@@ -129,18 +129,20 @@ class LMAMCU(MCUService):
         if not self._is_connected or not self.serial_conn or not self.serial_conn.is_open:
             raise HardwareConnectionError("fast_lma_mcu", "Not connected")
 
-    def _send_packet_sync(self, packet_hex: str, description: str = "", timeout: Optional[float] = None) -> Optional[bytes]:
+    def _send_packet_sync(
+        self, packet_hex: str, description: str = "", timeout: Optional[float] = None
+    ) -> Optional[bytes]:
         """
         Send packet and receive response (synchronous)
         Optimized for maximum performance with minimal overhead
-        
+
         Args:
             packet_hex: Hex string of packet to send
             description: Description for logging
             timeout: Timeout in seconds (uses self._timeout if None)
         """
         self._ensure_connected()
-        
+
         # Use provided timeout or fall back to instance timeout
         actual_timeout = timeout if timeout is not None else self._timeout
 
@@ -382,9 +384,9 @@ class LMAMCU(MCUService):
                         # Provide helpful information about common status codes
                         status_meanings = {
                             0x04: "ACK (Acknowledgment)",
-                            0x0B: "Temperature Reached Signal", 
+                            0x0B: "Temperature Reached Signal",
                             0x01: "Test Mode Complete",
-                            0x05: "Operating Temp OK"
+                            0x05: "Operating Temp OK",
                         }
                         meaning = status_meanings.get(cmd, "Unknown Status")
                         logger.warning(f"   Received Status Meaning: {meaning}")
@@ -400,16 +402,16 @@ class LMAMCU(MCUService):
     def _classify_packet(self, packet: bytes) -> str:
         """
         Classify packet type based on CMD byte for logging and handling
-        
+
         Args:
             packet: Raw packet bytes
-            
+
         Returns:
             String description of packet type
         """
         if len(packet) < 3:
             return "INVALID_PACKET"
-            
+
         cmd = packet[2]
         if cmd == 0x07:
             return "TEMPERATURE_RESPONSE"
@@ -427,44 +429,49 @@ class LMAMCU(MCUService):
             return "STROKE_INIT_COMPLETE_RESPONSE"
         else:
             return f"UNKNOWN_CMD_0x{cmd:02X}"
-    
+
     def _parse_temperature_packet(self, packet: bytes) -> tuple[float, float]:
         """
         Parse temperature data from temperature response packet
-        
+
         Args:
             packet: Temperature response packet (CMD=0x07)
-            
+
         Returns:
             Tuple of (ir_temp, outside_temp) in Celsius
         """
         if len(packet) < 14 or packet[2] != 0x07:
             raise ValueError("Invalid temperature packet")
-            
+
         # Extract temperature data (8 bytes total)
         ir_temp_data = packet[4:8]
         outside_temp_data = packet[8:12]
-        
+
         ir_temp_scaled = struct.unpack(">I", ir_temp_data)[0]
         outside_temp_scaled = struct.unpack(">I", outside_temp_data)[0]
-        
+
         # Convert to actual temperature (divide by 10)
         ir_temp_celsius = ir_temp_scaled / 10.0
         outside_temp_celsius = outside_temp_scaled / 10.0
-        
+
         return ir_temp_celsius, outside_temp_celsius
 
-    async def _send_packet(self, packet_hex: str, description: str = "", timeout: Optional[float] = None) -> Optional[bytes]:
+    async def _send_packet(
+        self, packet_hex: str, description: str = "", timeout: Optional[float] = None
+    ) -> Optional[bytes]:
         """Async wrapper for packet transmission"""
         return self._send_packet_sync(packet_hex, description, timeout)
 
     async def _wait_for_additional_response(
-        self, timeout: float = 15.0, description: str = "", quiet: bool = False, 
-        expected_cmd: Optional[int] = None
+        self,
+        timeout: float = 15.0,
+        description: str = "",
+        quiet: bool = False,
+        expected_cmd: Optional[int] = None,
     ) -> Optional[bytes]:
         """
         Enhanced wait for additional response with smart packet handling and temperature monitoring
-        
+
         Features:
         - Periodic temperature requests during long waits
         - Packet classification and intelligent logging
@@ -483,14 +490,14 @@ class LMAMCU(MCUService):
         if self._packet_buffer:
             packet = self._packet_buffer.pop(0)
             packet_type = self._classify_packet(packet)
-            
+
             # Log buffered packet with classification
             logger.info(f"Using buffered packet: {packet.hex().upper()} ({packet_type})")
-            
+
             # Handle temperature response packets
             if packet[2] == 0x07:  # Temperature response
                 self._log_temperature_data(packet)
-            
+
             # If this is the expected packet, return it
             if expected_cmd is None or (len(packet) >= 3 and packet[2] == expected_cmd):
                 return packet
@@ -506,21 +513,26 @@ class LMAMCU(MCUService):
 
         while time.time() - start_time < timeout:
             current_time = time.time()
-            
+
             # Send periodic temperature requests for long waits (heating/cooling)
-            if (current_time - last_temp_request > temp_request_interval and 
-                timeout > 10.0 and ("temperature" in description.lower() or "cooling" in description.lower())):
+            if (
+                current_time - last_temp_request > temp_request_interval
+                and timeout > 10.0
+                and ("temperature" in description.lower() or "cooling" in description.lower())
+            ):
                 try:
                     temp_packet_hex = "FFFF0700FEFE"
                     temp_bytes = bytes.fromhex(temp_packet_hex)
                     if self.serial_conn:
                         self.serial_conn.write(temp_bytes)
                         elapsed = current_time - start_time
-                        logger.debug(f"PC -> MCU: {temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)")
+                        logger.debug(
+                            f"PC -> MCU: {temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)"
+                        )
                         last_temp_request = current_time
                 except Exception as e:
                     logger.warning(f"Failed to send temperature request: {e}")
-            
+
             # Check for incoming data
             if self.serial_conn and self.serial_conn.in_waiting > 0:
                 new_data = self.serial_conn.read(self.serial_conn.in_waiting)
@@ -537,20 +549,24 @@ class LMAMCU(MCUService):
                     valid_packet = self._extract_valid_packet(response_data)
                     if not valid_packet:
                         break
-                        
+
                     # Remove processed packet from buffer
                     packet_len = len(valid_packet)
                     response_data = response_data[packet_len:]
-                    
+
                     # Classify and log the packet
                     packet_type = self._classify_packet(valid_packet)
                     elapsed_ms = (current_time - start_time) * 1000
                     # Only show temperature responses at DEBUG level, others at INFO
                     if valid_packet[2] == 0x07:  # Temperature response
-                        logger.debug(f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms")
+                        logger.debug(
+                            f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms"
+                        )
                     else:
-                        logger.info(f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms")
-                    
+                        logger.info(
+                            f"PC <- MCU: {valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms"
+                        )
+
                     # Handle different packet types
                     if valid_packet[2] == 0x07:  # Temperature response
                         self._log_temperature_data_with_time(valid_packet, elapsed_ms)
@@ -560,14 +576,16 @@ class LMAMCU(MCUService):
                         logger.info("❄️  Cooling complete signal received!")
                     elif valid_packet[2] == 0x0D:  # Cooling temperature reached signal
                         logger.info("❄️  Cooling temperature reached signal received!")
-                    
+
                     # Check if this is the packet we're waiting for
                     if expected_cmd is None or valid_packet[2] == expected_cmd:
                         return valid_packet
                     else:
                         # Not the packet we want, but log it and continue waiting
                         if expected_cmd is not None:
-                            logger.debug(f"Received {packet_type}, but waiting for CMD=0x{expected_cmd:02X}")
+                            logger.debug(
+                                f"Received {packet_type}, but waiting for CMD=0x{expected_cmd:02X}"
+                            )
                         else:
                             logger.debug(f"Received {packet_type} (no specific packet expected)")
 
@@ -577,21 +595,25 @@ class LMAMCU(MCUService):
         # Timeout reached
         elapsed_s = time.time() - start_time
         if not quiet:
-            logger.warning(f"ADDITIONAL_TIMEOUT with NO additional response data received ({elapsed_s:.1f}s)")
-        
+            logger.warning(
+                f"ADDITIONAL_TIMEOUT with NO additional response data received ({elapsed_s:.1f}s)"
+            )
+
         return None
-    
+
     def _log_temperature_data(self, packet: bytes) -> None:
         """
         Parse and log temperature data from temperature response packet
-        
+
         Args:
             packet: Temperature response packet (CMD=0x07)
         """
         try:
             if len(packet) >= 14 and packet[2] == 0x07:
                 ir_temp, outside_temp = self._parse_temperature_packet(packet)
-                logger.info(f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m")
+                logger.info(
+                    f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m"
+                )
             else:
                 logger.warning(f"Invalid temperature packet: {packet.hex().upper()}")
         except Exception as e:
@@ -600,7 +622,7 @@ class LMAMCU(MCUService):
     def _log_temperature_data_with_time(self, packet: bytes, elapsed_ms: float) -> None:
         """
         Parse and log temperature data with elapsed time from temperature response packet
-        
+
         Args:
             packet: Temperature response packet (CMD=0x07)
             elapsed_ms: Elapsed time in milliseconds
@@ -608,7 +630,9 @@ class LMAMCU(MCUService):
         try:
             if len(packet) >= 14 and packet[2] == 0x07:
                 ir_temp, outside_temp = self._parse_temperature_packet(packet)
-                logger.info(f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m @ +{elapsed_ms:.1f}ms")
+                logger.info(
+                    f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m @ +{elapsed_ms:.1f}ms"
+                )
             else:
                 logger.warning(f"Invalid temperature packet: {packet.hex().upper()}")
         except Exception as e:
@@ -684,20 +708,24 @@ class LMAMCU(MCUService):
             logger.warning(f"Additional data chunks received: {len(data_chunks)}")
             for i, chunk in enumerate(data_chunks):
                 logger.warning(f"   [{i+1}] {chunk}")
-            
+
             # Try to analyze what we received even if incomplete
             if len(response_data) >= 3:
                 cmd = response_data[2]
                 status_meanings = {
-                    0x04: "ACK (Acknowledgment) - MCU received command but may not have completed operation",
+                    0x04: (
+                        "ACK (Acknowledgment) - MCU received command but may not have completed operation"
+                    ),
                     0x0B: "Temperature Reached Signal",
                     0x01: "Test Mode Complete",
-                    0x05: "Operating Temp OK"
+                    0x05: "Operating Temp OK",
                 }
                 meaning = status_meanings.get(cmd, f"Unknown Status (0x{cmd:02X})")
                 logger.warning(f"   Last received status: {meaning}")
                 if description == "Temperature reached signal" and cmd == 0x04:
-                    logger.warning("   → MCU acknowledged command but temperature target may not be reached yet")
+                    logger.warning(
+                        "   → MCU acknowledged command but temperature target may not be reached yet"
+                    )
         else:
             logger.warning(
                 f"ADDITIONAL_TIMEOUT with NO additional response data received ({timeout}s)"
@@ -720,9 +748,9 @@ class LMAMCU(MCUService):
         """
         # Use enhanced method with temperature monitoring for cooling complete signal (CMD=0x0C)
         return await self._wait_for_additional_response(
-            timeout=timeout, 
-            description=f"Cooling complete to {target_temp:.1f}°C signal", 
-            expected_cmd=0x0C
+            timeout=timeout,
+            description=f"Cooling complete to {target_temp:.1f}°C signal",
+            expected_cmd=0x0C,
         )
 
     async def _wait_for_cooling_complete_legacy(
@@ -1125,7 +1153,7 @@ class LMAMCU(MCUService):
     ) -> None:
         """Start standby heating mode"""
         self._ensure_connected()
-        
+
         # Store temperature settings for cooling to use
         self._current_operating_temp = operating_temp
         self._current_standby_temp = standby_temp
@@ -1148,7 +1176,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            
+
             command_sent_time = time.perf_counter()
             logger.info(f"PC -> MCU: {packet} (Heating: {standby_temp}°C → {operating_temp}°C)")
 
@@ -1156,7 +1184,7 @@ class LMAMCU(MCUService):
             response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_LMA_INIT ACK", expected_cmd=0x04
             )
-            
+
             ack_received_time = time.perf_counter()
 
             if not response or len(response) < 6 or response[2] != 0x04:
@@ -1166,9 +1194,12 @@ class LMAMCU(MCUService):
 
             # Second response (temperature reached)
             temp_response = await self._wait_for_additional_response(
-                timeout=13.0, description="Operating temperature reached", quiet=False, expected_cmd=0x0B
+                timeout=13.0,
+                description="Operating temperature reached",
+                quiet=False,
+                expected_cmd=0x0B,
             )
-            
+
             final_response_time = time.perf_counter()
 
             if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
@@ -1195,11 +1226,13 @@ class LMAMCU(MCUService):
                 "to_temperature": operating_temp,
                 "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
                 "total_duration_ms": (final_response_time - start_time) * 1000,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
-            
+
             self._heating_timing_history.append(timing_data)
-            logger.info(f"⏱️ Heating time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms")
+            logger.info(
+                f"⏱️ Heating time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms"
+            )
 
             self._mcu_status = MCUStatus.HEATING
             logger.info(
@@ -1217,7 +1250,7 @@ class LMAMCU(MCUService):
 
         try:
             packet = "FFFF0800FEFE"
-            
+
             # Use stored temperature information
             from_temp = self._current_operating_temp or "unknown"
             to_temp = self._current_standby_temp or "unknown"
@@ -1231,7 +1264,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            
+
             command_sent_time = time.perf_counter()
             logger.info(f"PC -> MCU: {packet} (Cooling: {from_temp}°C → {to_temp}°C)")
 
@@ -1239,7 +1272,7 @@ class LMAMCU(MCUService):
             response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_STROKE_INIT_COMPLETE ACK", expected_cmd=0x08
             )
-            
+
             ack_received_time = time.perf_counter()
 
             if not response or len(response) < 6 or response[2] != 0x08:
@@ -1251,7 +1284,7 @@ class LMAMCU(MCUService):
             cooling_response = await self._wait_for_additional_response(
                 timeout=120.0, description="Standby temperature reached", expected_cmd=0x0C
             )
-            
+
             final_response_time = time.perf_counter()
 
             if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
@@ -1274,11 +1307,13 @@ class LMAMCU(MCUService):
                 "to_temperature": to_temp,
                 "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
                 "total_duration_ms": (final_response_time - start_time) * 1000,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
-            
+
             self._cooling_timing_history.append(timing_data)
-            logger.info(f"⏱️ Cooling time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms")
+            logger.info(
+                f"⏱️ Cooling time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms"
+            )
 
             self._mcu_status = MCUStatus.COOLING
 
@@ -1293,7 +1328,7 @@ class LMAMCU(MCUService):
             "heating_transitions": self._heating_timing_history,
             "cooling_transitions": self._cooling_timing_history,
             "total_heating_count": len(self._heating_timing_history),
-            "total_cooling_count": len(self._cooling_timing_history)
+            "total_cooling_count": len(self._cooling_timing_history),
         }
 
     def clear_timing_history(self) -> None:

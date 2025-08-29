@@ -18,10 +18,12 @@ from domain.exceptions import (
 )
 from domain.value_objects.application_config import ApplicationConfig
 from domain.value_objects.hardware_config import HardwareConfig
+from domain.value_objects.heating_cooling_configuration import (
+    HeatingCoolingConfiguration,
+)
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
-from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 
 
 class ConfigPaths:
@@ -192,25 +194,25 @@ class ConfigurationService:
             if not config_file.exists():
                 logger.info(f"Heating/cooling config not found: {config_path}")
                 logger.info("Creating default heating/cooling configuration file...")
-                
+
                 # Create directory if it doesn't exist
                 config_file.parent.mkdir(parents=True, exist_ok=True)
-                
+
                 # Create default configuration and write to file
                 default_config = HeatingCoolingConfiguration()
                 await self._create_default_heating_cooling_config_file(config_file, default_config)
-                
+
                 logger.info(f"Created default configuration file: {config_path}")
                 return default_config
 
             # Load existing file
             logger.info(f"Loading heating/cooling configuration from {config_path}")
-            with open(config_file, 'r', encoding='utf-8') as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 yaml_data = yaml.safe_load(f)
 
             # Create configuration from YAML data with automatic defaults
             config = HeatingCoolingConfiguration.from_dict(yaml_data)
-            
+
             logger.info("Heating/cooling configuration loaded successfully")
             return config
 
@@ -227,10 +229,10 @@ class ConfigurationService:
     ) -> None:
         """Create default heating/cooling configuration YAML file"""
         from datetime import datetime
-        
+
         # Use to_dict for the main configuration data
         config_data = default_config.to_dict()
-        
+
         yaml_content = f"""# Heating/Cooling Time Test Configuration
 # Configuration parameters for heating/cooling time test including
 # wait times, power monitoring settings, and test execution parameters.
@@ -244,7 +246,7 @@ repeat_count: {config_data['repeat_count']}  # Number of heating/cooling cycles 
 # WAIT TIME PARAMETERS (in seconds)
 # ========================================================================
 heating_wait_time: {config_data['heating_wait_time']}  # Wait time after heating completes
-cooling_wait_time: {config_data['cooling_wait_time']}  # Wait time after cooling completes  
+cooling_wait_time: {config_data['cooling_wait_time']}  # Wait time after cooling completes
 stabilization_wait_time: {config_data['stabilization_wait_time']}  # Wait time for temperature stabilization
 
 # ========================================================================
@@ -295,18 +297,18 @@ metadata:
   description: 'Heating/Cooling Time Test configuration with power monitoring'
   notes: |
     This configuration file contains parameters for heating/cooling time tests.
-    
+
     Key parameters:
     - Wait times control delays between heating/cooling phases
     - Power monitoring tracks energy consumption during test cycles
     - Temperature parameters define test operating ranges
     - Statistics options control data analysis and display
-    
+
     Modify these values to customize test behavior according to your
     hardware specifications and testing requirements.
 """
-        
-        with open(config_file, 'w', encoding='utf-8') as f:
+
+        with open(config_file, "w", encoding="utf-8") as f:
             f.write(yaml_content)
 
     async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
