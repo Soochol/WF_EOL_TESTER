@@ -458,7 +458,7 @@ class LMAMCU(MCUService):
         """Async wrapper for packet transmission"""
         return self._send_packet_sync(packet_hex, description, timeout)
 
-    def _wait_for_additional_response(
+    async def _wait_for_additional_response(
         self, timeout: float = 15.0, description: str = "", quiet: bool = False, 
         expected_cmd: Optional[int] = None
     ) -> Optional[bytes]:
@@ -567,8 +567,8 @@ class LMAMCU(MCUService):
                         else:
                             logger.debug(f"Received {packet_type} (no specific packet expected)")
 
-            # Small delay to prevent busy waiting
-            time.sleep(0.01)
+            # Small delay to prevent busy waiting (use async sleep to allow other tasks)
+            await asyncio.sleep(0.01)
 
         # Timeout reached
         elapsed_s = time.time() - start_time
@@ -698,7 +698,7 @@ class LMAMCU(MCUService):
             Cooling complete response packet or None if timeout
         """
         # Use enhanced method with temperature monitoring for cooling complete signal (CMD=0x0C)
-        return self._wait_for_additional_response(
+        return await self._wait_for_additional_response(
             timeout=timeout, 
             description=f"Cooling complete to {target_temp:.1f}°C signal", 
             expected_cmd=0x0C
@@ -856,7 +856,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))")
 
             # Wait for the correct ACK response (0x05), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_SET_OPERATING_TEMP ACK", expected_cmd=0x05
             )
 
@@ -866,7 +866,7 @@ class LMAMCU(MCUService):
                 )
 
             # Second response (temperature reached)
-            temp_response = self._wait_for_additional_response(
+            temp_response = await self._wait_for_additional_response(
                 timeout=10.0, description="Operating temperature reached signal", expected_cmd=0x0B
             )
 
@@ -910,7 +910,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))")
 
             # Wait for the correct ACK response (0x06), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_SET_COOLING_TEMP ACK", expected_cmd=0x06
             )
 
@@ -920,7 +920,7 @@ class LMAMCU(MCUService):
                 )
 
             # Second response (cooling complete signal)
-            cooling_response = self._wait_for_additional_response(
+            cooling_response = await self._wait_for_additional_response(
                 timeout=120.0, description="Cooling temperature reached signal", expected_cmd=0x0D
             )
 
@@ -1012,7 +1012,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (CMD_ENTER_TEST_MODE (mode {mode_value}))")
 
             # Wait for the correct ACK response (0x01), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_ENTER_TEST_MODE ACK", expected_cmd=0x01
             )
 
@@ -1048,7 +1048,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (CMD_SET_UPPER_TEMP ({upper_temp}°C))")
 
             # Wait for the correct ACK response (0x02), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_SET_UPPER_TEMP ACK", expected_cmd=0x02
             )
 
@@ -1080,7 +1080,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (CMD_SET_FAN_SPEED (level {fan_level}))")
 
             # Wait for the correct ACK response (0x03), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_SET_FAN_SPEED ACK", expected_cmd=0x03
             )
 
@@ -1132,7 +1132,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (Heating: {standby_temp}°C → {operating_temp}°C)")
 
             # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_LMA_INIT ACK", expected_cmd=0x04
             )
             
@@ -1144,7 +1144,7 @@ class LMAMCU(MCUService):
                 )
 
             # Second response (temperature reached)
-            temp_response = self._wait_for_additional_response(
+            temp_response = await self._wait_for_additional_response(
                 timeout=13.0, description="Operating temperature reached", quiet=False, expected_cmd=0x0B
             )
             
@@ -1215,7 +1215,7 @@ class LMAMCU(MCUService):
             logger.info(f"PC -> MCU: {packet} (Cooling: {from_temp}°C → {to_temp}°C)")
 
             # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
-            response = self._wait_for_additional_response(
+            response = await self._wait_for_additional_response(
                 timeout=self._timeout, description="CMD_STROKE_INIT_COMPLETE ACK", expected_cmd=0x08
             )
             
@@ -1227,7 +1227,7 @@ class LMAMCU(MCUService):
                 )
 
             # Second response (cooling complete)
-            cooling_response = self._wait_for_additional_response(
+            cooling_response = await self._wait_for_additional_response(
                 timeout=120.0, description="Standby temperature reached", expected_cmd=0x0C
             )
             
