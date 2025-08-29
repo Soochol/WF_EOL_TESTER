@@ -132,9 +132,9 @@ class HeatingCoolingTestController:
         avg_cooling_ack = stats.get("average_cooling_ack_ms", 0)
 
         stats_table.add_row(
-            "Average ACK Time", f"{avg_heating_ack:.1f}ms", f"{avg_cooling_ack:.1f}ms"
+            "Average ACK Time", f"{avg_heating_ack/1000:.3f}s", f"{avg_cooling_ack/1000:.3f}s"
         )
-        stats_table.add_row("Average Total Time", f"{avg_heating:.1f}ms", f"{avg_cooling:.1f}ms")
+        stats_table.add_row("Average Total Time", f"{avg_heating/1000:.1f}s", f"{avg_cooling/1000:.1f}s")
         stats_table.add_row(
             "Cycles Completed",
             str(stats.get("total_heating_cycles", 0)),
@@ -164,16 +164,16 @@ class HeatingCoolingTestController:
             heating_table = Table(title="Heating Cycle Details")
             heating_table.add_column("Cycle", style="cyan")
             heating_table.add_column("Transition", style="white")
-            heating_table.add_column("ACK Time (ms)", style="yellow")
-            heating_table.add_column("Total Time (ms)", style="bright_green")
+            heating_table.add_column("ACK Time (s)", style="yellow")
+            heating_table.add_column("Total Time (s)", style="bright_green")
             heating_table.add_column("Timestamp", style="dim")
 
             for i, measurement in enumerate(heating_measurements, 1):
                 heating_table.add_row(
                     str(i),
                     measurement.get("transition", "N/A"),
-                    f"{measurement.get('ack_duration_ms', 0):.1f}",
-                    f"{measurement.get('total_duration_ms', 0):.1f}",
+                    f"{measurement.get('ack_duration_ms', 0)/1000:.3f}",
+                    f"{measurement.get('total_duration_ms', 0)/1000:.1f}",
                     measurement.get("timestamp", "N/A")[:19].replace("T", " "),
                 )
 
@@ -184,16 +184,16 @@ class HeatingCoolingTestController:
             cooling_table = Table(title="Cooling Cycle Details")
             cooling_table.add_column("Cycle", style="cyan")
             cooling_table.add_column("Transition", style="white")
-            cooling_table.add_column("ACK Time (ms)", style="yellow")
-            cooling_table.add_column("Total Time (ms)", style="bright_cyan")
+            cooling_table.add_column("ACK Time (s)", style="yellow")
+            cooling_table.add_column("Total Time (s)", style="bright_cyan")
             cooling_table.add_column("Timestamp", style="dim")
 
             for i, measurement in enumerate(cooling_measurements, 1):
                 cooling_table.add_row(
                     str(i),
                     measurement.get("transition", "N/A"),
-                    f"{measurement.get('ack_duration_ms', 0):.1f}",
-                    f"{measurement.get('total_duration_ms', 0):.1f}",
+                    f"{measurement.get('ack_duration_ms', 0)/1000:.3f}",
+                    f"{measurement.get('total_duration_ms', 0)/1000:.1f}",
                     measurement.get("timestamp", "N/A")[:19].replace("T", " "),
                 )
 
@@ -341,8 +341,8 @@ This test measures the time taken for MCU temperature transitions:
 • [blue]Cooling:[/blue] Activation Temperature → Standby Temperature
 
 [bold]What is measured:[/bold]
-• [yellow]ACK Time:[/yellow] Time from command sent to ACK received (~40-50ms)
-• [green]Total Time:[/green] Time from command sent to temperature reached (~8-18 seconds)
+• [yellow]ACK Time:[/yellow] Time from command sent to ACK received (~0.040-0.050s)
+• [green]Total Time:[/green] Time from command sent to temperature reached (~8-18s)
 
 [bold]Test Process:[/bold]
 1. Connect and setup Power Supply + MCU
