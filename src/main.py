@@ -11,9 +11,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add src directory to Python path for module imports
-# This is required because main.py is in the root directory and all source code is in src/
-sys.path.append("src")
+# Module imports now work directly since main.py is in the src/ directory
 
 # Third-party imports
 from loguru import logger

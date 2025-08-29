@@ -13,9 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add src directory to Python path for module imports
-# This is required because main_cli.py is in the root directory and all source code is in src/
-sys.path.append("src")
+# Module imports now work directly since main_cli.py is in the src/ directory
 
 # Third-party imports
 from loguru import logger
@@ -40,12 +38,15 @@ async def main() -> None:
     # Force unbuffered output for real-time logging (Python environment variable equivalent)
     # This ensures logs appear immediately without keyboard input
     import os
-    os.environ['PYTHONUNBUFFERED'] = '1'
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+    os.environ["PYTHONUNBUFFERED"] = "1"
+    os.environ["PYTHONIOENCODING"] = "utf-8"
     # Additional buffering controls
-    sys.stdout.reconfigure(line_buffering=True)
-    sys.stderr.reconfigure(line_buffering=True)
-    
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(line_buffering=True)
+
     setup_logging(debug=False)
 
     try:
@@ -179,12 +180,14 @@ def setup_logging(debug: bool = False) -> None:
         colorize=True,  # Enable color output
         serialize=False,  # Disable serialization for faster output
         backtrace=True,
-        diagnose=True
+        diagnose=True,
     )
-    
+
     # Force immediate stdout/stderr flushing
-    sys.stderr.reconfigure(line_buffering=True)
-    sys.stdout.reconfigure(line_buffering=True)
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(line_buffering=True)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
 
     # File logging setup
     logs_directory = Path(LOGS_DIRECTORY_NAME)
