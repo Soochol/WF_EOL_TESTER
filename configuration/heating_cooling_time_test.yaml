@@ -39,6 +39,14 @@ fan_speed: 10           # Fan speed level (1-10)
 upper_temperature: 80.0 # Maximum temperature limit (°C)
 
 # ========================================================================
+# STABILIZATION TIME PARAMETERS (in seconds)
+# ========================================================================
+poweron_stabilization: 0.5  # Power-on stabilization time
+mcu_boot_complete_stabilization: 2.0  # MCU boot complete stabilization time
+mcu_command_stabilization: 0.1  # MCU command stabilization time
+mcu_temperature_stabilization: 0.1  # MCU temperature stabilization time
+
+# ========================================================================
 # STATISTICS PARAMETERS
 # ========================================================================
 calculate_statistics: true    # Calculate power consumption statistics

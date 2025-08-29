@@ -57,6 +57,14 @@ class HeatingCoolingConfiguration:
     upper_temperature: float = 80.0  # Maximum temperature limit (°C)
 
     # ========================================================================
+    # STABILIZATION TIME PARAMETERS
+    # ========================================================================
+    poweron_stabilization: float = 0.5  # Power-on stabilization time (s)
+    mcu_boot_complete_stabilization: float = 2.0  # MCU boot complete stabilization time (s)
+    mcu_command_stabilization: float = 0.1  # MCU command stabilization time (s)
+    mcu_temperature_stabilization: float = 0.1  # MCU temperature stabilization time (s)
+
+    # ========================================================================
     # STATISTICS PARAMETERS
     # ========================================================================
     calculate_statistics: bool = True  # Calculate power consumption statistics
@@ -87,6 +95,18 @@ class HeatingCoolingConfiguration:
 
         if not (1 <= self.fan_speed <= 10):
             raise ValueError("fan_speed must be between 1 and 10")
+
+        if self.poweron_stabilization < 0:
+            raise ValueError("poweron_stabilization must be non-negative")
+
+        if self.mcu_boot_complete_stabilization < 0:
+            raise ValueError("mcu_boot_complete_stabilization must be non-negative")
+
+        if self.mcu_command_stabilization < 0:
+            raise ValueError("mcu_command_stabilization must be non-negative")
+
+        if self.mcu_temperature_stabilization < 0:
+            raise ValueError("mcu_temperature_stabilization must be non-negative")
 
     @property
     def total_cycle_time_estimate(self) -> float:

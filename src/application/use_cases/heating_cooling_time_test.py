@@ -131,7 +131,6 @@ class HeatingCoolingTimeTestUseCase:
             # 1. Load configurations
             logger.info("Loading configurations...")
             await self._configuration_service.load_hardware_config()  # Validate config exists
-            test_config = await self._configuration_service.load_test_config("default")
             
             # Load heating/cooling specific configuration
             hc_config = await self._configuration_service.load_heating_cooling_config()
@@ -157,35 +156,35 @@ class HeatingCoolingTimeTestUseCase:
             await power_service.set_voltage(hc_config.voltage)
             await power_service.set_current(hc_config.current)
             await power_service.enable_output()
-            await asyncio.sleep(test_config.poweron_stabilization)
+            await asyncio.sleep(hc_config.poweron_stabilization)
 
             # 5. Wait for MCU boot completion
             logger.info("Waiting for MCU boot completion...")
             await mcu_service.wait_boot_complete()
-            await asyncio.sleep(test_config.mcu_boot_complete_stabilization)
+            await asyncio.sleep(hc_config.mcu_boot_complete_stabilization)
 
             # 6. MCU setup
             logger.info("Setting up MCU...")
             await mcu_service.set_test_mode(TestMode.MODE_1)
-            await asyncio.sleep(test_config.mcu_command_stabilization)
+            await asyncio.sleep(hc_config.mcu_command_stabilization)
 
             await mcu_service.set_upper_temperature(hc_config.upper_temperature)
-            await asyncio.sleep(test_config.mcu_command_stabilization)
+            await asyncio.sleep(hc_config.mcu_command_stabilization)
 
             await mcu_service.set_fan_speed(hc_config.fan_speed)
-            await asyncio.sleep(test_config.mcu_command_stabilization)
+            await asyncio.sleep(hc_config.mcu_command_stabilization)
 
             # 7. Initial temperature setup (set to standby)
             logger.info("Setting initial temperature to standby...")
             await mcu_service.start_standby_heating(
                 operating_temp=hc_config.activation_temperature, standby_temp=hc_config.standby_temperature
             )
-            await asyncio.sleep(test_config.mcu_command_stabilization)
+            await asyncio.sleep(hc_config.mcu_command_stabilization)
 
             # Cool down to standby temperature
             await mcu_service.start_standby_cooling()
             logger.info(f"Initial cooling to standby temperature ({hc_config.standby_temperature}°C)...")
-            await asyncio.sleep(test_config.mcu_temperature_stabilization)
+            await asyncio.sleep(hc_config.mcu_temperature_stabilization)
 
             # Clear timing history (exclude initial setup)
             mcu_service.clear_timing_history()

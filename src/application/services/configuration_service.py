@@ -222,6 +222,10 @@ class ConfigurationService:
                 current=yaml_data.get('current', 25.0),
                 fan_speed=yaml_data.get('fan_speed', 10),
                 upper_temperature=yaml_data.get('upper_temperature', 80.0),
+                poweron_stabilization=yaml_data.get('poweron_stabilization', 0.5),
+                mcu_boot_complete_stabilization=yaml_data.get('mcu_boot_complete_stabilization', 2.0),
+                mcu_command_stabilization=yaml_data.get('mcu_command_stabilization', 0.1),
+                mcu_temperature_stabilization=yaml_data.get('mcu_temperature_stabilization', 0.1),
                 calculate_statistics=yaml_data.get('calculate_statistics', True),
                 show_detailed_results=yaml_data.get('show_detailed_results', True)
             )
@@ -282,6 +286,14 @@ current: {default_config.current}  # Operating current (A)
 # ========================================================================
 fan_speed: {default_config.fan_speed}           # Fan speed level (1-10)
 upper_temperature: {default_config.upper_temperature} # Maximum temperature limit (°C)
+
+# ========================================================================
+# STABILIZATION TIME PARAMETERS (in seconds)
+# ========================================================================
+poweron_stabilization: {default_config.poweron_stabilization}  # Power-on stabilization time
+mcu_boot_complete_stabilization: {default_config.mcu_boot_complete_stabilization}  # MCU boot complete stabilization time
+mcu_command_stabilization: {default_config.mcu_command_stabilization}  # MCU command stabilization time
+mcu_temperature_stabilization: {default_config.mcu_temperature_stabilization}  # MCU temperature stabilization time
 
 # ========================================================================
 # STATISTICS PARAMETERS
