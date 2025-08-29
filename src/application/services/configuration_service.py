@@ -208,27 +208,8 @@ class ConfigurationService:
             with open(config_file, 'r', encoding='utf-8') as f:
                 yaml_data = yaml.safe_load(f)
 
-            # Extract configuration parameters, using defaults for missing values
-            config = HeatingCoolingConfiguration(
-                repeat_count=yaml_data.get('repeat_count', 1),
-                heating_wait_time=yaml_data.get('heating_wait_time', 2.0),
-                cooling_wait_time=yaml_data.get('cooling_wait_time', 2.0),
-                stabilization_wait_time=yaml_data.get('stabilization_wait_time', 1.0),
-                power_monitoring_interval=yaml_data.get('power_monitoring_interval', 0.5),
-                power_monitoring_enabled=yaml_data.get('power_monitoring_enabled', True),
-                activation_temperature=yaml_data.get('activation_temperature', 52.0),
-                standby_temperature=yaml_data.get('standby_temperature', 38.0),
-                voltage=yaml_data.get('voltage', 38.0),
-                current=yaml_data.get('current', 25.0),
-                fan_speed=yaml_data.get('fan_speed', 10),
-                upper_temperature=yaml_data.get('upper_temperature', 80.0),
-                poweron_stabilization=yaml_data.get('poweron_stabilization', 0.5),
-                mcu_boot_complete_stabilization=yaml_data.get('mcu_boot_complete_stabilization', 2.0),
-                mcu_command_stabilization=yaml_data.get('mcu_command_stabilization', 0.1),
-                mcu_temperature_stabilization=yaml_data.get('mcu_temperature_stabilization', 0.1),
-                calculate_statistics=yaml_data.get('calculate_statistics', True),
-                show_detailed_results=yaml_data.get('show_detailed_results', True)
-            )
+            # Create configuration from YAML data with automatic defaults
+            config = HeatingCoolingConfiguration.from_dict(yaml_data)
             
             logger.info("Heating/cooling configuration loaded successfully")
             return config
@@ -247,6 +228,9 @@ class ConfigurationService:
         """Create default heating/cooling configuration YAML file"""
         from datetime import datetime
         
+        # Use to_dict for the main configuration data
+        config_data = default_config.to_dict()
+        
         yaml_content = f"""# Heating/Cooling Time Test Configuration
 # Configuration parameters for heating/cooling time test including
 # wait times, power monitoring settings, and test execution parameters.
@@ -254,52 +238,52 @@ class ConfigurationService:
 # ========================================================================
 # TEST EXECUTION PARAMETERS
 # ========================================================================
-repeat_count: {default_config.repeat_count}  # Number of heating/cooling cycles to perform
+repeat_count: {config_data['repeat_count']}  # Number of heating/cooling cycles to perform
 
 # ========================================================================
 # WAIT TIME PARAMETERS (in seconds)
 # ========================================================================
-heating_wait_time: {default_config.heating_wait_time}  # Wait time after heating completes
-cooling_wait_time: {default_config.cooling_wait_time}  # Wait time after cooling completes  
-stabilization_wait_time: {default_config.stabilization_wait_time}  # Wait time for temperature stabilization
+heating_wait_time: {config_data['heating_wait_time']}  # Wait time after heating completes
+cooling_wait_time: {config_data['cooling_wait_time']}  # Wait time after cooling completes  
+stabilization_wait_time: {config_data['stabilization_wait_time']}  # Wait time for temperature stabilization
 
 # ========================================================================
 # POWER MONITORING PARAMETERS
 # ========================================================================
-power_monitoring_interval: {default_config.power_monitoring_interval}  # Power measurement interval (seconds)
-power_monitoring_enabled: {str(default_config.power_monitoring_enabled).lower()}  # Enable/disable power monitoring
+power_monitoring_interval: {config_data['power_monitoring_interval']}  # Power measurement interval (seconds)
+power_monitoring_enabled: {str(config_data['power_monitoring_enabled']).lower()}  # Enable/disable power monitoring
 
 # ========================================================================
 # TEMPERATURE PARAMETERS (°C)
 # ========================================================================
-activation_temperature: {default_config.activation_temperature}  # Temperature activation threshold
-standby_temperature: {default_config.standby_temperature}     # Standby temperature setting
+activation_temperature: {config_data['activation_temperature']}  # Temperature activation threshold
+standby_temperature: {config_data['standby_temperature']}     # Standby temperature setting
 
 # ========================================================================
 # POWER SUPPLY PARAMETERS
 # ========================================================================
-voltage: {default_config.voltage}  # Operating voltage (V)
-current: {default_config.current}  # Operating current (A)
+voltage: {config_data['voltage']}  # Operating voltage (V)
+current: {config_data['current']}  # Operating current (A)
 
 # ========================================================================
 # MCU PARAMETERS
 # ========================================================================
-fan_speed: {default_config.fan_speed}           # Fan speed level (1-10)
-upper_temperature: {default_config.upper_temperature} # Maximum temperature limit (°C)
+fan_speed: {config_data['fan_speed']}           # Fan speed level (1-10)
+upper_temperature: {config_data['upper_temperature']} # Maximum temperature limit (°C)
 
 # ========================================================================
 # STABILIZATION TIME PARAMETERS (in seconds)
 # ========================================================================
-poweron_stabilization: {default_config.poweron_stabilization}  # Power-on stabilization time
-mcu_boot_complete_stabilization: {default_config.mcu_boot_complete_stabilization}  # MCU boot complete stabilization time
-mcu_command_stabilization: {default_config.mcu_command_stabilization}  # MCU command stabilization time
-mcu_temperature_stabilization: {default_config.mcu_temperature_stabilization}  # MCU temperature stabilization time
+poweron_stabilization: {config_data['poweron_stabilization']}  # Power-on stabilization time
+mcu_boot_complete_stabilization: {config_data['mcu_boot_complete_stabilization']}  # MCU boot complete stabilization time
+mcu_command_stabilization: {config_data['mcu_command_stabilization']}  # MCU command stabilization time
+mcu_temperature_stabilization: {config_data['mcu_temperature_stabilization']}  # MCU temperature stabilization time
 
 # ========================================================================
 # STATISTICS PARAMETERS
 # ========================================================================
-calculate_statistics: {str(default_config.calculate_statistics).lower()}    # Calculate power consumption statistics
-show_detailed_results: {str(default_config.show_detailed_results).lower()}   # Show detailed cycle-by-cycle results
+calculate_statistics: {str(config_data['calculate_statistics']).lower()}    # Calculate power consumption statistics
+show_detailed_results: {str(config_data['show_detailed_results']).lower()}   # Show detailed cycle-by-cycle results
 
 # ========================================================================
 # METADATA
