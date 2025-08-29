@@ -223,6 +223,10 @@ class HeatingCoolingTestController:
         if not full_cycle_power or full_cycle_power.get("sample_count", 0) == 0:
             return
 
+        # Get configuration information for accurate interval display
+        config = measurements.get("configuration", {})
+        power_monitoring_interval = config.get("power_monitoring_interval", 0.5)
+
         self.console.print("\n[bold cyan]Full Cycle Power Analysis[/bold cyan]")
         
         power_analysis_table = Table(title="Complete Test Power Measurements")
@@ -265,7 +269,7 @@ class HeatingCoolingTestController:
         power_analysis_table.add_row(
             "Sample Count", 
             str(samples), 
-            f"Data points collected at 0.5s intervals"
+            f"Data points collected at {power_monitoring_interval}s intervals"
         )
         
         self.console.print(power_analysis_table)
