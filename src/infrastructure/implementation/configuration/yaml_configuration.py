@@ -113,31 +113,13 @@ class YamlConfiguration:
         return TestConfiguration.from_structured_dict(data)
 
     async def load_hardware_config(self) -> HardwareConfig:
-        """Load unified hardware configuration from application.yaml"""
-        app_config_path = self.config_dir / "application.yaml"
-
-        if not app_config_path.exists():
-            logger.info("No application.yaml found, creating default hardware configuration")
-            return HardwareConfig()  # Default constructor creates all mock hardware
-
-        # Load from application.yaml
-        try:
-            with open(app_config_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-
-            # Extract hardware section from application.yaml
-            hardware_data = data.get("hardware", {})
-
-            if not hardware_data:
-                logger.warning("No hardware section found in application.yaml, using defaults")
-                return HardwareConfig()
-
-            return HardwareConfig.from_dict(hardware_data)
-
-        except Exception as e:
-            logger.error(f"Failed to load hardware configuration from {app_config_path}: {e}")
-            logger.info("Using default hardware configuration")
-            return HardwareConfig()
+        """Load unified hardware configuration
+        
+        Note: Hardware configuration is now managed separately from application.yaml.
+        This method returns default hardware configuration.
+        """
+        logger.info("Using default hardware configuration")
+        return HardwareConfig()  # Default constructor creates all mock hardware
 
     async def list_available_profiles(self) -> List[str]:
         """List available configuration profiles"""

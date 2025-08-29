@@ -171,20 +171,14 @@ class HeatingCoolingTestController:
             heating_table.add_column("Transition", style="white")
             heating_table.add_column("ACK Time (ms)", style="yellow")
             heating_table.add_column("Total Time (ms)", style="bright_green")
-            heating_table.add_column("Avg Power (W)", style="red")
-            heating_table.add_column("Energy (Wh)", style="magenta")
             heating_table.add_column("Timestamp", style="dim")
 
             for i, measurement in enumerate(heating_measurements, 1):
-                # Use full cycle power data instead of individual measurement power data
-                full_cycle_power = measurements.get("full_cycle_power_data", {})
                 heating_table.add_row(
                     str(i),
                     measurement.get("transition", "N/A"),
                     f"{measurement.get('ack_duration_ms', 0):.1f}",
                     f"{measurement.get('total_duration_ms', 0):.1f}",
-                    f"{full_cycle_power.get('average_power_watts', 0):.1f}",
-                    f"{full_cycle_power.get('total_energy_wh', 0):.4f}",
                     measurement.get("timestamp", "N/A")[:19].replace("T", " "),
                 )
 
@@ -196,21 +190,15 @@ class HeatingCoolingTestController:
             cooling_table.add_column("Cycle", style="cyan")
             cooling_table.add_column("Transition", style="white")
             cooling_table.add_column("ACK Time (ms)", style="yellow")
-            cooling_table.add_column("Total Time (ms)", style="bright_blue")
-            cooling_table.add_column("Avg Power (W)", style="red")
-            cooling_table.add_column("Energy (Wh)", style="magenta")
+            cooling_table.add_column("Total Time (ms)", style="bright_cyan")
             cooling_table.add_column("Timestamp", style="dim")
 
             for i, measurement in enumerate(cooling_measurements, 1):
-                # Use full cycle power data instead of individual measurement power data
-                full_cycle_power = measurements.get("full_cycle_power_data", {})
                 cooling_table.add_row(
                     str(i),
                     measurement.get("transition", "N/A"),
                     f"{measurement.get('ack_duration_ms', 0):.1f}",
                     f"{measurement.get('total_duration_ms', 0):.1f}",
-                    f"{full_cycle_power.get('average_power_watts', 0):.1f}",
-                    f"{full_cycle_power.get('total_energy_wh', 0):.4f}",
                     measurement.get("timestamp", "N/A")[:19].replace("T", " "),
                 )
 
