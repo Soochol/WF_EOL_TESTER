@@ -191,8 +191,8 @@ class HeatingCoolingTimeTestUseCase:
 
             # 8. Start power monitoring BEFORE heating/cooling operations begin
             if hc_config.power_monitoring_enabled:
-                logger.info("🔋 Starting power monitoring BEFORE heating/cooling operations...")
-                logger.info(f"Power Monitor object: {self._power_monitor} (type: {type(self._power_monitor)})")
+                logger.debug("🔋 Starting power monitoring BEFORE heating/cooling operations...")
+                logger.debug(f"Power Monitor object: {self._power_monitor} (type: {type(self._power_monitor)})")
                 logger.info(f"Power Monitor is_monitoring: {self._power_monitor.is_monitoring()}")
                 
                 try:

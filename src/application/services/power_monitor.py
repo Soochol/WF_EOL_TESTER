@@ -43,7 +43,7 @@ class PowerMonitor:
         Args:
             interval: Sampling interval in seconds (default: 0.5s)
         """
-        logger.info(f"🔋 PowerMonitor.start_monitoring() called with interval={interval}s")
+        logger.debug(f"🔋 PowerMonitor.start_monitoring() called with interval={interval}s")
         
         if self._is_monitoring:
             logger.warning("Power monitoring is already active")
@@ -54,7 +54,7 @@ class PowerMonitor:
             logger.error("❌ Power service is None - cannot start monitoring")
             raise RuntimeError("Power service is not initialized")
         
-        logger.info(f"Power service object: {self._power_service} (type: {type(self._power_service)})")
+        logger.debug(f"Power service object: {self._power_service} (type: {type(self._power_service)})")
         
         try:
             # Test power service connection
