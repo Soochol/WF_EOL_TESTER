@@ -545,7 +545,7 @@ class OdaPower(PowerService):
             logger.info(f"Cleaned response: '{response_clean}' (length: {len(response_clean)})")
             
             values = response_clean.split(',')
-            logger.info(f"Split values: {values} (count: {len(values)})")
+            logger.debug(f"Split values: {values} (count: {len(values)})")
             
             if len(values) != 2:
                 logger.error(f"Invalid MEAS:ALL? response format. Expected 2 values, got {len(values)}")
@@ -558,7 +558,7 @@ class OdaPower(PowerService):
             try:
                 voltage = float(values[0])
                 current = float(values[1])
-                logger.info(f"Parsed values - Voltage: {voltage}, Current: {current}")
+                logger.debug(f"Parsed values - Voltage: {voltage}, Current: {current}")
             except (ValueError, IndexError) as e:
                 logger.error(f"Failed to parse voltage/current values: {values}, error: {e}")
                 raise
