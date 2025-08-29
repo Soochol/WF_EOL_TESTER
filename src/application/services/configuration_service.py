@@ -21,6 +21,7 @@ from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import (
     TestConfiguration,
 )
+from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 
 
 class ConfigPaths:
@@ -33,6 +34,7 @@ class ConfigPaths:
     # Default paths for repositories
     DEFAULT_PROFILE_PREFERENCE_PATH = "configuration/profile_preferences.json"
     DEFAULT_TEST_PROFILES_DIR = "configuration/test_profiles"
+    DEFAULT_HEATING_COOLING_CONFIG = "configuration/heating_cooling_time_test.yaml"
 
 
 class ConfigurationService:
@@ -165,6 +167,151 @@ class ConfigurationService:
                 reason=str(e),
                 file_path=app_config_path,
             ) from e
+
+    async def load_heating_cooling_config(
+        self, config_path: Optional[str] = None
+    ) -> HeatingCoolingConfiguration:
+        """
+        Load heating/cooling configuration from YAML file or create with defaults
+
+        Args:
+            config_path: Path to heating/cooling configuration file
+
+        Returns:
+            HeatingCoolingConfiguration object
+
+        Raises:
+            RepositoryAccessError: If loading fails after file creation attempt
+        """
+        try:
+            if config_path is None:
+                config_path = ConfigPaths.DEFAULT_HEATING_COOLING_CONFIG
+            config_file = Path(config_path)
+
+            # If file doesn't exist, create it with defaults
+            if not config_file.exists():
+                logger.info(f"Heating/cooling config not found: {config_path}")
+                logger.info("Creating default heating/cooling configuration file...")
+                
+                # Create directory if it doesn't exist
+                config_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Create default configuration and write to file
+                default_config = HeatingCoolingConfiguration()
+                await self._create_default_heating_cooling_config_file(config_file, default_config)
+                
+                logger.info(f"Created default configuration file: {config_path}")
+                return default_config
+
+            # Load existing file
+            logger.info(f"Loading heating/cooling configuration from {config_path}")
+            with open(config_file, 'r', encoding='utf-8') as f:
+                yaml_data = yaml.safe_load(f)
+
+            # Extract configuration parameters, using defaults for missing values
+            config = HeatingCoolingConfiguration(
+                repeat_count=yaml_data.get('repeat_count', 1),
+                heating_wait_time=yaml_data.get('heating_wait_time', 2.0),
+                cooling_wait_time=yaml_data.get('cooling_wait_time', 2.0),
+                stabilization_wait_time=yaml_data.get('stabilization_wait_time', 1.0),
+                power_monitoring_interval=yaml_data.get('power_monitoring_interval', 0.5),
+                power_monitoring_enabled=yaml_data.get('power_monitoring_enabled', True),
+                activation_temperature=yaml_data.get('activation_temperature', 52.0),
+                standby_temperature=yaml_data.get('standby_temperature', 38.0),
+                voltage=yaml_data.get('voltage', 38.0),
+                current=yaml_data.get('current', 25.0),
+                fan_speed=yaml_data.get('fan_speed', 10),
+                upper_temperature=yaml_data.get('upper_temperature', 80.0),
+                calculate_statistics=yaml_data.get('calculate_statistics', True),
+                show_detailed_results=yaml_data.get('show_detailed_results', True)
+            )
+            
+            logger.info("Heating/cooling configuration loaded successfully")
+            return config
+
+        except Exception as e:
+            logger.error(f"Failed to load heating/cooling config from {config_path}: {e}")
+            raise RepositoryAccessError(
+                operation="load_heating_cooling_config",
+                reason=str(e),
+                file_path=config_path,
+            ) from e
+
+    async def _create_default_heating_cooling_config_file(
+        self, config_file: Path, default_config: HeatingCoolingConfiguration
+    ) -> None:
+        """Create default heating/cooling configuration YAML file"""
+        from datetime import datetime
+        
+        yaml_content = f"""# Heating/Cooling Time Test Configuration
+# Configuration parameters for heating/cooling time test including
+# wait times, power monitoring settings, and test execution parameters.
+
+# ========================================================================
+# TEST EXECUTION PARAMETERS
+# ========================================================================
+repeat_count: {default_config.repeat_count}  # Number of heating/cooling cycles to perform
+
+# ========================================================================
+# WAIT TIME PARAMETERS (in seconds)
+# ========================================================================
+heating_wait_time: {default_config.heating_wait_time}  # Wait time after heating completes
+cooling_wait_time: {default_config.cooling_wait_time}  # Wait time after cooling completes  
+stabilization_wait_time: {default_config.stabilization_wait_time}  # Wait time for temperature stabilization
+
+# ========================================================================
+# POWER MONITORING PARAMETERS
+# ========================================================================
+power_monitoring_interval: {default_config.power_monitoring_interval}  # Power measurement interval (seconds)
+power_monitoring_enabled: {str(default_config.power_monitoring_enabled).lower()}  # Enable/disable power monitoring
+
+# ========================================================================
+# TEMPERATURE PARAMETERS (°C)
+# ========================================================================
+activation_temperature: {default_config.activation_temperature}  # Temperature activation threshold
+standby_temperature: {default_config.standby_temperature}     # Standby temperature setting
+
+# ========================================================================
+# POWER SUPPLY PARAMETERS
+# ========================================================================
+voltage: {default_config.voltage}  # Operating voltage (V)
+current: {default_config.current}  # Operating current (A)
+
+# ========================================================================
+# MCU PARAMETERS
+# ========================================================================
+fan_speed: {default_config.fan_speed}           # Fan speed level (1-10)
+upper_temperature: {default_config.upper_temperature} # Maximum temperature limit (°C)
+
+# ========================================================================
+# STATISTICS PARAMETERS
+# ========================================================================
+calculate_statistics: {str(default_config.calculate_statistics).lower()}    # Calculate power consumption statistics
+show_detailed_results: {str(default_config.show_detailed_results).lower()}   # Show detailed cycle-by-cycle results
+
+# ========================================================================
+# METADATA
+# ========================================================================
+metadata:
+  created_at: '{datetime.now().isoformat()}'
+  created_by: 'ConfigurationService (auto-generated)'
+  version: '1.0.0'
+  description: 'Heating/Cooling Time Test configuration with power monitoring'
+  notes: |
+    This configuration file contains parameters for heating/cooling time tests.
+    
+    Key parameters:
+    - Wait times control delays between heating/cooling phases
+    - Power monitoring tracks energy consumption during test cycles
+    - Temperature parameters define test operating ranges
+    - Statistics options control data analysis and display
+    
+    Modify these values to customize test behavior according to your
+    hardware specifications and testing requirements.
+"""
+        
+        with open(config_file, 'w', encoding='utf-8') as f:
+            f.write(yaml_content)
 
     async def load_dut_defaults(self, profile_name: Optional[str] = None) -> Dict[str, str]:
         """

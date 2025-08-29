@@ -6,10 +6,7 @@ Tests temperature transitions between standby and activation temperatures.
 """
 
 import asyncio
-import os
-from pathlib import Path
 from typing import Any, Dict, Optional
-import yaml
 
 from loguru import logger
 
@@ -20,7 +17,6 @@ from domain.enums.mcu_enums import TestMode
 from domain.enums.test_status import TestStatus
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration
-from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 
 
 class HeatingCoolingTimeTestCommand:
@@ -138,7 +134,7 @@ class HeatingCoolingTimeTestUseCase:
             test_config = await self._configuration_service.load_test_config("default")
             
             # Load heating/cooling specific configuration
-            hc_config = await self._load_heating_cooling_config()
+            hc_config = await self._configuration_service.load_heating_cooling_config()
 
             # 2. Get temperature settings from hc_config
             logger.info(f"Temperature range: {hc_config.standby_temperature}°C ↔ {hc_config.activation_temperature}°C")
@@ -378,50 +374,3 @@ class HeatingCoolingTimeTestUseCase:
             self._is_running = False
             logger.info(f"Heating/Cooling Time Test completed - ID: {test_id}")
 
-    async def _load_heating_cooling_config(self) -> HeatingCoolingConfiguration:
-        """
-        Load heating/cooling configuration from YAML file or create with defaults
-        
-        Returns:
-            HeatingCoolingConfiguration object
-        """
-        config_file = Path("configuration/heating_cooling_time_test.yaml")
-        
-        if config_file.exists():
-            logger.info(f"Loading heating/cooling configuration from {config_file}")
-            try:
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    yaml_data = yaml.safe_load(f)
-                
-                # Extract configuration parameters, using defaults for missing values
-                return HeatingCoolingConfiguration(
-                    repeat_count=yaml_data.get('repeat_count', 1),
-                    heating_wait_time=yaml_data.get('heating_wait_time', 2.0),
-                    cooling_wait_time=yaml_data.get('cooling_wait_time', 2.0),
-                    stabilization_wait_time=yaml_data.get('stabilization_wait_time', 1.0),
-                    power_monitoring_interval=yaml_data.get('power_monitoring_interval', 0.5),
-                    power_monitoring_enabled=yaml_data.get('power_monitoring_enabled', True),
-                    activation_temperature=yaml_data.get('activation_temperature', 52.0),
-                    standby_temperature=yaml_data.get('standby_temperature', 38.0),
-                    voltage=yaml_data.get('voltage', 38.0),
-                    current=yaml_data.get('current', 25.0),
-                    fan_speed=yaml_data.get('fan_speed', 10),
-                    upper_temperature=yaml_data.get('upper_temperature', 80.0),
-                    calculate_statistics=yaml_data.get('calculate_statistics', True),
-                    show_detailed_results=yaml_data.get('show_detailed_results', True)
-                )
-                
-            except Exception as e:
-                logger.warning(f"Failed to load configuration from {config_file}: {e}")
-                logger.info("Using default configuration")
-                return HeatingCoolingConfiguration()
-        else:
-            logger.info(f"Configuration file {config_file} not found")
-            logger.info("Creating default configuration file")
-            
-            # Create default configuration
-            default_config = HeatingCoolingConfiguration()
-            
-            # Configuration file should already exist from our previous creation
-            # But if it doesn't, we use the default values
-            return default_config
