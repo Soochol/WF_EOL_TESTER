@@ -189,26 +189,31 @@ class HeatingCoolingTimeTestUseCase:
             # Clear timing history (exclude initial setup)
             mcu_service.clear_timing_history()
 
-            # 8. Perform test cycles with full-cycle power monitoring
+            # 8. Start power monitoring BEFORE heating/cooling operations begin
+            if hc_config.power_monitoring_enabled:
+                logger.info("🔋 Starting power monitoring BEFORE heating/cooling operations...")
+                logger.info(f"Power Monitor object: {self._power_monitor} (type: {type(self._power_monitor)})")
+                logger.info(f"Power Monitor is_monitoring: {self._power_monitor.is_monitoring()}")
+                
+                try:
+                    await self._power_monitor.start_monitoring(interval=hc_config.power_monitoring_interval)
+                    logger.info("✅ Power monitoring started successfully")
+                    
+                    # Wait a moment to ensure monitoring loop starts before heating/cooling operations
+                    await asyncio.sleep(0.2)
+                    logger.info("🔋 Power monitoring loop ready - starting heating/cooling operations")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Failed to start power monitoring: {e}")
+                    logger.exception("Power monitoring start exception details:")
+
+            # 9. Perform test cycles with full-cycle power monitoring
             heating_results = []
             cooling_results = []
             
             # Override repeat count from hc_config if different
             actual_repeat_count = hc_config.repeat_count if hc_config.repeat_count != 1 else command.repeat_count
             logger.info(f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, command: {command.repeat_count})")
-
-            # Start power monitoring for ENTIRE test cycle
-            if hc_config.power_monitoring_enabled:
-                logger.info("🔋 Starting power monitoring for ENTIRE test cycle...")
-                logger.info(f"Power Monitor object: {self._power_monitor} (type: {type(self._power_monitor)})")
-                logger.info(f"Power Monitor is_monitoring: {self._power_monitor.is_monitoring()}")
-                
-                try:
-                    await self._power_monitor.start_monitoring(interval=hc_config.power_monitoring_interval)
-                    logger.info("✅ Power monitoring started successfully for full cycle")
-                except Exception as e:
-                    logger.error(f"❌ Failed to start power monitoring: {e}")
-                    logger.exception("Power monitoring start exception details:")
 
             for i in range(actual_repeat_count):
                 logger.info(f"=== Test Cycle {i+1}/{actual_repeat_count} ===")

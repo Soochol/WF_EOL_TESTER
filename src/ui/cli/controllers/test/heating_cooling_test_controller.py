@@ -136,11 +136,6 @@ class HeatingCoolingTestController:
         )
         stats_table.add_row("Average Total Time", f"{avg_heating:.1f}ms", f"{avg_cooling:.1f}ms")
         stats_table.add_row(
-            "Average Power",
-            f"{stats.get('full_cycle_average_power_watts', 0):.1f}W",
-            f"{stats.get('full_cycle_average_power_watts', 0):.1f}W",
-        )
-        stats_table.add_row(
             "Cycles Completed",
             str(stats.get("total_heating_cycles", 0)),
             str(stats.get("total_cooling_cycles", 0)),
@@ -277,10 +272,6 @@ class HeatingCoolingTestController:
         cooling_energy = total_energy / 2 if total_energy > 0 else 0  # Approximate split
         power_ratio = stats.get("power_ratio_heating_to_cooling", 0)
 
-        # Cost calculation (Korean electricity rate: ~150 KRW/kWh)
-        electricity_rate = 150.0  # KRW per kWh
-        total_cost = total_energy * electricity_rate / 1000  # Convert Wh to kWh
-
         power_table.add_row("Total Energy Consumed", f"{total_energy:.3f} Wh")
         power_table.add_row(
             "Heating Energy",
@@ -300,23 +291,6 @@ class HeatingCoolingTestController:
         )
         power_table.add_row(
             "Power Ratio (H:C)", f"{power_ratio:.1f}:1" if power_ratio > 0 else "N/A"
-        )
-        power_table.add_row("Estimated Cost", f"₩{total_cost:.4f}")
-
-        # Annual cost estimation (assuming 8 hours/day operation)
-        cycles_per_hour = (
-            60
-            / (
-                (stats.get("average_heating_time_ms", 0) + stats.get("average_cooling_time_ms", 0))
-                / 1000
-                / 60
-            )
-            if stats.get("average_heating_time_ms", 0) + stats.get("average_cooling_time_ms", 0) > 0
-            else 0
-        )
-        annual_cost = total_cost * cycles_per_hour * 8 * 365 if cycles_per_hour > 0 else 0
-        power_table.add_row(
-            "Annual Cost Estimate", f"₩{annual_cost:.0f}" if annual_cost > 0 else "N/A"
         )
 
         self.console.print(power_table)
