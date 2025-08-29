@@ -587,7 +587,7 @@ class LMAMCU(MCUService):
         try:
             if len(packet) >= 14 and packet[2] == 0x07:
                 ir_temp, outside_temp = self._parse_temperature_packet(packet)
-                logger.info(f"🌡️  Current temperature - IR: {ir_temp:.1f}°C, Outside: {outside_temp:.1f}°C")
+                logger.info(f"🌡️  Current temperature - <fg #ff6b35>IR: {ir_temp:.1f}°C</fg>, <fg #4a90e2>Outside: {outside_temp:.1f}°C</fg>")
             else:
                 logger.warning(f"Invalid temperature packet: {packet.hex().upper()}")
         except Exception as e:
