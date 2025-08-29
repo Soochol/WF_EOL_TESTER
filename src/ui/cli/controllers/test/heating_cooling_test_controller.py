@@ -135,8 +135,8 @@ class HeatingCoolingTestController:
         stats_table.add_row("Average Total Time", f"{avg_heating:.1f}ms", f"{avg_cooling:.1f}ms")
         stats_table.add_row(
             "Average Power",
-            f"{stats.get('average_heating_power_watts', 0):.1f}W",
-            f"{stats.get('average_cooling_power_watts', 0):.1f}W",
+            f"{stats.get('full_cycle_average_power_watts', 0):.1f}W",
+            f"{stats.get('full_cycle_average_power_watts', 0):.1f}W",
         )
         stats_table.add_row(
             "Cycles Completed",
@@ -145,6 +145,9 @@ class HeatingCoolingTestController:
         )
 
         self.console.print(stats_table)
+
+        # Full Cycle Power Analysis
+        self._display_full_cycle_power_analysis(measurements)
 
         # Power Consumption Summary
         self._display_power_summary(stats)
@@ -171,14 +174,15 @@ class HeatingCoolingTestController:
             heating_table.add_column("Timestamp", style="dim")
 
             for i, measurement in enumerate(heating_measurements, 1):
-                power_data = measurement.get("power_consumption", {})
+                # Use full cycle power data instead of individual measurement power data
+                full_cycle_power = measurements.get("full_cycle_power_data", {})
                 heating_table.add_row(
                     str(i),
                     measurement.get("transition", "N/A"),
                     f"{measurement.get('ack_duration_ms', 0):.1f}",
                     f"{measurement.get('total_duration_ms', 0):.1f}",
-                    f"{power_data.get('average_power_watts', 0):.1f}",
-                    f"{power_data.get('total_energy_wh', 0):.4f}",
+                    f"{full_cycle_power.get('average_power_watts', 0):.1f}",
+                    f"{full_cycle_power.get('total_energy_wh', 0):.4f}",
                     measurement.get("timestamp", "N/A")[:19].replace("T", " "),
                 )
 
@@ -196,18 +200,73 @@ class HeatingCoolingTestController:
             cooling_table.add_column("Timestamp", style="dim")
 
             for i, measurement in enumerate(cooling_measurements, 1):
-                power_data = measurement.get("power_consumption", {})
+                # Use full cycle power data instead of individual measurement power data
+                full_cycle_power = measurements.get("full_cycle_power_data", {})
                 cooling_table.add_row(
                     str(i),
                     measurement.get("transition", "N/A"),
                     f"{measurement.get('ack_duration_ms', 0):.1f}",
                     f"{measurement.get('total_duration_ms', 0):.1f}",
-                    f"{power_data.get('average_power_watts', 0):.1f}",
-                    f"{power_data.get('total_energy_wh', 0):.4f}",
+                    f"{full_cycle_power.get('average_power_watts', 0):.1f}",
+                    f"{full_cycle_power.get('total_energy_wh', 0):.4f}",
                     measurement.get("timestamp", "N/A")[:19].replace("T", " "),
                 )
 
             self.console.print(cooling_table)
+
+    def _display_full_cycle_power_analysis(self, measurements: Dict) -> None:
+        """Display full cycle power analysis"""
+        
+        full_cycle_power = measurements.get("full_cycle_power_data", {})
+        if not full_cycle_power or full_cycle_power.get("sample_count", 0) == 0:
+            return
+
+        self.console.print("\n[bold cyan]Full Cycle Power Analysis[/bold cyan]")
+        
+        power_analysis_table = Table(title="Complete Test Power Measurements")
+        power_analysis_table.add_column("Metric", style="cyan")
+        power_analysis_table.add_column("Value", style="white")
+        power_analysis_table.add_column("Details", style="dim")
+        
+        avg_power = full_cycle_power.get("average_power_watts", 0)
+        peak_power = full_cycle_power.get("peak_power_watts", 0)
+        min_power = full_cycle_power.get("min_power_watts", 0)
+        total_energy = full_cycle_power.get("total_energy_wh", 0)
+        duration = full_cycle_power.get("duration_seconds", 0)
+        samples = full_cycle_power.get("sample_count", 0)
+        
+        power_analysis_table.add_row(
+            "Average Power", 
+            f"{avg_power:.1f}W", 
+            "Mean power throughout entire test"
+        )
+        power_analysis_table.add_row(
+            "Peak Power", 
+            f"{peak_power:.1f}W", 
+            "Maximum instantaneous power"
+        )
+        power_analysis_table.add_row(
+            "Minimum Power", 
+            f"{min_power:.1f}W", 
+            "Lowest instantaneous power"
+        )
+        power_analysis_table.add_row(
+            "Total Energy", 
+            f"{total_energy:.4f}Wh", 
+            "Complete test energy consumption"
+        )
+        power_analysis_table.add_row(
+            "Measurement Duration", 
+            f"{duration:.1f}s", 
+            f"Power monitoring period"
+        )
+        power_analysis_table.add_row(
+            "Sample Count", 
+            str(samples), 
+            f"Data points collected at 0.5s intervals"
+        )
+        
+        self.console.print(power_analysis_table)
 
     def _display_power_summary(self, stats: Dict) -> None:
         """Display power consumption summary"""
@@ -219,8 +278,9 @@ class HeatingCoolingTestController:
         power_table.add_column("Value", style="white")
 
         total_energy = stats.get("total_energy_consumed_wh", 0)
-        heating_energy = stats.get("total_energy_heating_wh", 0)
-        cooling_energy = stats.get("total_energy_cooling_wh", 0)
+        # Full cycle monitoring doesn't separate heating/cooling energy
+        heating_energy = total_energy / 2 if total_energy > 0 else 0  # Approximate split
+        cooling_energy = total_energy / 2 if total_energy > 0 else 0  # Approximate split
         power_ratio = stats.get("power_ratio_heating_to_cooling", 0)
 
         # Cost calculation (Korean electricity rate: ~150 KRW/kWh)
