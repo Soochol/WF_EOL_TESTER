@@ -41,6 +41,10 @@ async def main() -> None:
     # This ensures logs appear immediately without keyboard input
     import os
     os.environ['PYTHONUNBUFFERED'] = '1'
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    # Additional buffering controls
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
     
     setup_logging(debug=False)
 
@@ -173,7 +177,14 @@ def setup_logging(debug: bool = False) -> None:
         format=cli_formatter,
         enqueue=False,  # Disable background queue for real-time output
         colorize=True,  # Enable color output
+        serialize=False,  # Disable serialization for faster output
+        backtrace=True,
+        diagnose=True
     )
+    
+    # Force immediate stdout/stderr flushing
+    sys.stderr.reconfigure(line_buffering=True)
+    sys.stdout.reconfigure(line_buffering=True)
 
     # File logging setup
     logs_directory = Path(LOGS_DIRECTORY_NAME)

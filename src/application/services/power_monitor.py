@@ -140,6 +140,10 @@ class PowerMonitor:
                 # Log detailed measurement info for debugging
                 if len(self._power_data) % 5 == 0:  # Log every 5th measurement (reduced from 10)
                     logger.debug(f"📊 Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
+                    # Force immediate output flush
+                    import sys
+                    sys.stdout.flush()
+                    sys.stderr.flush()
 
                 # Store data point
                 self._power_data.append(
