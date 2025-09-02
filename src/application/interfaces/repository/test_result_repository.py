@@ -11,31 +11,31 @@ from domain.entities.eol_test import EOLTest
 
 
 class TestResultRepository(ABC):
-    """테스트 결과 데이터 저장소 인터페이스"""
+    """Test result data repository interface"""
 
     @abstractmethod
     async def save(self, test: EOLTest) -> EOLTest:
         """
-        테스트 결과 저장
+        Save test result
 
         Args:
-            test: 저장할 테스트 결과
+            test: Test result to save
 
         Returns:
-            저장된 테스트 결과
+            Saved test result
         """
         ...
 
     @abstractmethod
     async def update(self, test: EOLTest) -> EOLTest:
         """
-        테스트 결과 수정
+        Update test result
 
         Args:
-            test: 수정할 테스트 결과
+            test: Test result to update
 
         Returns:
-            수정된 테스트 결과
+            Updated test result
         """
         ...
 
@@ -44,13 +44,13 @@ class TestResultRepository(ABC):
         self, test_id: str
     ) -> Optional[EOLTest]:
         """
-        ID로 테스트 결과 조회
+        Find test result by ID
 
         Args:
-            test_id: 테스트 ID
+            test_id: Test ID
 
         Returns:
-            조회된 테스트 결과 (없으면 None)
+            Found test result (None if not found)
         """
         ...
 
@@ -59,23 +59,23 @@ class TestResultRepository(ABC):
         self, dut_id: str
     ) -> List[EOLTest]:
         """
-        DUT ID로 테스트 결과 목록 조회
+        Find test results by DUT ID
 
         Args:
             dut_id: DUT ID
 
         Returns:
-            테스트 결과 목록
+            List of test results
         """
         ...
 
     @abstractmethod
     async def delete(self, test_id: str) -> None:
         """
-        테스트 결과 삭제
+        Delete test result
 
         Args:
-            test_id: 테스트 ID
+            test_id: Test ID
 
         Raises:
             RepositoryAccessError: If deletion fails
@@ -86,10 +86,10 @@ class TestResultRepository(ABC):
     @abstractmethod
     async def get_all_tests(self) -> List[Dict[str, Any]]:
         """
-        모든 테스트 조회 (관리용)
+        Get all tests (for management purposes)
 
         Returns:
-            모든 테스트 딕셔너리 리스트
+            List of all test dictionaries
         """
         ...
 
@@ -98,12 +98,12 @@ class TestResultRepository(ABC):
         self, days: int = 30
     ) -> int:
         """
-        오래된 테스트 정리
+        Clean up old tests
 
         Args:
-            days: 보관 기간 (일)
+            days: Retention period (days)
 
         Returns:
-            정리된 테스트 수
+            Number of cleaned up tests
         """
         ...

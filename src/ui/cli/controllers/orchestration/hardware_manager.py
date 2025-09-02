@@ -11,7 +11,7 @@ from typing import List, Optional
 from loguru import logger
 from rich.console import Console
 
-from application.services.configuration_service import ConfigurationService
+from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 

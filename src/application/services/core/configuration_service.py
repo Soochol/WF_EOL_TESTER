@@ -53,14 +53,14 @@ class ConfigurationService:
 
     def __init__(
         self,
-        configuration: Optional[Configuration] = None,
+        configuration: Configuration,
     ):
         self._configuration = configuration
         self.application_config_path = ConfigPaths.DEFAULT_APPLICATION_CONFIG
         self.hardware_config_path = ConfigPaths.DEFAULT_HARDWARE_CONFIG
 
     @property
-    def configuration(self) -> Optional[Configuration]:
+    def configuration(self) -> Configuration:
         """Get the configuration"""
         return self._configuration
 

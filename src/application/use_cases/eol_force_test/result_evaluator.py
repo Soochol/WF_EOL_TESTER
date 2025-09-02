@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from application.services.test_result_evaluator import TestResultEvaluator
+from application.services.test.test_result_evaluator import TestResultEvaluator
 from domain.entities.eol_test import EOLTest
 from domain.entities.test_result import TestResult
 from domain.enums.test_status import TestStatus

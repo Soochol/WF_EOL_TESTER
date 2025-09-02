@@ -9,8 +9,8 @@ from typing import Optional
 
 from loguru import logger
 
-from application.services.configuration_service import ConfigurationService
-from application.services.configuration_validator import ConfigurationValidator
+from application.services.core.configuration_service import ConfigurationService
+from application.services.core.configuration_validator import ConfigurationValidator
 from domain.exceptions import MultiConfigurationValidationError
 from domain.exceptions.test_exceptions import TestExecutionException
 from domain.value_objects.hardware_config import HardwareConfig

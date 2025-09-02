@@ -19,8 +19,8 @@ from loguru import logger
 from application.containers import ApplicationContainer
 
 # Local application imports - Services (only needed for Button Monitoring and Emergency Stop)
-from application.services.button_monitoring_service import DIOMonitoringService
-from application.services.emergency_stop_service import EmergencyStopService
+from application.services.monitoring.button_monitoring_service import DIOMonitoringService
+from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI

@@ -25,7 +25,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from application.services.configuration_service import ConfigurationService
+from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 from application.containers import ApplicationContainer
 from ui.api.models.hardware_models import (

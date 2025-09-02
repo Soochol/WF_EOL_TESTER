@@ -14,7 +14,7 @@ from loguru import logger
 from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
-from application.services.repository_service import (
+from application.services.core.repository_service import (
     RepositoryService,
 )
 from ui.cli.commands.base import Command, CommandResult

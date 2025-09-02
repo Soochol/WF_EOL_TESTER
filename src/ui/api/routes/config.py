@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from loguru import logger
 
 from application.containers.application_container import ApplicationContainer
-from application.services.configuration_service import ConfigurationService
+from application.services.core.configuration_service import ConfigurationService
 from ui.api.models.config_models import (
     ConfigurationResponse,
     ConfigurationUpdateRequest,

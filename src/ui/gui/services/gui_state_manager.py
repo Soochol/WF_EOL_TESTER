@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from application.services.configuration_service import ConfigurationService
+from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 
 

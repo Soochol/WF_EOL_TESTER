@@ -10,12 +10,12 @@ from typing import Optional
 
 from loguru import logger
 
-from application.services.configuration_service import ConfigurationService
-from application.services.configuration_validator import ConfigurationValidator
-from application.services.exception_handler import ExceptionHandler
+from application.services.core.configuration_service import ConfigurationService
+from application.services.core.configuration_validator import ConfigurationValidator
+from application.services.core.exception_handler import ExceptionHandler
 from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.repository_service import RepositoryService
-from application.services.test_result_evaluator import TestResultEvaluator
+from application.services.core.repository_service import RepositoryService
+from application.services.test.test_result_evaluator import TestResultEvaluator
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
 from domain.exceptions.test_exceptions import TestExecutionException

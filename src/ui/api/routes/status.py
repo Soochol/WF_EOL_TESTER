@@ -13,7 +13,7 @@ from fastapi import APIRouter
 from loguru import logger
 
 from application.containers import ApplicationContainer
-from application.services.configuration_service import ConfigurationService
+from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_service_facade import HardwareServiceFacade
 
 router = APIRouter()

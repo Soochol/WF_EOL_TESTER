@@ -7,7 +7,6 @@ Uses Exception First principles for error handling.
 
 import csv
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -29,14 +28,12 @@ class RepositoryService:
 
     def __init__(
         self,
-        test_repository: Optional[TestResultRepository] = None,
+        test_repository: TestResultRepository,
     ):
         self._test_repository = test_repository
 
     @property
-    def test_repository(
-        self,
-    ) -> Optional[TestResultRepository]:
+    def test_repository(self) -> TestResultRepository:
         """Get the test repository"""
         return self._test_repository
 
@@ -51,10 +48,6 @@ class RepositoryService:
             RepositoryAccessError: If saving fails
         """
         # Save to original JSON repository
-        if not self._test_repository:
-            logger.warning("No test repository configured, skipping test result save")
-            return
-
         try:
             await self._test_repository.save(test)
             logger.debug("Test result saved successfully")
@@ -100,7 +93,7 @@ class RepositoryService:
             # Determine write mode: append if file exists, create new if not
             is_new_file = not filepath.exists()
             write_mode = "w" if is_new_file else "a"
-            
+
             # Write CSV file
             with open(filepath, write_mode, newline="", encoding="utf-8") as csvfile:
                 # Add blank line separator if appending to existing file
@@ -147,7 +140,7 @@ class RepositoryService:
                             else:
                                 row.append("")
                         else:
-                            logger.debug(f"Position {pos_str} not found in temperature {temp}")
+                            logger.debug(f"Position {pos} not found in temperature {temp}")
                             row.append("")  # Empty cell for missing measurements
 
                     writer.writerow(row)

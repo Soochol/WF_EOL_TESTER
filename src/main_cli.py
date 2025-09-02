@@ -14,7 +14,6 @@ from datetime import datetime
 from pathlib import Path
 
 # Module imports now work directly since main_cli.py is in the src/ directory
-
 # Third-party imports
 from loguru import logger
 
@@ -41,11 +40,6 @@ async def main() -> None:
 
     os.environ["PYTHONUNBUFFERED"] = "1"
     os.environ["PYTHONIOENCODING"] = "utf-8"
-    # Additional buffering controls
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(line_buffering=True)
-    if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(line_buffering=True)
 
     setup_logging(debug=False)
 
@@ -185,9 +179,9 @@ def setup_logging(debug: bool = False) -> None:
 
     # Force immediate stdout/stderr flushing
     if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)  # type: ignore
     if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(line_buffering=True)
+        sys.stdout.reconfigure(line_buffering=True)  # type: ignore
 
     # File logging setup
     logs_directory = Path(LOGS_DIRECTORY_NAME)

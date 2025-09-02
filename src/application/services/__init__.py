@@ -1,21 +1,63 @@
 """
-Application Services
+Application Services Package
 
-Service classes that support use cases and orchestrate domain logic.
+Reorganized services following domain-driven design principles:
+- core: Configuration, repository, exception handling
+- hardware: Hardware management and coordination  
+- test: Test execution and evaluation services
+- monitoring: Safety and monitoring services
 """
 
-from application.services.repository_service import RepositoryService
-from application.services.configuration_service import ConfigurationService
-from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.exception_handler import ExceptionHandler
-from application.services.configuration_validator import ConfigurationValidator
-from application.services.test_result_evaluator import TestResultEvaluator
+# Core services
+from .core import (
+    ConfigurationService,
+    ConfigurationValidator,
+    RepositoryService,
+    ExceptionHandler,
+)
+
+# Hardware services
+from .hardware import (
+    HardwareConnectionManager,
+    HardwareInitializationService,
+    HardwareTestExecutor,
+    HardwareVerificationService,
+)
+
+# Test services  
+from .test import (
+    TestResultEvaluator,
+    PowerMonitor,
+)
+
+# Monitoring services
+from .monitoring import (
+    EmergencyStopService,
+    DIOMonitoringService,
+)
+
+# Main facade (backward compatibility)
+from .hardware_service_facade import HardwareServiceFacade
 
 __all__ = [
-    "RepositoryService",
+    # Core services
     "ConfigurationService",
-    "HardwareServiceFacade",
+    "ConfigurationValidator", 
+    "RepositoryService",
     "ExceptionHandler",
-    "ConfigurationValidator",
+    
+    # Hardware services
+    "HardwareConnectionManager",
+    "HardwareInitializationService", 
+    "HardwareTestExecutor",
+    "HardwareVerificationService",
+    "HardwareServiceFacade",
+    
+    # Test services
     "TestResultEvaluator",
+    "PowerMonitor",
+    
+    # Monitoring services
+    "EmergencyStopService",
+    "DIOMonitoringService",
 ]

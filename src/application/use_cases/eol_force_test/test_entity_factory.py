@@ -10,7 +10,7 @@ from typing import Optional
 
 from loguru import logger
 
-from application.services.repository_service import RepositoryService
+from application.services.core.repository_service import RepositoryService
 from domain.entities.dut import DUT
 from domain.entities.eol_test import EOLTest
 from domain.value_objects.dut_command_info import DUTCommandInfo

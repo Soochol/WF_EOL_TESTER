@@ -8,15 +8,17 @@ Manages all application services, use cases, and hardware dependencies.
 from dependency_injector import containers, providers
 from loguru import logger
 
-# Application Layer Imports
-from application.services.configuration_service import ConfigurationService
-from application.services.configuration_validator import ConfigurationValidator
-from application.services.exception_handler import ExceptionHandler
+# Application Layer Imports - Updated for new domain structure
+from application.services.core.configuration_service import ConfigurationService
+from application.services.core.configuration_validator import ConfigurationValidator
+from application.services.core.exception_handler import ExceptionHandler
+from application.services.core.repository_service import RepositoryService
 from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.repository_service import RepositoryService
-from application.services.test_result_evaluator import TestResultEvaluator
+from application.services.test.test_result_evaluator import TestResultEvaluator
 from application.use_cases.eol_force_test import EOLForceTestUseCase
-from application.use_cases.robot_home import RobotHomeUseCase
+from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
+from application.use_cases.robot_operations import RobotHomeUseCase
+from application.use_cases.system_tests import SimpleMCUTestUseCase
 from domain.value_objects.application_config import ApplicationConfig
 
 # Domain Layer Imports
@@ -59,22 +61,18 @@ class ApplicationContainer(containers.DeclarativeContainer):
     hardware = providers.Container(HardwareFactory, config=config.hardware)
 
     # ============================================================================
-    # INFRASTRUCTURE SERVICES
+    # INFRASTRUCTURE & CORE SERVICES
     # ============================================================================
 
     # Configuration Infrastructure
     yaml_configuration = providers.Singleton(YamlConfiguration)
 
-    # Repository Infrastructure
+    # Repository Infrastructure  
     json_result_repository = providers.Singleton(
         JsonResultRepository,
         data_dir=config.services.repository.results_path,
         auto_save=config.services.repository.auto_save,
     )
-
-    # ============================================================================
-    # APPLICATION SERVICES
-    # ============================================================================
 
     # Configuration Services
     configuration_service = providers.Singleton(
@@ -86,11 +84,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Business Services
     repository_service = providers.Singleton(
-        RepositoryService, test_repository=json_result_repository
+        RepositoryService, 
+        test_repository=json_result_repository
     )
 
     exception_handler = providers.Singleton(ExceptionHandler)
-
     test_result_evaluator = providers.Singleton(TestResultEvaluator)
 
     # Hardware Service Facade
@@ -107,8 +105,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # USE CASES
     # ============================================================================
 
-    # EOL Force Test Use Case
-    eol_force_test_use_case = providers.Singleton(
+    # Complex Use Case (with full dependency set)
+    eol_force_test_use_case: providers.Factory[EOLForceTestUseCase] = providers.Factory(
         EOLForceTestUseCase,
         hardware_services=hardware_service_facade,
         configuration_service=configuration_service,
@@ -118,9 +116,21 @@ class ApplicationContainer(containers.DeclarativeContainer):
         exception_handler=exception_handler,
     )
 
-    # Robot Home Use Case
-    robot_home_use_case = providers.Factory(
+    # Standard Use Cases (with minimal dependencies)
+    robot_home_use_case: providers.Factory[RobotHomeUseCase] = providers.Factory(
         RobotHomeUseCase,
+        hardware_services=hardware_service_facade,
+        configuration_service=configuration_service,
+    )
+
+    heating_cooling_time_test_use_case: providers.Factory[HeatingCoolingTimeTestUseCase] = providers.Factory(
+        HeatingCoolingTimeTestUseCase,
+        hardware_services=hardware_service_facade,
+        configuration_service=configuration_service,
+    )
+
+    simple_mcu_test_use_case: providers.Factory[SimpleMCUTestUseCase] = providers.Factory(
+        SimpleMCUTestUseCase,
         hardware_services=hardware_service_facade,
         configuration_service=configuration_service,
     )
@@ -156,42 +166,31 @@ class ApplicationContainer(containers.DeclarativeContainer):
         return container
 
     @classmethod
-    def create_with_paths(
-        cls,
-        application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware_config.yaml",
-    ) -> "ApplicationContainer":
+    def create_with_paths(cls, **kwargs) -> "ApplicationContainer":
         """
         Create container with configuration paths (legacy method for compatibility).
 
         Note: Paths are now fixed in ConfigPaths and cannot be customized.
-
-        Args:
-            application_config_path: Ignored - uses ConfigPaths.DEFAULT_APPLICATION_CONFIG
-            hardware_config_path: Ignored - uses ConfigPaths.DEFAULT_HARDWARE_CONFIG
+        All path arguments are ignored.
 
         Returns:
             Configured ApplicationContainer instance
         """
+        if kwargs:
+            logger.warning(f"Path arguments are ignored: {list(kwargs.keys())}")
         return cls.create()
 
     @classmethod
-    def ensure_config_exists(
-        cls,
-        application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware_config.yaml",
-    ) -> None:
+    def ensure_config_exists(cls, **kwargs) -> None:
         """
         Ensure configuration files exist, create from defaults if missing.
 
-        Args:
-            application_config_path: Path to application configuration file
-            hardware_config_path: Path to hardware configuration file
+        Note: Path arguments are ignored. Uses default paths from ConfigPaths.
         """
-        config_loader = YamlContainerConfigurationLoader(
-            application_config_path=application_config_path,
-            hardware_config_path=hardware_config_path,
-        )
+        if kwargs:
+            logger.warning(f"Path arguments are ignored: {list(kwargs.keys())}")
+        
+        config_loader = YamlContainerConfigurationLoader()
         config_loader.ensure_configurations_exist()
 
     @classmethod
@@ -229,4 +228,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         logger.warning(
             "load_config_safely() is deprecated. Use create() or create_with_paths() instead."
         )
-        return cls.create_with_paths(application_config_path, hardware_config_path)
+        return cls.create_with_paths(
+            application_config_path=application_config_path,
+            hardware_config_path=hardware_config_path
+        )
