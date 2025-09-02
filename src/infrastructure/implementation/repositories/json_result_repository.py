@@ -22,7 +22,7 @@ from domain.exceptions import (
 
 
 class JsonResultRepository(TestResultRepository):
-    """JSON 파일 기반 테스트 결과 저장소"""
+    """JSON file-based test result repository"""
 
     def __init__(
         self,
@@ -30,35 +30,35 @@ class JsonResultRepository(TestResultRepository):
         auto_save: bool = True,
     ):
         """
-        초기화
+        Initialize the repository
 
         Args:
-            data_dir: 데이터 저장 디렉토리
-            auto_save: 자동 저장 여부
+            data_dir: Data storage directory
+            auto_save: Enable automatic saving
         """
         self._data_dir = Path(data_dir)
         self._auto_save = auto_save
         self._tests_cache: Dict[str, Dict[str, Any]] = {}
 
-        # 디렉토리 생성
+        # Create directory
         self._data_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"JsonResultRepository initialized at {self._data_dir}")
 
     async def save(self, test: EOLTest) -> EOLTest:
         """
-        테스트 저장
+        Save test
 
         Args:
-            test: 저장할 테스트
+            test: Test to save
 
         Returns:
-            저장된 테스트
+            Saved test
         """
         test_dict = await self._test_to_dict(test)
         test_id = str(test.test_id)
 
-        # 캐시에 저장
+        # Save to cache
         self._tests_cache[test_id] = test_dict
 
         if self._auto_save:
@@ -69,32 +69,32 @@ class JsonResultRepository(TestResultRepository):
 
     async def update(self, test: EOLTest) -> EOLTest:
         """
-        테스트 수정
+        Update test
 
         Args:
-            test: 수정할 테스트
+            test: Test to update
 
         Returns:
-            수정된 테스트
+            Updated test
         """
-        return await self.save(test)  # JSON에서는 save와 update가 동일
+        return await self.save(test)  # In JSON, save and update are identical
 
     async def find_by_id(self, test_id: str) -> Optional[EOLTest]:
         """
-        ID로 테스트 조회
+        Find test by ID
 
         Args:
-            test_id: 테스트 ID
+            test_id: Test ID
 
         Returns:
-            조회된 테스트 (없으면 None)
+            Found test (None if not found)
         """
-        # 캐시에서 먼저 조회
+        # Check cache first
         if test_id in self._tests_cache:
             test_dict = self._tests_cache[test_id]
             return await self._dict_to_test(test_dict)
 
-        # 파일에서 로드
+        # Load from file
         loaded_test_dict: Optional[Dict[str, Any]] = await self._load_from_file(test_id)
         if loaded_test_dict is not None:
             self._tests_cache[test_id] = loaded_test_dict
@@ -104,17 +104,17 @@ class JsonResultRepository(TestResultRepository):
 
     async def find_by_dut_id(self, dut_id: str) -> List[EOLTest]:
         """
-        DUT ID로 테스트 목록 조회
+        Find tests by DUT ID
 
         Args:
             dut_id: DUT ID
 
         Returns:
-            테스트 목록
+            List of tests
         """
         tests = []
 
-        # 모든 테스트 파일 스캔
+        # Scan all test files
         await self._load_all_tests()
 
         for test_dict in self._tests_cache.values():
@@ -122,7 +122,7 @@ class JsonResultRepository(TestResultRepository):
                 test = await self._dict_to_test(test_dict)
                 tests.append(test)
 
-        # 생성 시간으로 정렬 (최신순)
+        # Sort by creation time (newest first)
         tests.sort(key=lambda t: t.created_at, reverse=True)
 
         logger.debug("Found %d tests for DUT %s", len(tests), dut_id)
@@ -130,26 +130,26 @@ class JsonResultRepository(TestResultRepository):
 
     async def delete(self, test_id: str) -> None:
         """
-        테스트 삭제
+        Delete test
 
         Args:
-            test_id: 테스트 ID
+            test_id: Test ID
 
         Raises:
             ConfigurationNotFoundError: If test does not exist
             RepositoryAccessError: If deletion fails
         """
         try:
-            # 테스트 존재 확인
+            # Check if test exists
             file_path = self._get_test_file_path(test_id)
             if not file_path.exists() and test_id not in self._tests_cache:
                 raise ConfigurationNotFoundError(f"Test {test_id} not found")
 
-            # 캐시에서 제거
+            # Remove from cache
             if test_id in self._tests_cache:
                 del self._tests_cache[test_id]
 
-            # 파일 삭제
+            # Delete file
             if file_path.exists():
                 file_path.unlink()
 
@@ -166,9 +166,9 @@ class JsonResultRepository(TestResultRepository):
             ) from e
 
     async def _test_to_dict(self, test: EOLTest) -> Dict[str, Any]:
-        """테스트 엔티티를 딕셔너리로 변환"""
+        """Convert test entity to dictionary"""
         try:
-            # EOLTest의 내장 to_dict 메서드를 사용하여 완전한 직렬화
+            # Use EOLTest's built-in to_dict method for complete serialization
             return test.to_dict()
         except Exception as e:
             logger.error("Failed to convert EOLTest to dict: %s", e)
@@ -176,9 +176,9 @@ class JsonResultRepository(TestResultRepository):
             raise
 
     async def _dict_to_test(self, test_dict: Dict[str, Any]) -> EOLTest:
-        """딕셔너리를 테스트 엔티티로 변환"""
+        """Convert dictionary to test entity"""
         try:
-            # EOLTest의 from_dict 클래스 메서드를 사용하여 완전한 엔티티 복원
+            # Use EOLTest's from_dict class method for complete entity restoration
             return EOLTest.from_dict(test_dict)
         except Exception as e:
             logger.error("Failed to convert dict to EOLTest: %s", e)
@@ -186,14 +186,14 @@ class JsonResultRepository(TestResultRepository):
             raise
 
     async def _save_to_file(self, test_id: str, test_dict: Dict[str, Any]) -> None:
-        """테스트 데이터를 파일에 저장"""
+        """Save test data to file"""
         file_path = self._get_test_file_path(test_id)
 
         try:
-            # 디렉토리가 없으면 생성
+            # Create directory if it doesn't exist
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # JSON 파일로 저장
+            # Save as JSON file
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(
                     test_dict,
@@ -217,7 +217,7 @@ class JsonResultRepository(TestResultRepository):
             raise
 
     async def _load_from_file(self, test_id: str) -> Optional[Dict[str, Any]]:
-        """파일에서 테스트 데이터 로드"""
+        """Load test data from file"""
         file_path = self._get_test_file_path(test_id)
 
         if not file_path.exists():
@@ -243,7 +243,7 @@ class JsonResultRepository(TestResultRepository):
             return None
 
     async def _load_all_tests(self) -> None:
-        """모든 테스트 파일을 캐시로 로드"""
+        """Load all test files into cache"""
         if not self._data_dir.exists():
             return
 
@@ -256,28 +256,28 @@ class JsonResultRepository(TestResultRepository):
                     self._tests_cache[test_id] = test_dict
 
     def _get_test_file_path(self, test_id: str) -> Path:
-        """테스트 ID에 대한 파일 경로 반환"""
+        """Return file path for test ID"""
         return self._data_dir / f"{test_id}.json"
 
     async def get_all_tests(self) -> List[Dict[str, Any]]:
         """
-        모든 테스트 조회 (관리용)
+        Get all tests (for management)
 
         Returns:
-            모든 테스트 딕셔너리 리스트
+            List of all test dictionaries
         """
         await self._load_all_tests()
         return list(self._tests_cache.values())
 
     async def cleanup_old_tests(self, days: int = 30) -> int:
         """
-        오래된 테스트 정리
+        Clean up old tests
 
         Args:
-            days: 보관 기간 (일)
+            days: Retention period (days)
 
         Returns:
-            정리된 테스트 수
+            Number of cleaned up tests
         """
         cutoff_date = datetime.now().timestamp() - (days * 24 * 60 * 60)
         deleted_count = 0

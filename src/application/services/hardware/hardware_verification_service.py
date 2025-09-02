@@ -18,10 +18,10 @@ from domain.value_objects.test_configuration import TestConfiguration
 class HardwareVerificationService:
     """
     Manages hardware verification and validation operations
-    
+
     Provides verification services for hardware components, primarily temperature verification.
     """
-    
+
     def __init__(
         self,
         mcu_service: MCUService,

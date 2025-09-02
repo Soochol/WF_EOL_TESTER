@@ -67,7 +67,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # Configuration Infrastructure
     yaml_configuration = providers.Singleton(YamlConfiguration)
 
-    # Repository Infrastructure  
+    # Repository Infrastructure
     json_result_repository = providers.Singleton(
         JsonResultRepository,
         data_dir=config.services.repository.results_path,
@@ -84,8 +84,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Business Services
     repository_service = providers.Singleton(
-        RepositoryService, 
-        test_repository=json_result_repository
+        RepositoryService, test_repository=json_result_repository
     )
 
     exception_handler = providers.Singleton(ExceptionHandler)
@@ -123,10 +122,12 @@ class ApplicationContainer(containers.DeclarativeContainer):
         configuration_service=configuration_service,
     )
 
-    heating_cooling_time_test_use_case: providers.Factory[HeatingCoolingTimeTestUseCase] = providers.Factory(
-        HeatingCoolingTimeTestUseCase,
-        hardware_services=hardware_service_facade,
-        configuration_service=configuration_service,
+    heating_cooling_time_test_use_case: providers.Factory[HeatingCoolingTimeTestUseCase] = (
+        providers.Factory(
+            HeatingCoolingTimeTestUseCase,
+            hardware_services=hardware_service_facade,
+            configuration_service=configuration_service,
+        )
     )
 
     simple_mcu_test_use_case: providers.Factory[SimpleMCUTestUseCase] = providers.Factory(
@@ -189,7 +190,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         """
         if kwargs:
             logger.warning(f"Path arguments are ignored: {list(kwargs.keys())}")
-        
+
         config_loader = YamlContainerConfigurationLoader()
         config_loader.ensure_configurations_exist()
 
@@ -230,5 +231,5 @@ class ApplicationContainer(containers.DeclarativeContainer):
         )
         return cls.create_with_paths(
             application_config_path=application_config_path,
-            hardware_config_path=hardware_config_path
+            hardware_config_path=hardware_config_path,
         )

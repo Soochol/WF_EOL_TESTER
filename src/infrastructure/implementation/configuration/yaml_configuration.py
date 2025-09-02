@@ -26,44 +26,44 @@ class YamlConfiguration:
     def _format_yaml_with_spacing(self, yaml_content: str) -> str:
         """
         Add blank lines before major sections for better readability
-        
+
         Args:
             yaml_content: Raw YAML content string
-            
+
         Returns:
             Formatted YAML content with spacing
         """
         # Define major section keywords that should have blank lines before them
         section_keywords = [
-            'services:',
-            'logging:', 
-            'metadata:',
-            'hardware:',
-            'motion_control:',
-            'timing:',
-            'test_parameters:',
-            'tolerances:',
-            'execution:',
-            'safety:',
-            'pass_criteria:',
-            'digital_io:',
-            'available_profiles:',
-            'validation:',
-            'profile_paths:',
-            'power:',
-            'loadcell:',
-            'mcu:',
-            'robot:'
+            "services:",
+            "logging:",
+            "metadata:",
+            "hardware:",
+            "motion_control:",
+            "timing:",
+            "test_parameters:",
+            "tolerances:",
+            "execution:",
+            "safety:",
+            "pass_criteria:",
+            "digital_io:",
+            "available_profiles:",
+            "validation:",
+            "profile_paths:",
+            "power:",
+            "loadcell:",
+            "mcu:",
+            "robot:",
         ]
-        
+
         # Add blank line before each major section (except if it's at the start of file)
         formatted_content = yaml_content
         for keyword in section_keywords:
             # Match the keyword at the start of a line, not preceded by a blank line
-            pattern = f'(?<!\\n\\n)^({re.escape(keyword)})'
-            replacement = '\\n\\1'
+            pattern = f"(?<!\\n\\n)^({re.escape(keyword)})"
+            replacement = "\\n\\1"
             formatted_content = re.sub(pattern, replacement, formatted_content, flags=re.MULTILINE)
-        
+
         return formatted_content
 
     async def load_profile(self, profile_name: str) -> TestConfiguration:
@@ -96,12 +96,12 @@ class YamlConfiguration:
             # Save the default profile for future use with formatting
             yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
             formatted_content = self._format_yaml_with_spacing(yaml_content)
-            
+
             with open(profile_path, "w", encoding="utf-8") as f:
                 f.write(formatted_content)
-            
+
             logger.info(f"Created default test profile: {profile_path}")
-            
+
             # Update profile configuration to include this new profile
             self._update_profile_config_with_new_profile(profile_name)
 
@@ -114,7 +114,7 @@ class YamlConfiguration:
 
     async def load_hardware_config(self) -> HardwareConfig:
         """Load unified hardware configuration
-        
+
         Note: Hardware configuration is now managed separately from application.yaml.
         This method returns default hardware configuration.
         """
@@ -161,7 +161,7 @@ class YamlConfiguration:
             # Save the default configuration for future use with formatting
             yaml_content = yaml.dump(default_config, default_flow_style=False, sort_keys=False)
             formatted_content = self._format_yaml_with_spacing(yaml_content)
-            
+
             with open(dut_path, "w", encoding="utf-8") as f:
                 f.write(formatted_content)
 
@@ -193,7 +193,7 @@ class YamlConfiguration:
         # Save with formatting
         yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
         formatted_content = self._format_yaml_with_spacing(yaml_content)
-        
+
         with open(profile_path, "w", encoding="utf-8") as f:
             f.write(formatted_content)
 
@@ -216,7 +216,7 @@ class YamlConfiguration:
         # Save updated application.yaml with formatting
         yaml_content = yaml.dump(app_data, default_flow_style=False, sort_keys=False)
         formatted_content = self._format_yaml_with_spacing(yaml_content)
-        
+
         with open(app_config_path, "w", encoding="utf-8") as f:
             f.write(formatted_content)
 
@@ -240,7 +240,7 @@ class YamlConfiguration:
         # Save with formatting
         yaml_content = yaml.dump(existing_data, default_flow_style=False, sort_keys=False)
         formatted_content = self._format_yaml_with_spacing(yaml_content)
-        
+
         with open(dut_path, "w", encoding="utf-8") as f:
             f.write(formatted_content)
 
@@ -253,85 +253,84 @@ class YamlConfiguration:
     def _ensure_profile_config(self) -> None:
         """Ensure profile configuration file exists with default settings"""
         profile_config_path = self.config_dir / "profile.yaml"
-        
+
         if not profile_config_path.exists():
             logger.info("Creating default profile configuration file")
-            
+
             # Check available profiles in test_profiles directory
             profiles_dir = self.config_dir / "test_profiles"
             available_profiles = []
-            
+
             if profiles_dir.exists():
                 available_profiles = [f.stem for f in profiles_dir.glob("*.yaml")]
-            
+
             # If no profiles exist, ensure "default" is in the list
             if not available_profiles:
                 available_profiles = ["default"]
-            
+
             # Create default profile configuration
             profile_config = {
                 "active_profile": "default",
                 "available_profiles": available_profiles,
                 "profile_paths": ["test_profiles"],
-                "validation": {
-                    "strict_mode": True,
-                    "fallback_profile": "default"
-                },
+                "validation": {"strict_mode": True, "fallback_profile": "default"},
                 "metadata": {
                     "created_at": datetime.now().isoformat(),
                     "updated_by": "YamlConfiguration (auto-generated)",
-                    "description": "Profile management configuration for EOL test system"
-                }
+                    "description": "Profile management configuration for EOL test system",
+                },
             }
-            
+
             # Save profile configuration with formatting
             yaml_content = yaml.dump(profile_config, default_flow_style=False, sort_keys=False)
             formatted_content = self._format_yaml_with_spacing(yaml_content)
-            
+
             with open(profile_config_path, "w", encoding="utf-8") as f:
                 f.write(formatted_content)
-            
+
             logger.info(f"Created profile configuration: {profile_config_path}")
 
     def _update_profile_config_with_new_profile(self, profile_name: str) -> None:
         """Update profile configuration when a new profile is created"""
         profile_config_path = self.config_dir / "profile.yaml"
-        
+
         try:
             # Ensure profile config exists
             self._ensure_profile_config()
-            
+
             # Load current config
             with open(profile_config_path, "r", encoding="utf-8") as f:
                 config_data = yaml.safe_load(f) or {}
-            
+
             # Update available profiles list
             available_profiles = config_data.get("available_profiles", [])
             if profile_name not in available_profiles:
                 available_profiles.append(profile_name)
                 config_data["available_profiles"] = sorted(available_profiles)
-                
+
                 # Update metadata
                 config_data["metadata"]["last_updated"] = datetime.now().isoformat()
                 config_data["metadata"]["updated_by"] = "YamlConfiguration (profile added)"
-                
+
                 # Save updated config with formatting
                 yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
                 formatted_content = self._format_yaml_with_spacing(yaml_content)
-                
+
                 with open(profile_config_path, "w", encoding="utf-8") as f:
                     f.write(formatted_content)
-                
+
                 logger.debug(f"Added profile '{profile_name}' to profile configuration")
-                
+
         except Exception as e:
-            logger.warning(f"Failed to update profile configuration with new profile '{profile_name}': {e}")
+            logger.warning(
+                f"Failed to update profile configuration with new profile '{profile_name}': {e}"
+            )
 
     async def load_last_used_profile(self) -> Optional[str]:
         """Load the last used profile name from profile configuration and preferences"""
         # Ensure profile configuration file exists
         self._ensure_profile_config()
-        
+
         # First try to load from profile_preferences.yaml (last used)
         preference_path = self.config_dir / "profile_preferences.yaml"
         try:
@@ -343,7 +342,7 @@ class YamlConfiguration:
                     return last_used
         except Exception as e:
             logger.warning(f"Failed to load from profile preferences: {e}")
-        
+
         # Fallback to active_profile from profile.yaml
         profile_config_path = self.config_dir / "profile.yaml"
         try:
@@ -355,7 +354,7 @@ class YamlConfiguration:
                 return active_profile
         except Exception as e:
             logger.warning(f"Failed to load from profile config: {e}")
-        
+
         # Ultimate fallback
         return "default"
 
