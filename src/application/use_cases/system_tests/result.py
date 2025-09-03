@@ -44,6 +44,11 @@ class SimpleMCUTestResult(BaseResult):
         self.test_results = test_results
 
     @property
+    def is_passed(self) -> bool:
+        """Alias for is_success to maintain compatibility"""
+        return self.is_success
+
+    @property
     def measurement_count(self) -> int:
         """Number of successful measurements"""
         return len([r for r in self.test_results if r.get("success", False)])

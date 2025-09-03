@@ -16,7 +16,7 @@
     "files.autoSave": "onFocusChange",
 
     // === Python Environment ===
-    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.defaultInterpreterPath": "/home/blessp/my_code/WF_EOL_TESTER/venv/bin/python",
     "python.terminal.activateEnvironment": false,
 
     // === Python Analysis (Fixed) ===

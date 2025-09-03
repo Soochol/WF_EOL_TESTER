@@ -62,7 +62,9 @@
                 "PYTHONPATH": "${workspaceFolder}/src"
             },
             "cwd": "${workspaceFolder}",
-            "args": ["--help"]
+            "args": [
+                "--help"
+            ]
         },
         {
             "name": "Python: Format All Files",

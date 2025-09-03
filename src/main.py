@@ -297,7 +297,7 @@ def setup_logging(debug: bool = False) -> None:
 
     # File logging setup
     logs_directory = Path(LOGS_DIRECTORY_NAME)
-    logs_directory.mkdir(exist_ok=True)
+    logs_directory.mkdir(parents=True, exist_ok=True)
 
     logger.add(
         logs_directory / EOL_TESTER_LOG_FILENAME,

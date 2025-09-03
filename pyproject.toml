@@ -261,7 +261,7 @@ init-hook = 'import sys; sys.path.append("src")'
 jobs = 0
 persistent = true
 fail-under = 6.0
-extension-pkg-allow-list = ["dependency_injector"]
+extension-pkg-allow-list = ["dependency_injector", "PySide6"]
 
 [tool.pylint."messages control"]
 disable = [
