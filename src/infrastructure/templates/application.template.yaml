@@ -10,7 +10,7 @@ application:
 
 services:
   repository:
-    results_path: "ResultsLog"
+    results_path: "Logs/test_results/json"
     auto_save: true
 
 logging:

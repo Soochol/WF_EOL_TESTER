@@ -71,7 +71,7 @@ class DIOMonitoringService:
         # State tracking for edge detection
         self._previous_states: Dict[int, bool] = {}
         self._first_read = True
-        
+
         # Edge-based dual button press detection
         self._left_button_edge_time: Optional[float] = None
         self._right_button_edge_time: Optional[float] = None
@@ -169,11 +169,11 @@ class DIOMonitoringService:
 
         self._monitoring_task = None
         self._edge_cleanup_task = None
-        
+
         # Clear edge times
         self._left_button_edge_time = None
         self._right_button_edge_time = None
-        
+
         logger.info("Button monitoring service stopped")
 
     async def _monitor_loop(self) -> None:
@@ -383,9 +383,9 @@ class DIOMonitoringService:
             current_raw_states: Current raw states of all channels (list, index = channel number)
         """
         import time
-        
+
         logger.info(f"🎯 DIO_BUTTON: Processing button press edge on channel {pressed_channel}")
-        
+
         current_time = time.time()
         left_ch = self.left_button_pin.pin_number
         right_ch = self.right_button_pin.pin_number
@@ -405,11 +405,11 @@ class DIOMonitoringService:
 
         # Check for dual button press within the time window
         dual_press_detected = False
-        
+
         if self._left_button_edge_time and self._right_button_edge_time:
             time_diff = abs(self._left_button_edge_time - self._right_button_edge_time)
             logger.info(f"🎯 DIO_BUTTON: Time difference between button edges: {time_diff:.3f}s")
-            
+
             if time_diff <= self._dual_press_window:
                 dual_press_detected = True
                 logger.info(
@@ -441,11 +441,11 @@ class DIOMonitoringService:
                 logger.info(
                     "✅ DIO_SAFETY: All safety sensors satisfied! Proceeding with callback execution..."
                 )
-                
+
                 # Clear edge times after successful dual press
                 self._left_button_edge_time = None
                 self._right_button_edge_time = None
-                
+
                 await self._handle_button_press()
             else:
                 logger.warning(
@@ -453,7 +453,7 @@ class DIOMonitoringService:
                     f"Clamp: {clamp_ok}, Chain: {chain_ok}, Door: {door_ok}"
                 )
                 logger.warning("❌ DIO_SAFETY: Dual button press BLOCKED due to safety conditions")
-                
+
                 # Clear edge times after blocked attempt
                 self._left_button_edge_time = None
                 self._right_button_edge_time = None
@@ -462,31 +462,31 @@ class DIOMonitoringService:
             logger.info(
                 f"🎯 DIO_BUTTON: Single button edge detected ({pin_name}) - waiting for dual press within {self._dual_press_window}s"
             )
-            
+
             # Start or restart edge cleanup timer
             await self._start_edge_cleanup_timer()
-    
+
     async def _start_edge_cleanup_timer(self) -> None:
         """Start edge cleanup timer to clear edge times after dual press window expires"""
         # Cancel existing cleanup task if running
         if self._edge_cleanup_task and not self._edge_cleanup_task.done():
             self._edge_cleanup_task.cancel()
-            
+
         # Start new cleanup task
         self._edge_cleanup_task = asyncio.create_task(self._edge_cleanup_worker())
-    
+
     async def _edge_cleanup_worker(self) -> None:
         """Worker task to clean up edge times after timeout"""
         try:
             # Wait for dual press window + small buffer
             await asyncio.sleep(self._dual_press_window + 0.1)
-            
+
             # Clear edge times if no dual press occurred
             if self._left_button_edge_time or self._right_button_edge_time:
                 logger.debug("🎯 DIO_BUTTON: Clearing edge times after timeout")
                 self._left_button_edge_time = None
                 self._right_button_edge_time = None
-                
+
         except asyncio.CancelledError:
             # Task was cancelled, which is normal when new edges are detected
             pass
@@ -510,7 +510,7 @@ class DIOMonitoringService:
         )
 
         # Check if EOL test is currently running to prevent duplicate execution
-        if self.eol_use_case and self.eol_use_case.is_running():
+        if self.eol_use_case and self.eol_use_case.is_running:
             logger.warning("⚠️ DIO_CALLBACK: EOL test is already running, ignoring button press")
             logger.warning("⚠️ DIO_CALLBACK: Applying debounce period before allowing next press")
             # Still apply debounce period to prevent rapid checks

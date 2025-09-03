@@ -30,7 +30,7 @@ class ApplicationInfo:
 @dataclass(frozen=True) 
 class ServicesConfig:
     """Services configuration"""
-    repository_results_path: str = "ResultsLog"
+    repository_results_path: str = "Logs/test_results/json"
     repository_auto_save: bool = True
 
 
@@ -106,7 +106,7 @@ class ApplicationConfig:
                 created_at=app_data.get("created_at")
             ),
             services=ServicesConfig(
-                repository_results_path=services_data.get("repository", {}).get("results_path", "ResultsLog"),
+                repository_results_path=services_data.get("repository", {}).get("results_path", "Logs/test_results/json"),
                 repository_auto_save=services_data.get("repository", {}).get("auto_save", True)
             ),
             logging=LoggingConfig(

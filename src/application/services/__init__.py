@@ -3,7 +3,7 @@ Application Services Package
 
 Reorganized services following domain-driven design principles:
 - core: Configuration, repository, exception handling
-- hardware: Hardware management and coordination  
+- hardware: Hardware management and coordination
 - test: Test execution and evaluation services
 - monitoring: Safety and monitoring services
 """
@@ -12,51 +12,37 @@ Reorganized services following domain-driven design principles:
 from .core import (
     ConfigurationService,
     ConfigurationValidator,
-    RepositoryService,
     ExceptionHandler,
+    RepositoryService,
 )
 
-# Hardware services
-from .hardware import (
-    HardwareConnectionManager,
-    HardwareInitializationService,
-    HardwareTestExecutor,
-    HardwareVerificationService,
-)
-
-# Test services  
-from .test import (
-    TestResultEvaluator,
-    PowerMonitor,
-)
+# Main facade (from hardware_facade package)
+from .hardware_facade import HardwareServiceFacade
 
 # Monitoring services
 from .monitoring import (
-    EmergencyStopService,
     DIOMonitoringService,
+    EmergencyStopService,
+    PowerMonitor,
 )
 
-# Main facade (backward compatibility)
-from .hardware_service_facade import HardwareServiceFacade
+# Hardware services (all integrated into facade)
+# Test services
+from .test import (
+    TestResultEvaluator,
+)
 
 __all__ = [
     # Core services
     "ConfigurationService",
-    "ConfigurationValidator", 
+    "ConfigurationValidator",
     "RepositoryService",
     "ExceptionHandler",
-    
     # Hardware services
-    "HardwareConnectionManager",
-    "HardwareInitializationService", 
-    "HardwareTestExecutor",
-    "HardwareVerificationService",
     "HardwareServiceFacade",
-    
     # Test services
     "TestResultEvaluator",
     "PowerMonitor",
-    
     # Monitoring services
     "EmergencyStopService",
     "DIOMonitoringService",

@@ -7,7 +7,7 @@ Extracted from EOLForceTestUseCase for better separation of concerns.
 
 from loguru import logger
 
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.test_exceptions import TestExecutionException
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements

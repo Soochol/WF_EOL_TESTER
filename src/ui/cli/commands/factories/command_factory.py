@@ -6,14 +6,15 @@ and component integration.
 """
 
 from typing import Any, Dict, List, Optional, Type, TypeVar
+
 from loguru import logger
 
+from application.containers.application_container import ApplicationContainer
 from ui.cli.commands.interfaces.command_interface import (
+    CommandMetadata,
     ICommand,
     ICommandMiddleware,
-    CommandMetadata,
 )
-from application.containers.application_container import ApplicationContainer
 
 # Type variable for command creation
 T = TypeVar("T", bound=ICommand)
@@ -57,9 +58,7 @@ class CommandFactory:
         """
         try:
             # Get or create configuration
-            config = configuration or self._get_command_configuration(
-                command_type.__name__
-            )
+            config = configuration or self._get_command_configuration(command_type.__name__)
 
             # Create instance using dependency injection
             if config:
@@ -116,9 +115,7 @@ class CommandFactory:
         """
         try:
             # Get or create configuration
-            config = configuration or self._get_middleware_configuration(
-                middleware_type.__name__
-            )
+            config = configuration or self._get_middleware_configuration(middleware_type.__name__)
 
             # Create instance
             if config:

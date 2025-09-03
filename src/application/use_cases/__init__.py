@@ -8,49 +8,49 @@ Organized by domain areas for better maintainability.
 # EOL Force Test
 from application.use_cases.eol_force_test.main_executor import (
     EOLForceTestUseCase,
-    EOLForceTestCommand,
+    EOLForceTestInput,
+    EOLTestResult,
 )
-from domain.value_objects.eol_test_result import EOLTestResult
 
 # Heating/Cooling Time Test
 from application.use_cases.heating_cooling_time_test import (
     HeatingCoolingTimeTestUseCase,
-    HeatingCoolingTimeTestCommand,
+    HeatingCoolingTimeTestInput,
     HeatingCoolingTimeTestResult,
 )
 
 # Robot Operations
 from application.use_cases.robot_operations import (
     RobotHomeUseCase,
-    RobotHomeCommand,
+    RobotHomeInput,
     RobotHomeResult,
 )
 
 # System Tests
 from application.use_cases.system_tests import (
     SimpleMCUTestUseCase,
-    SimpleMCUTestCommand,
+    SimpleMCUTestInput,
     SimpleMCUTestResult,
 )
 
 __all__ = [
     # EOL Force Test
     "EOLForceTestUseCase", 
-    "EOLForceTestCommand", 
+    "EOLForceTestInput", 
     "EOLTestResult",
     
     # Heating/Cooling Time Test
     "HeatingCoolingTimeTestUseCase",
-    "HeatingCoolingTimeTestCommand", 
+    "HeatingCoolingTimeTestInput", 
     "HeatingCoolingTimeTestResult",
     
     # Robot Operations
     "RobotHomeUseCase",
-    "RobotHomeCommand",
+    "RobotHomeInput",
     "RobotHomeResult",
     
     # System Tests
     "SimpleMCUTestUseCase",
-    "SimpleMCUTestCommand",
+    "SimpleMCUTestInput",
     "SimpleMCUTestResult",
 ]

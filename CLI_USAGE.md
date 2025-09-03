@@ -60,7 +60,7 @@ CLI는 시작시 자동으로 하드웨어 연결을 시도하지만, 연결 실
 - 로깅 및 리포팅
 
 ## 로그 파일
-- 위치: `logs/eol_tester_cli_YYYY-MM-DD.log`
+- 위치: `Logs/application/eol_tester_cli_YYYY-MM-DD.log`
 - 형식: 날짜별 분리 (파일 잠금 방지)
 - 레벨: DEBUG (파일), INFO (콘솔)
 
@@ -90,5 +90,5 @@ CLI는 하드웨어 연결 실패를 우아하게 처리하므로 개발 환경�
 ### 로그 확인
 문제 발생시 로그 파일을 확인하여 상세한 오류 정보를 얻을 수 있습니다:
 ```bash
-tail -f logs/eol_tester_cli_$(date +%Y-%m-%d).log
+tail -f Logs/application/eol_tester_cli_$(date +%Y-%m-%d).log
 ```

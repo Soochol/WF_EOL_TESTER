@@ -187,17 +187,22 @@ class MCUController(HardwareController):
 
     # Private MCU-specific operations
     def _get_user_input_with_default(
-        self, prompt: str, default_value, input_type: type = str, allow_cancel: bool = True, validator=None
+        self,
+        prompt: str,
+        default_value,
+        input_type: type = str,
+        allow_cancel: bool = True,
+        validator=None,
     ):
         """Get user input with default value support when Enter is pressed
-        
+
         Args:
             prompt: Input prompt to display
             default_value: Default value to use when user presses Enter
             input_type: Expected input type (str, float, int)
             allow_cancel: Whether to allow 'cancel' input
             validator: Optional validation function
-            
+
         Returns:
             Validated input value, default value if Enter pressed, or None if cancelled
         """
@@ -218,12 +223,14 @@ class MCUController(HardwareController):
                 # Handle cancel
                 if allow_cancel and user_input.lower() == "cancel":
                     return None
-                    
+
                 # Handle empty input (Enter pressed) - use default
                 if not user_input:
                     # Validate default value
                     if validator and not validator(default_value):
-                        self.formatter.print_message("Default value is invalid", message_type="error")
+                        self.formatter.print_message(
+                            "Default value is invalid", message_type="error"
+                        )
                         continue
                     return default_value
 
@@ -312,15 +319,17 @@ class MCUController(HardwareController):
                 validator=lambda x: -50 <= x <= 200,  # Reasonable temperature range
             )
             if temperature is None:
-                self.formatter.print_message("Cooling temperature setting cancelled", message_type="info")
+                self.formatter.print_message(
+                    "Cooling temperature setting cancelled", message_type="info"
+                )
                 return
-            
+
             # Type check temperature value
             if isinstance(temperature, (int, float)):
                 await self.mcu_service.set_cooling_temperature(float(temperature))
             else:
                 raise ValueError("Invalid temperature type")
-                
+
             self.formatter.print_message(
                 f"Cooling temperature set to {temperature:.2f}°C", message_type="success"
             )
@@ -458,7 +467,9 @@ class MCUController(HardwareController):
             )
 
             if upper_temp is None:
-                self.formatter.print_message("Upper temperature setting cancelled", message_type="info")
+                self.formatter.print_message(
+                    "Upper temperature setting cancelled", message_type="info"
+                )
                 return
 
             # Type check temperature value
@@ -492,7 +503,7 @@ class MCUController(HardwareController):
                 return
 
             user_fan_speed = int(fan_speed_input)
-            
+
             # Convert user input (0-10) to service interface range (1-10)
             # User input 0 maps to service level 1 (minimum speed)
             # User input 1-10 maps to service level 1-10
@@ -505,11 +516,9 @@ class MCUController(HardwareController):
             await self.mcu_service.set_fan_speed(service_fan_speed)
 
             self.formatter.print_message(
-                f"Fan speed set to level {user_fan_speed} (service level: {service_fan_speed})", 
-                message_type="success"
+                f"Fan speed set to level {user_fan_speed} (service level: {service_fan_speed})",
+                message_type="success",
             )
 
         except Exception as e:
-            self.formatter.print_message(
-                f"Failed to set fan speed: {str(e)}", message_type="error"
-            )
+            self.formatter.print_message(f"Failed to set fan speed: {str(e)}", message_type="error")

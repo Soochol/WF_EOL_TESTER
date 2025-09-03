@@ -111,9 +111,7 @@ class HardwareController(ABC):
             self.formatter.print_message(f"{error_message}: {str(e)}", message_type="error")
             return False
 
-    def _create_enhanced_menu(
-        self, base_options: dict, shortcuts: Optional[dict] = None
-    ) -> dict:
+    def _create_enhanced_menu(self, base_options: dict, shortcuts: Optional[dict] = None) -> dict:
         """Create enhanced menu with shortcuts
 
         Args:

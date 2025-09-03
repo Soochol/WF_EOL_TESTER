@@ -6,12 +6,12 @@ Promotes code reuse and consistency across all use cases.
 """
 
 from .base_use_case import BaseUseCase
-from .command_result_patterns import BaseCommand, BaseResult
+from .command_result_patterns import BaseResult, BaseUseCaseInput
 from .execution_context import ExecutionContext
 
 __all__ = [
     "BaseUseCase",
-    "BaseCommand", 
+    "BaseUseCaseInput",
     "BaseResult",
     "ExecutionContext",
 ]

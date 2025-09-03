@@ -36,17 +36,19 @@ class SessionManager(ISessionManager):
     and the main interactive loop for the CLI application.
     """
 
-    def __init__(self, console: Console, formatter: RichFormatter):
+    def __init__(self, console: Console, formatter: RichFormatter, emergency_stop_service=None):
         """Initialize session manager.
 
         Args:
             console: Rich console instance for output
             formatter: Rich formatter for professional output
+            emergency_stop_service: Emergency stop service for hardware safety shutdown
         """
         self._console = console
         self._formatter = formatter
         self._running = False
         self._menu_system: Optional["IMenuSystem"] = None
+        self._emergency_stop_service = emergency_stop_service
 
     def set_menu_system(self, menu_system: "IMenuSystem") -> None:
         """Set the menu system for session navigation.
@@ -63,6 +65,7 @@ class SessionManager(ISessionManager):
         with proper exception handling and user feedback.
         """
         logger.info("Starting Enhanced EOL Tester CLI session")
+        logger.debug(f"Emergency stop service: {self._emergency_stop_service}")
 
         try:
             # Perform session startup
@@ -82,6 +85,16 @@ class SessionManager(ISessionManager):
                     break
 
         except KeyboardInterrupt:
+            logger.info("SessionManager: KeyboardInterrupt caught!")
+            # Execute emergency stop first for hardware safety
+            if self._emergency_stop_service:
+                try:
+                    logger.info("Executing emergency hardware shutdown...")
+                    await self._emergency_stop_service.execute_emergency_stop()
+                    logger.info("Emergency shutdown completed")
+                except Exception as e:
+                    logger.error(f"Error during emergency shutdown: {e}")
+            
             self._formatter.print_message(
                 "Exiting EOL Tester... Goodbye!", message_type="info", title="Shutdown"
             )

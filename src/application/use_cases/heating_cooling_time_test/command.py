@@ -1,17 +1,17 @@
 """
-Heating/Cooling Time Test Command
+Heating/Cooling Time Test Input
 
-Command object for heating/cooling time test use case.
+Input object for heating/cooling time test use case.
 Contains all input parameters for the test execution.
 """
 
-from application.use_cases.common.command_result_patterns import BaseCommand
+from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 from typing import Any, Dict
 
 
-class HeatingCoolingTimeTestCommand(BaseCommand):
+class HeatingCoolingTimeTestInput(BaseUseCaseInput):
     """
-    Command for Heating/Cooling Time Test
+    Input for Heating/Cooling Time Test
     
     Contains parameters for heating/cooling time test execution including
     repeat count and operator identification.
@@ -19,7 +19,7 @@ class HeatingCoolingTimeTestCommand(BaseCommand):
 
     def __init__(self, operator_id: str = "cli_user", repeat_count: int = 1):
         """
-        Initialize test command
+        Initialize test input
 
         Args:
             operator_id: ID of the operator running the test
@@ -30,10 +30,10 @@ class HeatingCoolingTimeTestCommand(BaseCommand):
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Convert command to dictionary representation
+        Convert input to dictionary representation
         
         Returns:
-            Dictionary containing command data
+            Dictionary containing input data
         """
         return {
             "operator_id": self.operator_id,

@@ -25,7 +25,7 @@ from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
 
 # Application configuration constants
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"
-LOGS_DIRECTORY_NAME = "logs"
+LOGS_DIRECTORY_NAME = "Logs/application"
 
 # Generate date-based log filename to prevent Windows file lock issues
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")

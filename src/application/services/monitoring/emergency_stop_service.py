@@ -13,7 +13,8 @@ from loguru import logger
 # Hardware interface imports removed - accessed through facade
 
 if TYPE_CHECKING:
-    from application.services.hardware_service_facade import HardwareServiceFacade
+    from application.services.hardware_facade import HardwareServiceFacade
+    from application.services.core.configuration_service import ConfigurationService
     from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
 
 
@@ -28,6 +29,7 @@ class EmergencyStopService:
     def __init__(
         self,
         hardware_facade: "HardwareServiceFacade",
+        configuration_service: "ConfigurationService",
         eol_use_case: Optional["EOLForceTestUseCase"] = None,
     ):
         """
@@ -35,9 +37,11 @@ class EmergencyStopService:
 
         Args:
             hardware_facade: Hardware service facade for accessing all hardware
+            configuration_service: Configuration service for reading hardware settings
             eol_use_case: EOL test use case for state management (optional)
         """
         self.hardware_facade = hardware_facade
+        self.configuration_service = configuration_service
         self.eol_use_case = eol_use_case
 
         # Emergency stop state tracking
@@ -92,10 +96,12 @@ class EmergencyStopService:
         try:
             robot_service = self.hardware_facade.robot_service
             if robot_service and await robot_service.is_connected():
-                # Use axis 0 (primary axis) for emergency stop
-                await robot_service.emergency_stop(axis=0)
+                # Get robot axis ID from configuration
+                hardware_config = await self.configuration_service.load_hardware_config()
+                robot_axis = hardware_config.robot.axis_id
+                await robot_service.emergency_stop(axis=robot_axis)
                 logger.critical(
-                    "✓ Robot emergency stop executed - motion stopped and servo disabled"
+                    f"✓ Robot emergency stop executed on axis {robot_axis} - motion stopped and servo disabled"
                 )
             else:
                 logger.warning("Robot service not available - skipping robot emergency stop")
@@ -130,7 +136,7 @@ class EmergencyStopService:
 
         try:
             # Check if UseCase is currently running
-            if self.eol_use_case.is_running():
+            if self.eol_use_case.is_running:
                 logger.critical("UseCase is running - initiating emergency cancellation")
 
                 # The UseCase._is_running flag will be cleared automatically
@@ -201,7 +207,7 @@ class EmergencyStopService:
             "timestamp": self._last_emergency_time,
             "hardware_status": "safe_state",
             "usecase_status": (
-                "cancelled" if self.eol_use_case and self.eol_use_case.is_running() else "idle"
+                "cancelled" if self.eol_use_case and self.eol_use_case.is_running else "idle"
             ),
         }
 

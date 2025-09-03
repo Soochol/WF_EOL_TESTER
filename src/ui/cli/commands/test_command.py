@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, cast
 from loguru import logger
 
 from application.use_cases.eol_force_test import (
-    EOLForceTestCommand,
+    EOLForceTestInput,
     EOLForceTestUseCase,
 )
 from domain.value_objects.dut_command_info import (
@@ -98,7 +98,7 @@ class TestCommand(Command):
             )
 
             # Create and execute test command
-            test_command = EOLForceTestCommand(
+            test_command = EOLForceTestInput(
                 dut_info=dut_info,
                 operator_id=operator_id,
             )
@@ -144,7 +144,7 @@ class TestCommand(Command):
                 manufacturer="WF",
             )
 
-            test_command = EOLForceTestCommand(
+            test_command = EOLForceTestInput(
                 dut_info=dut_info,
                 operator_id="QuickTest",
             )

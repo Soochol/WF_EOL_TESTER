@@ -9,7 +9,7 @@ import time
 from typing import Any, Dict, List
 from loguru import logger
 
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
 from domain.enums.mcu_enums import TestMode
 
 

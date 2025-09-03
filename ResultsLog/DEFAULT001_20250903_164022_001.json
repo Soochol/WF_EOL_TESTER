@@ -1,0 +1,199 @@
+{
+  "test_id": "DEFAULT001_20250903_164022_001",
+  "dut": {
+    "dut_id": "DEFAULT001",
+    "model_number": "Default Model",
+    "serial_number": "DEFAULT001",
+    "manufacturer": "Unknown",
+    "firmware_version": null,
+    "hardware_revision": null,
+    "manufacturing_date": null,
+    "specifications": {},
+    "created_at": "2025-09-03T07:40:22.986869+00:00"
+  },
+  "operator_id": "DEFAULT_OP",
+  "test_configuration": {
+    "voltage": 18.0,
+    "current": 20.0,
+    "upper_current": 30.0,
+    "upper_temperature": 80.0,
+    "activation_temperature": 52.0,
+    "standby_temperature": 38.0,
+    "fan_speed": 10,
+    "max_stroke": 220000.0,
+    "initial_position": 1000.0,
+    "pass_criteria": {
+      "force_limit_min": 0.0,
+      "force_limit_max": 100.0,
+      "temperature_limit_min": -10.0,
+      "temperature_limit_max": 80.0,
+      "measurement_tolerance": 0.001,
+      "force_precision": 2,
+      "temperature_precision": 1,
+      "position_tolerance": 0.5,
+      "max_test_duration": 300.0,
+      "min_stabilization_time": 0.5,
+      "spec_points": []
+    },
+    "temperature_list": [
+      38.0,
+      52.0,
+      66.0
+    ],
+    "stroke_positions": [
+      10000.0,
+      60000.0,
+      120000.0,
+      180000.0,
+      220000.0
+    ],
+    "robot_move_stabilization": 0.1,
+    "mcu_temperature_stabilization": 0.1,
+    "robot_standby_stabilization": 1.0,
+    "poweron_stabilization": 0.5,
+    "power_command_stabilization": 0.2,
+    "loadcell_zero_delay": 0.1,
+    "mcu_command_stabilization": 0.1,
+    "mcu_boot_complete_stabilization": 2.0,
+    "measurement_tolerance": 0.001,
+    "force_precision": 2,
+    "temperature_precision": 1,
+    "temperature_tolerance": 3.0,
+    "retry_attempts": 3,
+    "timeout_seconds": 60.0,
+    "repeat_count": 1,
+    "max_voltage": 30.0,
+    "max_current": 30.0,
+    "velocity": 100000.0,
+    "acceleration": 60000.0,
+    "deceleration": 60000.0,
+    "max_velocity": 100000.0,
+    "max_acceleration": 100000.0,
+    "max_deceleration": 100000.0
+  },
+  "pass_criteria": {},
+  "created_at": "2025-09-03T07:40:22.987311+00:00",
+  "status": "completed",
+  "current_step": 1,
+  "total_steps": 1,
+  "measurement_ids": [],
+  "error_message": null,
+  "operator_notes": null,
+  "start_time": "2025-09-03T07:40:22.987321+00:00",
+  "end_time": "2025-09-03T07:40:33.570821+00:00",
+  "duration_seconds": 10.583499908447266,
+  "test_result": {
+    "test_id": "DEFAULT001_20250903_164022_001",
+    "test_status": "completed",
+    "start_time": "2025-09-03T07:40:22.987321+00:00",
+    "end_time": "2025-09-03T07:40:33.570484+00:00",
+    "duration_seconds": 10.583162546157837,
+    "measurement_ids": [
+      "M0000000001",
+      "M0000000002",
+      "M0000000003",
+      "M0000000004",
+      "M0000000005",
+      "M0000000006",
+      "M0000000007",
+      "M0000000008",
+      "M0000000009",
+      "M0000000010",
+      "M0000000011",
+      "M0000000012",
+      "M0000000013",
+      "M0000000014",
+      "M0000000015"
+    ],
+    "pass_criteria": {
+      "force_limit_min": 0.0,
+      "force_limit_max": 100.0,
+      "temperature_limit_min": -10.0,
+      "temperature_limit_max": 80.0,
+      "measurement_tolerance": 0.001,
+      "force_precision": 2,
+      "temperature_precision": 1,
+      "position_tolerance": 0.5,
+      "max_test_duration": 300.0,
+      "min_stabilization_time": 0.5,
+      "spec_points": []
+    },
+    "actual_results": {
+      "measurements": {
+        "38.0": {
+          "10000.0": {
+            "force": 8.716111734673605
+          },
+          "60000.0": {
+            "force": 8.59785871711992
+          },
+          "120000.0": {
+            "force": 10.838678138021574
+          },
+          "180000.0": {
+            "force": 10.139414942045407
+          },
+          "220000.0": {
+            "force": 9.446122655658852
+          }
+        },
+        "52.0": {
+          "10000.0": {
+            "force": 10.64531297559395
+          },
+          "60000.0": {
+            "force": 7.795753813936487
+          },
+          "120000.0": {
+            "force": 9.301048045609486
+          },
+          "180000.0": {
+            "force": 11.686389914596415
+          },
+          "220000.0": {
+            "force": 9.782717257262847
+          }
+        },
+        "66.0": {
+          "10000.0": {
+            "force": 11.617751021134854
+          },
+          "60000.0": {
+            "force": 9.695837033583771
+          },
+          "120000.0": {
+            "force": 9.755105127875025
+          },
+          "180000.0": {
+            "force": 9.763940924204135
+          },
+          "220000.0": {
+            "force": 8.330365618433175
+          }
+        }
+      },
+      "metadata": {
+        "temperature_count": 3,
+        "total_measurement_count": 15,
+        "temperature_range": [
+          38.0,
+          66.0
+        ],
+        "position_range": [
+          10000.0,
+          220000.0
+        ],
+        "force_range": [
+          7.795753813936487,
+          11.686389914596415
+        ]
+      }
+    },
+    "error_message": null,
+    "operator_notes": null,
+    "test_parameters": {},
+    "created_at": "2025-09-03T07:40:33.570815+00:00",
+    "is_passed": true,
+    "is_finished": true
+  }
+}

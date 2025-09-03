@@ -1,37 +1,37 @@
 """
-Robot Home Command
+Robot Home Input
 
-Command object for robot homing operation.
+Input object for robot homing operation.
 Contains operator identification for the homing operation.
 """
 
 from typing import Any, Dict
 
-from application.use_cases.common.command_result_patterns import BaseCommand
+from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 
 
-class RobotHomeCommand(BaseCommand):
+class RobotHomeInput(BaseUseCaseInput):
     """
-    Command for Robot Homing Operation
+    Input for Robot Homing Operation
     
-    Simple command containing operator identification for robot homing.
+    Simple input containing operator identification for robot homing.
     """
 
     def __init__(self, operator_id: str = "system"):
         """
-        Initialize robot home command
+        Initialize robot home input
         
         Args:
-            operator_id: ID of the operator executing the command
+            operator_id: ID of the operator executing the operation
         """
         super().__init__(operator_id)
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Convert command to dictionary representation
+        Convert input to dictionary representation
         
         Returns:
-            Dictionary containing command data
+            Dictionary containing input data
         """
         return {
             "operator_id": self.operator_id,

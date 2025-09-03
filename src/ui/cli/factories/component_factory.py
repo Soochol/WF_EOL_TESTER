@@ -176,6 +176,7 @@ class CLIComponentFactory(ComponentFactory):
         use_case: Any,
         hardware_facade: Optional[Any] = None,
         configuration_service: Optional[Any] = None,
+        emergency_stop_service: Optional[Any] = None,
     ) -> Any:
         """Create a CLI application with dependencies.
 
@@ -183,6 +184,7 @@ class CLIComponentFactory(ComponentFactory):
             use_case: EOL test execution use case
             hardware_facade: Optional hardware service facade
             configuration_service: Optional configuration service
+            emergency_stop_service: Optional emergency stop service for hardware safety
 
         Returns:
             CLI application instance with dependencies injected
@@ -224,7 +226,7 @@ class CLIComponentFactory(ComponentFactory):
         from ..menu.menu_system import MenuSystem
         from ..session.session_manager import SessionManager
 
-        session_manager = SessionManager(console, formatter)
+        session_manager = SessionManager(console, formatter, emergency_stop_service)
         menu_system = MenuSystem(console, formatter, enhanced_menu)
         test_executor = TestExecutor(console, formatter, use_case, enhanced_integrator)
 

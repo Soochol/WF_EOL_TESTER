@@ -24,6 +24,7 @@ def create_cli_application(
     use_case: Any,
     hardware_facade: Optional[Any] = None,
     configuration_service: Optional[Any] = None,
+    emergency_stop_service: Optional[Any] = None,
     mode: ConfigurationMode = ConfigurationMode.PRODUCTION,
 ) -> ICLIApplication:
     """Create a CLI application with dependency injection.
@@ -36,6 +37,7 @@ def create_cli_application(
         use_case: EOL test execution use case
         hardware_facade: Optional hardware service facade
         configuration_service: Optional configuration service
+        emergency_stop_service: Optional emergency stop service for hardware safety
         mode: Configuration mode for dependency injection
 
     Returns:
@@ -55,6 +57,7 @@ def create_cli_application(
             use_case=use_case,
             hardware_facade=hardware_facade,
             configuration_service=configuration_service,
+            emergency_stop_service=emergency_stop_service,
         )
 
         logger.info("CLI application created successfully")
@@ -69,6 +72,7 @@ def create_production_cli_application(
     use_case: Any,
     hardware_facade: Optional[Any] = None,
     configuration_service: Optional[Any] = None,
+    emergency_stop_service: Optional[Any] = None,
 ) -> ICLIApplication:
     """Create a CLI application in production mode.
 
@@ -76,6 +80,7 @@ def create_production_cli_application(
         use_case: EOL test execution use case
         hardware_facade: Optional hardware service facade
         configuration_service: Optional configuration service
+        emergency_stop_service: Optional emergency stop service for hardware safety
 
     Returns:
         CLI application instance configured for production
@@ -84,6 +89,7 @@ def create_production_cli_application(
         use_case=use_case,
         hardware_facade=hardware_facade,
         configuration_service=configuration_service,
+        emergency_stop_service=emergency_stop_service,
         mode=ConfigurationMode.PRODUCTION,
     )
 

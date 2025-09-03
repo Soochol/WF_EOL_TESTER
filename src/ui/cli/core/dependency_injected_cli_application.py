@@ -33,7 +33,7 @@ from ..usecase_manager import UseCaseManager
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
-    from application.services.hardware_service_facade import HardwareServiceFacade
+    from application.services.hardware_facade import HardwareServiceFacade
 
 
 class DependencyInjectedCLIApplication(ICLIApplication):
@@ -123,6 +123,10 @@ class DependencyInjectedCLIApplication(ICLIApplication):
 
         try:
             await self._session_manager.run_interactive()
+        except KeyboardInterrupt:
+            # KeyboardInterrupt should be handled by SessionManager, then propagate up
+            logger.info("CLI Application interrupted by user")
+            raise
         except Exception as e:
             logger.error(f"CLI Application error: {e}")
             self._formatter.print_message(

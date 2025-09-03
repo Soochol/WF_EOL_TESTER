@@ -5,10 +5,10 @@ Immutable value object representing the complete result of an EOL test execution
 Contains test outcome, measurements, timing information, and metadata.
 """
 
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from application.use_cases.common.command_result_patterns import BaseResult
 from domain.enums.test_status import TestStatus
 from domain.exceptions.validation_exceptions import ValidationException
 from domain.value_objects.identifiers import MeasurementId, TestId
@@ -16,8 +16,7 @@ from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.time_values import TestDuration
 
 
-@dataclass(frozen=True)
-class EOLTestResult:
+class EOLTestResult(BaseResult):
     """
     EOL test execution result value object
 
@@ -30,48 +29,77 @@ class EOLTestResult:
     - Device pass/fail status (test criteria evaluation)
     """
 
-    # ========================================================================
-    # CORE TEST IDENTIFICATION
-    # ========================================================================
-    test_id: TestId  # Unique test identifier
-    test_status: TestStatus  # Execution status
-
-    # ========================================================================
-    # TEST OUTCOME
-    # ========================================================================
-    is_passed: bool  # Device pass/fail result
-
-    # ========================================================================
-    # EXECUTION METADATA
-    # ========================================================================
-    execution_duration: Optional[TestDuration] = None  # Test execution time
-    completed_at: Optional[datetime] = None  # Test completion timestamp
-
-    # ========================================================================
-    # MEASUREMENT DATA
-    # ========================================================================
-    measurement_ids: Optional[List[MeasurementId]] = None  # Individual measurement IDs
-    test_summary: Optional[Union[TestMeasurements, Dict[str, Any]]] = None  # Measurement data
-
-    # ========================================================================
-    # ERROR AND NOTES
-    # ========================================================================
-    error_message: Optional[str] = None  # Error details if failed
-    operator_notes: Optional[str] = None  # Manual operator notes
-
-    def __post_init__(self) -> None:
-        """Validate test result after initialization
-
-        Raises:
-            ValidationException: If result data is inconsistent or invalid
+    def __init__(
+        self,
+        test_id: TestId,
+        test_status: TestStatus,
+        is_passed: bool,
+        error_message: Optional[str] = None,
+        execution_duration: Optional[TestDuration] = None,
+        completed_at: Optional[datetime] = None,
+        measurement_ids: Optional[List[MeasurementId]] = None,
+        test_summary: Optional[Union[TestMeasurements, Dict[str, Any]]] = None,
+        operator_notes: Optional[str] = None,
+    ):
         """
-        # Ensure measurement_ids is not None
-        if self.measurement_ids is None:
-            object.__setattr__(self, "measurement_ids", [])
+        Initialize EOL test result
+        
+        Args:
+            test_id: Unique test identifier
+            test_status: Execution status
+            is_passed: Whether device passed test criteria
+            error_message: Error details if failed
+            execution_duration: Test execution time
+            completed_at: Test completion timestamp
+            measurement_ids: Individual measurement IDs
+            test_summary: Measurement data
+            operator_notes: Manual operator notes
+        """
+        # Initialize BaseResult
+        is_success = test_status in (TestStatus.COMPLETED, TestStatus.FAILED)
+        super().__init__(
+            test_status=test_status,
+            is_success=is_success,
+            error_message=error_message,
+            test_id=test_id,
+            execution_duration=execution_duration
+        )
+        
+        # Store EOL-specific fields
+        self._is_passed = is_passed
+        self._completed_at = completed_at
+        self._measurement_ids = measurement_ids or []
+        self._test_summary = test_summary
+        self._operator_notes = operator_notes
 
         self._validate_test_data_consistency()
         self._validate_measurement_data()
         self._validate_optional_fields()
+
+    @property
+    def is_passed(self) -> bool:
+        """Whether device passed test criteria"""
+        return self._is_passed
+        
+    @property
+    def completed_at(self) -> Optional[datetime]:
+        """Test completion timestamp"""
+        return self._completed_at
+        
+    @property
+    def measurement_ids(self) -> List[MeasurementId]:
+        """Individual measurement IDs"""
+        return self._measurement_ids
+        
+    @property
+    def test_summary(self) -> Optional[Union[TestMeasurements, Dict[str, Any]]]:
+        """Measurement data"""
+        return self._test_summary
+        
+    @property
+    def operator_notes(self) -> Optional[str]:
+        """Manual operator notes"""
+        return self._operator_notes
 
     def _validate_test_data_consistency(self) -> None:
         """Validate consistency between test status and other fields"""
@@ -105,10 +133,6 @@ class EOLTestResult:
 
     def _validate_measurement_data(self) -> None:
         """Validate measurement-related data"""
-        # Skip validation if measurement_ids is None (will be handled in __post_init__)
-        if self.measurement_ids is None:
-            return
-            
         # All measurement IDs must be valid
         for i, mid in enumerate(self.measurement_ids):
             if not isinstance(mid, MeasurementId):
@@ -150,6 +174,15 @@ class EOLTestResult:
             True if test executed successfully (COMPLETED or FAILED status)
         """
         return self.test_status in (TestStatus.COMPLETED, TestStatus.FAILED)
+
+    @property
+    def is_success(self) -> bool:
+        """BaseResult compatibility property - same as is_successful
+        
+        Returns:
+            True if test executed successfully (COMPLETED or FAILED status)
+        """
+        return self.is_successful
 
     @property
     def is_failed_execution(self) -> bool:
@@ -271,7 +304,7 @@ class EOLTestResult:
         return self.completed_at.strftime("%Y-%m-%d %H:%M:%S")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert result to dictionary representation
+        """Convert result to dictionary representation (BaseResult implementation)
 
         Returns:
             Dictionary containing all result data
@@ -302,6 +335,24 @@ class EOLTestResult:
             "operator_notes": self.operator_notes,
             "has_notes": self.has_notes,
         }
+
+    def get_summary(self) -> str:
+        """Get human-readable summary of the result (BaseResult implementation)
+
+        Returns:
+            Summary string
+        """
+        status_info = f"{self.test_status.value}"
+        if self.is_successful:
+            result_info = "PASS" if self.is_passed else "FAIL"
+            status_info += f" ({result_info})"
+
+        duration_info = f", {self.format_duration()}" if self.execution_duration else ""
+        measurement_info = (
+            f", {self.measurement_count} measurements" if self.has_measurements else ""
+        )
+
+        return f"EOL Test {self.test_id}: {status_info}{duration_info}{measurement_info}"
 
     def _convert_test_summary_to_dict(self) -> Dict[str, Any]:
         """Convert test summary to serializable dict

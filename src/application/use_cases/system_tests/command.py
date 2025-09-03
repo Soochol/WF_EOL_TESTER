@@ -1,37 +1,37 @@
 """
-Simple MCU Test Command
+Simple MCU Test Input
 
-Command object for simple MCU communication test.
+Input object for simple MCU communication test.
 Contains operator identification for the test execution.
 """
 
 from typing import Any, Dict
 
-from application.use_cases.common.command_result_patterns import BaseCommand
+from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 
 
-class SimpleMCUTestCommand(BaseCommand):
+class SimpleMCUTestInput(BaseUseCaseInput):
     """
-    Command for Simple MCU Communication Test
-    
-    Simple command containing operator identification for MCU communication testing.
+    Input for Simple MCU Communication Test
+
+    Simple input containing operator identification for MCU communication testing.
     """
 
     def __init__(self, operator_id: str = "cli_user"):
         """
-        Initialize simple MCU test command
-        
+        Initialize simple MCU test input
+
         Args:
-            operator_id: ID of the operator executing the command
+            operator_id: ID of the operator executing the test
         """
         super().__init__(operator_id)
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Convert command to dictionary representation
-        
+        Convert input to dictionary representation
+
         Returns:
-            Dictionary containing command data
+            Dictionary containing input data
         """
         return {
             "operator_id": self.operator_id,

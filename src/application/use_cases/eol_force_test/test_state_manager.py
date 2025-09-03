@@ -57,5 +57,7 @@ class TestStateManager:
             measurement_id = MeasurementId(TestExecutionConstants.MEASUREMENT_ID_FORMAT.format(i))
             measurement_ids.append(measurement_id)
 
-        logger.debug(TestExecutionConstants.LOG_MEASUREMENT_IDS_GENERATED.format(len(measurement_ids)))
+        logger.debug(
+            TestExecutionConstants.LOG_MEASUREMENT_IDS_GENERATED.format(len(measurement_ids))
+        )
         return measurement_ids

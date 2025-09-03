@@ -40,9 +40,7 @@ class TestResultRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_id(
-        self, test_id: str
-    ) -> Optional[EOLTest]:
+    async def find_by_id(self, test_id: str) -> Optional[EOLTest]:
         """
         Find test result by ID
 
@@ -55,9 +53,7 @@ class TestResultRepository(ABC):
         ...
 
     @abstractmethod
-    async def find_by_dut_id(
-        self, dut_id: str
-    ) -> List[EOLTest]:
+    async def find_by_dut_id(self, dut_id: str) -> List[EOLTest]:
         """
         Find test results by DUT ID
 
@@ -94,9 +90,7 @@ class TestResultRepository(ABC):
         ...
 
     @abstractmethod
-    async def cleanup_old_tests(
-        self, days: int = 30
-    ) -> int:
+    async def cleanup_old_tests(self, days: int = 30) -> int:
         """
         Clean up old tests
 

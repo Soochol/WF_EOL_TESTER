@@ -6,11 +6,11 @@ Provides clean separation of concerns for robot homing and related operations.
 """
 
 from .main_use_case import RobotHomeUseCase
-from .command import RobotHomeCommand
+from .command import RobotHomeInput
 from .result import RobotHomeResult
 
 __all__ = [
     "RobotHomeUseCase",
-    "RobotHomeCommand",
+    "RobotHomeInput",
     "RobotHomeResult",
 ]

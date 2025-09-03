@@ -22,7 +22,7 @@ from rich.console import Console
 
 # Local imports - Application layer
 from application.use_cases.eol_force_test.main_executor import (
-    EOLForceTestCommand,
+    EOLForceTestInput,
     EOLForceTestUseCase,
 )
 
@@ -89,7 +89,7 @@ class TestExecutor(ITestExecutor):
         )
 
         # Create test command
-        command = EOLForceTestCommand(
+        command = EOLForceTestInput(
             dut_info=dut_command_info,
             operator_id=dut_info["operator"],
         )
@@ -127,7 +127,7 @@ class TestExecutor(ITestExecutor):
             # Handle user cancellation gracefully
             return None
 
-    async def _execute_test_with_progress(self, command: EOLForceTestCommand) -> None:
+    async def _execute_test_with_progress(self, command: EOLForceTestInput) -> None:
         """Execute test with comprehensive progress indication and error handling.
 
         Provides visual feedback during test execution with proper error handling

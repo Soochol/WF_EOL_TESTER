@@ -16,7 +16,7 @@ from domain.value_objects.time_values import TestDuration
 class SimpleMCUTestResult(BaseResult):
     """
     Result for Simple MCU Communication Test
-    
+
     Contains test outcomes and detailed results from MCU communication testing.
     """
 
@@ -31,10 +31,10 @@ class SimpleMCUTestResult(BaseResult):
     ):
         """
         Initialize simple MCU test result
-        
+
         Args:
             test_status: Test execution status
-            is_success: Whether test passed or failed  
+            is_success: Whether test passed or failed
             test_results: List of individual test step results
             error_message: Error message if test failed
             test_id: Unique test identifier
@@ -62,7 +62,7 @@ class SimpleMCUTestResult(BaseResult):
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert result to dictionary representation
-        
+
         Returns:
             Dictionary containing result data
         """
@@ -70,7 +70,9 @@ class SimpleMCUTestResult(BaseResult):
             "test_id": self.test_id.value if self.test_id else None,
             "test_status": self.test_status.value,
             "is_success": self.is_success,
-            "execution_duration_seconds": self.execution_duration.seconds if self.execution_duration else 0,
+            "execution_duration_seconds": (
+                self.execution_duration.seconds if self.execution_duration else 0
+            ),
             "test_results": self.test_results,
             "measurement_count": self.measurement_count,
             "total_steps": self.total_steps,
@@ -80,17 +82,14 @@ class SimpleMCUTestResult(BaseResult):
     def get_summary(self) -> str:
         """
         Get a human-readable summary of the result
-        
+
         Returns:
             Summary string
         """
         if not self.is_success:
             return f"Simple MCU Test FAILED: {self.error_message}"
-        
+
         successful_steps = self.measurement_count
         total_steps = self.total_steps
-        
-        return (
-            f"Simple MCU Test PASSED - "
-            f"Success: {successful_steps}/{total_steps} steps"
-        )
+
+        return f"Simple MCU Test PASSED - " f"Success: {successful_steps}/{total_steps} steps"

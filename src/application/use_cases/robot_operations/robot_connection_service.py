@@ -6,16 +6,17 @@ Manages robot hardware lifecycle for operations.
 """
 
 from typing import Optional
+
 from loguru import logger
 
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 
 
 class RobotConnectionService:
     """
     Robot connection service
-    
+
     Manages robot connection lifecycle, servo operations, and status verification
     for robot operations.
     """
@@ -23,7 +24,7 @@ class RobotConnectionService:
     def __init__(self, hardware_services: HardwareServiceFacade):
         """
         Initialize robot connection service
-        
+
         Args:
             hardware_services: Hardware service facade
         """
@@ -35,7 +36,7 @@ class RobotConnectionService:
 
         Args:
             hardware_config: Hardware configuration containing robot settings
-            
+
         Returns:
             Robot axis ID for further operations
 
@@ -43,7 +44,7 @@ class RobotConnectionService:
             HardwareConnectionException: If robot setup fails
         """
         self._validate_robot_service()
-        
+
         axis_id = hardware_config.robot.axis_id
         irq_no = hardware_config.robot.irq_no
         logger.info(f"Connecting to robot with axis_id={axis_id}, irq_no={irq_no}...")
@@ -52,7 +53,7 @@ class RobotConnectionService:
             await self._ensure_connection(axis_id)
             await self._enable_servo(axis_id)
             return axis_id
-            
+
         except Exception as robot_error:
             self._handle_connection_error(robot_error, axis_id, irq_no)
             raise  # This line should never be reached due to the error handler raising
@@ -60,10 +61,10 @@ class RobotConnectionService:
     async def execute_homing(self, axis_id: int) -> None:
         """
         Execute robot homing operation
-        
+
         Args:
             axis_id: Robot axis ID to home
-            
+
         Raises:
             Exception: If homing operation fails
         """
@@ -94,7 +95,7 @@ class RobotConnectionService:
     async def get_robot_status(self, hardware_config) -> dict:
         """
         Get current robot status for diagnostics
-        
+
         Args:
             hardware_config: Hardware configuration containing robot settings
 
@@ -133,7 +134,7 @@ class RobotConnectionService:
     def _validate_robot_service(self) -> None:
         """
         Validate that robot service is available
-        
+
         Raises:
             HardwareConnectionException: If robot service is not available
         """
@@ -146,10 +147,10 @@ class RobotConnectionService:
     async def _ensure_connection(self, axis_id: int) -> None:
         """
         Ensure robot is connected and verify status
-        
+
         Args:
             axis_id: Robot axis ID for status verification
-            
+
         Raises:
             Exception: If connection or verification fails
         """
@@ -167,10 +168,10 @@ class RobotConnectionService:
     async def _enable_servo(self, axis_id: int) -> None:
         """
         Enable servo for the specified axis
-        
+
         Args:
             axis_id: Robot axis ID
-            
+
         Raises:
             Exception: If servo enable fails
         """
@@ -181,12 +182,12 @@ class RobotConnectionService:
     def _handle_connection_error(self, robot_error: Exception, axis_id: int, irq_no: int) -> None:
         """
         Handle and classify robot connection errors
-        
+
         Args:
             robot_error: The original exception
             axis_id: Robot axis ID for context
             irq_no: IRQ number for context
-            
+
         Raises:
             HardwareConnectionException: Classified hardware error
         """

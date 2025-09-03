@@ -33,8 +33,8 @@ from PySide6.QtWidgets import (
 )
 
 from application.containers.application_container import ApplicationContainer
-from application.use_cases.simple_mcu_test import (
-    SimpleMCUTestCommand,
+from application.use_cases.system_tests import (
+    SimpleMCUTestInput,
     SimpleMCUTestUseCase,
 )
 from ui.gui.services.gui_state_manager import GUIStateManager, TestStatus
@@ -49,7 +49,7 @@ class MCUTestWorker(QObject):
     test_completed = Signal(object)  # test_result
     test_failed = Signal(str)  # error_message
 
-    def __init__(self, use_case: SimpleMCUTestUseCase, command: SimpleMCUTestCommand):
+    def __init__(self, use_case: SimpleMCUTestUseCase, command: SimpleMCUTestInput):
         """
         Initialize MCU test worker
 
@@ -412,7 +412,7 @@ class MCUTestPanel(QWidget):
                 return
 
             # Create test command
-            command = SimpleMCUTestCommand(operator_id=operator_id)
+            command = SimpleMCUTestInput(operator_id=operator_id)
 
             # Setup worker thread
             self.test_worker = MCUTestWorker(self.mcu_use_case, command)

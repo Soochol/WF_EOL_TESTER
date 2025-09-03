@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 
-from application.services.hardware_service_facade import (
+from application.services.hardware_facade import (
     HardwareServiceFacade,
 )
 from ui.cli.commands.base import Command, CommandResult

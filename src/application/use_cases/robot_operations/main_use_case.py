@@ -7,14 +7,14 @@ Coordinates Digital I/O setup, robot connection, and homing execution.
 
 from loguru import logger
 
-from application.use_cases.common.base_use_case import BaseUseCase
 from application.services.core.configuration_service import ConfigurationService
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
+from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-from .command import RobotHomeCommand
-from .result import RobotHomeResult
+from .command import RobotHomeInput
 from .digital_io_setup_service import DigitalIOSetupService
+from .result import RobotHomeResult
 from .robot_connection_service import RobotConnectionService
 
 
@@ -27,9 +27,7 @@ class RobotHomeUseCase(BaseUseCase):
     """
 
     def __init__(
-        self, 
-        hardware_services: HardwareServiceFacade, 
-        configuration_service: ConfigurationService
+        self, hardware_services: HardwareServiceFacade, configuration_service: ConfigurationService
     ):
         """
         Initialize Robot Home Use Case
@@ -44,11 +42,7 @@ class RobotHomeUseCase(BaseUseCase):
         self._digital_io_setup = DigitalIOSetupService(hardware_services)
         self._robot_connection = RobotConnectionService(hardware_services)
 
-    async def _execute_implementation(
-        self, 
-        command: RobotHomeCommand, 
-        context
-    ) -> RobotHomeResult:
+    async def _execute_implementation(self, command: RobotHomeInput, context) -> RobotHomeResult:
         """
         Execute robot homing operation implementation
 
@@ -61,7 +55,7 @@ class RobotHomeUseCase(BaseUseCase):
         """
         # Load hardware configuration dynamically
         hardware_config = await self._configuration_service.load_hardware_config()
-        
+
         try:
             # Setup Digital I/O for servo brake release
             await self._digital_io_setup.setup_servo_brake_release(hardware_config)
@@ -77,7 +71,7 @@ class RobotHomeUseCase(BaseUseCase):
                 is_success=True,
                 error_message=None,
             )
-            
+
         except Exception as e:
             # Cleanup on error for safety
             axis_id = hardware_config.robot.axis_id if hardware_config else None
@@ -85,11 +79,7 @@ class RobotHomeUseCase(BaseUseCase):
             raise e
 
     def _create_failure_result(
-        self, 
-        command: RobotHomeCommand, 
-        context, 
-        execution_duration, 
-        error_message: str
+        self, command: RobotHomeInput, context, execution_duration, error_message: str
     ) -> RobotHomeResult:
         """
         Create a failure result when execution fails
@@ -99,7 +89,7 @@ class RobotHomeUseCase(BaseUseCase):
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description
-            
+
         Returns:
             RobotHomeResult indicating failure
         """
@@ -120,7 +110,7 @@ class RobotHomeUseCase(BaseUseCase):
             # Load hardware configuration
             hardware_config = await self._configuration_service.load_hardware_config()
             return await self._robot_connection.get_robot_status(hardware_config)
-            
+
         except Exception as e:
             logger.error(f"Failed to get robot status: {e}")
             return {
@@ -130,13 +120,13 @@ class RobotHomeUseCase(BaseUseCase):
                 "hardware_status": None,
             }
 
-    async def execute(self, command: RobotHomeCommand) -> RobotHomeResult:
+    async def execute(self, command: RobotHomeInput) -> RobotHomeResult:
         """
         Execute the robot homing operation
 
         Args:
             command: Robot home command
-            
+
         Returns:
             RobotHomeResult with operation outcome
         """

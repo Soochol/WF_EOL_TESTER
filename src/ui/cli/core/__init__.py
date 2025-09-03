@@ -1,9 +1,10 @@
 """Core CLI Application Components.
 
-This module contains the main CLI application class with focused responsibility
-and composition-based architecture following the Single Responsibility Principle.
+This module contains dependency injection based CLI application components
+following clean architecture principles.
 """
 
-from .cli_application import CLIApplication
+# Note: The main application is now DependencyInjectedCLIApplication
+# which is created through the factory pattern in application_factory.py
 
-__all__ = ["CLIApplication"]
+__all__ = []

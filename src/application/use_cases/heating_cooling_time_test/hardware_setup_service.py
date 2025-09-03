@@ -6,17 +6,18 @@ Manages power supply, MCU configuration, and initial temperature setup.
 """
 
 import asyncio
+
 from loguru import logger
 
-from application.services.hardware_service_facade import HardwareServiceFacade
-from application.services.test.power_monitor import PowerMonitor
+from application.services.hardware_facade import HardwareServiceFacade
+from application.services.monitoring.power_monitor import PowerMonitor
 from domain.enums.mcu_enums import TestMode
 
 
 class HardwareSetupService:
     """
     Hardware setup service for heating/cooling time test
-    
+
     Manages the initialization and configuration of hardware components
     required for heating/cooling time testing.
     """
@@ -24,7 +25,7 @@ class HardwareSetupService:
     def __init__(self, hardware_services: HardwareServiceFacade):
         """
         Initialize hardware setup service
-        
+
         Args:
             hardware_services: Hardware service facade
         """
@@ -41,7 +42,7 @@ class HardwareSetupService:
     async def connect_hardware(self) -> None:
         """
         Connect required hardware components
-        
+
         Connects power supply and MCU services.
         """
         logger.info("Connecting hardware...")
@@ -50,15 +51,17 @@ class HardwareSetupService:
 
         await power_service.connect()
         await mcu_service.connect()
-        
+
         # Initialize Power Monitor
         self._power_monitor = PowerMonitor(power_service)
         logger.info("Power monitor initialized")
 
-    async def setup_power_supply(self, voltage: float, current: float, poweron_stabilization: float) -> None:
+    async def setup_power_supply(
+        self, voltage: float, current: float, poweron_stabilization: float
+    ) -> None:
         """
         Configure and enable power supply
-        
+
         Args:
             voltage: Target voltage
             current: Current limit
@@ -66,7 +69,7 @@ class HardwareSetupService:
         """
         logger.info(f"Setting up power supply: {voltage}V, {current}A")
         power_service = self._hardware_services.power_service
-        
+
         await power_service.set_voltage(voltage)
         await power_service.set_current(current)
         await power_service.enable_output()
@@ -75,12 +78,12 @@ class HardwareSetupService:
     async def setup_mcu(self, hc_config) -> None:
         """
         Configure MCU for heating/cooling testing
-        
+
         Args:
             hc_config: Heating/cooling configuration object
         """
         mcu_service = self._hardware_services.mcu_service
-        
+
         # Wait for MCU boot completion
         logger.info("Waiting for MCU boot completion...")
         await mcu_service.wait_boot_complete()
@@ -100,23 +103,25 @@ class HardwareSetupService:
     async def initialize_temperature(self, hc_config) -> None:
         """
         Set initial temperature to standby
-        
+
         Args:
             hc_config: Heating/cooling configuration object
         """
         mcu_service = self._hardware_services.mcu_service
-        
+
         # Initial temperature setup (set to standby)
         logger.info("Setting initial temperature to standby...")
         await mcu_service.start_standby_heating(
-            operating_temp=hc_config.activation_temperature, 
-            standby_temp=hc_config.standby_temperature
+            operating_temp=hc_config.activation_temperature,
+            standby_temp=hc_config.standby_temperature,
         )
         await asyncio.sleep(hc_config.mcu_command_stabilization)
 
         # Cool down to standby temperature
         await mcu_service.start_standby_cooling()
-        logger.info(f"Initial cooling to standby temperature ({hc_config.standby_temperature}°C)...")
+        logger.info(
+            f"Initial cooling to standby temperature ({hc_config.standby_temperature}°C)..."
+        )
         await asyncio.sleep(hc_config.mcu_temperature_stabilization)
 
         # Clear timing history (exclude initial setup)
@@ -125,7 +130,7 @@ class HardwareSetupService:
     async def cleanup_hardware(self) -> None:
         """
         Clean up hardware connections
-        
+
         Disables power supply and disconnects hardware services.
         """
         try:

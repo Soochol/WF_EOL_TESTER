@@ -112,11 +112,11 @@ class MenuSystem(IMenuSystem):
             await self._process_menu_choice(choice)
 
         except (KeyboardInterrupt, EOFError):
+            logger.info("MenuSystem: KeyboardInterrupt caught, re-raising to SessionManager")
             if self._session_manager:
                 self._session_manager.stop_session()
-            self._formatter.print_message(
-                "Exiting EOL Tester... Goodbye!", message_type="info", title="Goodbye"
-            )
+            # Re-raise KeyboardInterrupt so SessionManager can handle emergency stop
+            raise
 
     async def _process_menu_choice(self, choice: str) -> None:
         """Process user menu choice and execute corresponding action.
@@ -192,7 +192,7 @@ class MenuSystem(IMenuSystem):
             )
 
             # Create Simple MCU Test UseCase instance
-            from application.use_cases.simple_mcu_test import SimpleMCUTestUseCase
+            from application.use_cases.system_tests import SimpleMCUTestUseCase
 
             # Try to get hardware services from the test executor's use case
             hardware_services = None
@@ -324,7 +324,9 @@ class MenuSystem(IMenuSystem):
             )
 
             # Create Heating/Cooling Time Test UseCase instance
-            from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
+            from application.use_cases.heating_cooling_time_test import (
+                HeatingCoolingTimeTestUseCase,
+            )
 
             # Try to get hardware services from the test executor's use case
             hardware_services = None
@@ -372,14 +374,20 @@ class MenuSystem(IMenuSystem):
             from ui.cli.controllers.test.heating_cooling_test_controller import (
                 HeatingCoolingTestController,
             )
-            
-            heating_cooling_usecase = HeatingCoolingTimeTestUseCase(hardware_services, configuration_service)
-            controller = HeatingCoolingTestController(heating_cooling_usecase, self._formatter, self._console)
+
+            heating_cooling_usecase = HeatingCoolingTimeTestUseCase(
+                hardware_services, configuration_service
+            )
+            controller = HeatingCoolingTestController(
+                heating_cooling_usecase, self._formatter, self._console
+            )
 
             # Get cycle count from configuration file
             cycle_count = controller.get_cycle_count_from_config()
-            
-            self._formatter.print_message(f"Starting test with {cycle_count} cycles...", message_type="info")
+
+            self._formatter.print_message(
+                f"Starting test with {cycle_count} cycles...", message_type="info"
+            )
 
             # Run the test through controller
             await controller.run_test(cycle_count)
@@ -390,7 +398,9 @@ class MenuSystem(IMenuSystem):
         except Exception as e:
             logger.error(f"Heating/Cooling Time Test execution error: {e}")
             self._formatter.print_message(
-                f"Heating/Cooling Time Test error: {str(e)}", message_type="error", title="Test Error"
+                f"Heating/Cooling Time Test error: {str(e)}",
+                message_type="error",
+                title="Test Error",
             )
 
     async def _execute_robot_home(self) -> None:

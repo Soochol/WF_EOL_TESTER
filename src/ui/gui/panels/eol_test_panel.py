@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 
 from application.containers.application_container import ApplicationContainer
 from application.use_cases.eol_force_test import (
-    EOLForceTestCommand,
+    EOLForceTestInput,
     EOLForceTestUseCase,
 )
 from ui.gui.services.gui_state_manager import GUIStateManager, TestStatus
@@ -51,7 +51,7 @@ class EOLTestWorker(QObject):
     test_completed = Signal(object)  # test_result
     test_failed = Signal(str)  # error_message
 
-    def __init__(self, use_case: EOLForceTestUseCase, command: EOLForceTestCommand):
+    def __init__(self, use_case: EOLForceTestUseCase, command: EOLForceTestInput):
         """
         Initialize EOL test worker
 
@@ -359,7 +359,7 @@ class EOLTestPanel(QWidget):
                 return
 
             # Create test command
-            command = EOLForceTestCommand(
+            command = EOLForceTestInput(
                 operator_id=operator_id,
                 serial_number=self.serial_number_input.text().strip() or None,
             )

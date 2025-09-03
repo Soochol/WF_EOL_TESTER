@@ -5,20 +5,19 @@ CLI controller for managing heating/cooling time measurement tests.
 """
 
 import json
-import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
+import yaml
 from rich.console import Console
 from rich.table import Table
 
 from application.use_cases.heating_cooling_time_test import (
-    HeatingCoolingTimeTestCommand,
+    HeatingCoolingTimeTestInput,
     HeatingCoolingTimeTestResult,
     HeatingCoolingTimeTestUseCase,
 )
-from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 from ui.cli.rich_formatter import RichFormatter
 
 
@@ -57,7 +56,7 @@ class HeatingCoolingTestController:
             self.formatter.print_message("This test measures MCU temperature transition times")
 
             # Create and execute command
-            command = HeatingCoolingTimeTestCommand(
+            command = HeatingCoolingTimeTestInput(
                 operator_id="cli_user", repeat_count=repeat_count
             )
 
@@ -70,13 +69,17 @@ class HeatingCoolingTestController:
             # Save results to file
             await self._save_results_to_file(result)
 
+        except KeyboardInterrupt:
+            self.formatter.print_message("Test interrupted by user. Cleaning up hardware...", message_type="warning")
+            # Use case cleanup will be handled by BaseUseCase's finally block and custom cleanup
+            raise
         except Exception as e:
             self.formatter.print_message(f"Test execution failed: {str(e)}", message_type="error")
 
     def _display_test_results(self, result: HeatingCoolingTimeTestResult) -> None:
         """Display test results in formatted tables"""
 
-        if not result.is_passed:
+        if not result.is_success:
             self.formatter.print_message(
                 f"Test failed: {result.error_message}", message_type="error"
             )
@@ -123,7 +126,9 @@ class HeatingCoolingTestController:
         stats_table.add_row(
             "Average ACK Time", f"{avg_heating_ack/1000:.3f}s", f"{avg_cooling_ack/1000:.3f}s"
         )
-        stats_table.add_row("Average Total Time", f"{avg_heating/1000:.1f}s", f"{avg_cooling/1000:.1f}s")
+        stats_table.add_row(
+            "Average Total Time", f"{avg_heating/1000:.1f}s", f"{avg_cooling/1000:.1f}s"
+        )
         stats_table.add_row(
             "Cycles Completed",
             str(stats.get("total_heating_cycles", 0)),
@@ -190,7 +195,7 @@ class HeatingCoolingTestController:
 
     def _display_full_cycle_power_analysis(self, measurements: Dict) -> None:
         """Display full cycle power analysis"""
-        
+
         full_cycle_power = measurements.get("full_cycle_power_data", {})
         if not full_cycle_power or full_cycle_power.get("sample_count", 0) == 0:
             return
@@ -200,60 +205,44 @@ class HeatingCoolingTestController:
         power_monitoring_interval = config.get("power_monitoring_interval", 0.5)
 
         self.console.print("\n[bold cyan]Full Cycle Power Analysis[/bold cyan]")
-        
+
         power_analysis_table = Table(title="Complete Test Power Measurements")
         power_analysis_table.add_column("Metric", style="cyan")
         power_analysis_table.add_column("Value", style="white")
         power_analysis_table.add_column("Details", style="dim")
-        
+
         avg_power = full_cycle_power.get("average_power_watts", 0)
         peak_power = full_cycle_power.get("peak_power_watts", 0)
         min_power = full_cycle_power.get("min_power_watts", 0)
         total_energy = full_cycle_power.get("total_energy_wh", 0)
         samples = full_cycle_power.get("sample_count", 0)
-        
-        # Calculate actual work duration from heating/cooling measurements
-        heating_measurements = measurements.get("heating_measurements", [])
-        cooling_measurements = measurements.get("cooling_measurements", [])
-        
-        total_heating_time_s = sum(h.get("total_duration_ms", 0) for h in heating_measurements) / 1000
-        total_cooling_time_s = sum(c.get("total_duration_ms", 0) for c in cooling_measurements) / 1000
-        actual_work_duration = total_heating_time_s + total_cooling_time_s
-        
+
         # Use full monitoring period (includes delays) to match energy calculation basis
         duration = full_cycle_power.get("duration_seconds", 0)
-        
+
         power_analysis_table.add_row(
-            "Average Power", 
-            f"{avg_power:.1f}W", 
-            "Mean power throughout entire test"
+            "Average Power", f"{avg_power:.1f}W", "Mean power throughout entire test"
         )
         power_analysis_table.add_row(
-            "Peak Power", 
-            f"{peak_power:.1f}W", 
-            "Maximum instantaneous power"
+            "Peak Power", f"{peak_power:.1f}W", "Maximum instantaneous power"
         )
         power_analysis_table.add_row(
-            "Minimum Power", 
-            f"{min_power:.1f}W", 
-            "Lowest instantaneous power"
+            "Minimum Power", f"{min_power:.1f}W", "Lowest instantaneous power"
         )
         power_analysis_table.add_row(
-            "Total Energy", 
-            f"{total_energy:.4f}Wh", 
-            "Energy consumed during complete test cycle"
+            "Total Energy", f"{total_energy:.4f}Wh", "Energy consumed during complete test cycle"
         )
         power_analysis_table.add_row(
-            "Measurement Duration", 
-            f"{duration:.1f}s", 
-            f"Complete power monitoring period (includes delays)"
+            "Measurement Duration",
+            f"{duration:.1f}s",
+            "Complete power monitoring period (includes delays)",
         )
         power_analysis_table.add_row(
-            "Sample Count", 
-            str(samples), 
-            f"Data points collected at {power_monitoring_interval}s intervals"
+            "Sample Count",
+            str(samples),
+            f"Data points collected at {power_monitoring_interval}s intervals",
         )
-        
+
         self.console.print(power_analysis_table)
 
     def _display_power_summary(self, stats: Dict) -> None:
@@ -298,7 +287,7 @@ class HeatingCoolingTestController:
         """Save test results to JSON file"""
         try:
             # Create results directory
-            results_dir = Path("ResultsLog/heating_cooling")
+            results_dir = Path("Logs/test_results/heating_cooling")
             results_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate filename with timestamp
@@ -312,8 +301,10 @@ class HeatingCoolingTestController:
                 "test_type": "heating_cooling_time_test",
                 "timestamp": datetime.now().isoformat(),
                 "test_status": result.test_status.name,
-                "is_passed": result.is_passed,
-                "execution_duration_seconds": result.execution_duration.seconds,
+                "is_passed": result.is_success,
+                "execution_duration_seconds": (
+                    result.execution_duration.seconds if result.execution_duration else 0
+                ),
                 "measurements": result.measurements,
                 "error_message": result.error_message,
             }
@@ -359,7 +350,7 @@ This test measures the time taken for MCU temperature transitions:
 [bold]Results:[/bold]
 • Detailed timing measurements for each cycle
 • Average performance statistics
-• Results saved to ResultsLog/heating_cooling/ directory
+• Results saved to Logs/test_results/heating_cooling/ directory
 """
 
         self.console.print(help_text)
@@ -367,20 +358,28 @@ This test measures the time taken for MCU temperature transitions:
     def get_cycle_count_from_config(self) -> int:
         """Get cycle count from configuration file"""
         config_file = Path("configuration/heating_cooling_time_test.yaml")
-        
+
         try:
             if config_file.exists():
-                self.formatter.print_message(f"Loading cycle count from {config_file}", message_type="info")
-                with open(config_file, 'r', encoding='utf-8') as f:
+                self.formatter.print_message(
+                    f"Loading cycle count from {config_file}", message_type="info"
+                )
+                with open(config_file, "r", encoding="utf-8") as f:
                     yaml_data = yaml.safe_load(f)
-                
-                repeat_count = yaml_data.get('repeat_count', 1)
-                self.formatter.print_message(f"Configuration: {repeat_count} cycles", message_type="info")
+
+                repeat_count = yaml_data.get("repeat_count", 1)
+                self.formatter.print_message(
+                    f"Configuration: {repeat_count} cycles", message_type="info"
+                )
                 return repeat_count
             else:
-                self.formatter.print_message("Configuration file not found, using default: 1 cycle", message_type="warning")
+                self.formatter.print_message(
+                    "Configuration file not found, using default: 1 cycle", message_type="warning"
+                )
                 return 1
-                
+
         except Exception as e:
-            self.formatter.print_message(f"Failed to load configuration: {e}, using default: 1 cycle", message_type="warning")
+            self.formatter.print_message(
+                f"Failed to load configuration: {e}, using default: 1 cycle", message_type="warning"
+            )
             return 1

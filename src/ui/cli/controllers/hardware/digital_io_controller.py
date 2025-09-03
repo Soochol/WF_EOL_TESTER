@@ -357,10 +357,10 @@ class DigitalIOController(HardwareController):
         """Interactively read a single digital input channel"""
         try:
             self.formatter.print_header("Read Input Channel", "Select channel to read (0-31)")
-            
+
             # Get channel from user
             channel_input = input("Enter channel number (0-31): ").strip()
-            
+
             try:
                 channel = int(channel_input)
                 if channel < 0 or channel > 31:
@@ -373,13 +373,13 @@ class DigitalIOController(HardwareController):
                     "Please enter a valid number (0-31)", message_type="warning"
                 )
                 return
-            
+
             # Read the input
             self.formatter.console.print(f"Reading input channel {channel}...")
-            
+
             # Read raw state
             raw_state = await self.digital_io_service.read_input(channel)
-            
+
             # Apply B-contact logic for button channels (8, 9) - inverted logic
             if channel in [8, 9]:  # Button channels with B-contact (normally closed)
                 actual_state = not raw_state
@@ -387,21 +387,27 @@ class DigitalIOController(HardwareController):
             else:
                 actual_state = raw_state
                 contact_type = "A-contact (NO)"
-            
+
             # Display result
             self.formatter.console.print()
             self.formatter.console.print(f"[bold]Channel {channel} Status:[/bold]")
-            self.formatter.console.print(f"  Raw State: {'[green]HIGH[/green]' if raw_state else '[dim]LOW[/dim]'}")
-            self.formatter.console.print(f"  Actual State: {'[green]HIGH[/green]' if actual_state else '[dim]LOW[/dim]'}")
+            self.formatter.console.print(
+                f"  Raw State: {'[green]HIGH[/green]' if raw_state else '[dim]LOW[/dim]'}"
+            )
+            self.formatter.console.print(
+                f"  Actual State: {'[green]HIGH[/green]' if actual_state else '[dim]LOW[/dim]'}"
+            )
             self.formatter.console.print(f"  Contact Type: {contact_type}")
-            
+
             if channel in [8, 9]:
                 button_name = "Left" if channel == 8 else "Right"
                 button_status = "PRESSED" if actual_state else "RELEASED"
-                self.formatter.console.print(f"  Button Status: [bold]{button_name} button {button_status}[/bold]")
-            
+                self.formatter.console.print(
+                    f"  Button Status: [bold]{button_name} button {button_status}[/bold]"
+                )
+
             self.formatter.console.print()
-            
+
         except Exception as e:
             self.formatter.print_message(
                 f"Failed to read input channel: {str(e)}", message_type="error"
@@ -411,76 +417,80 @@ class DigitalIOController(HardwareController):
     async def _show_all_input_states(self) -> None:
         """Display all digital input states in a table format"""
         try:
-            self.formatter.print_header("All Input States", "Current state of all input channels (0-31)")
-            
+            self.formatter.print_header("All Input States", "Current state of all input channels")
+
             # Get input count
             try:
                 input_count = await self.digital_io_service.get_input_count()
             except Exception:
                 input_count = 32  # Default to 32 channels
-            
+
             # Read all input states
             self.formatter.console.print("Reading all input channels...")
             input_states = await self.digital_io_service.read_all_inputs()
-            
-            # Ensure we have exactly 32 states
-            if len(input_states) < 32:
-                input_states.extend([False] * (32 - len(input_states)))
-            elif len(input_states) > 32:
-                input_states = input_states[:32]
-            
+
+            # Ensure we have exactly input_count states
+            if len(input_states) < input_count:
+                input_states.extend([False] * (input_count - len(input_states)))
+            elif len(input_states) > input_count:
+                input_states = input_states[:input_count]
+
             # Display in rows of 8 channels
             self.formatter.console.print()
             self.formatter.console.print("[bold cyan]Current Input States:[/bold cyan]")
-            
+
             channels_per_row = 8
-            
-            for start_ch in range(0, 32, channels_per_row):
-                end_ch = min(start_ch + channels_per_row, 32)
-                
+
+            for start_ch in range(0, input_count, channels_per_row):
+                end_ch = min(start_ch + channels_per_row, input_count)
+
                 # Channel headers
                 header_line = "  "
                 raw_line = "  "
                 actual_line = "  "
-                
+
                 for ch in range(start_ch, end_ch):
                     header_line += f"CH{ch:<3} "
                     raw_state = input_states[ch]
-                    
+
                     # Apply B-contact logic for button channels
                     if ch in [8, 9]:  # B-contact channels
                         actual_state = not raw_state
                     else:
                         actual_state = raw_state
-                    
+
                     # Raw state display
                     if raw_state:
                         raw_line += "[green]HIGH[/green] "
                     else:
                         raw_line += "[dim]LOW [/dim] "
-                    
-                    # Actual state display  
+
+                    # Actual state display
                     if actual_state:
                         actual_line += "[green]HIGH[/green] "
                     else:
                         actual_line += "[dim]LOW [/dim] "
-                
+
                 self.formatter.console.print(header_line)
                 self.formatter.console.print(f"Raw:    {raw_line}")
                 self.formatter.console.print(f"Actual: {actual_line}")
                 self.formatter.console.print()
-            
+
             # Special status for button channels
             self.formatter.console.print("[bold yellow]Button Status:[/bold yellow]")
             left_raw = input_states[8]
             right_raw = input_states[9]
             left_pressed = not left_raw  # B-contact inversion
             right_pressed = not right_raw
-            
-            self.formatter.console.print(f"  Left Button (CH8):  {'[bold green]PRESSED[/bold green]' if left_pressed else '[dim]RELEASED[/dim]'}")
-            self.formatter.console.print(f"  Right Button (CH9): {'[bold green]PRESSED[/bold green]' if right_pressed else '[dim]RELEASED[/dim]'}")
+
+            self.formatter.console.print(
+                f"  Left Button (CH8):  {'[bold green]PRESSED[/bold green]' if left_pressed else '[dim]RELEASED[/dim]'}"
+            )
+            self.formatter.console.print(
+                f"  Right Button (CH9): {'[bold green]PRESSED[/bold green]' if right_pressed else '[dim]RELEASED[/dim]'}"
+            )
             self.formatter.console.print()
-            
+
         except Exception as e:
             self.formatter.print_message(
                 f"Failed to read input states: {str(e)}", message_type="error"

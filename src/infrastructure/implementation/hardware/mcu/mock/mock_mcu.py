@@ -312,6 +312,9 @@ class MockMCU(MCUService):
             self._mcu_status = MCUStatus.IDLE
             logger.info(f"Mock MCU: Boot complete after {boot_time:.1f}s")
 
+        except asyncio.CancelledError:
+            # Re-raise CancelledError to preserve KeyboardInterrupt behavior
+            raise
         except Exception as e:
             logger.error(f"Mock MCU wait boot complete failed: {e}")
             raise HardwareOperationError("mock_mcu", "wait_boot_complete", str(e)) from e

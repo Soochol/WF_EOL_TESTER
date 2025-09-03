@@ -27,7 +27,7 @@ from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
 
 # Application configuration constants
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"
-LOGS_DIRECTORY_NAME = "logs"
+LOGS_DIRECTORY_NAME = "Logs/application"
 
 # Generate date-based log filename to prevent Windows file lock issues
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
@@ -90,6 +90,7 @@ async def main() -> None:
         # Create Emergency Stop Service
         emergency_stop_service = EmergencyStopService(
             hardware_facade=hardware_services,
+            configuration_service=configuration_service,
             eol_use_case=eol_force_test_use_case,
         )
 
@@ -133,7 +134,7 @@ async def main() -> None:
                 try:
                     # Create DUT command info for test execution
                     from application.use_cases.eol_force_test.main_executor import (
-                        EOLForceTestCommand,
+                        EOLForceTestInput,
                     )
                     from domain.value_objects.dut_command_info import (
                         DUTCommandInfo,
@@ -148,7 +149,7 @@ async def main() -> None:
                     )
 
                     # Create command
-                    command = EOLForceTestCommand(dut_info=dut_info, operator_id="BUTTON_OPERATOR")
+                    command = EOLForceTestInput(dut_info=dut_info, operator_id="BUTTON_OPERATOR")
 
                     # Execute test
                     logger.info(f"Starting EOL test for DUT: {dut_info.dut_id}")
@@ -216,7 +217,7 @@ async def main() -> None:
         # Services are now injected from ApplicationContainer
         try:
             command_line_interface = EnhancedEOLTesterCLI(
-                eol_force_test_use_case, hardware_services, configuration_service
+                eol_force_test_use_case, hardware_services, configuration_service, emergency_stop_service
             )
             logger.info(
                 "Starting Enhanced EOL Tester application with Rich UI (ApplicationContainer)"
@@ -236,7 +237,8 @@ async def main() -> None:
                     logger.error(f"Error stopping button monitoring service: {e}")
 
     except KeyboardInterrupt:
-        logger.info("Application interrupted by user")
+        logger.info("Application interrupted by user (Ctrl+C)")
+        # Emergency stop is now handled by SessionManager
     except Exception:
         logger.exception("Unexpected application error occurred")
         raise
@@ -316,11 +318,11 @@ def setup_logging(debug: bool = False) -> None:
 # All services are now injected via ApplicationContainer from configuration/application.yaml
 
 
-def setup_signal_handlers():
-    """Setup signal handlers for graceful shutdown"""
+def setup_signal_handlers(emergency_stop_service=None):
+    """Setup signal handlers for graceful shutdown with hardware safety"""
 
     def signal_handler(signum, frame):
-        """Handle termination signals"""
+        """Handle termination signals with hardware safety shutdown"""
         _ = frame  # Unused parameter
         signal_names = {
             signal.SIGINT: "SIGINT (Ctrl+C)",
@@ -332,8 +334,20 @@ def setup_signal_handlers():
             signal_names[signal.SIGBREAK] = "SIGBREAK (Ctrl+Break)"  # type: ignore[attr-defined]
 
         signal_name = signal_names.get(signum, f"Signal {signum}")
-        print(f"\\nReceived {signal_name}, exiting...")
-        sys.exit(0)
+        print(f"\\nReceived {signal_name}, initiating safe shutdown...")
+        
+        # Execute hardware safety shutdown if available
+        if emergency_stop_service:
+            try:
+                print("Executing emergency hardware shutdown...")
+                # Note: Signal handlers can't use async, so we need to handle this differently
+                # The KeyboardInterrupt handler in main() will handle the async emergency stop
+                print("Hardware safety shutdown will be handled by main exception handler")
+            except Exception as e:
+                print(f"Error during signal handler emergency shutdown: {e}")
+        
+        # Raise KeyboardInterrupt to trigger the main() exception handler
+        raise KeyboardInterrupt()
 
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -345,14 +359,15 @@ def setup_signal_handlers():
 
 
 if __name__ == "__main__":
-    # Setup signal handlers for graceful shutdown
-    setup_signal_handlers()
+    # Don't setup signal handlers - let asyncio handle Ctrl+C naturally
+    # This allows KeyboardInterrupt to reach the async main() function
+    # where SessionManager can handle emergency stop properly
 
     # Use asyncio.run for Python 3.7+ compatibility
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\\nExiting...")
+        print("\\nSafely exiting after hardware shutdown...")
     except EOFError:
         print("\\nEOF received, exiting...")
     except Exception as e:

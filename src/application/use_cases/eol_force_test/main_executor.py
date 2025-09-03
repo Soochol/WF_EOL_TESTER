@@ -6,15 +6,15 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 import asyncio
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 
 from application.services.core.configuration_service import ConfigurationService
 from application.services.core.configuration_validator import ConfigurationValidator
 from application.services.core.exception_handler import ExceptionHandler
-from application.services.hardware_service_facade import HardwareServiceFacade
 from application.services.core.repository_service import RepositoryService
+from application.services.hardware_facade import HardwareServiceFacade
 from application.services.test.test_result_evaluator import TestResultEvaluator
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
@@ -25,6 +25,9 @@ from domain.value_objects.identifiers import TestId
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.time_values import TestDuration
 
+from ..common.base_use_case import BaseUseCase
+from ..common.command_result_patterns import BaseUseCaseInput
+from ..common.execution_context import ExecutionContext
 from .configuration_loader import TestConfigurationLoader
 from .constants import TestExecutionConstants
 from .hardware_test_executor import HardwareTestExecutor
@@ -34,15 +37,27 @@ from .test_entity_factory import TestEntityFactory
 from .test_state_manager import TestStateManager
 
 
-class EOLForceTestCommand:
-    """EOL Test Execution Command"""
+class EOLForceTestInput(BaseUseCaseInput):
+    """EOL Test Execution Input Data"""
 
-    def __init__(self, dut_info: DUTCommandInfo, operator_id: str):
+    def __init__(self, dut_info: DUTCommandInfo, operator_id: str = "system"):
+        super().__init__(operator_id)
         self.dut_info = dut_info
-        self.operator_id = operator_id
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert input to dictionary representation"""
+        return {
+            "operator_id": self.operator_id,
+            "dut_info": {
+                "dut_id": self.dut_info.dut_id,
+                "model_number": self.dut_info.model_number,
+                "serial_number": self.dut_info.serial_number,
+                "manufacturer": self.dut_info.manufacturer,
+            },
+        }
 
 
-class EOLForceTestUseCase:
+class EOLForceTestUseCase(BaseUseCase):
     """
     EOL Test Execution Use Case with Component-Based Architecture
 
@@ -59,6 +74,9 @@ class EOLForceTestUseCase:
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
     ):
+        # Initialize BaseUseCase
+        super().__init__("EOL Force Test")
+
         # Core service dependencies (unchanged)
         self._hardware_services = hardware_services
         self._exception_handler = exception_handler
@@ -74,39 +92,29 @@ class EOLForceTestUseCase:
         self._result_evaluator = ResultEvaluator(
             test_result_evaluator, self._measurement_converter, self._state_manager
         )
+        
+        # Emergency stop and interruption handling
+        self._keyboard_interrupt_raised = False
 
-        # Execution state for duplicate execution prevention
-        self._is_running = False
-
-    def is_running(self) -> bool:
+    async def _execute_implementation(
+        self, command: BaseUseCaseInput, context: ExecutionContext
+    ) -> EOLTestResult:
         """
-        Check if EOL test is currently running
-
-        Returns:
-            True if test is currently executing, False otherwise
-        """
-        return self._is_running
-
-    async def execute(self, command: EOLForceTestCommand) -> EOLTestResult:
-        """
-        Execute EOL test with support for repetition
-
-        This method handles test repetition based on the repeat_count configuration.
-        For repeat_count > 1, it executes multiple test cycles and aggregates results.
-        For repeat_count = 1, it behaves as a single test execution.
+        Execute EOL test implementation (BaseUseCase abstract method)
 
         Args:
-            command: Test execution command containing DUT info and operator ID
+            command: Base input (will be cast to EOLForceTestInput)
+            context: Execution context with timing and identification info
 
         Returns:
-            EOLTestResult containing aggregated test outcome and execution details
-
-        Raises:
-            TestExecutionException: If configuration validation fails or critical test errors occur
-            ConfigurationNotFoundError: If specified profile cannot be found
-            RepositoryAccessError: If test data cannot be saved
-            HardwareConnectionException: If hardware connection fails
+            EOLTestResult containing test outcome and execution details
         """
+        # Cast to specific command type
+        if not isinstance(command, EOLForceTestInput):
+            raise ValueError(f"Expected EOLForceTestInput, got {type(command)}")
+
+        eol_command = command
+
         # Load configuration to check repeat_count
         await self._config_loader.load_and_validate_configurations()
         test_config = self._config_loader.test_config
@@ -120,12 +128,45 @@ class EOLForceTestUseCase:
 
         if repeat_count == 1:
             # Single execution - use original logic
-            return await self.execute_single(command)
+            return await self.execute_single(eol_command)
         else:
             # Multiple executions - handle repetition
-            return await self._execute_repeated(command, repeat_count)
+            return await self._execute_repeated(eol_command, repeat_count)
 
-    async def execute_single(self, command: EOLForceTestCommand) -> EOLTestResult:
+    async def execute(self, command: EOLForceTestInput) -> EOLTestResult:
+        """
+        Execute EOL test with support for repetition (public interface)
+
+        This method delegates to BaseUseCase.execute for consistent behavior.
+        """
+        result = await super().execute(command)
+        # Result is guaranteed to be EOLTestResult since _execute_implementation returns one
+        return result  # type: ignore
+
+    def _create_failure_result(
+        self,
+        command: BaseUseCaseInput,
+        context: ExecutionContext,
+        execution_duration: TestDuration,
+        error_message: str,
+    ) -> EOLTestResult:
+        """
+        Create failure result for BaseUseCase compatibility
+
+        Args:
+            command: Original command that failed
+            context: Execution context
+            execution_duration: How long execution took before failing
+            error_message: Error description
+
+        Returns:
+            EOLTestResult indicating failure
+        """
+        return EOLTestResult.create_error(
+            test_id=context.test_id, error_message=error_message, duration=execution_duration
+        )
+
+    async def execute_single(self, command: EOLForceTestInput) -> EOLTestResult:
         """
         Execute EOL test using component-based architecture
 
@@ -148,10 +189,10 @@ class EOLForceTestUseCase:
         """
         logger.info(TestExecutionConstants.LOG_TEST_EXECUTION_START, command.dut_info.dut_id)
 
-        # Set running flag to prevent duplicate execution
-        self._is_running = True
+        # Reset KeyboardInterrupt flag for each execution
+        self._keyboard_interrupt_raised = False
 
-        # Execute test with proper error handling
+        # Execute test with proper error handling (BaseUseCase handles _is_running)
         start_time = asyncio.get_event_loop().time()
         measurements: Optional[TestMeasurements] = None
         test_entity = None
@@ -207,6 +248,19 @@ class EOLForceTestUseCase:
                 is_test_passed,
             )
 
+        except KeyboardInterrupt:
+            # Handle KeyboardInterrupt with emergency stop priority
+            # Set flag to prevent normal cleanup in finally block
+            self._keyboard_interrupt_raised = True
+            # Don't perform normal cleanup - let emergency stop handle hardware safety
+            # Re-raise to allow emergency stop service to execute
+            raise
+        except asyncio.CancelledError:
+            # Handle CancelledError (from asyncio.sleep interruptions) as KeyboardInterrupt
+            # Set flag to prevent normal cleanup in finally block
+            self._keyboard_interrupt_raised = True
+            # Convert CancelledError back to KeyboardInterrupt for emergency stop service
+            raise KeyboardInterrupt("Test cancelled by user interrupt") from None
         except Exception as e:
             # Phase 5: Handle test failure with proper error context
             return await self._handle_test_failure(
@@ -214,11 +268,19 @@ class EOLForceTestUseCase:
             )
 
         finally:
-            # Phase 6: Cleanup hardware resources (always executed)
-            await self._cleanup_hardware_resources(test_entity)
-
-            # Clear running flag to allow future executions
-            self._is_running = False
+            # Phase 6: Cleanup hardware resources (only if not interrupted)
+            # Skip cleanup entirely if KeyboardInterrupt was raised - let Emergency Stop handle hardware safety
+            if self._keyboard_interrupt_raised:
+                # Skip cleanup - Emergency Stop Service will handle hardware safety
+                pass
+            else:
+                # Normal cleanup for successful/failed tests (not interrupted)
+                try:
+                    await self._cleanup_hardware_resources(test_entity)
+                except KeyboardInterrupt:
+                    # If KeyboardInterrupt occurs during cleanup, prioritize emergency stop
+                    self._keyboard_interrupt_raised = True
+                    raise
 
     def _calculate_execution_duration(self, start_time: float) -> TestDuration:
         """
@@ -267,7 +329,7 @@ class EOLForceTestUseCase:
         self,
         error: Exception,
         test_entity: Optional[EOLTest],
-        command: EOLForceTestCommand,  # pylint: disable=unused-argument
+        command: EOLForceTestInput,  # pylint: disable=unused-argument
         measurements: Optional[TestMeasurements],
         start_time: float,
     ) -> EOLTestResult:
@@ -337,7 +399,7 @@ class EOLForceTestUseCase:
             logger.warning("Hardware cleanup failed{}: {}", test_context, cleanup_error)
 
     async def _execute_repeated(
-        self, command: EOLForceTestCommand, repeat_count: int
+        self, command: EOLForceTestInput, repeat_count: int
     ) -> EOLTestResult:
         """
         Execute repeated test cycles and aggregate results
@@ -353,104 +415,97 @@ class EOLForceTestUseCase:
             f"Starting repeated EOL test execution: {repeat_count} repetitions for DUT {command.dut_info.dut_id}"
         )
 
-        # Set running flag to prevent duplicate execution
-        self._is_running = True
         overall_start_time = asyncio.get_event_loop().time()
 
         all_results = []
         successful_tests = 0
         failed_tests = 0
 
-        try:
-            for cycle in range(1, repeat_count + 1):
-                logger.info(
-                    f"Executing test cycle {cycle}/{repeat_count} for DUT {command.dut_info.dut_id}"
-                )
-
-                # Create unique DUT info for this cycle
-                cycle_dut_info = DUTCommandInfo(
-                    dut_id=f"{command.dut_info.dut_id}_cycle_{cycle:03d}",
-                    model_number=command.dut_info.model_number,
-                    serial_number=f"{command.dut_info.serial_number}_C{cycle:03d}",
-                    manufacturer=command.dut_info.manufacturer,
-                )
-
-                cycle_command = EOLForceTestCommand(
-                    dut_info=cycle_dut_info, operator_id=command.operator_id
-                )
-
-                try:
-                    # Execute single test cycle
-                    result = await self.execute_single(cycle_command)
-                    all_results.append(result)
-
-                    if result.is_passed:
-                        successful_tests += 1
-                        logger.info(
-                            f"Test cycle {cycle}/{repeat_count} PASSED for DUT {cycle_dut_info.dut_id}"
-                        )
-                    else:
-                        failed_tests += 1
-                        logger.warning(
-                            f"Test cycle {cycle}/{repeat_count} FAILED for DUT {cycle_dut_info.dut_id}"
-                        )
-
-                except Exception as cycle_error:
-                    failed_tests += 1
-                    logger.error(
-                        f"Test cycle {cycle}/{repeat_count} ERROR for DUT {cycle_dut_info.dut_id}: {cycle_error}"
-                    )
-                    # Continue with next cycle even if one fails
-
-                # Add delay between cycles for hardware stabilization (except for last cycle)
-                if cycle < repeat_count:
-                    stabilization_delay = 2.0  # 2 seconds between cycles
-                    logger.debug(f"Waiting {stabilization_delay}s between test cycles...")
-                    await asyncio.sleep(stabilization_delay)
-
-            # Create aggregated result
-            overall_duration = self._calculate_execution_duration(overall_start_time)
-            overall_passed = successful_tests > 0  # At least one test must pass
-
-            # Use the first successful result as template, or first result if none successful
-            template_result = None
-            for result in all_results:
-                if result.is_passed:
-                    template_result = result
-                    break
-            if template_result is None and all_results:
-                template_result = all_results[0]
-
-            if template_result is None:
-                # No results at all - create a failure result
-                return EOLTestResult(
-                    test_id=TestId.generate(),
-                    test_status=TestStatus.ERROR,
-                    is_passed=False,
-                    execution_duration=overall_duration,
-                    error_message=f"All {repeat_count} test cycles failed to execute",
-                )
-
-            # Create summary result
-            summary_result = EOLTestResult(
-                test_id=TestId.generate(),
-                test_status=TestStatus.COMPLETED if overall_passed else TestStatus.FAILED,
-                is_passed=overall_passed,
-                test_summary=template_result.test_summary,  # Use template measurements
-                execution_duration=overall_duration,
-                error_message=(
-                    f"Repeated test summary: {successful_tests}/{repeat_count} cycles passed, {failed_tests}/{repeat_count} cycles failed"
-                    if failed_tests > 0
-                    else None
-                ),
-                completed_at=template_result.completed_at,
-            )
-
+        for cycle in range(1, repeat_count + 1):
             logger.info(
-                f"Repeated EOL test completed: {successful_tests}/{repeat_count} cycles passed for DUT {command.dut_info.dut_id}"
+                f"Executing test cycle {cycle}/{repeat_count} for DUT {command.dut_info.dut_id}"
             )
-            return summary_result
 
-        finally:
-            # Clear running flag
-            self._is_running = False
+            # Create unique DUT info for this cycle
+            cycle_dut_info = DUTCommandInfo(
+                dut_id=f"{command.dut_info.dut_id}_cycle_{cycle:03d}",
+                model_number=command.dut_info.model_number,
+                serial_number=f"{command.dut_info.serial_number}_C{cycle:03d}",
+                manufacturer=command.dut_info.manufacturer,
+            )
+
+            cycle_command = EOLForceTestInput(
+                dut_info=cycle_dut_info, operator_id=command.operator_id
+            )
+
+            try:
+                # Execute single test cycle
+                result = await self.execute_single(cycle_command)
+                all_results.append(result)
+
+                if result.is_passed:
+                    successful_tests += 1
+                    logger.info(
+                        f"Test cycle {cycle}/{repeat_count} PASSED for DUT {cycle_dut_info.dut_id}"
+                    )
+                else:
+                    failed_tests += 1
+                    logger.warning(
+                        f"Test cycle {cycle}/{repeat_count} FAILED for DUT {cycle_dut_info.dut_id}"
+                    )
+
+            except Exception as cycle_error:
+                failed_tests += 1
+                logger.error(
+                    f"Test cycle {cycle}/{repeat_count} ERROR for DUT {cycle_dut_info.dut_id}: {cycle_error}"
+                )
+                # Continue with next cycle even if one fails
+
+            # Add delay between cycles for hardware stabilization (except for last cycle)
+            if cycle < repeat_count:
+                stabilization_delay = 2.0  # 2 seconds between cycles
+                logger.debug(f"Waiting {stabilization_delay}s between test cycles...")
+                await asyncio.sleep(stabilization_delay)
+
+        # Create aggregated result
+        overall_duration = self._calculate_execution_duration(overall_start_time)
+        overall_passed = successful_tests > 0  # At least one test must pass
+
+        # Use the first successful result as template, or first result if none successful
+        template_result = None
+        for result in all_results:
+            if result.is_passed:
+                template_result = result
+                break
+        if template_result is None and all_results:
+            template_result = all_results[0]
+
+        if template_result is None:
+            # No results at all - create a failure result
+            return EOLTestResult(
+                test_id=TestId.generate(),
+                test_status=TestStatus.ERROR,
+                is_passed=False,
+                execution_duration=overall_duration,
+                error_message=f"All {repeat_count} test cycles failed to execute",
+            )
+
+        # Create summary result
+        summary_result = EOLTestResult(
+            test_id=TestId.generate(),
+            test_status=TestStatus.COMPLETED if overall_passed else TestStatus.FAILED,
+            is_passed=overall_passed,
+            test_summary=template_result.test_summary,  # Use template measurements
+            execution_duration=overall_duration,
+            error_message=(
+                f"Repeated test summary: {successful_tests}/{repeat_count} cycles passed, {failed_tests}/{repeat_count} cycles failed"
+                if failed_tests > 0
+                else None
+            ),
+            completed_at=template_result.completed_at,
+        )
+
+        logger.info(
+            f"Repeated EOL test completed: {successful_tests}/{repeat_count} cycles passed for DUT {command.dut_info.dut_id}"
+        )
+        return summary_result

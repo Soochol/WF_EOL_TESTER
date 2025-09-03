@@ -7,14 +7,14 @@ Manages connection verification and output channel control.
 
 from loguru import logger
 
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 
 
 class DigitalIOSetupService:
     """
     Digital I/O setup service for robot operations
-    
+
     Manages Digital I/O service connection and configuration for robot operations,
     particularly servo brake release functionality.
     """
@@ -22,7 +22,7 @@ class DigitalIOSetupService:
     def __init__(self, hardware_services: HardwareServiceFacade):
         """
         Initialize Digital I/O setup service
-        
+
         Args:
             hardware_services: Hardware service facade
         """
@@ -49,14 +49,14 @@ class DigitalIOSetupService:
         try:
             await self._ensure_connection()
             await self._enable_brake_release(servo_brake_channel)
-            
+
         except Exception as dio_error:
             self._handle_setup_error(dio_error, servo_brake_channel, irq_no)
 
     async def _ensure_connection(self) -> None:
         """
         Ensure Digital I/O service is connected and verified
-        
+
         Raises:
             HardwareConnectionException: If connection fails
         """
@@ -69,37 +69,35 @@ class DigitalIOSetupService:
 
         # Verify connection by checking status
         if not await self._hardware_services.digital_io_service.is_connected():
-            raise HardwareConnectionException(
-                "Digital I/O service connection verification failed"
-            )
+            raise HardwareConnectionException("Digital I/O service connection verification failed")
         logger.info("Digital I/O service connection verified")
 
     async def _enable_brake_release(self, servo_brake_channel: int) -> None:
         """
         Enable servo brake release on specified channel
-        
+
         Args:
             servo_brake_channel: Digital output channel for brake release
-            
+
         Raises:
             Exception: If brake release enable fails
         """
-        await self._hardware_services.digital_io_service.write_output(
-            servo_brake_channel, True
-        )
+        await self._hardware_services.digital_io_service.write_output(servo_brake_channel, True)
         logger.info(
             f"Digital Output channel {servo_brake_channel} (servo brake release) enabled successfully"
         )
 
-    def _handle_setup_error(self, dio_error: Exception, servo_brake_channel: int, irq_no: int) -> None:
+    def _handle_setup_error(
+        self, dio_error: Exception, servo_brake_channel: int, irq_no: int
+    ) -> None:
         """
         Handle and classify Digital I/O setup errors
-        
+
         Args:
             dio_error: The original exception
             servo_brake_channel: Digital output channel that failed
             irq_no: IRQ number for context
-            
+
         Raises:
             HardwareConnectionException: Classified hardware error
         """

@@ -14,11 +14,11 @@ from domain.value_objects.time_values import Timestamp
 class ExecutionContext:
     """
     Execution context for use case operations
-    
+
     Contains all contextual information needed during use case execution
     including timing, identification, and metadata.
     """
-    
+
     def __init__(
         self,
         test_id: TestId,
@@ -30,7 +30,7 @@ class ExecutionContext:
     ):
         """
         Initialize execution context
-        
+
         Args:
             test_id: Unique identifier for this execution
             use_case_name: Name of the use case being executed
@@ -45,34 +45,34 @@ class ExecutionContext:
         self.start_time = start_time
         self.end_time = end_time
         self.metadata = metadata or {}
-    
+
     def add_metadata(self, key: str, value: Any) -> None:
         """
         Add metadata to the execution context
-        
+
         Args:
             key: Metadata key
             value: Metadata value
         """
         self.metadata[key] = value
-    
+
     def get_metadata(self, key: str, default: Any = None) -> Any:
         """
         Get metadata from the execution context
-        
+
         Args:
             key: Metadata key
             default: Default value if key not found
-            
+
         Returns:
             Metadata value or default
         """
         return self.metadata.get(key, default)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert context to dictionary representation
-        
+
         Returns:
             Dictionary containing context data
         """
@@ -84,7 +84,7 @@ class ExecutionContext:
             "end_time": self.end_time.to_iso() if self.end_time else None,
             "metadata": self.metadata,
         }
-    
+
     def __repr__(self) -> str:
         """String representation of execution context"""
         return (

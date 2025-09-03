@@ -10,8 +10,7 @@ dev-debug.log
 data/
 
 # Test results and logs
-ResultsLog/
-TestResults/
+Logs/
 
 # Dependency directories
 node_modules/

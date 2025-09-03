@@ -7,16 +7,16 @@ Coordinates hardware setup, test execution, and result processing.
 
 from loguru import logger
 
-from application.use_cases.common.base_use_case import BaseUseCase
 from application.services.core.configuration_service import ConfigurationService
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
+from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-from .command import HeatingCoolingTimeTestCommand
-from .result import HeatingCoolingTimeTestResult
+from .command import HeatingCoolingTimeTestInput
 from .hardware_setup_service import HardwareSetupService
-from .test_cycle_executor import TestCycleExecutor
+from .result import HeatingCoolingTimeTestResult
 from .statistics_calculator import StatisticsCalculator
+from .test_cycle_executor import TestCycleExecutor
 
 
 class HeatingCoolingTimeTestUseCase(BaseUseCase):
@@ -45,9 +45,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self._hardware_setup = HardwareSetupService(hardware_services)
 
     async def _execute_implementation(
-        self, 
-        command: HeatingCoolingTimeTestCommand, 
-        context
+        self, command: HeatingCoolingTimeTestInput, context
     ) -> HeatingCoolingTimeTestResult:
         """
         Execute Heating/Cooling Time Test implementation
@@ -59,7 +57,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         Returns:
             HeatingCoolingTimeTestResult with timing measurements
         """
-        logger.info(f"Test parameters - Operator: {command.operator_id}, Cycles: {command.repeat_count}")
+        logger.info(
+            f"Test parameters - Operator: {command.operator_id}, Cycles: {command.repeat_count}"
+        )
 
         # 1. Load configurations
         logger.info("Loading configurations...")
@@ -75,26 +75,32 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         await self._hardware_setup.initialize_temperature(hc_config)
 
         # 3. Execute test cycles
-        test_executor = TestCycleExecutor(self._hardware_services, self._hardware_setup.power_monitor)
-        
+        test_executor = TestCycleExecutor(
+            self._hardware_services, self._hardware_setup.power_monitor
+        )
+
         # Determine actual repeat count
-        actual_repeat_count = hc_config.repeat_count if hc_config.repeat_count != 1 else command.repeat_count
-        logger.info(f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, command: {command.repeat_count})")
-        
+        actual_repeat_count = (
+            hc_config.repeat_count if hc_config.repeat_count != 1 else command.repeat_count
+        )
+        logger.info(
+            f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, command: {command.repeat_count})"
+        )
+
         cycle_results = await test_executor.execute_test_cycles(hc_config, actual_repeat_count)
-        
+
         # 4. Process results
         timing_data = cycle_results["timing_data"]
         power_data = cycle_results["power_data"]
-        
+
         heating_results = timing_data["heating_results"]
         cooling_results = timing_data["cooling_results"]
-        
+
         # 5. Calculate statistics
         statistics = StatisticsCalculator.calculate_statistics(
             heating_results, cooling_results, power_data, actual_repeat_count
         )
-        
+
         # Log summary
         StatisticsCalculator.log_summary(statistics)
 
@@ -127,11 +133,11 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         )
 
     def _create_failure_result(
-        self, 
-        command: HeatingCoolingTimeTestCommand, 
-        context, 
-        execution_duration, 
-        error_message: str
+        self,
+        command: HeatingCoolingTimeTestInput,
+        context,
+        execution_duration,
+        error_message: str,
     ) -> HeatingCoolingTimeTestResult:
         """
         Create a failure result when execution fails
@@ -141,7 +147,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description
-            
+
         Returns:
             HeatingCoolingTimeTestResult indicating failure
         """
@@ -161,13 +167,13 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         except Exception as cleanup_error:
             logger.warning(f"Cleanup warning in main use case: {cleanup_error}")
 
-    async def execute(self, command: HeatingCoolingTimeTestCommand) -> HeatingCoolingTimeTestResult:
+    async def execute(self, command: HeatingCoolingTimeTestInput) -> HeatingCoolingTimeTestResult:
         """
         Execute the heating/cooling time test with proper cleanup
 
         Args:
             command: Test command with parameters
-            
+
         Returns:
             HeatingCoolingTimeTestResult with timing measurements
         """

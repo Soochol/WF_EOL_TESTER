@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional, Type
 from loguru import logger
 from rich.console import Console
 
-from application.use_cases.simple_mcu_test import (
-    SimpleMCUTestCommand,
+from application.use_cases.system_tests import (
+    SimpleMCUTestInput,
     SimpleMCUTestUseCase,
 )
 
@@ -89,7 +89,7 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             formatter.print_message(f"MCU test execution failed: {str(e)}", message_type="error")
             raise
 
-    async def get_parameters(self, formatter: RichFormatter) -> Optional[SimpleMCUTestCommand]:
+    async def get_parameters(self, formatter: RichFormatter) -> Optional[SimpleMCUTestInput]:
         """Get MCU test parameters with operator input"""
         try:
             formatter.console.print("[bold cyan]MCU Test Configuration[/bold cyan]")
@@ -99,12 +99,12 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             if not operator:
                 operator = "cli_user"
 
-            formatter.console.print(f"[green]Configuration:[/green]")
-            formatter.console.print(f"  Operator: {operator}")
-            formatter.console.print(f"  Port/Baudrate: Will be loaded from hardware configuration")
+            formatter.console.print("[green]Configuration:[/green]")
+            formatter.console.print("  Operator: {operator}")
+            formatter.console.print("  Port/Baudrate: Will be loaded from hardware configuration")
 
             # Create and return command
-            command = SimpleMCUTestCommand(
+            command = SimpleMCUTestInput(
                 operator_id=operator,
             )
 
@@ -173,7 +173,7 @@ class UseCaseManager:
             name="Simple MCU Test",
             description="Execute direct MCU communication testing sequence",
             use_case_class=SimpleMCUTestUseCase,
-            command_class=SimpleMCUTestCommand,
+            command_class=SimpleMCUTestInput,
         )
 
         self.discovered_usecases.append(simple_mcu_usecase_info)

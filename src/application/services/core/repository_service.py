@@ -17,6 +17,17 @@ from domain.entities.eol_test import EOLTest
 from domain.exceptions import RepositoryAccessError
 
 
+class ConfigPaths:
+    """Repository service file paths constants"""
+    
+    # Log directories for measurements
+    MEASUREMENTS_RAW_DATA_DIR = "Logs/measurements/raw_data"
+    MEASUREMENTS_SUMMARY_DIR = "Logs/measurements"
+    
+    # File names
+    SUMMARY_FILENAME = "test_summary.csv"
+
+
 class RepositoryService:
     """
     Service for managing test result repository operations
@@ -69,7 +80,7 @@ class RepositoryService:
         """
         try:
             # Create directory if it doesn't exist
-            raw_data_dir = Path("TestResults/raw_data")
+            raw_data_dir = Path(ConfigPaths.MEASUREMENTS_RAW_DATA_DIR)
             raw_data_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate daily filename (date-based accumulation)
@@ -205,10 +216,10 @@ class RepositoryService:
         """
         try:
             # Create directory if it doesn't exist
-            test_results_dir = Path("TestResults")
+            test_results_dir = Path(ConfigPaths.MEASUREMENTS_SUMMARY_DIR)
             test_results_dir.mkdir(parents=True, exist_ok=True)
 
-            summary_file = test_results_dir / "test_summary.csv"
+            summary_file = test_results_dir / ConfigPaths.SUMMARY_FILENAME
 
             # Check if file exists and create header if needed
             file_exists = summary_file.exists()

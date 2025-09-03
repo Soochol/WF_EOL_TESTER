@@ -25,7 +25,7 @@ from .validation.input_validator import InputValidator, ValidationConstants
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
-    from application.services.hardware_service_facade import HardwareServiceFacade
+    from application.services.hardware_facade import HardwareServiceFacade
     from application.use_cases.eol_force_test import EOLForceTestUseCase
 
     from .config_reader import CLIConfigReader
@@ -52,6 +52,7 @@ class EnhancedEOLTesterCLI:
         use_case: "EOLForceTestUseCase",
         hardware_facade: Optional["HardwareServiceFacade"] = None,
         configuration_service: Optional[Any] = None,
+        emergency_stop_service: Optional[Any] = None,
     ):
         """Initialize the enhanced CLI with backward compatibility.
 
@@ -59,12 +60,14 @@ class EnhancedEOLTesterCLI:
             use_case: EOL test execution use case
             hardware_facade: Hardware service facade for individual hardware control
             configuration_service: Configuration service for loading DUT defaults
+            emergency_stop_service: Emergency stop service for hardware safety
         """
         # Create CLI application using dependency injection
         self._application = create_production_cli_application(
             use_case=use_case,
             hardware_facade=hardware_facade,
             configuration_service=configuration_service,
+            emergency_stop_service=emergency_stop_service,
         )
 
         # Store dependencies for backward compatibility

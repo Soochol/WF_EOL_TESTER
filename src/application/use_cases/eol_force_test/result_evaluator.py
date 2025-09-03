@@ -64,7 +64,9 @@ class ResultEvaluator:
             raise TestExecutionException(TestExecutionConstants.TEST_CONFIG_BEFORE_EVALUATION_ERROR)
 
         test_pass_criteria = test_config.pass_criteria
-        evaluation_ready_measurements = self._measurement_converter.convert_for_evaluation(measurements)
+        evaluation_ready_measurements = self._measurement_converter.convert_for_evaluation(
+            measurements
+        )
 
         try:
             # Perform test evaluation using the evaluator service

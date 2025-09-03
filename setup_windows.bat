@@ -117,10 +117,16 @@ if exist "configuration\hardware_model.yaml" (
 )
 echo.
 
-REM Create logs directory
-if not exist "logs" (
-    echo [SETUP] Creating logs directory...
-    mkdir logs
+REM Create logs directory structure
+if not exist "Logs" (
+    echo [SETUP] Creating Logs directory structure...
+    mkdir Logs
+    mkdir Logs\application
+    mkdir Logs\test_results
+    mkdir Logs\test_results\json
+    mkdir Logs\test_results\heating_cooling
+    mkdir Logs\measurements
+    mkdir Logs\measurements\raw_data
 )
 
 REM Test run (optional)

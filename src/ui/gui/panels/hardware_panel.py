@@ -119,7 +119,7 @@ class HardwarePanel(QWidget):
         self,
         container: ApplicationContainer,
         state_manager: GUIStateManager,
-        parent: Optional[QWidget] = None
+        parent: Optional[QWidget] = None,
     ):
         """
         Initialize hardware panel
@@ -180,7 +180,8 @@ class HardwarePanel(QWidget):
         self.emergency_stop_button = QPushButton("EMERGENCY STOP")
         self.emergency_stop_button.setProperty("class", "danger")
         self.emergency_stop_button.setMinimumHeight(60)
-        self.emergency_stop_button.setStyleSheet("""
+        self.emergency_stop_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 14px;
                 font-weight: bold;
@@ -191,7 +192,8 @@ class HardwarePanel(QWidget):
             QPushButton:hover {
                 background-color: #CD212A;
             }
-        """)
+        """
+        )
 
         self.reset_all_button = QPushButton("Reset All")
         self.reset_all_button.setProperty("class", "warning")
@@ -229,7 +231,8 @@ class HardwarePanel(QWidget):
         self.command_log.setReadOnly(True)
         self.command_log.setMaximumHeight(150)
         self.command_log.setFont(QFont("Consolas", 9))
-        self.command_log.setStyleSheet("""
+        self.command_log.setStyleSheet(
+            """
             QTextEdit {
                 background-color: #2C3E50;
                 color: #ECF0F1;
@@ -237,7 +240,8 @@ class HardwarePanel(QWidget):
                 border-radius: 4px;
                 padding: 8px;
             }
-        """)
+        """
+        )
 
         manual_layout.addWidget(self.command_log)
 
@@ -296,23 +300,35 @@ class HardwarePanel(QWidget):
         # Hardware group connections
         if self.robot_group:
             self.robot_group.connect_button.clicked.connect(lambda: self.connect_hardware("robot"))
-            self.robot_group.disconnect_button.clicked.connect(lambda: self.disconnect_hardware("robot"))
+            self.robot_group.disconnect_button.clicked.connect(
+                lambda: self.disconnect_hardware("robot")
+            )
 
         if self.mcu_group:
             self.mcu_group.connect_button.clicked.connect(lambda: self.connect_hardware("mcu"))
-            self.mcu_group.disconnect_button.clicked.connect(lambda: self.disconnect_hardware("mcu"))
+            self.mcu_group.disconnect_button.clicked.connect(
+                lambda: self.disconnect_hardware("mcu")
+            )
 
         if self.loadcell_group:
-            self.loadcell_group.connect_button.clicked.connect(lambda: self.connect_hardware("loadcell"))
-            self.loadcell_group.disconnect_button.clicked.connect(lambda: self.disconnect_hardware("loadcell"))
+            self.loadcell_group.connect_button.clicked.connect(
+                lambda: self.connect_hardware("loadcell")
+            )
+            self.loadcell_group.disconnect_button.clicked.connect(
+                lambda: self.disconnect_hardware("loadcell")
+            )
 
         if self.power_group:
             self.power_group.connect_button.clicked.connect(lambda: self.connect_hardware("power"))
-            self.power_group.disconnect_button.clicked.connect(lambda: self.disconnect_hardware("power"))
+            self.power_group.disconnect_button.clicked.connect(
+                lambda: self.disconnect_hardware("power")
+            )
 
         if self.dio_group:
             self.dio_group.connect_button.clicked.connect(lambda: self.connect_hardware("dio"))
-            self.dio_group.disconnect_button.clicked.connect(lambda: self.disconnect_hardware("dio"))
+            self.dio_group.disconnect_button.clicked.connect(
+                lambda: self.disconnect_hardware("dio")
+            )
 
         # Quick action buttons
         if self.emergency_stop_button:
@@ -508,6 +524,7 @@ class HardwarePanel(QWidget):
         """
         if self.command_log:
             from datetime import datetime
+
             timestamp = datetime.now().strftime("%H:%M:%S")
             formatted_message = f"[{timestamp}] {message}"
 

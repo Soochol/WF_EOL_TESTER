@@ -36,7 +36,7 @@ logger.add(
 )
 
 # Add file logging with date-based filename
-log_dir = Path("logs")
+log_dir = Path("Logs/application")
 log_dir.mkdir(exist_ok=True)
 
 # Generate date-based log filename to prevent Windows file lock issues

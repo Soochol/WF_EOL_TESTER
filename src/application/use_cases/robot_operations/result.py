@@ -16,7 +16,7 @@ from domain.value_objects.time_values import TestDuration
 class RobotHomeResult(BaseResult):
     """
     Result for Robot Homing Operation
-    
+
     Contains operation outcome and execution timing information.
     """
 
@@ -30,7 +30,7 @@ class RobotHomeResult(BaseResult):
     ):
         """
         Initialize robot home result
-        
+
         Args:
             test_status: Test execution status
             is_success: Whether operation was successful
@@ -43,7 +43,7 @@ class RobotHomeResult(BaseResult):
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert result to dictionary representation
-        
+
         Returns:
             Dictionary containing result data
         """
@@ -51,19 +51,21 @@ class RobotHomeResult(BaseResult):
             "operation_id": self.test_id.value if self.test_id else None,
             "test_status": self.test_status.value,
             "is_success": self.is_success,
-            "execution_duration_seconds": self.execution_duration.seconds if self.execution_duration else 0,
+            "execution_duration_seconds": (
+                self.execution_duration.seconds if self.execution_duration else 0
+            ),
             "error_message": self.error_message,
         }
 
     def get_summary(self) -> str:
         """
         Get a human-readable summary of the result
-        
+
         Returns:
             Summary string
         """
         if not self.is_success:
             return f"Robot Homing FAILED: {self.error_message}"
-        
+
         duration = self.execution_duration.seconds if self.execution_duration else 0
         return f"Robot Homing COMPLETED successfully - Duration: {duration:.2f}s"

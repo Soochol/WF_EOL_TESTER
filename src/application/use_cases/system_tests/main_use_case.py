@@ -7,14 +7,14 @@ Coordinates MCU connection, test sequence execution, and result processing.
 
 from loguru import logger
 
-from application.use_cases.common.base_use_case import BaseUseCase
 from application.services.core.configuration_service import ConfigurationService
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
+from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-from .command import SimpleMCUTestCommand
-from .result import SimpleMCUTestResult
+from .command import SimpleMCUTestInput
 from .mcu_connection_service import MCUConnectionService
+from .result import SimpleMCUTestResult
 from .test_sequence_executor import TestSequenceExecutor
 
 
@@ -27,13 +27,11 @@ class SimpleMCUTestUseCase(BaseUseCase):
     """
 
     def __init__(
-        self, 
-        hardware_services: HardwareServiceFacade, 
-        configuration_service: ConfigurationService
+        self, hardware_services: HardwareServiceFacade, configuration_service: ConfigurationService
     ):
         """
         Initialize Simple MCU Test Use Case
-        
+
         Args:
             hardware_services: Hardware service facade
             configuration_service: Configuration service
@@ -45,9 +43,7 @@ class SimpleMCUTestUseCase(BaseUseCase):
         self._test_executor = TestSequenceExecutor(hardware_services)
 
     async def _execute_implementation(
-        self, 
-        command: SimpleMCUTestCommand, 
-        context
+        self, command: SimpleMCUTestInput, context
     ) -> SimpleMCUTestResult:
         """
         Execute Simple MCU Communication Test implementation
@@ -60,7 +56,7 @@ class SimpleMCUTestUseCase(BaseUseCase):
             SimpleMCUTestResult with test outcomes and timing information
         """
         logger.info(f"Test parameters - Operator: {command.operator_id}")
-        
+
         try:
             # Load hardware configuration
             logger.info("Loading hardware configuration...")
@@ -88,18 +84,14 @@ class SimpleMCUTestUseCase(BaseUseCase):
                 test_results=test_results,
                 error_message=None,
             )
-            
+
         except Exception as e:
             # Cleanup on error
             await self._mcu_connection.cleanup_on_error()
             raise e
 
     def _create_failure_result(
-        self, 
-        command: SimpleMCUTestCommand, 
-        context, 
-        execution_duration, 
-        error_message: str
+        self, command: SimpleMCUTestInput, context, execution_duration, error_message: str
     ) -> SimpleMCUTestResult:
         """
         Create a failure result when execution fails
@@ -109,7 +101,7 @@ class SimpleMCUTestUseCase(BaseUseCase):
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description
-            
+
         Returns:
             SimpleMCUTestResult indicating failure
         """
@@ -120,13 +112,13 @@ class SimpleMCUTestUseCase(BaseUseCase):
             error_message=f"Simple MCU Test failed: {error_message}",
         )
 
-    async def execute(self, command: SimpleMCUTestCommand) -> SimpleMCUTestResult:
+    async def execute(self, command: SimpleMCUTestInput) -> SimpleMCUTestResult:
         """
         Execute the simple MCU communication test
 
         Args:
             command: Test command with operator information
-            
+
         Returns:
             SimpleMCUTestResult with test outcomes
         """

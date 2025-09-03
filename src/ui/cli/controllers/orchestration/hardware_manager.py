@@ -12,7 +12,7 @@ from loguru import logger
 from rich.console import Console
 
 from application.services.core.configuration_service import ConfigurationService
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 
 from ...rich_formatter import RichFormatter
@@ -474,7 +474,7 @@ class HardwareControlManager:
             result = await self._create_and_execute_home_use_case(robot_service)
 
             if result.is_success:
-                duration = result.execution_duration.seconds
+                duration = result.execution_duration.seconds if result.execution_duration else 0.0
                 self.formatter.print_message(
                     f"✅ Robot home operation completed successfully in {duration:.2f}s",
                     message_type="success",
@@ -510,7 +510,10 @@ class HardwareControlManager:
 
     async def _create_and_execute_home_use_case(self, robot_service):
         """Create and execute robot home use case"""
-        from application.use_cases.robot_home import RobotHomeCommand, RobotHomeUseCase
+        from application.use_cases.robot_operations import (
+            RobotHomeInput,
+            RobotHomeUseCase,
+        )
         from infrastructure.implementation.hardware.digital_io.mock.mock_dio import (
             MockDIO,
         )
@@ -538,7 +541,7 @@ class HardwareControlManager:
             )
 
         robot_home_use_case = RobotHomeUseCase(facade, self.configuration_service)
-        command = RobotHomeCommand(operator_id="cli_user")
+        command = RobotHomeInput(operator_id="cli_user")
 
         logger.info("Executing robot homing operation...")
         return await robot_home_use_case.execute(command)

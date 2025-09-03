@@ -6,15 +6,16 @@ Manages the hardware connection lifecycle for MCU testing.
 """
 
 import asyncio
+
 from loguru import logger
 
-from application.services.hardware_service_facade import HardwareServiceFacade
+from application.services.hardware_facade import HardwareServiceFacade
 
 
 class MCUConnectionService:
     """
     MCU connection service for system tests
-    
+
     Manages MCU connection lifecycle including connection setup,
     boot completion waiting, and proper disconnection cleanup.
     """
@@ -22,7 +23,7 @@ class MCUConnectionService:
     def __init__(self, hardware_services: HardwareServiceFacade):
         """
         Initialize MCU connection service
-        
+
         Args:
             hardware_services: Hardware service facade
         """
@@ -32,10 +33,10 @@ class MCUConnectionService:
     async def connect_and_initialize(self, hardware_config) -> None:
         """
         Connect to MCU and wait for initialization
-        
+
         Args:
             hardware_config: Hardware configuration containing MCU settings
-            
+
         Raises:
             RuntimeError: If MCU service is not available
             Exception: If connection or initialization fails
@@ -58,13 +59,13 @@ class MCUConnectionService:
         # Add stabilization delay after boot complete
         logger.info("Boot complete confirmed, waiting 2 seconds for stabilization...")
         await asyncio.sleep(2.0)
-        
+
         logger.info("MCU connection and initialization completed")
 
     async def disconnect(self) -> None:
         """
         Disconnect from MCU with proper cleanup
-        
+
         Handles disconnection gracefully even if already disconnected.
         """
         if self._mcu_service:
@@ -79,7 +80,7 @@ class MCUConnectionService:
     async def cleanup_on_error(self) -> None:
         """
         Clean up MCU connection when an error occurs
-        
+
         Attempts to disconnect MCU service safely during error conditions.
         """
         try:

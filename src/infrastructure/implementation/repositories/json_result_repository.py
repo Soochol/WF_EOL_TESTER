@@ -26,7 +26,7 @@ class JsonResultRepository(TestResultRepository):
 
     def __init__(
         self,
-        data_dir: str = "ResultsLog",
+        data_dir: str = "Logs/test_results/json",
         auto_save: bool = True,
     ):
         """
