@@ -216,7 +216,7 @@ def setup_signal_handlers():
         signal_name = signal_names.get(signum, f"Signal {signum}")
         print(f"\\nReceived {signal_name}, cancelling all tasks for emergency stop...")
         
-        # Cancel all running asyncio tasks to interrupt asyncio.sleep() calls
+        # Cancel all running asyncio tasks (this will raise CancelledError in tasks)
         try:
             loop = asyncio.get_running_loop()
             for task in asyncio.all_tasks(loop):
@@ -227,8 +227,8 @@ def setup_signal_handlers():
             # No event loop running
             pass
         
-        # Raise KeyboardInterrupt to trigger emergency stop
-        raise KeyboardInterrupt()
+        # Don't raise KeyboardInterrupt here - let CancelledError propagate naturally
+        # The BaseUseCase will convert CancelledError to KeyboardInterrupt for consistent handling
 
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
