@@ -85,16 +85,8 @@ class SessionManager:
                     try:
                         await self._menu_system.show_main_menu()
                     except KeyboardInterrupt:
-                        logger.info("KeyboardInterrupt caught in main loop - executing emergency stop")
-                        # Execute emergency stop immediately
-                        if self._emergency_stop_service:
-                            try:
-                                logger.info("Executing emergency hardware shutdown from main loop...")
-                                await self._emergency_stop_service.execute_emergency_stop()
-                                logger.info("Emergency shutdown completed from main loop")
-                            except Exception as e:
-                                logger.error(f"Error during emergency shutdown from main loop: {e}")
-                        # Re-raise to trigger normal shutdown flow
+                        logger.info("KeyboardInterrupt caught in main loop - re-raising to outer handler")
+                        # Re-raise to trigger outer exception handler which handles emergency stop
                         raise
                 else:
                     logger.error("Menu system not initialized")
