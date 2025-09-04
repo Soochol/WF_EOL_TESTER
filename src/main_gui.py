@@ -53,8 +53,8 @@ class EOLTesterGUIApplication:
         # Application metadata
         self.app.setApplicationName("WF EOL Tester")
         self.app.setApplicationVersion("2.0.0")
-        self.app.setOrganizationName("WOOFER")
-        self.app.setOrganizationDomain("woofer.com")
+        self.app.setOrganizationName("Withforce")
+        self.app.setOrganizationDomain("withforce.co.kr")
 
         # Set application icon if available
         icon_path = Path(__file__).parent / "resources" / "icons" / "app_icon.png"

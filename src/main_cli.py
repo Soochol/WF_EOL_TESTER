@@ -87,34 +87,26 @@ async def setup_optional_hardware_connection(hardware_services) -> None:
     operation even if hardware is not available.
     """
     try:
-        # Get digital I/O service from hardware facade
-        digital_io_service = hardware_services.digital_io_service
-
-        # Attempt to connect digital I/O service
-        connection_status = await digital_io_service.is_connected()
-        logger.info(f"🔧 Digital I/O service connection status: {connection_status}")
-
-        if not connection_status:
+        dio = hardware_services.digital_io_service
+        is_connected = await dio.is_connected()
+        
+        logger.info(f"🔧 Digital I/O status: {'connected' if is_connected else 'disconnected'}")
+        
+        if not is_connected:
             logger.info("Attempting to connect Digital I/O service...")
+            await dio.connect()
+            is_connected = await dio.is_connected()
+            
+        if is_connected:
+            logger.info("✅ Digital I/O service ready")
             try:
-                await digital_io_service.connect()
-                connection_status = await digital_io_service.is_connected()
-                if connection_status:
-                    logger.info("✅ Digital I/O service connected successfully")
-
-                    # Verify I/O capabilities if connected
-                    try:
-                        input_count = await digital_io_service.get_input_count()
-                        logger.info(f"🔧 Available input channels: {input_count}")
-                    except Exception as cap_e:
-                        logger.warning(f"Could not verify I/O capabilities: {cap_e}")
-                else:
-                    logger.warning("⚠️ Digital I/O service connection failed")
-            except Exception as conn_e:
-                logger.warning(f"⚠️ Could not connect Digital I/O service: {conn_e}")
+                channels = await dio.get_input_count()
+                logger.info(f"🔧 Available input channels: {channels}")
+            except Exception as cap_e:
+                logger.debug(f"Channel verification skipped: {cap_e}")
         else:
-            logger.info("✅ Digital I/O service already connected")
-
+            logger.warning("⚠️ Digital I/O service unavailable")
+            
     except Exception as e:
         logger.warning(f"⚠️ Hardware setup failed: {e}")
         logger.info("💡 CLI will continue in software-only mode")
@@ -185,7 +177,7 @@ def setup_logging(debug: bool = False) -> None:
 
     # File logging setup
     logs_directory = Path(LOGS_DIRECTORY_NAME)
-    logs_directory.mkdir(exist_ok=True)
+    logs_directory.mkdir(parents=True, exist_ok=True)
 
     logger.add(
         logs_directory / EOL_TESTER_CLI_LOG_FILENAME,

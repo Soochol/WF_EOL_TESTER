@@ -1,0 +1,17 @@
+application:
+  name: WF EOL Tester
+  version: 1.0.0
+  environment: development
+
+services:
+  repository:
+    results_path: Logs/test_results/json
+    auto_save: true
+
+logging:
+  level: INFO
+
+metadata:
+  created_at: '2025-09-04T05:54:03.839784'
+  note: Auto-generated default application configuration
+  created_by: YamlContainerConfigurationLoader (auto-generated)

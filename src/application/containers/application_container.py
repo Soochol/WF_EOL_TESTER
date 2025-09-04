@@ -1,53 +1,40 @@
 """
 Application Container
 
-Main dependency injection container for the WF EOL Tester application.
-Manages all application services, use cases, and hardware dependencies.
+Main dependency injection container orchestrator for the WF EOL Tester application.
+Combines all specialized sub-containers and provides a unified interface.
 """
 
 from dependency_injector import containers, providers
 from loguru import logger
 
-# Application Layer Imports - Updated for new domain structure
-from application.services.core.configuration_service import ConfigurationService
-from application.services.core.configuration_validator import ConfigurationValidator
-from application.services.core.exception_handler import ExceptionHandler
-from application.services.core.repository_service import RepositoryService
-from application.services.hardware_facade import HardwareServiceFacade
-from application.services.test.test_result_evaluator import TestResultEvaluator
-from application.use_cases.eol_force_test import EOLForceTestUseCase
-from application.use_cases.heating_cooling_time_test import (
-    HeatingCoolingTimeTestUseCase,
-)
-from application.use_cases.robot_operations import RobotHomeUseCase
-from application.use_cases.system_tests import SimpleMCUTestUseCase
-from domain.value_objects.application_config import ApplicationConfig
+# Sub-container imports
+from application.containers.configuration_container import ConfigurationContainer
+from application.containers.persistence_container import PersistenceContainer
+from application.containers.core_services_container import CoreServicesContainer
+from application.containers.hardware_container import HardwareContainer
+from application.containers.use_case_container import UseCaseContainer
 
-# Domain Layer Imports
+# Domain Layer Imports (for fallback config)
+from domain.value_objects.application_config import ApplicationConfig
 from domain.value_objects.hardware_config import HardwareConfig
 
-# Infrastructure Layer Imports
-from infrastructure.factories.hardware_factory import HardwareFactory
-from infrastructure.implementation.configuration.yaml_configuration import (
-    YamlConfiguration,
-)
+# Infrastructure Layer Imports (for configuration loading)
 from infrastructure.implementation.configuration.yaml_container_configuration import (
     YamlContainerConfigurationLoader,
-)
-from infrastructure.implementation.repositories.json_result_repository import (
-    JsonResultRepository,
 )
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
     """
-    Main application container for dependency injection.
+    Main application container orchestrator for dependency injection.
 
-    Provides centralized configuration and dependency management for:
-    - Configuration services
-    - Hardware services
-    - Repository services
-    - Use cases and business logic
+    Combines specialized sub-containers and provides a unified interface for:
+    - Configuration services (via ConfigurationContainer)
+    - Hardware services (via HardwareContainer)
+    - Repository services (via PersistenceContainer)
+    - Core services (via CoreServicesContainer)
+    - Use cases and business logic (via UseCaseContainer)
     """
 
     # ============================================================================
@@ -57,86 +44,64 @@ class ApplicationContainer(containers.DeclarativeContainer):
     config = providers.Configuration()
 
     # ============================================================================
-    # HARDWARE LAYER
+    # SUB-CONTAINERS
     # ============================================================================
 
-    hardware = providers.Container(HardwareFactory, config=config.hardware)
-
-    # ============================================================================
-    # INFRASTRUCTURE & CORE SERVICES
-    # ============================================================================
-
-    # Configuration Infrastructure
-    yaml_configuration = providers.Singleton(YamlConfiguration)
-
-    # Repository Infrastructure
-    json_result_repository = providers.Singleton(
-        JsonResultRepository,
-        data_dir=config.services.repository.results_path,
-        auto_save=config.services.repository.auto_save,
+    # Configuration container
+    configuration = providers.Container(
+        ConfigurationContainer,
+        config=config,
     )
 
-    # Configuration Services
-    configuration_service = providers.Singleton(
-        ConfigurationService,
-        configuration=yaml_configuration,
+    # Persistence container
+    persistence = providers.Container(
+        PersistenceContainer,
+        config=config,
     )
 
-    configuration_validator = providers.Singleton(ConfigurationValidator)
+    # Core services container
+    core_services = providers.Container(CoreServicesContainer)
 
-    # Business Services
-    repository_service = providers.Singleton(
-        RepositoryService, test_repository=json_result_repository
+    # Hardware container
+    hardware = providers.Container(
+        HardwareContainer,
+        config=config,
     )
 
-    exception_handler = providers.Singleton(ExceptionHandler)
-    test_result_evaluator = providers.Singleton(TestResultEvaluator)
-
-    # Hardware Service Facade
-    hardware_service_facade = providers.Singleton(
-        HardwareServiceFacade,
-        robot_service=hardware.robot_service,
-        mcu_service=hardware.mcu_service,
-        loadcell_service=hardware.loadcell_service,
-        power_service=hardware.power_service,
-        digital_io_service=hardware.digital_io_service,
+    # Use cases container
+    use_cases = providers.Container(
+        UseCaseContainer,
+        hardware_service_facade=hardware.hardware_service_facade,
+        configuration_service=configuration.configuration_service,
+        configuration_validator=configuration.configuration_validator,
+        test_result_evaluator=core_services.test_result_evaluator,
+        repository_service=persistence.repository_service,
+        exception_handler=core_services.exception_handler,
     )
 
     # ============================================================================
-    # USE CASES
+    # UNIFIED INTERFACE (Backward Compatibility)
     # ============================================================================
 
-    # Complex Use Case (with full dependency set)
-    eol_force_test_use_case: providers.Factory[EOLForceTestUseCase] = providers.Factory(
-        EOLForceTestUseCase,
-        hardware_services=hardware_service_facade,
-        configuration_service=configuration_service,
-        configuration_validator=configuration_validator,
-        test_result_evaluator=test_result_evaluator,
-        repository_service=repository_service,
-        exception_handler=exception_handler,
-    )
+    # Configuration services
+    configuration_service = providers.Delegate(configuration.configuration_service)
+    configuration_validator = providers.Delegate(configuration.configuration_validator)
 
-    # Standard Use Cases (with minimal dependencies)
-    robot_home_use_case: providers.Factory[RobotHomeUseCase] = providers.Factory(
-        RobotHomeUseCase,
-        hardware_services=hardware_service_facade,
-        configuration_service=configuration_service,
-    )
+    # Repository services
+    repository_service = providers.Delegate(persistence.repository_service)
 
-    heating_cooling_time_test_use_case: providers.Factory[HeatingCoolingTimeTestUseCase] = (
-        providers.Factory(
-            HeatingCoolingTimeTestUseCase,
-            hardware_services=hardware_service_facade,
-            configuration_service=configuration_service,
-        )
-    )
+    # Core services
+    exception_handler = providers.Delegate(core_services.exception_handler)
+    test_result_evaluator = providers.Delegate(core_services.test_result_evaluator)
 
-    simple_mcu_test_use_case: providers.Factory[SimpleMCUTestUseCase] = providers.Factory(
-        SimpleMCUTestUseCase,
-        hardware_services=hardware_service_facade,
-        configuration_service=configuration_service,
-    )
+    # Hardware services
+    hardware_service_facade = providers.Delegate(hardware.hardware_service_facade)
+
+    # Use cases
+    eol_force_test_use_case = providers.Delegate(use_cases.eol_force_test_use_case)
+    robot_home_use_case = providers.Delegate(use_cases.robot_home_use_case)
+    heating_cooling_time_test_use_case = providers.Delegate(use_cases.heating_cooling_time_test_use_case)
+    simple_mcu_test_use_case = providers.Delegate(use_cases.simple_mcu_test_use_case)
 
     # ============================================================================
     # CONFIGURATION MANAGEMENT METHODS
