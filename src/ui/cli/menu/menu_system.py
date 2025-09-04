@@ -505,6 +505,10 @@ class MenuSystem:
             # This would integrate with the enhanced input system
             # For now, use simple input
             input(f"\n{message}")
-        except (KeyboardInterrupt, EOFError):
-            # Handle user interruption gracefully with feedback
+        except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt to allow SessionManager to handle emergency stop
+            self._console.print("\n[dim]Interrupted by user - triggering emergency stop.[/dim]")
+            raise
+        except EOFError:
+            # Handle EOF gracefully
             self._console.print("\n[dim]Skipped by user.[/dim]")

@@ -47,6 +47,11 @@ class SessionManager:
         self._running = False
         self._menu_system: Optional["MenuSystem"] = None
         self._emergency_stop_service = emergency_stop_service
+        
+        # Debug log to confirm emergency_stop_service injection
+        logger.info(f"SessionManager initialized with emergency_stop_service: {emergency_stop_service is not None}")
+        if emergency_stop_service:
+            logger.info(f"Emergency stop service type: {type(emergency_stop_service).__name__}")
 
     def set_menu_system(self, menu_system: "MenuSystem") -> None:
         """Set the menu system for session navigation.
@@ -77,7 +82,20 @@ class SessionManager:
             # Main interactive loop
             while self._running:
                 if self._menu_system:
-                    await self._menu_system.show_main_menu()
+                    try:
+                        await self._menu_system.show_main_menu()
+                    except KeyboardInterrupt:
+                        logger.info("KeyboardInterrupt caught in main loop - executing emergency stop")
+                        # Execute emergency stop immediately
+                        if self._emergency_stop_service:
+                            try:
+                                logger.info("Executing emergency hardware shutdown from main loop...")
+                                await self._emergency_stop_service.execute_emergency_stop()
+                                logger.info("Emergency shutdown completed from main loop")
+                            except Exception as e:
+                                logger.error(f"Error during emergency shutdown from main loop: {e}")
+                        # Re-raise to trigger normal shutdown flow
+                        raise
                 else:
                     logger.error("Menu system not initialized")
                     break
@@ -87,11 +105,11 @@ class SessionManager:
             # Execute emergency stop first for hardware safety
             if self._emergency_stop_service:
                 try:
-                    logger.info("Executing emergency hardware shutdown...")
+                    logger.info("Executing emergency hardware shutdown from SessionManager...")
                     await self._emergency_stop_service.execute_emergency_stop()
-                    logger.info("Emergency shutdown completed")
+                    logger.info("Emergency shutdown completed from SessionManager")
                 except Exception as e:
-                    logger.error(f"Error during emergency shutdown: {e}")
+                    logger.error(f"Error during emergency shutdown from SessionManager: {e}")
 
             self._formatter.print_message(
                 "Exiting EOL Tester... Goodbye!", message_type="info", title="Shutdown"

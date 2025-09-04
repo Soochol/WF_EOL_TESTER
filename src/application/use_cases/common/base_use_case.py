@@ -5,6 +5,7 @@ Abstract base class providing common functionality for all use cases.
 Implements common patterns and ensures consistency across use cases.
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
@@ -100,8 +101,9 @@ class BaseUseCase(ABC):
 
             return result
 
-        except KeyboardInterrupt:
-            logger.info(f"Use case '{self._use_case_name}' interrupted by user (Ctrl+C)")
+        except (KeyboardInterrupt, asyncio.CancelledError) as e:
+            # Handle both KeyboardInterrupt and CancelledError (from task cancellation)
+            logger.info(f"Use case '{self._use_case_name}' interrupted by user (Ctrl+C) - {type(e).__name__}")
             context.end_time = Timestamp.now()
             execution_duration = TestDuration(context.end_time.value - context.start_time.value)
 
@@ -120,8 +122,12 @@ class BaseUseCase(ABC):
                 command, context, execution_duration, "Test interrupted by user"
             )
 
-            # Re-raise KeyboardInterrupt to allow proper cleanup handling at higher levels
-            raise
+            # Convert CancelledError to KeyboardInterrupt for consistent handling
+            if isinstance(e, asyncio.CancelledError):
+                raise KeyboardInterrupt() from e
+            else:
+                # Re-raise KeyboardInterrupt to allow proper cleanup handling at higher levels
+                raise
 
         except Exception as e:
             logger.error(f"Use case '{self._use_case_name}' failed: {e}")

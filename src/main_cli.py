@@ -202,7 +202,7 @@ def setup_signal_handlers():
     """Setup signal handlers for graceful shutdown"""
 
     def signal_handler(signum, frame):
-        """Handle termination signals"""
+        """Handle termination signals and cancel all asyncio tasks"""
         _ = frame  # Unused parameter
         signal_names = {
             signal.SIGINT: "SIGINT (Ctrl+C)",
@@ -214,8 +214,21 @@ def setup_signal_handlers():
             signal_names[signal.SIGBREAK] = "SIGBREAK (Ctrl+Break)"  # type: ignore[attr-defined]
 
         signal_name = signal_names.get(signum, f"Signal {signum}")
-        print(f"\\nReceived {signal_name}, exiting...")
-        sys.exit(0)
+        print(f"\\nReceived {signal_name}, cancelling all tasks for emergency stop...")
+        
+        # Cancel all running asyncio tasks to interrupt asyncio.sleep() calls
+        try:
+            loop = asyncio.get_running_loop()
+            for task in asyncio.all_tasks(loop):
+                if not task.done():
+                    task.cancel()
+                    print(f"Cancelled task: {task.get_name()}")
+        except RuntimeError:
+            # No event loop running
+            pass
+        
+        # Raise KeyboardInterrupt to trigger emergency stop
+        raise KeyboardInterrupt()
 
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -227,14 +240,14 @@ def setup_signal_handlers():
 
 
 if __name__ == "__main__":
-    # Setup signal handlers for graceful shutdown
+    # Setup signal handlers to cancel asyncio tasks and trigger emergency stop
     setup_signal_handlers()
 
-    # Use asyncio.run for Python 3.7+ compatibility
+    # Use asyncio.run with better KeyboardInterrupt handling
     try:
-        asyncio.run(main())
+        asyncio.run(main(), debug=False)
     except KeyboardInterrupt:
-        print("\\nSafely exiting CLI-only application after hardware shutdown...")
+        print("\\nEmergency stop executed - hardware safely shutdown")
     except EOFError:
         print("\\nEOF received, exiting...")
     except Exception as e:

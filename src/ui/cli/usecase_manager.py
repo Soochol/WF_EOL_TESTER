@@ -85,6 +85,9 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             self._display_test_result(result, formatter)
             return result
 
+        except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt to allow BaseUseCase to handle emergency stop
+            raise
         except Exception as e:
             formatter.print_message(f"MCU test execution failed: {str(e)}", message_type="error")
             raise
