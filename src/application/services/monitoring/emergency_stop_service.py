@@ -162,7 +162,7 @@ class EmergencyStopService:
             robot_service = self.hardware_facade.robot_service
             if robot_service and await robot_service.is_connected():
                 robot_status = await robot_service.get_status()
-                logger.info(f"Robot status after emergency stop: {robot_status}")
+                logger.debug(f"Robot status after emergency stop: servo_enabled={robot_status.get('servo_enabled', 'unknown')}")
         except Exception as e:
             logger.warning(f"Could not verify robot safe state: {e}")
 
@@ -171,24 +171,15 @@ class EmergencyStopService:
             power_service = self.hardware_facade.power_service
             if power_service and await power_service.is_connected():
                 power_status = await power_service.get_status()
-                logger.info(f"Power status after emergency stop: {power_status}")
+                logger.debug(f"Power status after emergency stop: output_enabled={power_status.get('output_enabled', 'unknown')}")
         except Exception as e:
             logger.warning(f"Could not verify power safe state: {e}")
 
     async def _notify_emergency_stop(self) -> None:
         """Send emergency stop notifications to external systems"""
-        logger.info("Sending emergency stop notifications")
+        logger.debug("Emergency stop notifications completed")
         # This can be extended to notify external systems, databases, etc.
-        # For now, we'll just log the event
-
-        emergency_info = {
-            "event": "emergency_stop",
-            "timestamp": self._last_emergency_time,
-            "hardware_status": "safe_state",
-            "software_status": "emergency_cleanup_completed",
-        }
-
-        logger.critical(f"Emergency stop event logged: {emergency_info}")
+        # Emergency stop event is already logged at CRITICAL level in main procedure
 
     def is_emergency_active(self) -> bool:
         """

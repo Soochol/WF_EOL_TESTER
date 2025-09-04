@@ -18,7 +18,9 @@ from .command_result_patterns import BaseResult, BaseUseCaseInput
 from .execution_context import ExecutionContext
 
 if TYPE_CHECKING:
-    from application.services.monitoring.emergency_stop_service import EmergencyStopService
+    from application.services.monitoring.emergency_stop_service import (
+        EmergencyStopService,
+    )
 
 
 class BaseUseCase(ABC):
@@ -32,7 +34,9 @@ class BaseUseCase(ABC):
     - Timing and context management
     """
 
-    def __init__(self, use_case_name: str, emergency_stop_service: Optional["EmergencyStopService"] = None):
+    def __init__(
+        self, use_case_name: str, emergency_stop_service: Optional["EmergencyStopService"] = None
+    ):
         """
         Initialize base use case
 
@@ -54,12 +58,12 @@ class BaseUseCase(ABC):
         """Check if use case is currently executing"""
         return self._is_running
 
-    async def execute(self, command: BaseUseCaseInput) -> BaseResult:
+    async def execute(self, input_data: BaseUseCaseInput) -> BaseResult:
         """
         Execute the use case with proper error handling and context management
 
         Args:
-            command: Command object containing execution parameters
+            input_data: Input object containing execution parameters
 
         Returns:
             Result object containing execution results
@@ -75,7 +79,7 @@ class BaseUseCase(ABC):
         context = ExecutionContext(
             test_id=TestId.generate(),
             use_case_name=self._use_case_name,
-            operator_id=command.operator_id,
+            operator_id=input_data.operator_id,
             start_time=Timestamp.now(),
         )
 
@@ -84,7 +88,7 @@ class BaseUseCase(ABC):
         )
 
         try:
-            result = await self._execute_implementation(command, context)
+            result = await self._execute_implementation(input_data, context)
 
             context.end_time = Timestamp.now()
             execution_duration = TestDuration(context.end_time.value - context.start_time.value)
@@ -103,7 +107,9 @@ class BaseUseCase(ABC):
 
         except (KeyboardInterrupt, asyncio.CancelledError) as e:
             # Handle both KeyboardInterrupt and CancelledError (from task cancellation)
-            logger.info(f"Use case '{self._use_case_name}' interrupted by user (Ctrl+C) - {type(e).__name__}")
+            logger.info(
+                f"Use case '{self._use_case_name}' interrupted by user (Ctrl+C) - {type(e).__name__}"
+            )
             context.end_time = Timestamp.now()
             execution_duration = TestDuration(context.end_time.value - context.start_time.value)
 
@@ -114,15 +120,15 @@ class BaseUseCase(ABC):
                         logger.info("Executing emergency stop from UseCase...")
                         await self._emergency_stop_service.execute_emergency_stop()
                         logger.info("Emergency stop completed from UseCase")
-                    except Exception as e:
-                        logger.error(f"Emergency stop failed in UseCase: {e}")
+                    except Exception as emergency_error:
+                        logger.error(f"Emergency stop failed in UseCase: {emergency_error}")
                         # Continue with normal interrupt handling even if emergency stop fails
                 else:
                     logger.debug("Emergency stop already active in BaseUseCase, skipping")
 
             # Create interruption result
             result = self._create_failure_result(
-                command, context, execution_duration, "Test interrupted by user"
+                input_data, context, execution_duration, "Test interrupted by user"
             )
 
             # Convert CancelledError to KeyboardInterrupt for consistent handling
@@ -138,7 +144,7 @@ class BaseUseCase(ABC):
             execution_duration = TestDuration(context.end_time.value - context.start_time.value)
 
             # Create failure result
-            result = self._create_failure_result(command, context, execution_duration, str(e))
+            result = self._create_failure_result(input_data, context, execution_duration, str(e))
             return result
 
         finally:
@@ -146,24 +152,24 @@ class BaseUseCase(ABC):
 
     @abstractmethod
     async def _execute_implementation(
-        self, command: BaseUseCaseInput, context: ExecutionContext
+        self, input_data: BaseUseCaseInput, context: ExecutionContext
     ) -> BaseResult:
         """
         Concrete implementation of the use case logic
 
         Args:
-            command: Command object containing execution parameters
+            input_data: Input object containing execution parameters
             context: Execution context with timing and identification info
 
         Returns:
             Result object containing execution results
         """
-        pass
+        raise NotImplementedError("Subclasses must implement _execute_implementation")
 
     @abstractmethod
     def _create_failure_result(
         self,
-        command: BaseUseCaseInput,
+        input_data: BaseUseCaseInput,
         context: ExecutionContext,
         execution_duration: TestDuration,
         error_message: str,
@@ -172,7 +178,7 @@ class BaseUseCase(ABC):
         Create a failure result when execution fails
 
         Args:
-            command: Original command that failed
+            input_data: Original input data that failed
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description
@@ -180,4 +186,4 @@ class BaseUseCase(ABC):
         Returns:
             Result object indicating failure
         """
-        pass
+        raise NotImplementedError("Subclasses must implement _create_failure_result")

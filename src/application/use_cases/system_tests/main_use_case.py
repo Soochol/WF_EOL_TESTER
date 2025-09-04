@@ -52,19 +52,19 @@ class SimpleMCUTestUseCase(BaseUseCase):
         self._test_executor = TestSequenceExecutor(hardware_services)
 
     async def _execute_implementation(
-        self, command: SimpleMCUTestInput, context
+        self, input_data: SimpleMCUTestInput, context
     ) -> SimpleMCUTestResult:
         """
         Execute Simple MCU Communication Test implementation
 
         Args:
-            command: Test command with operator information
+            input_data: Test input with operator information
             context: Execution context
 
         Returns:
             SimpleMCUTestResult with test outcomes and timing information
         """
-        logger.info(f"Test parameters - Operator: {command.operator_id}")
+        logger.info(f"Test parameters - Operator: {input_data.operator_id}")
 
         try:
             # Load hardware configuration
@@ -100,13 +100,13 @@ class SimpleMCUTestUseCase(BaseUseCase):
             raise e
 
     def _create_failure_result(
-        self, command: SimpleMCUTestInput, context, execution_duration, error_message: str
+        self, input_data: SimpleMCUTestInput, context, execution_duration, error_message: str
     ) -> SimpleMCUTestResult:
         """
         Create a failure result when execution fails
 
         Args:
-            command: Original command that failed
+            input_data: Original input data that failed
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description

@@ -101,23 +101,23 @@ class EOLForceTestUseCase(BaseUseCase):
         self._keyboard_interrupt_raised = False
 
     async def _execute_implementation(
-        self, command: BaseUseCaseInput, context: ExecutionContext
+        self, input_data: BaseUseCaseInput, context: ExecutionContext
     ) -> EOLTestResult:
         """
         Execute EOL test implementation (BaseUseCase abstract method)
 
         Args:
-            command: Base input (will be cast to EOLForceTestInput)
+            input_data: Base input (will be cast to EOLForceTestInput)
             context: Execution context with timing and identification info
 
         Returns:
             EOLTestResult containing test outcome and execution details
         """
-        # Cast to specific command type
-        if not isinstance(command, EOLForceTestInput):
-            raise ValueError(f"Expected EOLForceTestInput, got {type(command)}")
+        # Cast to specific input type
+        if not isinstance(input_data, EOLForceTestInput):
+            raise ValueError(f"Expected EOLForceTestInput, got {type(input_data)}")
 
-        eol_command = command
+        eol_input = input_data
 
         # Load configuration to check repeat_count
         await self._config_loader.load_and_validate_configurations()
@@ -132,24 +132,24 @@ class EOLForceTestUseCase(BaseUseCase):
 
         if repeat_count == 1:
             # Single execution - use original logic
-            return await self.execute_single(eol_command)
+            return await self.execute_single(eol_input)
         else:
             # Multiple executions - handle repetition
-            return await self._execute_repeated(eol_command, repeat_count)
+            return await self._execute_repeated(eol_input, repeat_count)
 
-    async def execute(self, command: EOLForceTestInput) -> EOLTestResult:
+    async def execute(self, input_data: EOLForceTestInput) -> EOLTestResult:
         """
         Execute EOL test with support for repetition (public interface)
 
         This method delegates to BaseUseCase.execute for consistent behavior.
         """
-        result = await super().execute(command)
+        result = await super().execute(input_data)
         # Result is guaranteed to be EOLTestResult since _execute_implementation returns one
         return result  # type: ignore
 
     def _create_failure_result(
         self,
-        command: BaseUseCaseInput,
+        input_data: BaseUseCaseInput,
         context: ExecutionContext,
         execution_duration: TestDuration,
         error_message: str,

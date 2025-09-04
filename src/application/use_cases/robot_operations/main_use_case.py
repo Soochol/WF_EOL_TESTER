@@ -42,12 +42,12 @@ class RobotHomeUseCase(BaseUseCase):
         self._digital_io_setup = DigitalIOSetupService(hardware_services)
         self._robot_connection = RobotConnectionService(hardware_services)
 
-    async def _execute_implementation(self, command: RobotHomeInput, context) -> RobotHomeResult:
+    async def _execute_implementation(self, input_data: RobotHomeInput, context) -> RobotHomeResult:
         """
         Execute robot homing operation implementation
 
         Args:
-            command: Robot home command containing operator information
+            input_data: Robot home input containing operator information
             context: Execution context
 
         Returns:
@@ -79,13 +79,13 @@ class RobotHomeUseCase(BaseUseCase):
             raise e
 
     def _create_failure_result(
-        self, command: RobotHomeInput, context, execution_duration, error_message: str
+        self, input_data: RobotHomeInput, context, execution_duration, error_message: str
     ) -> RobotHomeResult:
         """
         Create a failure result when execution fails
 
         Args:
-            command: Original command that failed
+            input_data: Original input data that failed
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description
@@ -120,15 +120,15 @@ class RobotHomeUseCase(BaseUseCase):
                 "hardware_status": None,
             }
 
-    async def execute(self, command: RobotHomeInput) -> RobotHomeResult:
+    async def execute(self, input_data: RobotHomeInput) -> RobotHomeResult:
         """
         Execute the robot homing operation
 
         Args:
-            command: Robot home command
+            input_data: Robot home input data
 
         Returns:
             RobotHomeResult with operation outcome
         """
-        result = await super().execute(command)
+        result = await super().execute(input_data)
         return result  # type: ignore

@@ -52,20 +52,20 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self._hardware_setup = HardwareSetupService(hardware_services)
 
     async def _execute_implementation(
-        self, command: HeatingCoolingTimeTestInput, context
+        self, input_data: HeatingCoolingTimeTestInput, context
     ) -> HeatingCoolingTimeTestResult:
         """
         Execute Heating/Cooling Time Test implementation
 
         Args:
-            command: Test command with parameters
+            input_data: Test input with parameters
             context: Execution context
 
         Returns:
             HeatingCoolingTimeTestResult with timing measurements
         """
         logger.info(
-            f"Test parameters - Operator: {command.operator_id}, Cycles: {command.repeat_count}"
+            f"Test parameters - Operator: {input_data.operator_id}, Cycles: {input_data.repeat_count}"
         )
 
         # 1. Load configurations
@@ -88,10 +88,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
 
         # Determine actual repeat count
         actual_repeat_count = (
-            hc_config.repeat_count if hc_config.repeat_count != 1 else command.repeat_count
+            hc_config.repeat_count if hc_config.repeat_count != 1 else input_data.repeat_count
         )
         logger.info(
-            f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, command: {command.repeat_count})"
+            f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, input: {input_data.repeat_count})"
         )
 
         cycle_results = await test_executor.execute_test_cycles(hc_config, actual_repeat_count)
@@ -141,7 +141,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
 
     def _create_failure_result(
         self,
-        command: HeatingCoolingTimeTestInput,
+        input_data: HeatingCoolingTimeTestInput,
         context,
         execution_duration,
         error_message: str,
@@ -150,7 +150,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         Create a failure result when execution fails
 
         Args:
-            command: Original command that failed
+            input_data: Original input data that failed
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description

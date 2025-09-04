@@ -94,18 +94,9 @@ class SessionManager:
 
         except KeyboardInterrupt:
             logger.info("SessionManager: KeyboardInterrupt caught!")
-            # Execute emergency stop only if not already active
-            if self._emergency_stop_service:
-                if not self._emergency_stop_service.is_emergency_active():
-                    try:
-                        logger.info("Executing emergency hardware shutdown from SessionManager...")
-                        await self._emergency_stop_service.execute_emergency_stop()
-                        logger.info("Emergency shutdown completed from SessionManager")
-                    except Exception as e:
-                        logger.error(f"Error during emergency shutdown from SessionManager: {e}")
-                else:
-                    logger.info("Emergency stop already executed by UseCase, skipping SessionManager execution")
-
+            # Emergency stop is only needed when UseCase is running
+            # BaseUseCase handles it if active, otherwise just exit cleanly
+            
             self._formatter.print_message(
                 "Exiting EOL Tester... Goodbye!", message_type="info", title="Shutdown"
             )
