@@ -26,19 +26,6 @@ from domain.value_objects.test_configuration import (
 )
 
 
-class ConfigPaths:
-    """Configuration file paths constants"""
-
-    # Default configuration file paths
-    DEFAULT_APPLICATION_CONFIG = "configuration/application.yaml"
-    DEFAULT_HARDWARE_CONFIG = "configuration/hardware_config.yaml"
-
-    # Default paths for repositories
-    DEFAULT_PROFILE_PREFERENCE_PATH = "configuration/profile_preferences.json"
-    DEFAULT_TEST_PROFILES_DIR = "configuration/test_profiles"
-    DEFAULT_HEATING_COOLING_CONFIG = "configuration/heating_cooling_time_test.yaml"
-
-
 class ConfigurationService:
     """
     Service for managing configuration and profile preference operations
@@ -54,10 +41,18 @@ class ConfigurationService:
     def __init__(
         self,
         configuration: Configuration,
+        application_config_path: str,
+        hardware_config_path: str,
+        profile_preference_path: str,
+        test_profiles_dir: str,
+        heating_cooling_config_path: str,
     ):
         self._configuration = configuration
-        self.application_config_path = ConfigPaths.DEFAULT_APPLICATION_CONFIG
-        self.hardware_config_path = ConfigPaths.DEFAULT_HARDWARE_CONFIG
+        self.application_config_path = application_config_path
+        self.hardware_config_path = hardware_config_path
+        self.profile_preference_path = profile_preference_path
+        self.test_profiles_dir = test_profiles_dir
+        self.heating_cooling_config_path = heating_cooling_config_path
 
     @property
     def configuration(self) -> Configuration:
@@ -150,7 +145,7 @@ class ConfigurationService:
         """
         try:
             if app_config_path is None:
-                app_config_path = ConfigPaths.DEFAULT_APPLICATION_CONFIG
+                app_config_path = self.application_config_path
             app_config_file = Path(app_config_path)
 
             if not app_config_file.exists():
@@ -187,7 +182,7 @@ class ConfigurationService:
         """
         try:
             if config_path is None:
-                config_path = ConfigPaths.DEFAULT_HEATING_COOLING_CONFIG
+                config_path = self.heating_cooling_config_path
             config_file = Path(config_path)
 
             # If file doesn't exist, create it with defaults

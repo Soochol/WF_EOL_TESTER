@@ -19,17 +19,15 @@ from typing import TYPE_CHECKING, Optional
 from loguru import logger
 from rich.console import Console
 
-from ..interfaces.session_interface import ISessionManager
-
 # Local imports
 from ..rich_formatter import RichFormatter
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
-    from ..interfaces.menu_interface import IMenuSystem
+    from ..menu.menu_system import MenuSystem
 
 
-class SessionManager(ISessionManager):
+class SessionManager:
     """Session lifecycle management for CLI application.
 
     Manages the overall session state, startup/shutdown procedures,
@@ -47,14 +45,14 @@ class SessionManager(ISessionManager):
         self._console = console
         self._formatter = formatter
         self._running = False
-        self._menu_system: Optional["IMenuSystem"] = None
+        self._menu_system: Optional["MenuSystem"] = None
         self._emergency_stop_service = emergency_stop_service
 
-    def set_menu_system(self, menu_system: "IMenuSystem") -> None:
+    def set_menu_system(self, menu_system: "MenuSystem") -> None:
         """Set the menu system for session navigation.
 
         Args:
-            menu_system: Menu system instance implementing IMenuSystem
+            menu_system: Menu system instance
         """
         self._menu_system = menu_system
 
@@ -94,7 +92,7 @@ class SessionManager(ISessionManager):
                     logger.info("Emergency shutdown completed")
                 except Exception as e:
                     logger.error(f"Error during emergency shutdown: {e}")
-            
+
             self._formatter.print_message(
                 "Exiting EOL Tester... Goodbye!", message_type="info", title="Shutdown"
             )
@@ -133,26 +131,17 @@ class SessionManager(ISessionManager):
                 "Shutting down system...", show_spinner=True
             ) as shutdown_status:
                 # Step 1: Hardware cleanup
-                try:
-                    shutdown_status.update("Cleaning up hardware connections...")  # type: ignore
-                except (TypeError, AttributeError):
-                    pass  # Progress display doesn't support update messages
+                logger.debug("Step 1: Cleaning up hardware connections...")
                 # NOTE: Hardware cleanup operations would be implemented here
                 # This might include closing serial connections, releasing instruments, etc.
 
                 # Step 2: Configuration persistence
-                try:
-                    shutdown_status.update("Saving configuration...")  # type: ignore
-                except (TypeError, AttributeError):
-                    pass  # Progress display doesn't support update messages
+                logger.debug("Step 2: Saving configuration...")
                 # NOTE: Configuration saving operations would be implemented here
                 # This might include saving user preferences, test settings, etc.
 
                 # Step 3: Final cleanup
-                try:
-                    shutdown_status.update("Finalizing shutdown...")  # type: ignore
-                except (TypeError, AttributeError):
-                    pass  # Progress display doesn't support update messages
+                logger.debug("Step 3: Finalizing shutdown...")
                 # NOTE: Final cleanup operations would be implemented here
                 # This might include temporary file cleanup, logging finalization, etc.
 

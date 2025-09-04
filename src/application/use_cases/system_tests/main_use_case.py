@@ -5,12 +5,17 @@ Main orchestrator for simple MCU communication test.
 Coordinates MCU connection, test sequence execution, and result processing.
 """
 
+from typing import TYPE_CHECKING, Optional
+
 from loguru import logger
 
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
+
+if TYPE_CHECKING:
+    from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
 from .command import SimpleMCUTestInput
 from .mcu_connection_service import MCUConnectionService
@@ -27,7 +32,10 @@ class SimpleMCUTestUseCase(BaseUseCase):
     """
 
     def __init__(
-        self, hardware_services: HardwareServiceFacade, configuration_service: ConfigurationService
+        self, 
+        hardware_services: HardwareServiceFacade, 
+        configuration_service: ConfigurationService,
+        emergency_stop_service: Optional["EmergencyStopService"] = None
     ):
         """
         Initialize Simple MCU Test Use Case
@@ -35,8 +43,9 @@ class SimpleMCUTestUseCase(BaseUseCase):
         Args:
             hardware_services: Hardware service facade
             configuration_service: Configuration service
+            emergency_stop_service: Emergency stop service for hardware safety (optional)
         """
-        super().__init__("Simple MCU Test")
+        super().__init__("Simple MCU Test", emergency_stop_service)
         self._hardware_services = hardware_services
         self._configuration_service = configuration_service
         self._mcu_connection = MCUConnectionService(hardware_services)

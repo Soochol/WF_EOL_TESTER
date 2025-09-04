@@ -20,19 +20,17 @@ from typing import TYPE_CHECKING, Optional
 from loguru import logger
 from rich.console import Console
 
-from ..interfaces.menu_interface import IMenuSystem
-
 # Local imports
 from ..rich_formatter import RichFormatter
 
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
     from ..enhanced_cli_integration import EnhancedMenuSystem
-    from ..interfaces.execution_interface import ITestExecutor
-    from ..interfaces.session_interface import ISessionManager
+    from ..execution.test_executor import TestExecutor
+    from ..session.session_manager import SessionManager
 
 
-class MenuSystem(IMenuSystem):
+class MenuSystem:
     """Menu display and navigation system for CLI application.
 
     Manages menu presentation, user choice collection, and navigation
@@ -40,7 +38,7 @@ class MenuSystem(IMenuSystem):
     """
 
     def __init__(
-        self, console: Console, formatter: RichFormatter, enhanced_menu: "EnhancedMenuSystem"
+        self, console: Console, formatter: RichFormatter, enhanced_menu: "EnhancedMenuSystem", emergency_stop_service=None
     ):
         """Initialize menu system.
 
@@ -48,28 +46,30 @@ class MenuSystem(IMenuSystem):
             console: Rich console instance for output
             formatter: Rich formatter for professional output
             enhanced_menu: Enhanced menu system for input handling
+            emergency_stop_service: Emergency stop service for hardware safety (optional)
         """
         self._console = console
         self._formatter = formatter
         self._enhanced_menu = enhanced_menu
-        self._session_manager: Optional["ISessionManager"] = None
-        self._test_executor: Optional["ITestExecutor"] = None
+        self._emergency_stop_service = emergency_stop_service
+        self._session_manager: Optional["SessionManager"] = None
+        self._test_executor: Optional["TestExecutor"] = None
         self._usecase_manager = None
         self._hardware_manager = None
 
-    def set_session_manager(self, session_manager: "ISessionManager") -> None:
+    def set_session_manager(self, session_manager: "SessionManager") -> None:
         """Set session manager for session control.
 
         Args:
-            session_manager: Session manager instance implementing ISessionManager
+            session_manager: Session manager instance
         """
         self._session_manager = session_manager
 
-    def set_test_executor(self, test_executor: "ITestExecutor") -> None:
+    def set_test_executor(self, test_executor: "TestExecutor") -> None:
         """Set test executor for test operations.
 
         Args:
-            test_executor: Test executor instance implementing ITestExecutor
+            test_executor: Test executor instance
         """
         self._test_executor = test_executor
 
@@ -236,8 +236,8 @@ class MenuSystem(IMenuSystem):
                 )
                 return
 
-            # Create Simple MCU Test UseCase instance
-            simple_mcu_usecase = SimpleMCUTestUseCase(hardware_services, configuration_service)
+            # Create Simple MCU Test UseCase instance with emergency stop service
+            simple_mcu_usecase = SimpleMCUTestUseCase(hardware_services, configuration_service, self._emergency_stop_service)
 
             # Execute Simple MCU Test through usecase manager
             result = await self._usecase_manager.execute_usecase(
@@ -254,6 +254,9 @@ class MenuSystem(IMenuSystem):
                     title="Test Cancelled",
                 )
 
+        except KeyboardInterrupt:
+            logger.info("Simple MCU Test interrupted by user (Ctrl+C)")
+            raise  # Re-raise to SessionManager for emergency stop
         except Exception as e:
             self._formatter.print_message(
                 f"Simple MCU Test execution failed: {str(e)}",
@@ -376,7 +379,7 @@ class MenuSystem(IMenuSystem):
             )
 
             heating_cooling_usecase = HeatingCoolingTimeTestUseCase(
-                hardware_services, configuration_service
+                hardware_services, configuration_service, self._emergency_stop_service
             )
             controller = HeatingCoolingTestController(
                 heating_cooling_usecase, self._formatter, self._console
@@ -395,6 +398,9 @@ class MenuSystem(IMenuSystem):
             # Wait for user acknowledgment
             await self._wait_for_user_acknowledgment()
 
+        except KeyboardInterrupt:
+            logger.info("Heating/Cooling Time Test interrupted by user (Ctrl+C)")
+            raise  # Re-raise to SessionManager for emergency stop
         except Exception as e:
             logger.error(f"Heating/Cooling Time Test execution error: {e}")
             self._formatter.print_message(

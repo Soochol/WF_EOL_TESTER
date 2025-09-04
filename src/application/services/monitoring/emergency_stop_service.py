@@ -15,7 +15,6 @@ from loguru import logger
 if TYPE_CHECKING:
     from application.services.hardware_facade import HardwareServiceFacade
     from application.services.core.configuration_service import ConfigurationService
-    from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
 
 
 class EmergencyStopService:
@@ -30,7 +29,6 @@ class EmergencyStopService:
         self,
         hardware_facade: "HardwareServiceFacade",
         configuration_service: "ConfigurationService",
-        eol_use_case: Optional["EOLForceTestUseCase"] = None,
     ):
         """
         Initialize Emergency Stop Service
@@ -38,11 +36,9 @@ class EmergencyStopService:
         Args:
             hardware_facade: Hardware service facade for accessing all hardware
             configuration_service: Configuration service for reading hardware settings
-            eol_use_case: EOL test use case for state management (optional)
         """
         self.hardware_facade = hardware_facade
         self.configuration_service = configuration_service
-        self.eol_use_case = eol_use_case
 
         # Emergency stop state tracking
         self._emergency_active = False
@@ -69,8 +65,8 @@ class EmergencyStopService:
             # Phase 1: Hardware-level immediate safety actions (HIGHEST PRIORITY)
             await self._execute_hardware_emergency_stop()
 
-            # Phase 2: UseCase state management and software cleanup
-            await self._handle_usecase_emergency_stop()
+            # Phase 2: Software cleanup (UseCase emergency stop is handled by BaseUseCase)
+            await self._handle_software_cleanup()
 
             # Phase 3: System-wide cleanup and safe state
             await self._finalize_emergency_stop()
@@ -126,39 +122,17 @@ class EmergencyStopService:
 
         logger.critical("Phase 1 completed: Hardware emergency stop actions executed")
 
-    async def _handle_usecase_emergency_stop(self) -> None:
-        """Handle UseCase state management during emergency stop"""
-        logger.critical("Phase 2: Handling UseCase emergency stop")
-
-        if not self.eol_use_case:
-            logger.warning("No EOL UseCase provided - skipping UseCase emergency handling")
-            return
+    async def _handle_software_cleanup(self) -> None:
+        """Handle software cleanup during emergency stop"""
+        logger.critical("Phase 2: Handling software cleanup")
 
         try:
-            # Check if UseCase is currently running
-            if self.eol_use_case.is_running:
-                logger.critical("UseCase is running - initiating emergency cancellation")
-
-                # The UseCase._is_running flag will be cleared automatically
-                # when the UseCase's finally block executes after task cancellation
-
-                # Note: In AsyncIO, we cannot directly cancel a running UseCase
-                # from outside its execution context. The UseCase must handle
-                # emergency stop through its own mechanisms (e.g., checking
-                # emergency flags during operation loops).
-
-                # The hardware emergency stop (Phase 1) will cause hardware
-                # operations to fail, which will naturally cause the UseCase
-                # to enter its exception handling and cleanup phases.
-
-                logger.critical(
-                    "UseCase emergency handling initiated - hardware failures will trigger cleanup"
-                )
-            else:
-                logger.info("UseCase not running - no active test to cancel")
+            # Software cleanup operations
+            logger.info("Emergency stop initiated - UseCase emergency stop handled by BaseUseCase")
+            logger.info("Hardware emergency stop completed, software cleanup in progress")
 
         except Exception as e:
-            logger.error(f"UseCase emergency handling failed: {e}")
+            logger.error(f"Software cleanup failed: {e}")
 
     async def _finalize_emergency_stop(self) -> None:
         """Finalize emergency stop with system cleanup"""
@@ -206,9 +180,7 @@ class EmergencyStopService:
             "event": "emergency_stop",
             "timestamp": self._last_emergency_time,
             "hardware_status": "safe_state",
-            "usecase_status": (
-                "cancelled" if self.eol_use_case and self.eol_use_case.is_running else "idle"
-            ),
+            "software_status": "emergency_cleanup_completed",
         }
 
         logger.critical(f"Emergency stop event logged: {emergency_info}")

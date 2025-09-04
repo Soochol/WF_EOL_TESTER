@@ -30,7 +30,6 @@ from application.use_cases.eol_force_test.main_executor import (
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
 
-from ..interfaces.execution_interface import ITestExecutor
 
 # Local imports - UI modules
 from ..rich_formatter import RichFormatter
@@ -40,7 +39,7 @@ if TYPE_CHECKING:
     from ..enhanced_cli_integration import EnhancedInputIntegrator
 
 
-class TestExecutor(ITestExecutor):
+class TestExecutor:
     """Test execution coordinator for EOL testing operations.
 
     Manages the complete test execution workflow including parameter

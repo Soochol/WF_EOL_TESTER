@@ -1,107 +1,169 @@
 """
-Application Container
+Application Container (Unified)
 
-Main dependency injection container orchestrator for the WF EOL Tester application.
-Combines all specialized sub-containers and provides a unified interface.
+Single comprehensive dependency injection container that combines all application dependencies.
+Manages configuration, infrastructure, core services, hardware, persistence, and use cases.
 """
 
 from dependency_injector import containers, providers
-from loguru import logger
 
-# Sub-container imports
-from application.containers.configuration_container import ConfigurationContainer
-from application.containers.persistence_container import PersistenceContainer
-from application.containers.core_services_container import CoreServicesContainer
-from application.containers.hardware_container import HardwareContainer
-from application.containers.use_case_container import UseCaseContainer
+# Configuration and Infrastructure
+from application.services.core.configuration_service import ConfigurationService
+from application.services.core.configuration_validator import ConfigurationValidator
+from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
+from infrastructure.implementation.configuration.yaml_container_configuration import YamlContainerConfigurationLoader
 
-# Domain Layer Imports (for fallback config)
+# Core Services
+from application.services.core.exception_handler import ExceptionHandler
+from application.services.core.repository_service import RepositoryService
+from application.services.test.test_result_evaluator import TestResultEvaluator
+
+# Hardware
+from application.services.hardware_facade import HardwareServiceFacade
+from infrastructure.factories.hardware_factory import HardwareFactory
+
+# Persistence
+from infrastructure.implementation.repositories.json_result_repository import JsonResultRepository
+
+# Use Cases
+from application.use_cases.eol_force_test import EOLForceTestUseCase
+from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
+from application.use_cases.robot_operations import RobotHomeUseCase
+from application.use_cases.system_tests import SimpleMCUTestUseCase
+
+# Monitoring Services
+from application.services.monitoring.emergency_stop_service import EmergencyStopService
+
+# Domain Configuration
 from domain.value_objects.application_config import ApplicationConfig
-from domain.value_objects.hardware_config import HardwareConfig
 
-# Infrastructure Layer Imports (for configuration loading)
-from infrastructure.implementation.configuration.yaml_container_configuration import (
-    YamlContainerConfigurationLoader,
-)
+from loguru import logger
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
     """
-    Main application container orchestrator for dependency injection.
-
-    Combines specialized sub-containers and provides a unified interface for:
-    - Configuration services (via ConfigurationContainer)
-    - Hardware services (via HardwareContainer)
-    - Repository services (via PersistenceContainer)
-    - Core services (via CoreServicesContainer)
-    - Use cases and business logic (via UseCaseContainer)
+    Unified application container for dependency injection.
+    
+    Manages all application dependencies in a single container:
+    - Configuration loading and management
+    - Infrastructure components (YAML, repositories, hardware factory)
+    - Core business services (exception handling, test evaluation)
+    - Hardware services and facade
+    - Data persistence services
+    - Application use cases
     """
 
-    # ============================================================================
-    # CONFIGURATION
-    # ============================================================================
-
+    # Configuration provider
     config = providers.Configuration()
+    
+    # Default application configuration
+    _default_config = ApplicationConfig()
 
     # ============================================================================
-    # SUB-CONTAINERS
+    # CONFIGURATION INFRASTRUCTURE
     # ============================================================================
 
-    # Configuration container
-    configuration = providers.Container(
-        ConfigurationContainer,
-        config=config,
+    yaml_configuration = providers.Singleton(YamlConfiguration)
+
+    configuration_service = providers.Singleton(
+        ConfigurationService,
+        configuration=yaml_configuration,
+        application_config_path=_default_config.services.config_application_path,
+        hardware_config_path=_default_config.services.config_hardware_path,
+        profile_preference_path=_default_config.services.config_profile_preference_path,
+        test_profiles_dir=_default_config.services.config_test_profiles_dir,
+        heating_cooling_config_path=_default_config.services.config_heating_cooling_path,
     )
 
-    # Persistence container
-    persistence = providers.Container(
-        PersistenceContainer,
-        config=config,
-    )
+    configuration_validator = providers.Singleton(ConfigurationValidator)
 
-    # Core services container
-    core_services = providers.Container(CoreServicesContainer)
+    # ============================================================================
+    # HARDWARE INFRASTRUCTURE
+    # ============================================================================
 
-    # Hardware container
-    hardware = providers.Container(
-        HardwareContainer,
-        config=config,
-    )
+    hardware_factory = providers.Container(HardwareFactory, config=config.hardware)
 
-    # Use cases container
-    use_cases = providers.Container(
-        UseCaseContainer,
-        hardware_service_facade=hardware.hardware_service_facade,
-        configuration_service=configuration.configuration_service,
-        configuration_validator=configuration.configuration_validator,
-        test_result_evaluator=core_services.test_result_evaluator,
-        repository_service=persistence.repository_service,
-        exception_handler=core_services.exception_handler,
+    hardware_service_facade = providers.Singleton(
+        HardwareServiceFacade,
+        robot_service=hardware_factory.robot_service,
+        mcu_service=hardware_factory.mcu_service,
+        loadcell_service=hardware_factory.loadcell_service,
+        power_service=hardware_factory.power_service,
+        digital_io_service=hardware_factory.digital_io_service,
     )
 
     # ============================================================================
-    # UNIFIED INTERFACE (Backward Compatibility)
+    # PERSISTENCE INFRASTRUCTURE
     # ============================================================================
 
-    # Configuration services
-    configuration_service = providers.Delegate(configuration.configuration_service)
-    configuration_validator = providers.Delegate(configuration.configuration_validator)
+    json_result_repository = providers.Singleton(
+        JsonResultRepository,
+        data_dir=_default_config.services.repository_results_path,
+        auto_save=_default_config.services.repository_auto_save,
+    )
 
-    # Repository services
-    repository_service = providers.Delegate(persistence.repository_service)
+    # ============================================================================
+    # CORE SERVICES
+    # ============================================================================
 
-    # Core services
-    exception_handler = providers.Delegate(core_services.exception_handler)
-    test_result_evaluator = providers.Delegate(core_services.test_result_evaluator)
+    exception_handler = providers.Singleton(ExceptionHandler)
 
-    # Hardware services
-    hardware_service_facade = providers.Delegate(hardware.hardware_service_facade)
+    test_result_evaluator = providers.Singleton(TestResultEvaluator)
 
-    # Use cases
-    eol_force_test_use_case = providers.Delegate(use_cases.eol_force_test_use_case)
-    robot_home_use_case = providers.Delegate(use_cases.robot_home_use_case)
-    heating_cooling_time_test_use_case = providers.Delegate(use_cases.heating_cooling_time_test_use_case)
-    simple_mcu_test_use_case = providers.Delegate(use_cases.simple_mcu_test_use_case)
+    repository_service = providers.Singleton(
+        RepositoryService,
+        test_repository=json_result_repository,
+        raw_data_dir=_default_config.services.repository_raw_data_path,
+        summary_dir=_default_config.services.repository_summary_path,
+        summary_filename=_default_config.services.repository_summary_filename,
+    )
+
+    # ============================================================================
+    # MONITORING SERVICES
+    # ============================================================================
+
+    emergency_stop_service = providers.Factory(
+        EmergencyStopService,
+        hardware_facade=hardware_service_facade,
+        configuration_service=configuration_service,
+    )
+
+    # ============================================================================
+    # USE CASES
+    # ============================================================================
+
+    # Complex Use Case (with full dependency set)
+    eol_force_test_use_case = providers.Factory(
+        EOLForceTestUseCase,
+        hardware_services=hardware_service_facade,
+        configuration_service=configuration_service,
+        configuration_validator=configuration_validator,
+        test_result_evaluator=test_result_evaluator,
+        repository_service=repository_service,
+        exception_handler=exception_handler,
+        emergency_stop_service=emergency_stop_service,
+    )
+
+    # Standard Use Cases (with minimal dependencies)
+    robot_home_use_case = providers.Factory(
+        RobotHomeUseCase,
+        hardware_services=hardware_service_facade,
+        configuration_service=configuration_service,
+    )
+
+    heating_cooling_time_test_use_case = providers.Factory(
+        HeatingCoolingTimeTestUseCase,
+        hardware_services=hardware_service_facade,
+        configuration_service=configuration_service,
+        emergency_stop_service=emergency_stop_service,
+    )
+
+    simple_mcu_test_use_case = providers.Factory(
+        SimpleMCUTestUseCase,
+        hardware_services=hardware_service_facade,
+        configuration_service=configuration_service,
+        emergency_stop_service=emergency_stop_service,
+    )
 
     # ============================================================================
     # CONFIGURATION MANAGEMENT METHODS
@@ -138,14 +200,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
         """
         Create container with configuration paths (legacy method for compatibility).
 
-        Note: Paths are now fixed in ConfigPaths and cannot be customized.
+        Note: Paths are now managed internally via value objects.
         All path arguments are ignored.
 
         Returns:
             Configured ApplicationContainer instance
         """
-        if kwargs:
-            logger.warning(f"Path arguments are ignored: {list(kwargs.keys())}")
+        # Path arguments are silently ignored as they're managed internally
         return cls.create()
 
     @classmethod
@@ -157,15 +218,20 @@ class ApplicationContainer(containers.DeclarativeContainer):
         """
         if kwargs:
             logger.warning(f"Path arguments are ignored: {list(kwargs.keys())}")
-
-        config_loader = YamlContainerConfigurationLoader()
-        config_loader.ensure_configurations_exist()
+            
+        try:
+            config_loader = YamlContainerConfigurationLoader()
+            config_loader.ensure_configurations_exist()
+            logger.info("Configuration files ensured successfully")
+        except Exception as e:
+            logger.error(f"Failed to ensure configuration files exist: {e}")
 
     @classmethod
     def _apply_fallback_config(cls, container: "ApplicationContainer") -> None:
         """Apply fallback configuration to container."""
         # Use default configurations separately
         app_config = ApplicationConfig()
+        from domain.value_objects.hardware_config import HardwareConfig
         hardware_config = HardwareConfig()
 
         # Apply configurations separately
@@ -174,29 +240,3 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
         logger.info("In-memory default configuration applied successfully")
 
-    # Legacy support method - delegates to create_with_paths
-    @classmethod
-    def load_config_safely(
-        cls,
-        application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware_config.yaml",
-    ) -> "ApplicationContainer":
-        """
-        Legacy method - Create container and load configuration safely with fallback.
-
-        Deprecated: Use create() or create_with_paths() instead.
-
-        Args:
-            application_config_path: Path to application configuration file
-            hardware_config_path: Path to hardware configuration file
-
-        Returns:
-            Configured ApplicationContainer instance
-        """
-        logger.warning(
-            "load_config_safely() is deprecated. Use create() or create_with_paths() instead."
-        )
-        return cls.create_with_paths(
-            application_config_path=application_config_path,
-            hardware_config_path=hardware_config_path,
-        )

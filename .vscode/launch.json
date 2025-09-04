@@ -55,7 +55,7 @@
             "name": "Python: EOL Test CLI",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/ui/cli/main.py",
+            "program": "${workspaceFolder}/src/main_cli.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {

@@ -5,12 +5,17 @@ Main orchestrator for heating/cooling time test use case.
 Coordinates hardware setup, test execution, and result processing.
 """
 
+from typing import TYPE_CHECKING, Optional
+
 from loguru import logger
 
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
+
+if TYPE_CHECKING:
+    from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
 from .command import HeatingCoolingTimeTestInput
 from .hardware_setup_service import HardwareSetupService
@@ -31,6 +36,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self,
         hardware_services: HardwareServiceFacade,
         configuration_service: ConfigurationService,
+        emergency_stop_service: Optional["EmergencyStopService"] = None,
     ):
         """
         Initialize Heating/Cooling Time Test Use Case
@@ -38,8 +44,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         Args:
             hardware_services: Hardware service facade
             configuration_service: Configuration service
+            emergency_stop_service: Emergency stop service for hardware safety (optional)
         """
-        super().__init__("Heating/Cooling Time Test")
+        super().__init__("Heating/Cooling Time Test", emergency_stop_service)
         self._hardware_services = hardware_services
         self._configuration_service = configuration_service
         self._hardware_setup = HardwareSetupService(hardware_services)

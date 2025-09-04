@@ -251,6 +251,10 @@ class UseCaseManager:
 
             return result
 
+        except KeyboardInterrupt:
+            # KeyboardInterrupt should be handled by BaseUseCase, then propagate up
+            logger.info(f"UseCase '{usecase_name}' interrupted by user (Ctrl+C)")
+            raise  # Re-raise KeyboardInterrupt to allow proper cleanup
         except Exception as e:
             self.formatter.print_message(
                 f"UseCase execution failed: {str(e)}", message_type="error", title="Execution Error"

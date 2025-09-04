@@ -89,6 +89,11 @@ class BaseResult(ABC):
         return self._is_success
 
     @property
+    def is_passed(self) -> bool:
+        """Check if test passed (alias for is_success for UI compatibility)"""
+        return self._is_success
+
+    @property
     def error_message(self) -> Optional[str]:
         """Get error message if execution failed"""
         return self._error_message

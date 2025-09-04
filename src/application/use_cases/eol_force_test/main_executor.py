@@ -6,9 +6,12 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 import asyncio
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
 from application.services.core.configuration_service import ConfigurationService
 from application.services.core.configuration_validator import ConfigurationValidator
@@ -73,9 +76,10 @@ class EOLForceTestUseCase(BaseUseCase):
         test_result_evaluator: TestResultEvaluator,
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
+        emergency_stop_service: Optional["EmergencyStopService"] = None,
     ):
         # Initialize BaseUseCase
-        super().__init__("EOL Force Test")
+        super().__init__("EOL Force Test", emergency_stop_service)
 
         # Core service dependencies (unchanged)
         self._hardware_services = hardware_services

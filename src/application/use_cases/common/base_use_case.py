@@ -6,6 +6,7 @@ Implements common patterns and ensures consistency across use cases.
 """
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Optional
 
 from loguru import logger
 
@@ -14,6 +15,9 @@ from domain.value_objects.time_values import TestDuration, Timestamp
 
 from .command_result_patterns import BaseResult, BaseUseCaseInput
 from .execution_context import ExecutionContext
+
+if TYPE_CHECKING:
+    from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
 
 class BaseUseCase(ABC):
@@ -27,15 +31,17 @@ class BaseUseCase(ABC):
     - Timing and context management
     """
 
-    def __init__(self, use_case_name: str):
+    def __init__(self, use_case_name: str, emergency_stop_service: Optional["EmergencyStopService"] = None):
         """
         Initialize base use case
 
         Args:
             use_case_name: Human-readable name for this use case
+            emergency_stop_service: Emergency stop service for hardware safety (optional)
         """
         self._use_case_name = use_case_name
         self._is_running = False
+        self._emergency_stop_service = emergency_stop_service
 
     @property
     def use_case_name(self) -> str:
@@ -98,6 +104,16 @@ class BaseUseCase(ABC):
             logger.info(f"Use case '{self._use_case_name}' interrupted by user (Ctrl+C)")
             context.end_time = Timestamp.now()
             execution_duration = TestDuration(context.end_time.value - context.start_time.value)
+
+            # Execute emergency stop if service is available and not already active
+            if self._emergency_stop_service and not self._emergency_stop_service.is_emergency_active():
+                try:
+                    logger.info("Executing emergency stop from UseCase...")
+                    await self._emergency_stop_service.execute_emergency_stop()
+                    logger.info("Emergency stop completed from UseCase")
+                except Exception as e:
+                    logger.error(f"Emergency stop failed in UseCase: {e}")
+                    # Continue with normal interrupt handling even if emergency stop fails
 
             # Create interruption result
             result = self._create_failure_result(

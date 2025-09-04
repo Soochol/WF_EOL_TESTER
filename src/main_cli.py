@@ -57,13 +57,20 @@ async def main() -> None:
 
         logger.info("Core services injected from container")
 
+        # Get Emergency Stop Service from container
+        emergency_stop_service = container.emergency_stop_service()
+        logger.info("Emergency Stop Service injected from container")
+
         # Optional hardware connection with graceful fallback
         await setup_optional_hardware_connection(hardware_services)
 
         # Create and run enhanced command line interface with Rich UI
         try:
             command_line_interface = EnhancedEOLTesterCLI(
-                eol_force_test_use_case, hardware_services, configuration_service
+                eol_force_test_use_case,
+                hardware_services,
+                configuration_service,
+                emergency_stop_service,
             )
             logger.info("Starting CLI-only EOL Tester application with Rich UI")
             await command_line_interface.run_interactive()
@@ -73,7 +80,8 @@ async def main() -> None:
             raise
 
     except KeyboardInterrupt:
-        logger.info("Application interrupted by user")
+        logger.info("CLI-only application interrupted by user (Ctrl+C)")
+        # Emergency stop is now handled by SessionManager through CLI application
     except Exception:
         logger.exception("Unexpected application error occurred")
         raise
@@ -89,14 +97,14 @@ async def setup_optional_hardware_connection(hardware_services) -> None:
     try:
         dio = hardware_services.digital_io_service
         is_connected = await dio.is_connected()
-        
+
         logger.info(f"🔧 Digital I/O status: {'connected' if is_connected else 'disconnected'}")
-        
+
         if not is_connected:
             logger.info("Attempting to connect Digital I/O service...")
             await dio.connect()
             is_connected = await dio.is_connected()
-            
+
         if is_connected:
             logger.info("✅ Digital I/O service ready")
             try:
@@ -106,7 +114,7 @@ async def setup_optional_hardware_connection(hardware_services) -> None:
                 logger.debug(f"Channel verification skipped: {cap_e}")
         else:
             logger.warning("⚠️ Digital I/O service unavailable")
-            
+
     except Exception as e:
         logger.warning(f"⚠️ Hardware setup failed: {e}")
         logger.info("💡 CLI will continue in software-only mode")
@@ -226,7 +234,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\\nExiting...")
+        print("\\nSafely exiting CLI-only application after hardware shutdown...")
     except EOFError:
         print("\\nEOF received, exiting...")
     except Exception as e:

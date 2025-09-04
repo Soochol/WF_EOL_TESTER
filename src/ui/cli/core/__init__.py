@@ -1,10 +1,7 @@
 """Core CLI Application Components.
 
-This module contains dependency injection based CLI application components
-following clean architecture principles.
+This module contained CLI application components but has been simplified.
+The main CLI application is now at src/ui/cli/cli_application.py.
 """
-
-# Note: The main application is now DependencyInjectedCLIApplication
-# which is created through the factory pattern in application_factory.py
 
 __all__ = []

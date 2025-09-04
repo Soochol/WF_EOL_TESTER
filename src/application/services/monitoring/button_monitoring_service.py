@@ -199,6 +199,10 @@ class DIOMonitoringService:
         except asyncio.CancelledError:
             logger.info("Button monitoring loop cancelled")
             raise
+        except KeyboardInterrupt:
+            logger.info("Button monitoring loop interrupted by user (Ctrl+C)")
+            self._is_monitoring = False
+            # Don't re-raise KeyboardInterrupt in background task to avoid "Task exception was never retrieved"
         except Exception as e:
             logger.error(f"Unexpected error in button monitoring loop: {e}")
         finally:

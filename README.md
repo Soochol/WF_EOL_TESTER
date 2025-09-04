@@ -59,26 +59,26 @@ src/
 ### 기본 실행 (Mock 하드웨어)
 ```bash
 cd WF_EOL_TESTER
-python src/main.py
+python src/main_cli.py
 ```
 
 ### 설정 파일 생성
 ```bash
 # 개발용 설정 (Mock 하드웨어)
-python src/main.py --generate-config default
+python src/main_cli.py --generate-config default
 
 # 프로덕션 설정 (실제 하드웨어)
-python src/main.py --generate-config production
+python src/main_cli.py --generate-config production
 ```
 
 ### 설정 파일과 함께 실행
 ```bash
-python src/main.py --config config_default.json
+python src/main_cli.py --config config_default.json
 ```
 
 ### 디버그 모드
 ```bash
-python src/main.py --debug
+python src/main_cli.py --debug
 ```
 
 ## 🔧 설정
@@ -231,16 +231,16 @@ Measurements:
 ### 하드웨어 연결 실패
 ```bash
 # 설정 파일 검증
-python src/main.py --validate-config
+python src/main_cli.py --validate-config
 
 # 디버그 모드로 실행
-python src/main.py --debug
+python src/main_cli.py --debug
 ```
 
 ### Mock 하드웨어로 테스트
 ```bash
 # Mock 설정으로 실행
-python src/main.py --config config_default.json
+python src/main_cli.py --config config_default.json
 ```
 
 ## 📚 추가 문서

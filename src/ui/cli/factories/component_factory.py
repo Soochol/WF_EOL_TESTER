@@ -227,7 +227,7 @@ class CLIComponentFactory(ComponentFactory):
         from ..session.session_manager import SessionManager
 
         session_manager = SessionManager(console, formatter, emergency_stop_service)
-        menu_system = MenuSystem(console, formatter, enhanced_menu)
+        menu_system = MenuSystem(console, formatter, enhanced_menu, emergency_stop_service)
         test_executor = TestExecutor(console, formatter, use_case, enhanced_integrator)
 
         # Create optional components
