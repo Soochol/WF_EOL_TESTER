@@ -86,6 +86,7 @@ class SimpleMCUTestExecutor(UseCaseExecutor):
             return result
 
         except KeyboardInterrupt:
+            logger.debug("KeyboardInterrupt caught in SimpleMCUTestExecutor, re-raising")
             # Re-raise KeyboardInterrupt to allow BaseUseCase to handle emergency stop
             raise
         except Exception as e:
