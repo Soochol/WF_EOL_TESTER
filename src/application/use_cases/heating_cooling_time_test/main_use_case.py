@@ -5,19 +5,19 @@ Main orchestrator for heating/cooling time test use case.
 Coordinates hardware setup, test execution, and result processing.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from loguru import logger
 
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
+from application.services.monitoring.emergency_stop_service import (
+    EmergencyStopService,
+)
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-if TYPE_CHECKING:
-    from application.services.monitoring.emergency_stop_service import EmergencyStopService
-
-from .command import HeatingCoolingTimeTestInput
+from .input import HeatingCoolingTimeTestInput
 from .hardware_setup_service import HardwareSetupService
 from .result import HeatingCoolingTimeTestResult
 from .statistics_calculator import StatisticsCalculator
@@ -36,7 +36,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self,
         hardware_services: HardwareServiceFacade,
         configuration_service: ConfigurationService,
-        emergency_stop_service: Optional["EmergencyStopService"] = None,
+        emergency_stop_service: Optional[EmergencyStopService] = None,
     ):
         """
         Initialize Heating/Cooling Time Test Use Case
@@ -174,18 +174,18 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         except Exception as cleanup_error:
             logger.warning(f"Cleanup warning in main use case: {cleanup_error}")
 
-    async def execute(self, command: HeatingCoolingTimeTestInput) -> HeatingCoolingTimeTestResult:
+    async def execute(self, input_data: HeatingCoolingTimeTestInput) -> HeatingCoolingTimeTestResult:
         """
         Execute the heating/cooling time test with proper cleanup
 
         Args:
-            command: Test command with parameters
+            input_data: Test input data with parameters
 
         Returns:
             HeatingCoolingTimeTestResult with timing measurements
         """
         try:
-            result = await super().execute(command)
+            result = await super().execute(input_data)
             # Cast to the correct type since BaseUseCase.execute returns BaseResult
             return result  # type: ignore
         finally:

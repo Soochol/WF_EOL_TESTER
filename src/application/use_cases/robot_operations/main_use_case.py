@@ -12,7 +12,7 @@ from application.services.hardware_facade import HardwareServiceFacade
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-from .command import RobotHomeInput
+from .input import RobotHomeInput
 from .digital_io_setup_service import DigitalIOSetupService
 from .result import RobotHomeResult
 from .robot_connection_service import RobotConnectionService

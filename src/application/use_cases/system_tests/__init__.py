@@ -6,7 +6,7 @@ Provides clean separation of concerns for MCU communication testing and related 
 """
 
 from .main_use_case import SimpleMCUTestUseCase
-from .command import SimpleMCUTestInput
+from .input import SimpleMCUTestInput
 from .result import SimpleMCUTestResult
 
 __all__ = [

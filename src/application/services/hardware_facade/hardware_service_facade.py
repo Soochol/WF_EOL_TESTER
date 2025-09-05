@@ -626,7 +626,9 @@ class HardwareServiceFacade:
 
         # Check if this is Mock environment and skip retries for faster testing
         if "Mock" in self._mcu.__class__.__name__:
-            logger.info(f"✅ Mock environment detected - Temperature verification bypassed for {expected_temp}°C")
+            logger.info(
+                f"✅ Mock environment detected - Temperature verification bypassed for {expected_temp}°C"
+            )
             await asyncio.sleep(0.1)  # Short simulation delay
             return
 

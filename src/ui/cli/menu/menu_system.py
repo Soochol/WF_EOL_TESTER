@@ -21,6 +21,7 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports
+from ..interfaces.menu_interface import IMenuSystem
 from ..rich_formatter import RichFormatter
 
 # TYPE_CHECKING imports
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from ..session.session_manager import SessionManager
 
 
-class MenuSystem:
+class MenuSystem(IMenuSystem):
     """Menu display and navigation system for CLI application.
 
     Manages menu presentation, user choice collection, and navigation

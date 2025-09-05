@@ -6,7 +6,7 @@ Provides clean separation of concerns for robot homing and related operations.
 """
 
 from .main_use_case import RobotHomeUseCase
-from .command import RobotHomeInput
+from .input import RobotHomeInput
 from .result import RobotHomeResult
 
 __all__ = [

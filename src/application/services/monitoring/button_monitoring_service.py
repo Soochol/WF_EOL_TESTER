@@ -14,7 +14,7 @@ from application.interfaces.hardware.digital_io import DigitalIOService
 from domain.value_objects.hardware_config import HardwareConfig
 
 if TYPE_CHECKING:
-    from application.use_cases.eol_force_test.main_executor import EOLForceTestUseCase
+    from application.use_cases.eol_force_test.main_use_case import EOLForceTestUseCase
 
 
 class DIOMonitoringService:

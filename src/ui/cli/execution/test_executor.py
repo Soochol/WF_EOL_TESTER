@@ -21,7 +21,7 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports - Application layer
-from application.use_cases.eol_force_test.main_executor import (
+from application.use_cases.eol_force_test.main_use_case import (
     EOLForceTestInput,
     EOLForceTestUseCase,
 )
@@ -32,6 +32,7 @@ from domain.value_objects.eol_test_result import EOLTestResult
 
 
 # Local imports - UI modules
+from ..interfaces.execution_interface import ITestExecutor
 from ..rich_formatter import RichFormatter
 
 # TYPE_CHECKING imports
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
     from ..enhanced_cli_integration import EnhancedInputIntegrator
 
 
-class TestExecutor:
+class TestExecutor(ITestExecutor):
     """Test execution coordinator for EOL testing operations.
 
     Manages the complete test execution workflow including parameter

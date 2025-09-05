@@ -5,14 +5,15 @@ Input object for heating/cooling time test use case.
 Contains all input parameters for the test execution.
 """
 
-from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 from typing import Any, Dict
+
+from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 
 
 class HeatingCoolingTimeTestInput(BaseUseCaseInput):
     """
     Input for Heating/Cooling Time Test
-    
+
     Contains parameters for heating/cooling time test execution including
     repeat count and operator identification.
     """
@@ -31,7 +32,7 @@ class HeatingCoolingTimeTestInput(BaseUseCaseInput):
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert input to dictionary representation
-        
+
         Returns:
             Dictionary containing input data
         """

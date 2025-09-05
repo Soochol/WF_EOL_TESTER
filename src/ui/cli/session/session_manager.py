@@ -20,6 +20,7 @@ from loguru import logger
 from rich.console import Console
 
 # Local imports
+from ..interfaces.session_interface import ISessionManager
 from ..rich_formatter import RichFormatter
 
 # TYPE_CHECKING imports
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from ..menu.menu_system import MenuSystem
 
 
-class SessionManager:
+class SessionManager(ISessionManager):
     """Session lifecycle management for CLI application.
 
     Manages the overall session state, startup/shutdown procedures,
@@ -47,9 +48,11 @@ class SessionManager:
         self._running = False
         self._menu_system: Optional["MenuSystem"] = None
         self._emergency_stop_service = emergency_stop_service
-        
+
         # Debug log to confirm emergency_stop_service injection
-        logger.info(f"SessionManager initialized with emergency_stop_service: {emergency_stop_service is not None}")
+        logger.info(
+            f"SessionManager initialized with emergency_stop_service: {emergency_stop_service is not None}"
+        )
         if emergency_stop_service:
             logger.info(f"Emergency stop service type: {type(emergency_stop_service).__name__}")
 
@@ -85,7 +88,9 @@ class SessionManager:
                     try:
                         await self._menu_system.show_main_menu()
                     except KeyboardInterrupt:
-                        logger.info("KeyboardInterrupt caught in main loop - re-raising to outer handler")
+                        logger.info(
+                            "KeyboardInterrupt caught in main loop - re-raising to outer handler"
+                        )
                         # Re-raise to trigger outer exception handler which handles emergency stop
                         raise
                 else:
@@ -96,7 +101,7 @@ class SessionManager:
             logger.info("SessionManager: KeyboardInterrupt caught!")
             # Emergency stop is only needed when UseCase is running
             # BaseUseCase handles it if active, otherwise just exit cleanly
-            
+
             self._formatter.print_message(
                 "Exiting EOL Tester... Goodbye!", message_type="info", title="Shutdown"
             )
@@ -122,40 +127,28 @@ class SessionManager:
         # such as configuration loading, hardware initialization, etc.
 
     async def _shutdown(self) -> None:
-        """Perform graceful shutdown with comprehensive cleanup and Rich UI feedback.
+        """Perform graceful session shutdown.
 
-        Handles all cleanup operations with visual feedback and proper error
-        handling to ensure resources are properly released during shutdown.
+        Handles session-level cleanup with proper error handling.
+        Hardware cleanup is handled at the use case level.
         """
-        logger.info("Shutting down Enhanced CLI session")
+        logger.info("Shutting down CLI session")
 
         try:
-            # Display shutdown progress with visual feedback
-            with self._formatter.create_progress_display(
-                "Shutting down system...", show_spinner=True
-            ) as shutdown_status:
-                # Step 1: Hardware cleanup
-                logger.debug("Step 1: Cleaning up hardware connections...")
-                # NOTE: Hardware cleanup operations would be implemented here
-                # This might include closing serial connections, releasing instruments, etc.
+            self._console.print("[blue]Shutting down session...[/blue]")
 
-                # Step 2: Configuration persistence
-                logger.debug("Step 2: Saving configuration...")
-                # NOTE: Configuration saving operations would be implemented here
-                # This might include saving user preferences, test settings, etc.
+            # Session-level cleanup only
+            logger.debug("Performing session cleanup...")
+            # NOTE: Session-specific cleanup can be added here
+            # such as saving session state, cleaning temporary UI state, etc.
 
-                # Step 3: Final cleanup
-                logger.debug("Step 3: Finalizing shutdown...")
-                # NOTE: Final cleanup operations would be implemented here
-                # This might include temporary file cleanup, logging finalization, etc.
-
-            logger.debug("Enhanced CLI session shutdown completed successfully")
+            logger.debug("CLI session shutdown completed successfully")
 
         except Exception as e:
             # Log shutdown errors but don't prevent shutdown completion
             logger.warning(f"Error during session shutdown: {e}")
 
-        logger.info("Enhanced CLI session shutdown complete")
+        logger.info("CLI session shutdown complete")
 
     def stop_session(self) -> None:
         """Stop the current session.

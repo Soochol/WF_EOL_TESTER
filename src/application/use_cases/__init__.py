@@ -6,7 +6,7 @@ Organized by domain areas for better maintainability.
 """
 
 # EOL Force Test
-from application.use_cases.eol_force_test.main_executor import (
+from application.use_cases.eol_force_test.main_use_case import (
     EOLForceTestUseCase,
     EOLForceTestInput,
     EOLTestResult,

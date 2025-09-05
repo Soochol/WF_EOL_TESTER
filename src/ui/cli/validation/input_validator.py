@@ -17,6 +17,7 @@ import re
 from typing import Optional
 
 # Local imports
+from ..interfaces.validation_interface import IInputValidator
 
 
 class ValidationConstants:
@@ -44,7 +45,7 @@ class ValidationConstants:
     FORCE_RANGE = (0.0, 1000.0)  # Valid force range (min, max)
 
 
-class InputValidator:
+class InputValidator(IInputValidator):
     """Enhanced input validation utility with comprehensive security hardening.
 
     This class provides robust input validation with multiple layers of security

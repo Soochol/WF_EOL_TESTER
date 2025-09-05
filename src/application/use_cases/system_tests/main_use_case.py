@@ -5,19 +5,18 @@ Main orchestrator for simple MCU communication test.
 Coordinates MCU connection, test sequence execution, and result processing.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from loguru import logger
 
 from application.services.core.configuration_service import ConfigurationService
+from application.services.monitoring.emergency_stop_service import EmergencyStopService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-if TYPE_CHECKING:
-    from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
-from .command import SimpleMCUTestInput
+from .input import SimpleMCUTestInput
 from .mcu_connection_service import MCUConnectionService
 from .result import SimpleMCUTestResult
 from .test_sequence_executor import TestSequenceExecutor
@@ -35,7 +34,7 @@ class SimpleMCUTestUseCase(BaseUseCase):
         self, 
         hardware_services: HardwareServiceFacade, 
         configuration_service: ConfigurationService,
-        emergency_stop_service: Optional["EmergencyStopService"] = None
+        emergency_stop_service: Optional[EmergencyStopService] = None
     ):
         """
         Initialize Simple MCU Test Use Case
@@ -121,15 +120,15 @@ class SimpleMCUTestUseCase(BaseUseCase):
             error_message=f"Simple MCU Test failed: {error_message}",
         )
 
-    async def execute(self, command: SimpleMCUTestInput) -> SimpleMCUTestResult:
+    async def execute(self, input_data: SimpleMCUTestInput) -> SimpleMCUTestResult:
         """
         Execute the simple MCU communication test
 
         Args:
-            command: Test command with operator information
+            input_data: Test input data with operator information
 
         Returns:
             SimpleMCUTestResult with test outcomes
         """
-        result = await super().execute(command)
+        result = await super().execute(input_data)
         return result  # type: ignore

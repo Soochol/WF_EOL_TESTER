@@ -6,18 +6,18 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
-
-if TYPE_CHECKING:
-    from application.services.monitoring.emergency_stop_service import EmergencyStopService
 
 from application.services.core.configuration_service import ConfigurationService
 from application.services.core.configuration_validator import ConfigurationValidator
 from application.services.core.exception_handler import ExceptionHandler
 from application.services.core.repository_service import RepositoryService
 from application.services.hardware_facade import HardwareServiceFacade
+from application.services.monitoring.emergency_stop_service import (
+    EmergencyStopService,
+)
 from application.services.test.test_result_evaluator import TestResultEvaluator
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
@@ -76,7 +76,7 @@ class EOLForceTestUseCase(BaseUseCase):
         test_result_evaluator: TestResultEvaluator,
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
-        emergency_stop_service: Optional["EmergencyStopService"] = None,
+        emergency_stop_service: Optional[EmergencyStopService] = None,
     ):
         # Initialize BaseUseCase
         super().__init__("EOL Force Test", emergency_stop_service)
@@ -96,7 +96,7 @@ class EOLForceTestUseCase(BaseUseCase):
         self._result_evaluator = ResultEvaluator(
             test_result_evaluator, self._measurement_converter, self._state_manager
         )
-        
+
         # Emergency stop and interruption handling
         self._keyboard_interrupt_raised = False
 
@@ -125,7 +125,8 @@ class EOLForceTestUseCase(BaseUseCase):
 
         if test_config is None:
             raise TestExecutionException(
-                message="Test configuration could not be loaded", details={"command": str(command)}
+                message="Test configuration could not be loaded",
+                details={"dut_info": str(eol_input.dut_info)},
             )
 
         repeat_count = test_config.repeat_count

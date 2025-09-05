@@ -7,20 +7,19 @@ Implements common patterns and ensures consistency across use cases.
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from loguru import logger
 
+from application.services.monitoring.emergency_stop_service import (
+    EmergencyStopService,
+)
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration, Timestamp
 
 from .command_result_patterns import BaseResult, BaseUseCaseInput
 from .execution_context import ExecutionContext
 
-if TYPE_CHECKING:
-    from application.services.monitoring.emergency_stop_service import (
-        EmergencyStopService,
-    )
 
 
 class BaseUseCase(ABC):
@@ -35,7 +34,7 @@ class BaseUseCase(ABC):
     """
 
     def __init__(
-        self, use_case_name: str, emergency_stop_service: Optional["EmergencyStopService"] = None
+        self, use_case_name: str, emergency_stop_service: Optional[EmergencyStopService] = None
     ):
         """
         Initialize base use case
