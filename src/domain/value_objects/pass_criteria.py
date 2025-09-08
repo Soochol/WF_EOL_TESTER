@@ -6,12 +6,15 @@ Defines acceptable ranges for measurements and provides interpolation capabiliti
 for 2D specification matrices based on temperature and stroke position.
 """
 
+# Standard library imports
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Third-party imports
 import numpy as np
 from scipy.interpolate import griddata
 
+# Local application imports
 from domain.exceptions.validation_exceptions import ValidationException
 
 
@@ -19,11 +22,11 @@ from domain.exceptions.validation_exceptions import ValidationException
 class PassCriteria:
     """
     Test pass/fail criteria value object
-    
+
     Immutable value object that defines acceptable measurement ranges and validation
     criteria for test results. Supports both global limits and 2D specification
     matrices with interpolation capabilities.
-    
+
     The spec_points field defines a 2D specification matrix where each point
     contains (temperature, stroke_position, upper_limit, lower_limit) tuples.
     Force limits at arbitrary points are calculated using 2D linear interpolation.
@@ -32,31 +35,31 @@ class PassCriteria:
     # ========================================================================
     # FORCE MEASUREMENT CRITERIA
     # ========================================================================
-    force_limit_min: float = 0.0        # Minimum acceptable force (N)
-    force_limit_max: float = 100.0      # Maximum acceptable force (N)
+    force_limit_min: float = 0.0  # Minimum acceptable force (N)
+    force_limit_max: float = 100.0  # Maximum acceptable force (N)
 
     # ========================================================================
     # TEMPERATURE CRITERIA
     # ========================================================================
     temperature_limit_min: float = -10.0  # Minimum acceptable temperature (°C)
-    temperature_limit_max: float = 80.0   # Maximum acceptable temperature (°C)
+    temperature_limit_max: float = 80.0  # Maximum acceptable temperature (°C)
 
     # ========================================================================
     # MEASUREMENT PRECISION AND TOLERANCE
     # ========================================================================
     measurement_tolerance: float = 0.001  # General measurement precision tolerance
-    force_precision: int = 2             # Force value decimal places
-    temperature_precision: int = 1       # Temperature value decimal places
+    force_precision: int = 2  # Force value decimal places
+    temperature_precision: int = 1  # Temperature value decimal places
 
     # ========================================================================
     # POSITION CRITERIA
     # ========================================================================
-    position_tolerance: float = 0.5      # Position accuracy tolerance (mm)
+    position_tolerance: float = 0.5  # Position accuracy tolerance (mm)
 
     # ========================================================================
     # TIMING CRITERIA
     # ========================================================================
-    max_test_duration: float = 300.0     # Maximum allowed test duration (s)
+    max_test_duration: float = 300.0  # Maximum allowed test duration (s)
     min_stabilization_time: float = 0.5  # Minimum stabilization time (s)
 
     # ========================================================================
@@ -67,10 +70,10 @@ class PassCriteria:
 
     def __post_init__(self) -> None:
         """Validate pass criteria after initialization
-        
+
         Performs comprehensive validation of all criteria parameters
         to ensure they are within valid ranges and logically consistent.
-        
+
         Raises:
             ValidationException: If any parameter is invalid
         """
@@ -99,10 +102,7 @@ class PassCriteria:
 
     def _validate_temperature_limits(self) -> None:
         """Validate temperature limit ranges"""
-        if (
-            self.temperature_limit_min
-            >= self.temperature_limit_max
-        ):
+        if self.temperature_limit_min >= self.temperature_limit_max:
             raise ValidationException(
                 "temperature_limit_min",
                 self.temperature_limit_min,
@@ -239,14 +239,16 @@ class PassCriteria:
                     "Force lower limit cannot be negative",
                 )
 
-    def is_force_within_limits(self, force: float, temperature: Optional[float] = None, stroke: Optional[float] = None) -> bool:
+    def is_force_within_limits(
+        self, force: float, temperature: Optional[float] = None, stroke: Optional[float] = None
+    ) -> bool:
         """Check if force measurement is within acceptable limits
-        
+
         Args:
             force: Force measurement value (N)
             temperature: Temperature at measurement point (°C), used for 2D interpolation
             stroke: Stroke position at measurement point (mm), used for 2D interpolation
-            
+
         Returns:
             True if force is within acceptable limits
         """
@@ -260,10 +262,10 @@ class PassCriteria:
 
     def is_temperature_within_limits(self, temperature: float) -> bool:
         """Check if temperature is within acceptable limits
-        
+
         Args:
             temperature: Temperature measurement value (°C)
-            
+
         Returns:
             True if temperature is within acceptable limits
         """
@@ -271,23 +273,25 @@ class PassCriteria:
 
     def is_position_within_tolerance(self, expected: float, actual: float) -> bool:
         """Check if position is within tolerance of expected value
-        
+
         Args:
             expected: Expected position value (mm)
             actual: Actual measured position value (mm)
-            
+
         Returns:
             True if actual position is within tolerance of expected
         """
         return abs(expected - actual) <= self.position_tolerance
 
-    def is_measurement_stable(self, measurements: List[float], tolerance_factor: float = 1.0) -> bool:
+    def is_measurement_stable(
+        self, measurements: List[float], tolerance_factor: float = 1.0
+    ) -> bool:
         """Check if measurements are stable within tolerance
-        
+
         Args:
             measurements: List of measurement values
             tolerance_factor: Multiplier for measurement tolerance (default 1.0)
-            
+
         Returns:
             True if all measurements are within tolerance of the average
         """
@@ -301,7 +305,7 @@ class PassCriteria:
 
     def get_force_range(self) -> Tuple[float, float]:
         """Get global force limit range as tuple
-        
+
         Returns:
             Tuple of (min_force, max_force) in Newtons
         """
@@ -309,15 +313,13 @@ class PassCriteria:
 
     def get_temperature_range(self) -> Tuple[float, float]:
         """Get temperature limit range as tuple
-        
+
         Returns:
             Tuple of (min_temperature, max_temperature) in degrees Celsius
         """
         return (self.temperature_limit_min, self.temperature_limit_max)
 
-    def get_force_limits_at_point(
-        self, temperature: float, stroke: float
-    ) -> Tuple[float, float]:
+    def get_force_limits_at_point(self, temperature: float, stroke: float) -> Tuple[float, float]:
         """
         Get force limits at specific temperature and stroke using 2D linear interpolation
 
@@ -340,31 +342,14 @@ class PassCriteria:
 
         if len(self.spec_points) == 1:
             # Single point - return its limits
-            _, _, upper_limit, lower_limit = (
-                self.spec_points[0]
-            )
+            _, _, upper_limit, lower_limit = self.spec_points[0]
             return (lower_limit, upper_limit)
 
         try:
             # Extract coordinates and values from spec points
-            points = np.array(
-                [
-                    (temp, stroke_pos)
-                    for temp, stroke_pos, _, _ in self.spec_points
-                ]
-            )
-            upper_values = np.array(
-                [
-                    upper
-                    for _, _, upper, _ in self.spec_points
-                ]
-            )
-            lower_values = np.array(
-                [
-                    lower
-                    for _, _, _, lower in self.spec_points
-                ]
-            )
+            points = np.array([(temp, stroke_pos) for temp, stroke_pos, _, _ in self.spec_points])
+            upper_values = np.array([upper for _, _, upper, _ in self.spec_points])
+            lower_values = np.array([lower for _, _, _, lower in self.spec_points])
 
             # Target point for interpolation
             target_point = np.array([[temperature, stroke]])
@@ -386,9 +371,7 @@ class PassCriteria:
             )[0]
 
             # Handle extrapolation cases (outside spec point range)
-            if np.isnan(upper_limit) or np.isnan(
-                lower_limit
-            ):
+            if np.isnan(upper_limit) or np.isnan(lower_limit):
                 # Use nearest neighbor for extrapolation
                 upper_limit = griddata(
                     points,
@@ -414,10 +397,10 @@ class PassCriteria:
 
     def format_force(self, force: float) -> str:
         """Format force value according to precision setting
-        
+
         Args:
             force: Force value to format (N)
-            
+
         Returns:
             Formatted force string with appropriate decimal places
         """
@@ -425,10 +408,10 @@ class PassCriteria:
 
     def format_temperature(self, temperature: float) -> str:
         """Format temperature value according to precision setting
-        
+
         Args:
             temperature: Temperature value to format (°C)
-            
+
         Returns:
             Formatted temperature string with appropriate decimal places
         """
@@ -436,7 +419,7 @@ class PassCriteria:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation
-        
+
         Returns:
             Dictionary containing all pass criteria parameters
         """
@@ -457,13 +440,13 @@ class PassCriteria:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PassCriteria":
         """Create PassCriteria from dictionary
-        
+
         Args:
             data: Dictionary containing pass criteria parameters
-            
+
         Returns:
             PassCriteria instance with validated parameters
-            
+
         Raises:
             ValidationException: If any parameters are invalid
         """
@@ -489,15 +472,15 @@ class PassCriteria:
     @classmethod
     def default(cls) -> "PassCriteria":
         """Create default pass criteria with conservative settings
-        
+
         Returns:
             PassCriteria instance with default values suitable for most tests
         """
         return cls()
-    
+
     def is_valid(self) -> bool:
         """Check if pass criteria configuration is valid
-        
+
         Returns:
             True if all validation rules pass, False otherwise
         """
@@ -506,26 +489,26 @@ class PassCriteria:
             return True
         except ValidationException:
             return False
-    
+
     def get_spec_point_count(self) -> int:
         """Get number of specification points in 2D matrix
-        
+
         Returns:
             Number of spec points defined
         """
         return len(self.spec_points)
-    
+
     def has_2d_specification(self) -> bool:
         """Check if 2D specification matrix is defined
-        
+
         Returns:
             True if spec points are available for interpolation
         """
         return len(self.spec_points) > 0
-    
+
     def get_measurement_summary(self) -> Dict[str, Union[str, int, float]]:
         """Get summary of measurement criteria
-        
+
         Returns:
             Dictionary with formatted measurement criteria information
         """
@@ -546,7 +529,7 @@ class PassCriteria:
             f"PassCriteria(force: {self.force_limit_min}-{self.force_limit_max}N, "
             f"temp: {self.temperature_limit_min}-{self.temperature_limit_max}°C{spec_info})"
         )
-    
+
     def __repr__(self) -> str:
         """Debug representation"""
         return (

@@ -5,7 +5,10 @@ Configuration parameters for heating/cooling time test including
 wait times, power monitoring settings, and test execution parameters.
 """
 
+# Future imports
 from __future__ import annotations
+
+# Standard library imports
 from dataclasses import dataclass
 from typing import Any, Dict
 
@@ -147,34 +150,27 @@ class HeatingCoolingConfiguration:
         return {
             # TEST EXECUTION PARAMETERS
             "repeat_count": self.repeat_count,
-            
-            # WAIT TIME PARAMETERS  
+            # WAIT TIME PARAMETERS
             "heating_wait_time": self.heating_wait_time,
             "cooling_wait_time": self.cooling_wait_time,
             "stabilization_wait_time": self.stabilization_wait_time,
-            
             # POWER MONITORING PARAMETERS
             "power_monitoring_interval": self.power_monitoring_interval,
             "power_monitoring_enabled": self.power_monitoring_enabled,
-            
             # TEMPERATURE PARAMETERS
             "activation_temperature": self.activation_temperature,
             "standby_temperature": self.standby_temperature,
-            
             # POWER SUPPLY PARAMETERS
             "voltage": self.voltage,
             "current": self.current,
-            
             # MCU PARAMETERS
             "fan_speed": self.fan_speed,
             "upper_temperature": self.upper_temperature,
-            
             # STABILIZATION TIME PARAMETERS
             "poweron_stabilization": self.poweron_stabilization,
             "mcu_boot_complete_stabilization": self.mcu_boot_complete_stabilization,
             "mcu_command_stabilization": self.mcu_command_stabilization,
             "mcu_temperature_stabilization": self.mcu_temperature_stabilization,
-            
             # STATISTICS PARAMETERS
             "calculate_statistics": self.calculate_statistics,
             "show_detailed_results": self.show_detailed_results,
@@ -186,34 +182,27 @@ class HeatingCoolingConfiguration:
         return cls(
             # TEST EXECUTION PARAMETERS
             repeat_count=data.get("repeat_count", 1),
-            
             # WAIT TIME PARAMETERS
             heating_wait_time=data.get("heating_wait_time", 2.0),
             cooling_wait_time=data.get("cooling_wait_time", 2.0),
             stabilization_wait_time=data.get("stabilization_wait_time", 1.0),
-            
             # POWER MONITORING PARAMETERS
             power_monitoring_interval=data.get("power_monitoring_interval", 0.5),
             power_monitoring_enabled=data.get("power_monitoring_enabled", True),
-            
             # TEMPERATURE PARAMETERS
             activation_temperature=data.get("activation_temperature", 52.0),
             standby_temperature=data.get("standby_temperature", 38.0),
-            
             # POWER SUPPLY PARAMETERS
             voltage=data.get("voltage", 38.0),
             current=data.get("current", 25.0),
-            
             # MCU PARAMETERS
             fan_speed=data.get("fan_speed", 10),
             upper_temperature=data.get("upper_temperature", 80.0),
-            
             # STABILIZATION TIME PARAMETERS
             poweron_stabilization=data.get("poweron_stabilization", 0.5),
             mcu_boot_complete_stabilization=data.get("mcu_boot_complete_stabilization", 2.0),
             mcu_command_stabilization=data.get("mcu_command_stabilization", 0.1),
             mcu_temperature_stabilization=data.get("mcu_temperature_stabilization", 0.1),
-            
             # STATISTICS PARAMETERS
             calculate_statistics=data.get("calculate_statistics", True),
             show_detailed_results=data.get("show_detailed_results", True),

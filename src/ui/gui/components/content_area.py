@@ -4,21 +4,23 @@ Content Area Widget for WF EOL Tester GUI
 Central content area with stackable panels for different application functions.
 """
 
-from typing import Any, Dict, Optional
+# Standard library imports
+from typing import Dict, Optional
 
-from loguru import logger
-from PySide6.QtCore import Qt, QTimer, Signal
+# Third-party imports
+from PySide6.QtCore import Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
-    QHBoxLayout,
     QLabel,
     QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
+from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.panels.dashboard_panel import DashboardPanel
 from ui.gui.panels.eol_test_panel import EOLTestPanel
@@ -183,7 +185,10 @@ class ContentAreaWidget(QWidget):
                 container=self.container, state_manager=self.state_manager, parent=self
             )
             self.add_panel(
-                "heating_cooling_test", heating_cooling_test_panel, "Heating Cooling Time Test", "Heating and Cooling Time Testing"
+                "heating_cooling_test",
+                heating_cooling_test_panel,
+                "Heating Cooling Time Test",
+                "Heating and Cooling Time Testing",
             )
 
             # Create hardware control panel
@@ -193,7 +198,6 @@ class ContentAreaWidget(QWidget):
             self.add_panel(
                 "hardware", hardware_panel, "Hardware Control", "Manual Hardware Operations"
             )
-
 
             # Set default panel
             self.show_panel("dashboard")
@@ -227,7 +231,7 @@ class ContentAreaWidget(QWidget):
         panel_widget.setProperty("panel_title", title)
         panel_widget.setProperty("panel_subtitle", subtitle)
 
-        # Add to stacked widget
+        # Add to stacked widgetㅈ
         if self.stacked_widget:
             self.stacked_widget.addWidget(panel_widget)
 

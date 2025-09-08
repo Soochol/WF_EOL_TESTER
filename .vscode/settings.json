@@ -36,7 +36,8 @@
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.organizeImports": "explicit"
+            "source.organizeImports": "always",
+            "source.fixAll": "always"
         },
         "editor.insertSpaces": true,
         "editor.tabSize": 4,
@@ -49,6 +50,33 @@
         "pyproject.toml"
     ],
     "black-formatter.importStrategy": "fromEnvironment",
+
+    // === Flake8 Linting Configuration ===
+    "flake8.enabled": true,
+    "flake8.lintOnChange": false,
+    "flake8.lintOnSave": true,
+    "flake8.importStrategy": "fromEnvironment",
+    "flake8.args": ["--config=.flake8"],
+
+    // === Pylint Linting Configuration ===
+    "pylint.enabled": true,
+    "pylint.lintOnChange": false,
+    "pylint.lintOnSave": true,
+    "pylint.importStrategy": "fromEnvironment",
+    "pylint.args": ["--rcfile=pyproject.toml"],
+
+    // === MyPy Type Checking Configuration ===
+    "mypy-type-checker.enabled": true,
+    "mypy-type-checker.lintOnChange": false,
+    "mypy-type-checker.lintOnSave": true,
+    "mypy-type-checker.importStrategy": "fromEnvironment",
+    "mypy-type-checker.args": ["--config-file=pyproject.toml"],
+
+    // === isort Import Sorting Configuration ===
+    "isort.enabled": true,
+    "isort.lintOnSave": true,
+    "isort.importStrategy": "fromEnvironment",
+    "isort.args": ["--settings-path=pyproject.toml"],
 
     // === Testing Configuration ===
     "python.testing.pytestEnabled": true,

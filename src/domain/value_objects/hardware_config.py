@@ -5,14 +5,18 @@ Consolidated configuration object containing both hardware model selection
 and detailed connection parameters for all hardware devices.
 """
 
+# Future imports
 from __future__ import annotations
 
+# Standard library imports
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Set, cast
+from typing import Any, cast, Dict, Optional, Set
 
+# Local application imports
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
+
 
 # Supported hardware models
 SUPPORTED_ROBOT_MODELS: Set[str] = {"ajinextek", "mock"}

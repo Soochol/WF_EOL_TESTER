@@ -1874,6 +1874,7 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "black" },
     { name = "mypy" },
     { name = "pylint" },
 ]
@@ -1917,6 +1918,7 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "black", specifier = ">=25.1.0" },
     { name = "mypy", specifier = ">=1.17.0" },
     { name = "pylint", specifier = ">=3.3.7" },
 ]

@@ -1,15 +1,36 @@
 [flake8]
+# === Core Configuration ===
 max-line-length = 100
 max-complexity = 10
-ignore = E203,E501,W503,E226,E24,C901,E402
+line-length = 100
+
+# === Error Selection ===
+select = E,W,F,C
+
+# === Ignore Rules ===
+ignore =
+    E203,  # whitespace before ':'
+    E501,  # line too long (handled by black and set to 100 chars)
+    W503,  # line break before binary operator (prefer W504)
+    E226,  # missing whitespace around arithmetic operator
+    E24,   # multiple spaces after ','
+    C901,  # complex-structure
+    E402,  # module level import not at top of file
+
+# === Extended Ignore for Compatibility ===
 extend-ignore = E203,E501,W503,E226,E24
+
+# === Per-File Ignores ===
 per-file-ignores =
-    __init__.py:F401,F403
-    tests/*:F401,F811,E402,S101,S106
-    **/test_*.py:F401,F811,E402,S101,S106
-    **/mock/*:F401,F811,W0613
-    setup.py:E402
-    conftest.py:F401,F811
+    __init__.py:F401,F403,E501
+    tests/*:F401,F811,E402,S101,S106,E501
+    **/test_*.py:F401,F811,E402,S101,S106,E501
+    **/mock/*:F401,F811,W0613,E501
+    setup.py:E402,E501
+    conftest.py:F401,F811,E501
+    *.py:E501
+
+# === Exclude Directories ===
 exclude =
     .git,
     __pycache__,
@@ -25,3 +46,13 @@ exclude =
     migrations,
     .coverage,
     htmlcov
+
+# === Performance Settings ===
+jobs = auto
+show-source = True
+show-pep8 = True
+statistics = True
+count = True
+
+# === Formatting ===
+format = %(path)s:%(row)d:%(col)d: %(code)s %(text)s

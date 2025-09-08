@@ -5,9 +5,11 @@ Immutable value object representing the complete result of an EOL test execution
 Contains test outcome, measurements, timing information, and metadata.
 """
 
+# Standard library imports
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+# Local application imports
 from application.use_cases.common.command_result_patterns import BaseResult
 from domain.enums.test_status import TestStatus
 from domain.exceptions.validation_exceptions import ValidationException
@@ -43,7 +45,7 @@ class EOLTestResult(BaseResult):
     ):
         """
         Initialize EOL test result
-        
+
         Args:
             test_id: Unique test identifier
             test_status: Execution status
@@ -62,9 +64,9 @@ class EOLTestResult(BaseResult):
             is_success=is_success,
             error_message=error_message,
             test_id=test_id,
-            execution_duration=execution_duration
+            execution_duration=execution_duration,
         )
-        
+
         # Store EOL-specific fields
         self._is_passed = is_passed
         self._completed_at = completed_at
@@ -80,22 +82,22 @@ class EOLTestResult(BaseResult):
     def is_passed(self) -> bool:
         """Whether device passed test criteria"""
         return self._is_passed
-        
+
     @property
     def completed_at(self) -> Optional[datetime]:
         """Test completion timestamp"""
         return self._completed_at
-        
+
     @property
     def measurement_ids(self) -> List[MeasurementId]:
         """Individual measurement IDs"""
         return self._measurement_ids
-        
+
     @property
     def test_summary(self) -> Optional[Union[TestMeasurements, Dict[str, Any]]]:
         """Measurement data"""
         return self._test_summary
-        
+
     @property
     def operator_notes(self) -> Optional[str]:
         """Manual operator notes"""
@@ -178,7 +180,7 @@ class EOLTestResult(BaseResult):
     @property
     def is_success(self) -> bool:
         """BaseResult compatibility property - same as is_successful
-        
+
         Returns:
             True if test executed successfully (COMPLETED or FAILED status)
         """
@@ -327,7 +329,9 @@ class EOLTestResult(BaseResult):
             # Measurement data
             "measurement_count": self.measurement_count,
             "has_measurements": self.has_measurements,
-            "measurement_ids": [str(mid) for mid in self.measurement_ids] if self.measurement_ids else [],
+            "measurement_ids": (
+                [str(mid) for mid in self.measurement_ids] if self.measurement_ids else []
+            ),
             "test_summary": self._convert_test_summary_to_dict(),
             # Error and notes
             "error_message": self.error_message,

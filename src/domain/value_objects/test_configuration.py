@@ -6,9 +6,11 @@ This value object defines the complete test execution configuration including
 hardware settings, motion parameters, timing, and validation criteria.
 """
 
+# Standard library imports
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List
 
+# Local application imports
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
