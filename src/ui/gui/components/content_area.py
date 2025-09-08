@@ -20,10 +20,10 @@ from PySide6.QtWidgets import (
 )
 
 from application.containers.application_container import ApplicationContainer
-from ui.gui.panels.config_panel import ConfigPanel
 from ui.gui.panels.dashboard_panel import DashboardPanel
 from ui.gui.panels.eol_test_panel import EOLTestPanel
 from ui.gui.panels.hardware_panel import HardwarePanel
+from ui.gui.panels.heating_cooling_test_panel import HeatingCoolingTestPanel
 from ui.gui.panels.mcu_test_panel import MCUTestPanel
 from ui.gui.services.gui_state_manager import GUIStateManager
 
@@ -178,6 +178,14 @@ class ContentAreaWidget(QWidget):
                 "mcu_test", mcu_test_panel, "Simple MCU Test", "Basic MCU Communication Test"
             )
 
+            # Create heating cooling test panel
+            heating_cooling_test_panel = HeatingCoolingTestPanel(
+                container=self.container, state_manager=self.state_manager, parent=self
+            )
+            self.add_panel(
+                "heating_cooling_test", heating_cooling_test_panel, "Heating Cooling Time Test", "Heating and Cooling Time Testing"
+            )
+
             # Create hardware control panel
             hardware_panel = HardwarePanel(
                 container=self.container, state_manager=self.state_manager, parent=self
@@ -186,11 +194,6 @@ class ContentAreaWidget(QWidget):
                 "hardware", hardware_panel, "Hardware Control", "Manual Hardware Operations"
             )
 
-            # Create configuration panel
-            config_panel = ConfigPanel(
-                container=self.container, state_manager=self.state_manager, parent=self
-            )
-            self.add_panel("configuration", config_panel, "Configuration", "System Settings")
 
             # Set default panel
             self.show_panel("dashboard")

@@ -1,7 +1,7 @@
 """
 Dashboard Panel for WF EOL Tester GUI
 
-System overview panel showing hardware status, recent tests, and system information.
+System overview panel showing recent tests, system information, and operational status.
 """
 
 import asyncio
@@ -128,10 +128,9 @@ class DashboardPanel(QWidget):
     Dashboard panel widget
 
     Provides system overview with:
-    - Hardware connection status cards
+    - Test status and system uptime cards
     - Recent test results
     - System messages log
-    - Quick action buttons
     """
 
     # Signals
@@ -158,16 +157,12 @@ class DashboardPanel(QWidget):
         self.state_manager = state_manager
 
         # Status cards
-        self.hardware_status_card: Optional[StatusCard] = None
         self.test_status_card: Optional[StatusCard] = None
-        self.connection_count_card: Optional[StatusCard] = None
         self.uptime_card: Optional[StatusCard] = None
 
         # Components
         self.system_messages_text: Optional[QTextEdit] = None
         self.recent_tests_table: Optional[QTableWidget] = None
-        self.refresh_button: Optional[QPushButton] = None
-        self.quick_test_button: Optional[QPushButton] = None
 
         # State tracking
         self.start_time = datetime.now()
@@ -189,15 +184,7 @@ class DashboardPanel(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Create status cards
-        self.hardware_status_card = StatusCard(
-            "Hardware Status", "Checking...", "#E74C3C"  # Red initially
-        )
-
         self.test_status_card = StatusCard("Test Status", "IDLE", "#7F8C8D")  # Gray initially
-
-        self.connection_count_card = StatusCard(
-            "Connected Devices", "0/5", "#F39C12"  # Orange initially
-        )
 
         self.uptime_card = StatusCard("System Uptime", "00:00:00", "#3498DB")  # Blue
 
@@ -244,28 +231,11 @@ class DashboardPanel(QWidget):
 
         tests_layout.addWidget(self.recent_tests_table)
 
-        # Create quick actions section
-        actions_group = QGroupBox("Quick Actions")
-        actions_layout = QHBoxLayout(actions_group)
-
-        self.refresh_button = QPushButton("Refresh Status")
-        self.refresh_button.setProperty("class", "primary")
-        self.refresh_button.setMinimumHeight(44)
-        self.refresh_button.setAccessibleName("Refresh Dashboard Status")
-
-        self.quick_test_button = QPushButton("Quick MCU Test")
-        self.quick_test_button.setProperty("class", "success")
-        self.quick_test_button.setMinimumHeight(44)
-        self.quick_test_button.setAccessibleName("Start Quick MCU Test")
-
-        actions_layout.addWidget(self.refresh_button)
-        actions_layout.addWidget(self.quick_test_button)
-        actions_layout.addStretch()
+        # Quick actions section removed
 
         # Store group references
         self.messages_group = messages_group
         self.tests_group = tests_group
-        self.actions_group = actions_group
 
     def setup_layout(self) -> None:
         """Setup widget layout"""
@@ -288,11 +258,9 @@ class DashboardPanel(QWidget):
         cards_layout = QGridLayout(cards_widget)
         cards_layout.setSpacing(16)
 
-        # Add status cards in 2x2 grid
-        cards_layout.addWidget(self.hardware_status_card, 0, 0)
-        cards_layout.addWidget(self.test_status_card, 0, 1)
-        cards_layout.addWidget(self.connection_count_card, 1, 0)
-        cards_layout.addWidget(self.uptime_card, 1, 1)
+        # Add status cards in 1x2 grid
+        cards_layout.addWidget(self.test_status_card, 0, 0)
+        cards_layout.addWidget(self.uptime_card, 0, 1)
 
         main_layout.addWidget(cards_widget)
 
@@ -303,7 +271,6 @@ class DashboardPanel(QWidget):
         # Left column
         left_column = QVBoxLayout()
         left_column.addWidget(self.messages_group)
-        left_column.addWidget(self.actions_group)
 
         # Right column
         right_column = QVBoxLayout()
@@ -334,12 +301,7 @@ class DashboardPanel(QWidget):
             self.state_manager.test_status_changed.connect(self.on_test_status_changed)
             self.state_manager.system_message_added.connect(self.on_system_message_added)
 
-        # Button signals
-        if self.refresh_button:
-            self.refresh_button.clicked.connect(self.refresh_panel)
-
-        if self.quick_test_button:
-            self.quick_test_button.clicked.connect(self.start_quick_test)
+        # Quick action button signals removed
 
     def setup_timers(self) -> None:
         """Setup update timers"""
@@ -355,12 +317,13 @@ class DashboardPanel(QWidget):
 
     def on_hardware_status_changed(self, hardware_status) -> None:
         """
-        Handle hardware status change
+        Handle hardware status change (currently unused after hardware cards removal)
 
         Args:
             hardware_status: Hardware status object
         """
-        self.update_hardware_status_display(hardware_status)
+        # Hardware status display has been removed from dashboard
+        pass
 
     def on_test_status_changed(self, status: str) -> None:
         """
@@ -389,52 +352,14 @@ class DashboardPanel(QWidget):
 
     def update_hardware_status_display(self, hardware_status) -> None:
         """
-        Update hardware status card
+        Update hardware status display (currently unused after hardware cards removal)
 
         Args:
             hardware_status: Hardware status object
         """
-        if not self.hardware_status_card or not self.connection_count_card:
-            return
-
-        overall_status = hardware_status.overall_status
-
-        # Update hardware status card
-        if overall_status == ConnectionStatus.CONNECTED:
-            self.hardware_status_card.set_value("ONLINE")
-            self.hardware_status_card.set_color("#27AE60")  # Green
-        elif overall_status == ConnectionStatus.CONNECTING:
-            self.hardware_status_card.set_value("CONNECTING")
-            self.hardware_status_card.set_color("#F39C12")  # Orange
-        elif overall_status == ConnectionStatus.ERROR:
-            self.hardware_status_card.set_value("ERROR")
-            self.hardware_status_card.set_color("#E74C3C")  # Red
-        else:
-            self.hardware_status_card.set_value("OFFLINE")
-            self.hardware_status_card.set_color("#7F8C8D")  # Gray
-
-        # Update connection count card
-        connected_count = sum(
-            1
-            for status in [
-                hardware_status.robot_status,
-                hardware_status.mcu_status,
-                hardware_status.loadcell_status,
-                hardware_status.power_status,
-                hardware_status.digital_io_status,
-            ]
-            if status == ConnectionStatus.CONNECTED
-        )
-
-        self.connection_count_card.set_value(f"{connected_count}/5")
-
-        # Set color based on connection ratio
-        if connected_count == 5:
-            self.connection_count_card.set_color("#27AE60")  # Green
-        elif connected_count >= 3:
-            self.connection_count_card.set_color("#F39C12")  # Orange
-        else:
-            self.connection_count_card.set_color("#E74C3C")  # Red
+        # Hardware status cards have been removed from dashboard
+        # Hardware status is now available only through the Hardware panel
+        pass
 
     def update_test_status_display(self, status: str) -> None:
         """
@@ -547,18 +472,6 @@ class DashboardPanel(QWidget):
 
         except Exception as e:
             logger.error(f"Failed to load system messages: {e}")
-
-    def start_quick_test(self) -> None:
-        """Start quick MCU test"""
-        try:
-            # Navigate to MCU test panel and start test
-            if self.state_manager:
-                self.state_manager.navigate_to_panel("mcu_test")
-                self.status_message.emit("Navigating to MCU test panel")
-
-        except Exception as e:
-            logger.error(f"Quick test start failed: {e}")
-            self.status_message.emit(f"Quick test failed: {e}")
 
     def refresh_panel(self) -> None:
         """Refresh all panel data"""

@@ -7,7 +7,7 @@ Navigation menu with industrial styling and accessibility features.
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal, QPropertyAnimation, QRect
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -118,6 +118,134 @@ class MenuButton(QPushButton):
             )
 
 
+class ExpandableMenuButton(MenuButton):
+    """Expandable menu button for parent categories with expand/collapse functionality"""
+    
+    # Signal emitted when expand state changes
+    expanded_changed = Signal(bool)
+    
+    def __init__(
+        self, text: str, panel_id: str, description: str = "", parent: Optional[QWidget] = None
+    ):
+        """
+        Initialize expandable menu button
+        
+        Args:
+            text: Button display text
+            panel_id: ID of associated panel
+            description: Accessibility description
+            parent: Parent widget
+        """
+        super().__init__(text, panel_id, description, parent)
+        
+        self.is_expanded = False
+        self.original_text = text
+        
+        # Update text to show collapse indicator
+        self.setText(f"▶ {self.original_text}")
+    
+    def toggle_expanded(self) -> None:
+        """Toggle expanded state"""
+        self.set_expanded(not self.is_expanded)
+    
+    def set_expanded(self, expanded: bool) -> None:
+        """
+        Set expanded state
+        
+        Args:
+            expanded: Whether to expand the menu
+        """
+        if expanded != self.is_expanded:
+            self.is_expanded = expanded
+            
+            # Update text and icon
+            if expanded:
+                self.setText(f"▼ {self.original_text}")
+            else:
+                self.setText(f"▶ {self.original_text}")
+            
+            self.expanded_changed.emit(expanded)
+    
+    def mousePressEvent(self, event):
+        """Override mouse press to handle expand/collapse"""
+        # Toggle expansion instead of normal button behavior
+        self.toggle_expanded()
+        # Don't call super() to avoid normal button click behavior
+
+
+class SubMenuButton(MenuButton):
+    """Sub-menu button for child items with indented styling"""
+    
+    def __init__(
+        self, text: str, panel_id: str, description: str = "", parent: Optional[QWidget] = None
+    ):
+        """
+        Initialize sub-menu button
+        
+        Args:
+            text: Button display text
+            panel_id: ID of associated panel
+            description: Accessibility description
+            parent: Parent widget
+        """
+        super().__init__(text, panel_id, description, parent)
+        
+        # Override height for sub-menu buttons
+        self.setMinimumHeight(45)
+        
+        # Apply sub-menu specific styling
+        self.update_sub_menu_style()
+    
+    def update_sub_menu_style(self) -> None:
+        """Update styling specific to sub-menu buttons"""
+        if self.is_active:
+            # Active sub-menu state
+            self.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #2ECC71;
+                    color: white;
+                    border: 2px solid #27AE60;
+                    border-left: 4px solid #27AE60;
+                    text-align: left;
+                    padding-left: 40px;
+                    font-weight: bold;
+                    font-size: 10px;
+                }
+                QPushButton:hover {
+                    background-color: #58D68D;
+                }
+            """
+            )
+        else:
+            # Inactive sub-menu state
+            self.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #F8F9FA;
+                    color: #495057;
+                    border: 1px solid #DEE2E6;
+                    border-left: 4px solid transparent;
+                    text-align: left;
+                    padding-left: 40px;
+                    font-size: 10px;
+                }
+                QPushButton:hover {
+                    background-color: #E9ECEF;
+                    border-left: 4px solid #2ECC71;
+                }
+                QPushButton:focus {
+                    border: 2px solid #2ECC71;
+                    outline: none;
+                }
+            """
+            )
+    
+    def update_style(self) -> None:
+        """Override parent update_style to use sub-menu styling"""
+        self.update_sub_menu_style()
+
+
 class SideMenuWidget(QWidget):
     """
     Side menu widget for navigation
@@ -142,40 +270,56 @@ class SideMenuWidget(QWidget):
 
         self.state_manager = state_manager
 
-        # Menu configuration
+        # Menu configuration with hierarchical structure
         self.menu_items = [
             {
                 "id": "dashboard",
                 "text": "Dashboard",
                 "description": "View system overview and status",
+                "type": "normal",
                 "default": True,
             },
             {
-                "id": "eol_test",
-                "text": "EOL Force Test",
-                "description": "Execute end-of-line force testing",
-            },
-            {
-                "id": "mcu_test",
-                "text": "Simple MCU Test",
-                "description": "Perform basic MCU communication test",
+                "id": "use_cases",
+                "text": "Use Cases",
+                "description": "Available test use cases",
+                "type": "expandable",
+                "children": [
+                    {
+                        "id": "eol_test",
+                        "text": "EOL Force Test",
+                        "description": "Execute end-of-line force testing",
+                        "type": "sub",
+                    },
+                    {
+                        "id": "mcu_test",
+                        "text": "Simple MCU Test",
+                        "description": "Perform basic MCU communication test",
+                        "type": "sub",
+                    },
+                    {
+                        "id": "heating_cooling_test",
+                        "text": "Heating Cooling Time Test",
+                        "description": "Execute heating and cooling time testing",
+                        "type": "sub",
+                    },
+                ]
             },
             {
                 "id": "hardware",
                 "text": "Hardware Control",
                 "description": "Manual hardware control and monitoring",
-            },
-            {
-                "id": "configuration",
-                "text": "Configuration",
-                "description": "System configuration and settings",
+                "type": "normal",
             },
         ]
 
         # Button tracking
         self.menu_buttons: Dict[str, MenuButton] = {}
+        self.sub_menu_buttons: Dict[str, SubMenuButton] = {}
+        self.expandable_buttons: Dict[str, ExpandableMenuButton] = {}
         self.button_group = QButtonGroup()
         self.active_panel: Optional[str] = None
+        self.expanded_menus: set = set()  # Track which expandable menus are open
 
         # Setup UI
         self.setup_ui()
@@ -190,22 +334,59 @@ class SideMenuWidget(QWidget):
         self.setFixedWidth(250)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
 
-        # Create menu buttons
+        # Create menu buttons based on type
         for item in self.menu_items:
-            button = MenuButton(
-                text=item["text"],
-                panel_id=item["id"],
-                description=item.get("description", ""),
-                parent=self,
-            )
+            if item.get("type") == "expandable":
+                # Create expandable button
+                button = ExpandableMenuButton(
+                    text=item["text"],
+                    panel_id=item["id"],
+                    description=item.get("description", ""),
+                    parent=self,
+                )
+                self.expandable_buttons[item["id"]] = button
+                self.menu_buttons[item["id"]] = button
+                
+                # Connect expand/collapse signal
+                button.expanded_changed.connect(
+                    lambda expanded, menu_id=item["id"]: self.on_menu_expanded(menu_id, expanded)
+                )
+                
+                # Create sub-menu buttons (initially hidden)
+                for child_item in item.get("children", []):
+                    sub_button = SubMenuButton(
+                        text=child_item["text"],
+                        panel_id=child_item["id"],
+                        description=child_item.get("description", ""),
+                        parent=self,
+                    )
+                    self.sub_menu_buttons[child_item["id"]] = sub_button
+                    self.menu_buttons[child_item["id"]] = sub_button
+                    self.button_group.addButton(sub_button)
+                    
+                    # Initially hide sub-menu buttons
+                    sub_button.setVisible(False)
+                    
+                    # Set default active button
+                    if child_item.get("default", False):
+                        self.active_panel = child_item["id"]
+                        sub_button.set_active(True)
+                        
+            else:
+                # Create normal button
+                button = MenuButton(
+                    text=item["text"],
+                    panel_id=item["id"],
+                    description=item.get("description", ""),
+                    parent=self,
+                )
+                self.menu_buttons[item["id"]] = button
+                self.button_group.addButton(button)
 
-            self.menu_buttons[item["id"]] = button
-            self.button_group.addButton(button)
-
-            # Set default active button
-            if item.get("default", False):
-                self.active_panel = item["id"]
-                button.set_active(True)
+                # Set default active button
+                if item.get("default", False):
+                    self.active_panel = item["id"]
+                    button.set_active(True)
 
         # Create exit button (separate styling)
         self.exit_button = QPushButton("Exit")
@@ -269,11 +450,18 @@ class SideMenuWidget(QWidget):
         separator.setStyleSheet("color: #BDC3C7;")
         main_layout.addWidget(separator)
 
-        # Add menu buttons
+        # Add menu buttons (hierarchical layout)
         for item in self.menu_items:
             button = self.menu_buttons.get(item["id"])
             if button:
                 main_layout.addWidget(button)
+                
+                # Add sub-menu buttons if this is an expandable menu
+                if item.get("type") == "expandable":
+                    for child_item in item.get("children", []):
+                        sub_button = self.sub_menu_buttons.get(child_item["id"])
+                        if sub_button:
+                            main_layout.addWidget(sub_button)
 
         # Add flexible space
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -290,9 +478,10 @@ class SideMenuWidget(QWidget):
 
     def connect_signals(self) -> None:
         """Connect signals and slots"""
-        # Menu button signals
+        # Normal menu button signals (excluding expandable buttons)
         for panel_id, button in self.menu_buttons.items():
-            button.clicked.connect(lambda checked=False, pid=panel_id: self.on_menu_clicked(pid))
+            if panel_id not in self.expandable_buttons:
+                button.clicked.connect(lambda checked=False, pid=panel_id: self.on_menu_clicked(pid))
 
         # Exit button signal
         self.exit_button.clicked.connect(self.exit_requested.emit)
@@ -300,6 +489,66 @@ class SideMenuWidget(QWidget):
         # State manager signals
         if self.state_manager:
             self.state_manager.panel_changed.connect(self.on_panel_changed)
+    
+    def on_menu_expanded(self, menu_id: str, expanded: bool) -> None:
+        """
+        Handle expandable menu expand/collapse
+        
+        Args:
+            menu_id: ID of the expandable menu
+            expanded: Whether the menu is expanded
+        """
+        if expanded:
+            # Collapse other expandable menus (single expand behavior)
+            for other_id, other_button in self.expandable_buttons.items():
+                if other_id != menu_id and other_button.is_expanded:
+                    other_button.set_expanded(False)
+                    self.hide_sub_menu(other_id)
+            
+            # Show this menu's sub-items
+            self.show_sub_menu(menu_id)
+            self.expanded_menus.add(menu_id)
+        else:
+            # Hide sub-items
+            self.hide_sub_menu(menu_id)
+            self.expanded_menus.discard(menu_id)
+        
+        logger.debug(f"Menu {'expanded' if expanded else 'collapsed'}: {menu_id}")
+    
+    def show_sub_menu(self, menu_id: str) -> None:
+        """
+        Show sub-menu items for an expandable menu
+        
+        Args:
+            menu_id: ID of the expandable menu
+        """
+        # Find the menu item configuration
+        for item in self.menu_items:
+            if item["id"] == menu_id and item.get("type") == "expandable":
+                for child_item in item.get("children", []):
+                    sub_button = self.sub_menu_buttons.get(child_item["id"])
+                    if sub_button:
+                        sub_button.setVisible(True)
+                break
+    
+    def hide_sub_menu(self, menu_id: str) -> None:
+        """
+        Hide sub-menu items for an expandable menu
+        
+        Args:
+            menu_id: ID of the expandable menu
+        """
+        # Find the menu item configuration
+        for item in self.menu_items:
+            if item["id"] == menu_id and item.get("type") == "expandable":
+                for child_item in item.get("children", []):
+                    sub_button = self.sub_menu_buttons.get(child_item["id"])
+                    if sub_button:
+                        sub_button.setVisible(False)
+                        # If this sub-menu item was active, deactivate it
+                        if child_item["id"] == self.active_panel:
+                            sub_button.set_active(False)
+                break
 
     def on_menu_clicked(self, panel_id: str) -> None:
         """
@@ -309,9 +558,38 @@ class SideMenuWidget(QWidget):
             panel_id: ID of clicked panel
         """
         if panel_id != self.active_panel:
+            # If clicking a sub-menu item, ensure its parent is expanded
+            self.ensure_parent_expanded(panel_id)
+            
+            # Collapse other expandable menus when switching to a different section
+            if panel_id not in self.sub_menu_buttons:
+                for expandable_id in list(self.expanded_menus):
+                    expandable_button = self.expandable_buttons.get(expandable_id)
+                    if expandable_button:
+                        expandable_button.set_expanded(False)
+                        self.hide_sub_menu(expandable_id)
+            
             self.set_active_panel(panel_id)
             self.panel_requested.emit(panel_id)
             logger.debug(f"Menu clicked: {panel_id}")
+    
+    def ensure_parent_expanded(self, panel_id: str) -> None:
+        """
+        Ensure the parent expandable menu is expanded for a sub-menu item
+        
+        Args:
+            panel_id: ID of the panel (could be a sub-menu item)
+        """
+        # Check if this is a sub-menu item and find its parent
+        for item in self.menu_items:
+            if item.get("type") == "expandable":
+                for child_item in item.get("children", []):
+                    if child_item["id"] == panel_id:
+                        # This is a sub-menu item, ensure parent is expanded
+                        parent_button = self.expandable_buttons.get(item["id"])
+                        if parent_button and not parent_button.is_expanded:
+                            parent_button.set_expanded(True)
+                        return
 
     def on_panel_changed(self, panel_id: str) -> None:
         """

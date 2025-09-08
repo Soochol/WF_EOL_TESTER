@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSpinBox,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -39,6 +38,7 @@ from application.use_cases.eol_force_test import (
     EOLForceTestInput,
     EOLForceTestUseCase,
 )
+from domain.value_objects.dut_command_info import DUTCommandInfo
 from ui.gui.services.gui_state_manager import GUIStateManager, TestStatus
 
 
@@ -50,6 +50,7 @@ class EOLTestWorker(QObject):
     test_progress = Signal(int, str)  # progress, message
     test_completed = Signal(object)  # test_result
     test_failed = Signal(str)  # error_message
+    log_message = Signal(str)  # log message for GUI display
 
     def __init__(self, use_case: EOLForceTestUseCase, command: EOLForceTestInput):
         """
@@ -63,15 +64,67 @@ class EOLTestWorker(QObject):
         self.use_case = use_case
         self.command = command
         self._should_stop = False
+        self._log_handler_id = None
 
     def stop_test(self) -> None:
         """Request test stop"""
         self._should_stop = True
+        self._remove_gui_log_handler()
+        
+    def _add_gui_log_handler(self) -> None:
+        """Add loguru handler to capture logs for GUI display"""
+        if self._log_handler_id is None:
+            self._log_handler_id = logger.add(
+                self._emit_log_message,
+                level="DEBUG",
+                format="{time:HH:mm:ss.SSS} | {level: <8} | {message}",
+                filter=self._should_capture_log,
+                catch=False
+            )
+    
+    def _remove_gui_log_handler(self) -> None:
+        """Remove GUI log handler"""
+        if self._log_handler_id is not None:
+            try:
+                logger.remove(self._log_handler_id)
+            except ValueError:
+                pass  # Handler already removed
+            self._log_handler_id = None
+    
+    def _emit_log_message(self, message) -> None:
+        """Emit log message to GUI"""
+        try:
+            self.log_message.emit(str(message))
+        except Exception:
+            pass  # Ignore errors during GUI emission
+    
+    def _should_capture_log(self, record) -> bool:
+        """Filter logs to capture only test-related messages"""
+        # Capture logs from test execution components
+        relevant_modules = [
+            "application.use_cases.eol_force_test",
+            "application.services.hardware_facade", 
+            "infrastructure.implementation.hardware",
+            "GUI"
+        ]
+        module_name = record.get("name", "")
+        message = record.get("message", "")
+        
+        # Capture relevant modules or messages containing test info
+        is_relevant_module = any(module in module_name for module in relevant_modules)
+        is_test_message = any(keyword in message.lower() for keyword in [
+            "test", "robot", "power", "measurement", "force", "loadcell", "dio"
+        ])
+        
+        return is_relevant_module or is_test_message
 
     def run_test(self) -> None:
         """Execute EOL test"""
         try:
             self.test_started.emit()
+            
+            # Add GUI log handler to capture test logs
+            self._add_gui_log_handler()
 
             # Create event loop for async execution
             loop = asyncio.new_event_loop()
@@ -86,10 +139,14 @@ class EOLTestWorker(QObject):
 
             finally:
                 loop.close()
+                # Remove GUI log handler
+                self._remove_gui_log_handler()
 
         except Exception as e:
             logger.error(f"EOL test execution failed: {e}")
             self.test_failed.emit(str(e))
+            # Ensure log handler is removed even on error
+            self._remove_gui_log_handler()
 
 
 class EOLTestPanel(QWidget):
@@ -170,45 +227,141 @@ class EOLTestPanel(QWidget):
 
         # === CONFIGURATION SECTION ===
         config_group = QGroupBox("Test Configuration")
+        config_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """)
         config_layout = QGridLayout(config_group)
+        config_layout.setContentsMargins(16, 20, 16, 16)
+        config_layout.setVerticalSpacing(12)
+        config_layout.setHorizontalSpacing(16)
 
         # Operator ID
-        config_layout.addWidget(QLabel("Operator ID:"), 0, 0)
+        operator_label = QLabel("Operator ID:")
+        operator_label.setMinimumWidth(100)
+        config_layout.addWidget(operator_label, 0, 0)
         self.operator_id_input = QLineEdit()
         self.operator_id_input.setPlaceholderText("Enter operator ID")
         self.operator_id_input.setText("gui_user")
+        self.operator_id_input.setMinimumHeight(32)
         config_layout.addWidget(self.operator_id_input, 0, 1)
 
         # Test mode
-        config_layout.addWidget(QLabel("Test Mode:"), 1, 0)
+        mode_label = QLabel("Test Mode:")
+        mode_label.setMinimumWidth(100)
+        config_layout.addWidget(mode_label, 1, 0)
         self.test_mode_combo = QComboBox()
         self.test_mode_combo.addItems(["Standard", "Extended", "Debug"])
+        self.test_mode_combo.setMinimumHeight(32)
         config_layout.addWidget(self.test_mode_combo, 1, 1)
 
         # Serial number
-        config_layout.addWidget(QLabel("Serial Number:"), 2, 0)
+        serial_label = QLabel("Serial Number:")
+        serial_label.setMinimumWidth(100)
+        config_layout.addWidget(serial_label, 2, 0)
         self.serial_number_input = QLineEdit()
         self.serial_number_input.setPlaceholderText("Optional serial number")
+        self.serial_number_input.setMinimumHeight(32)
         config_layout.addWidget(self.serial_number_input, 2, 1)
 
         # === CONTROL SECTION ===
         control_group = QGroupBox("Test Control")
-        control_layout = QHBoxLayout(control_group)
+        control_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """)
+        control_layout = QVBoxLayout(control_group)
+        control_layout.setContentsMargins(16, 20, 16, 16)
+        control_layout.setSpacing(12)
 
         self.start_test_button = QPushButton("Start EOL Test")
         self.start_test_button.setProperty("class", "success")
-        self.start_test_button.setMinimumHeight(50)
+        self.start_test_button.setMinimumHeight(44)
+        self.start_test_button.setStyleSheet("""
+            QPushButton {
+                background-color: #27AE60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+            QPushButton:pressed {
+                background-color: #1E8449;
+            }
+        """)
         self.start_test_button.setAccessibleName("Start EOL Force Test")
 
         self.stop_test_button = QPushButton("Stop Test")
         self.stop_test_button.setProperty("class", "danger")
-        self.stop_test_button.setMinimumHeight(50)
+        self.stop_test_button.setMinimumHeight(44)
+        self.stop_test_button.setStyleSheet("""
+            QPushButton {
+                background-color: #E74C3C;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #CD4335;
+            }
+            QPushButton:pressed {
+                background-color: #B03A2E;
+            }
+            QPushButton:disabled {
+                background-color: #BDC3C7;
+                color: #7F8C8D;
+            }
+        """)
         self.stop_test_button.setEnabled(False)
         self.stop_test_button.setAccessibleName("Stop Running Test")
 
         self.reset_button = QPushButton("Reset")
         self.reset_button.setProperty("class", "warning")
-        self.reset_button.setMinimumHeight(50)
+        self.reset_button.setMinimumHeight(44)
+        self.reset_button.setStyleSheet("""
+            QPushButton {
+                background-color: #F39C12;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #E67E22;
+            }
+            QPushButton:pressed {
+                background-color: #D35400;
+            }
+        """)
         self.reset_button.setAccessibleName("Reset Test State")
 
         control_layout.addWidget(self.start_test_button)
@@ -218,64 +371,174 @@ class EOLTestPanel(QWidget):
 
         # === PROGRESS SECTION ===
         progress_group = QGroupBox("Test Progress")
+        progress_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """)
         progress_layout = QVBoxLayout(progress_group)
+        progress_layout.setContentsMargins(16, 20, 16, 16)
+        progress_layout.setSpacing(12)
+        
+        # Progress GroupBox만 세로 확장 방지
+        progress_group.setSizePolicy(
+            QSizePolicy.Policy.Expanding,  # 가로: 확장
+            QSizePolicy.Policy.Fixed        # 세로: 고정
+        )
 
         self.status_label = QLabel("Ready to start test")
         self.status_label.setFont(QFont("Arial", 11, QFont.Weight.DemiBold))
-        self.status_label.setStyleSheet("color: #2C3E50; padding: 4px;")
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #2C3E50;
+                padding: 8px;
+                background-color: #F8F9FA;
+                border: 1px solid #E9ECEF;
+                border-radius: 4px;
+            }
+        """)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setMinimum(0)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
-        self.progress_bar.setMinimumHeight(30)
+        self.progress_bar.setMinimumHeight(32)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+                text-align: center;
+                font-weight: bold;
+            }
+            QProgressBar::chunk {
+                background-color: #3498DB;
+                border-radius: 6px;
+            }
+        """)
 
         progress_layout.addWidget(self.status_label)
         progress_layout.addWidget(self.progress_bar)
 
         # === TEST LOG SECTION ===
         log_group = QGroupBox("Test Log")
+        log_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """)
         log_layout = QVBoxLayout(log_group)
+        log_layout.setContentsMargins(16, 20, 16, 16)
 
         self.test_log_text = QTextEdit()
         self.test_log_text.setReadOnly(True)
-        self.test_log_text.setMaximumHeight(200)
+        self.test_log_text.setMinimumHeight(150)  # 최소 높이만 설정
+        self.test_log_text.setSizePolicy(
+            QSizePolicy.Policy.Expanding,  # 가로 확장
+            QSizePolicy.Policy.Expanding   # 세로 확장
+        )
         self.test_log_text.setFont(QFont("Consolas", 9))
-        self.test_log_text.setStyleSheet(
-            """
+        self.test_log_text.setStyleSheet("""
             QTextEdit {
                 background-color: #2C3E50;
                 color: #ECF0F1;
-                border: 1px solid #34495E;
-                border-radius: 4px;
-                padding: 8px;
+                border: 2px solid #34495E;
+                border-radius: 8px;
+                padding: 12px;
+                selection-background-color: #3498DB;
             }
-        """
-        )
+        """)
 
         log_layout.addWidget(self.test_log_text)
 
         # === RESULTS SECTION ===
         results_group = QGroupBox("Test Results")
+        results_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """)
         results_layout = QVBoxLayout(results_group)
+        results_layout.setContentsMargins(16, 20, 16, 16)
+        results_layout.setSpacing(12)
+        
+        # Results GroupBox도 세로 확장 방지
+        results_group.setSizePolicy(
+            QSizePolicy.Policy.Expanding,  # 가로: 확장
+            QSizePolicy.Policy.Fixed        # 세로: 고정
+        )
 
         self.summary_label = QLabel("No test results available")
-        self.summary_label.setFont(QFont("Arial", 10, QFont.Weight.DemiBold))
-        self.summary_label.setStyleSheet("color: #7F8C8D; padding: 4px;")
+        self.summary_label.setFont(QFont("Arial", 11, QFont.Weight.DemiBold))
+        self.summary_label.setStyleSheet("""
+            QLabel {
+                color: #7F8C8D;
+                padding: 8px;
+                background-color: #F8F9FA;
+                border: 1px solid #E9ECEF;
+                border-radius: 4px;
+            }
+        """)
 
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(4)
         self.results_table.setHorizontalHeaderLabels(["Step", "Description", "Result", "Value"])
-        self.results_table.setMaximumHeight(200)
+        self.results_table.setMaximumHeight(200)  # 고정 최대 높이
         self.results_table.setAlternatingRowColors(True)
         self.results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.results_table.setStyleSheet("""
+            QTableWidget {
+                gridline-color: #E8E8E8;
+                background-color: white;
+                alternate-background-color: #F8F9FA;
+                selection-background-color: #3498DB;
+                border: 2px solid #E8E8E8;
+                border-radius: 8px;
+            }
+            QHeaderView::section {
+                background-color: #34495E;
+                color: white;
+                padding: 8px;
+                border: none;
+                font-weight: bold;
+            }
+        """)
 
-        # Set column widths
-        self.results_table.setColumnWidth(0, 50)
-        self.results_table.setColumnWidth(1, 200)
-        self.results_table.setColumnWidth(2, 80)
-        self.results_table.setColumnWidth(3, 120)
+        # Optimize column widths for better layout
+        self.results_table.setColumnWidth(0, 60)   # Step - slightly wider
+        self.results_table.setColumnWidth(1, 180)  # Description - optimized
+        self.results_table.setColumnWidth(2, 90)   # Result - slightly wider
+        self.results_table.setColumnWidth(3, 140)  # Value - wider for numbers
 
         results_layout.addWidget(self.summary_label)
         results_layout.addWidget(self.results_table)
@@ -288,7 +551,7 @@ class EOLTestPanel(QWidget):
         self.results_group = results_group
 
     def setup_layout(self) -> None:
-        """Setup widget layout"""
+        """Setup professional widget layout"""
         # Create scroll area
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -298,28 +561,29 @@ class EOLTestPanel(QWidget):
         content_widget = QWidget()
         scroll_area.setWidget(content_widget)
 
-        # Main layout for content
+        # Main layout for content with professional spacing
         main_layout = QVBoxLayout(content_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(16)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(20)
 
-        # Top section - Configuration and Control
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(self.config_group, 2)
-        top_layout.addWidget(self.control_group, 1)
+        # Top row - Configuration and Control (2-column)
+        top_row = QHBoxLayout()
+        top_row.setSpacing(16)
+        top_row.addWidget(self.config_group, 3)  # Wider for form fields
+        top_row.addWidget(self.control_group, 2)  # Narrower for buttons
 
-        main_layout.addLayout(top_layout)
+        # Middle row - Progress and Results (2-column)
+        middle_row = QHBoxLayout() 
+        middle_row.setSpacing(16)
+        middle_row.addWidget(self.progress_group, 1)
+        middle_row.addWidget(self.results_group, 2)  # Wider for table
 
-        # Progress section
-        main_layout.addWidget(self.progress_group)
-
-        # Bottom section - Log and Results
-        bottom_splitter = QSplitter(Qt.Orientation.Vertical)
-        bottom_splitter.addWidget(self.log_group)
-        bottom_splitter.addWidget(self.results_group)
-        bottom_splitter.setSizes([200, 250])
-
-        main_layout.addWidget(bottom_splitter)
+        # Add rows to main layout with stretch factors
+        main_layout.addLayout(top_row, 0)      # 고정 높이 (stretch = 0)
+        main_layout.addLayout(middle_row, 0)   # 고정 높이 (stretch = 0)
+        
+        # Bottom section - Test Log (세로 확장)
+        main_layout.addWidget(self.log_group, 1)  # 세로 확장 (stretch = 1)
 
         # Set main layout
         panel_layout = QVBoxLayout(self)
@@ -359,9 +623,17 @@ class EOLTestPanel(QWidget):
                 return
 
             # Create test command
+            serial_number = self.serial_number_input.text().strip() or "GUI_SN"
+            dut_info = DUTCommandInfo(
+                dut_id="GUI_DUT",
+                model_number="GUI_MODEL",
+                serial_number=serial_number,
+                manufacturer="WF",
+            )
+            
             command = EOLForceTestInput(
+                dut_info=dut_info,
                 operator_id=operator_id,
-                serial_number=self.serial_number_input.text().strip() or None,
             )
 
             # Setup worker thread
@@ -376,6 +648,7 @@ class EOLTestPanel(QWidget):
             self.test_worker.test_progress.connect(self.on_worker_progress)
             self.test_worker.test_completed.connect(self.on_test_completed)
             self.test_worker.test_failed.connect(self.on_test_failed)
+            self.test_worker.log_message.connect(self.on_test_log_message)
 
             # Connect thread signals
             self.test_thread.started.connect(self.test_worker.run_test)
@@ -511,6 +784,13 @@ class EOLTestPanel(QWidget):
         """Handle test progress from worker"""
         self.state_manager.update_test_progress(progress, message)
         self.add_log_message(f"Progress: {progress}% - {message}")
+
+    def on_test_log_message(self, message: str) -> None:
+        """Handle log message from test worker"""
+        # Remove timestamp from loguru message if it exists (we add our own)
+        clean_message = message.strip()
+        if clean_message:
+            self.add_log_message(clean_message)
 
     def on_test_completed(self, result) -> None:
         """Handle test completion"""

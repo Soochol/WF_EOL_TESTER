@@ -1,7 +1,7 @@
 """
 Header Widget for WF EOL Tester GUI
 
-Displays application title, current status, and hardware indicators.
+Displays application title, current status, and time display.
 """
 
 from datetime import datetime
@@ -11,7 +11,6 @@ from loguru import logger
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QFrame,
     QHBoxLayout,
     QLabel,
     QProgressBar,
@@ -20,95 +19,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.gui.services.gui_state_manager import (
-    ConnectionStatus,
-    GUIStateManager,
-    TestStatus,
-)
+from ui.gui.services.gui_state_manager import GUIStateManager
 
-
-class StatusIndicator(QFrame):
-    """Status indicator widget with color-coded display"""
-
-    def __init__(self, label_text: str, parent: Optional[QWidget] = None):
-        """
-        Initialize status indicator
-
-        Args:
-            label_text: Label text for the indicator
-            parent: Parent widget
-        """
-        super().__init__(parent)
-
-        self.status = ConnectionStatus.DISCONNECTED
-
-        # Setup frame properties
-        self.setFrameStyle(QFrame.Shape.Box)
-        self.setFixedSize(100, 40)
-
-        # Create layout
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
-        layout.setSpacing(0)
-
-        # Create labels
-        self.label = QLabel(label_text)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setFont(QFont("Arial", 8))
-
-        self.status_label = QLabel("OFFLINE")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setFont(QFont("Arial", 7, QFont.Weight.Bold))
-
-        # Add to layout
-        layout.addWidget(self.label)
-        layout.addWidget(self.status_label)
-
-        # Set initial style
-        self.update_style()
-
-    def set_status(self, status: ConnectionStatus) -> None:
-        """
-        Update indicator status
-
-        Args:
-            status: New connection status
-        """
-        if status != self.status:
-            self.status = status
-            self.update_style()
-
-    def update_style(self) -> None:
-        """Update indicator style based on status"""
-        if self.status == ConnectionStatus.CONNECTED:
-            color = "#27AE60"  # Green
-            text = "ONLINE"
-        elif self.status == ConnectionStatus.CONNECTING:
-            color = "#F39C12"  # Orange
-            text = "CONNECTING"
-        elif self.status == ConnectionStatus.ERROR:
-            color = "#E74C3C"  # Red
-            text = "ERROR"
-        else:  # DISCONNECTED
-            color = "#7F8C8D"  # Gray
-            text = "OFFLINE"
-
-        self.setStyleSheet(
-            f"""
-            QFrame {{
-                background-color: {color};
-                border: 2px solid {color};
-                border-radius: 4px;
-                color: white;
-            }}
-            QLabel {{
-                color: white;
-                background: transparent;
-            }}
-        """
-        )
-
-        self.status_label.setText(text)
 
 
 class HeaderWidget(QWidget):
@@ -118,7 +30,6 @@ class HeaderWidget(QWidget):
     Displays:
     - Application title and version
     - Current test status and progress
-    - Hardware status indicators
     - Current time
     """
 
@@ -140,12 +51,7 @@ class HeaderWidget(QWidget):
         self.test_progress_bar: Optional[QProgressBar] = None
         self.time_label: Optional[QLabel] = None
 
-        # Hardware indicators
-        self.robot_indicator: Optional[StatusIndicator] = None
-        self.mcu_indicator: Optional[StatusIndicator] = None
-        self.loadcell_indicator: Optional[StatusIndicator] = None
-        self.power_indicator: Optional[StatusIndicator] = None
-        self.dio_indicator: Optional[StatusIndicator] = None
+        # Hardware indicators removed
 
         # Setup UI
         self.setup_ui()
@@ -185,12 +91,7 @@ class HeaderWidget(QWidget):
         self.time_label.setFont(time_font)
         self.update_time_display()
 
-        # Hardware status indicators
-        self.robot_indicator = StatusIndicator("ROBOT")
-        self.mcu_indicator = StatusIndicator("MCU")
-        self.loadcell_indicator = StatusIndicator("LOADCELL")
-        self.power_indicator = StatusIndicator("POWER")
-        self.dio_indicator = StatusIndicator("DIO")
+        # Hardware status indicators removed
 
     def setup_layout(self) -> None:
         """Setup widget layout"""
@@ -223,22 +124,7 @@ class HeaderWidget(QWidget):
         status_layout.addStretch()
         left_layout.addWidget(status_widget)
 
-        # Center section - Hardware indicators
-        center_widget = QWidget()
-        center_layout = QHBoxLayout(center_widget)
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(8)
-
-        # Add hardware indicators
-        for indicator in [
-            self.robot_indicator,
-            self.mcu_indicator,
-            self.loadcell_indicator,
-            self.power_indicator,
-            self.dio_indicator,
-        ]:
-            if indicator:
-                center_layout.addWidget(indicator)
+        # Center section - Hardware indicators removed
 
         # Right section - Time
         right_widget = QWidget()
@@ -251,7 +137,6 @@ class HeaderWidget(QWidget):
 
         # Add sections to main layout
         main_layout.addWidget(left_widget, 1)  # Stretch
-        main_layout.addWidget(center_widget, 0)  # Fixed
         main_layout.addWidget(right_widget, 0)  # Fixed
 
     def setup_timers(self) -> None:
@@ -314,26 +199,13 @@ class HeaderWidget(QWidget):
 
     def update_hardware_status(self, hardware_status) -> None:
         """
-        Update hardware status indicators
+        Update hardware status indicators (removed from header)
 
         Args:
             hardware_status: Hardware status object
         """
-        # Update individual indicators
-        if self.robot_indicator:
-            self.robot_indicator.set_status(hardware_status.robot_status)
-
-        if self.mcu_indicator:
-            self.mcu_indicator.set_status(hardware_status.mcu_status)
-
-        if self.loadcell_indicator:
-            self.loadcell_indicator.set_status(hardware_status.loadcell_status)
-
-        if self.power_indicator:
-            self.power_indicator.set_status(hardware_status.power_status)
-
-        if self.dio_indicator:
-            self.dio_indicator.set_status(hardware_status.digital_io_status)
+        # Hardware status indicators have been removed from header
+        pass
 
     def update_time_display(self) -> None:
         """Update time display"""
