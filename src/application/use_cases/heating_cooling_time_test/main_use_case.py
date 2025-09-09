@@ -6,7 +6,7 @@ Coordinates hardware setup, test execution, and result processing.
 """
 
 # Standard library imports
-from typing import Optional
+from typing import Any, Dict, Optional
 
 # Third-party imports
 from loguru import logger
@@ -100,22 +100,25 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
 
         cycle_results = await test_executor.execute_test_cycles(hc_config, actual_repeat_count)
 
-        # 4. Process results
+        # 4. Process results based on execution success
         timing_data = cycle_results["timing_data"]
         power_data = cycle_results["power_data"]
+        execution_success = cycle_results.get("success", True)
+        completed_cycles = cycle_results.get("completed_cycles", 0)
+        execution_error = cycle_results.get("error_message")
 
         heating_results = timing_data["heating_results"]
         cooling_results = timing_data["cooling_results"]
 
-        # 5. Calculate statistics
+        # 5. Calculate statistics (works with partial data too)
         statistics = StatisticsCalculator.calculate_statistics(
-            heating_results, cooling_results, power_data, actual_repeat_count
+            heating_results, cooling_results, power_data, completed_cycles
         )
 
         # Log summary
         StatisticsCalculator.log_summary(statistics)
 
-        # 6. Create result
+        # 6. Create base measurements structure
         measurements = {
             "configuration": {
                 "activation_temperature": hc_config.activation_temperature,
@@ -136,12 +139,38 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             "statistics": statistics,
         }
 
-        return HeatingCoolingTimeTestResult(
-            test_status=TestStatus.COMPLETED,
-            is_success=True,
-            measurements=measurements,
-            error_message=None,
-        )
+        # 7. Handle success vs partial results
+        if execution_success:
+            # Complete success
+            return HeatingCoolingTimeTestResult(
+                test_status=TestStatus.COMPLETED,
+                is_success=True,
+                measurements=measurements,
+                error_message=None,
+            )
+        else:
+            # Partial success - some cycles completed before error
+            if completed_cycles > 0:
+                logger.warning(f"Test partially completed: {completed_cycles}/{actual_repeat_count} cycles")
+                
+                # Add partial execution info to measurements
+                measurements["execution_info"] = {
+                    "partial_execution": True,
+                    "completed_cycles": completed_cycles,
+                    "requested_cycles": actual_repeat_count,
+                    "completion_percentage": (completed_cycles / actual_repeat_count) * 100,
+                    "failure_reason": execution_error,
+                }
+                
+                return HeatingCoolingTimeTestResult(
+                    test_status=TestStatus.COMPLETED,  # Partial success still provides data
+                    is_success=False,  # But mark as failed due to incomplete execution
+                    measurements=measurements,
+                    error_message=f"Partial execution: {completed_cycles}/{actual_repeat_count} cycles completed. Error: {execution_error}",
+                )
+            else:
+                # Complete failure - no cycles completed, delegate to error handler
+                raise RuntimeError(execution_error)
 
     def _create_failure_result(
         self,
@@ -149,6 +178,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         context,
         execution_duration,
         error_message: str,
+        partial_measurements: Dict[str, Any] = None,
     ) -> HeatingCoolingTimeTestResult:
         """
         Create a failure result when execution fails
@@ -158,14 +188,36 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             context: Execution context
             execution_duration: How long execution took before failing
             error_message: Error description
+            partial_measurements: Any partial measurements collected before failure
 
         Returns:
             HeatingCoolingTimeTestResult indicating failure
         """
+        # Use partial measurements if available, otherwise empty
+        measurements = partial_measurements or {}
+        
+        # Add failure context information to measurements
+        if not measurements:
+            measurements = {
+                "configuration": {
+                    "repeat_count": input_data.repeat_count,
+                    "operator_id": input_data.operator_id,
+                },
+                "execution_info": {
+                    "total_failure": True,
+                    "completed_cycles": 0,
+                    "failure_reason": error_message,
+                    "execution_duration_seconds": execution_duration.seconds if execution_duration else 0,
+                },
+                "heating_measurements": [],
+                "cooling_measurements": [],
+                "statistics": {},
+            }
+        
         return HeatingCoolingTimeTestResult(
             test_status=TestStatus.ERROR,
             is_success=False,
-            measurements={},
+            measurements=measurements,
             error_message=f"Heating/Cooling Time Test failed: {error_message}",
         )
 

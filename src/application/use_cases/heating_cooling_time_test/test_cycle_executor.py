@@ -32,6 +32,9 @@ class TestCycleExecutor:
         """
         self._hardware_services = hardware_services
         self._power_monitor = power_monitor
+        # Track partial results during execution
+        self._partial_heating_results: List[Dict[str, Any]] = []
+        self._partial_cooling_results: List[Dict[str, Any]] = []
 
     async def execute_test_cycles(self, hc_config, repeat_count: int) -> Dict[str, Any]:
         """
@@ -42,7 +45,7 @@ class TestCycleExecutor:
             repeat_count: Number of cycles to perform
 
         Returns:
-            Dictionary containing cycle results and power data
+            Dictionary containing cycle results, power data, and execution status
         """
         logger.info(
             f"Temperature range: {hc_config.standby_temperature}°C ↔ {hc_config.activation_temperature}°C"
@@ -51,8 +54,15 @@ class TestCycleExecutor:
             f"Wait times - Heating: {hc_config.heating_wait_time}s, Cooling: {hc_config.cooling_wait_time}s, Stabilization: {hc_config.stabilization_wait_time}s"
         )
 
+        # Clear partial results from previous runs
+        self._partial_heating_results.clear()
+        self._partial_cooling_results.clear()
+
         # Start power monitoring BEFORE heating/cooling operations begin
         await self._start_power_monitoring(hc_config)
+
+        execution_error = None
+        full_cycle_power_data = {}
 
         try:
             # Perform test cycles
@@ -61,24 +71,49 @@ class TestCycleExecutor:
             # Stop power monitoring and get data
             full_cycle_power_data = await self._stop_power_monitoring(hc_config)
 
-            # Get timing data from MCU
+            # Get timing data from MCU (uses partial results if available)
             timing_data = self._get_timing_data()
 
+            logger.info(f"✅ All {repeat_count} test cycles completed successfully")
             return {
+                "success": True,
                 "timing_data": timing_data,
                 "power_data": full_cycle_power_data,
+                "completed_cycles": repeat_count,
+                "error_message": None,
             }
 
         except Exception as e:
+            execution_error = e
+            logger.error(f"❌ Test cycles failed after {len(self._partial_cooling_results)} completed cycles: {e}")
+
             # Ensure power monitoring is stopped on error
             if hc_config.power_monitoring_enabled and self._power_monitor.is_monitoring():
                 try:
-                    await self._power_monitor.stop_monitoring()
+                    full_cycle_power_data = await self._power_monitor.stop_monitoring()
+                    logger.info("Power monitoring stopped and partial data collected")
                 except Exception as stop_error:
-                    logger.error(
-                        f"Failed to stop power monitoring during error cleanup: {stop_error}"
-                    )
-            raise e
+                    logger.error(f"Failed to stop power monitoring during error cleanup: {stop_error}")
+                    full_cycle_power_data = {"error": str(stop_error), "sample_count": 0}
+
+            # Return partial results instead of raising exception
+            partial_timing_data = {
+                "heating_results": self._partial_heating_results,
+                "cooling_results": self._partial_cooling_results,
+            }
+
+            completed_cycles = len(self._partial_cooling_results)
+            logger.warning(f"Returning partial results: {completed_cycles} completed cycles out of {repeat_count}")
+
+            return {
+                "success": False,
+                "timing_data": partial_timing_data,
+                "power_data": full_cycle_power_data,
+                "completed_cycles": completed_cycles,
+                "requested_cycles": repeat_count,
+                "error_message": str(execution_error),
+                "partial": True,
+            }
 
     async def _start_power_monitoring(self, hc_config) -> None:
         """
@@ -121,28 +156,42 @@ class TestCycleExecutor:
         for i in range(repeat_count):
             logger.info(f"=== Test Cycle {i+1}/{repeat_count} ===")
 
-            # Heating phase (standby → activation)
-            logger.info(
-                f"Heating: {hc_config.standby_temperature}°C → {hc_config.activation_temperature}°C"
-            )
-            await mcu_service.start_standby_heating(
-                operating_temp=hc_config.activation_temperature,
-                standby_temp=hc_config.standby_temperature,
-            )
+            try:
+                # Heating phase (standby → activation)
+                logger.info(
+                    f"Heating: {hc_config.standby_temperature}°C → {hc_config.activation_temperature}°C"
+                )
+                await mcu_service.start_standby_heating(
+                    operating_temp=hc_config.activation_temperature,
+                    standby_temp=hc_config.standby_temperature,
+                )
 
-            # Wait after heating completion
-            logger.info(f"Heating wait time: {hc_config.heating_wait_time}s")
-            await asyncio.sleep(hc_config.heating_wait_time)
+                # Wait after heating completion
+                logger.info(f"Heating wait time: {hc_config.heating_wait_time}s")
+                await asyncio.sleep(hc_config.heating_wait_time)
 
-            # Cooling phase (activation → standby)
-            logger.info(
-                f"Cooling: {hc_config.activation_temperature}°C → {hc_config.standby_temperature}°C"
-            )
-            await mcu_service.start_standby_cooling()
+                # Collect heating timing data for this cycle
+                self._collect_cycle_timing_data(cycle_number=i+1, phase="heating")
 
-            # Wait after cooling completion
-            logger.info(f"Cooling wait time: {hc_config.cooling_wait_time}s")
-            await asyncio.sleep(hc_config.cooling_wait_time)
+                # Cooling phase (activation → standby)
+                logger.info(
+                    f"Cooling: {hc_config.activation_temperature}°C → {hc_config.standby_temperature}°C"
+                )
+                await mcu_service.start_standby_cooling()
+
+                # Wait after cooling completion
+                logger.info(f"Cooling wait time: {hc_config.cooling_wait_time}s")
+                await asyncio.sleep(hc_config.cooling_wait_time)
+
+                # Collect cooling timing data for this cycle
+                self._collect_cycle_timing_data(cycle_number=i+1, phase="cooling")
+
+                logger.info(f"✅ Cycle {i+1}/{repeat_count} completed successfully")
+
+            except Exception as cycle_error:
+                logger.error(f"❌ Cycle {i+1}/{repeat_count} failed: {cycle_error}")
+                # Re-raise to be handled at higher level with partial data
+                raise cycle_error
 
             # Stabilization wait between cycles
             if i < repeat_count - 1:  # Don't wait after last cycle
@@ -172,17 +221,74 @@ class TestCycleExecutor:
 
         return full_cycle_power_data
 
+    def _collect_cycle_timing_data(self, cycle_number: int, phase: str) -> None:
+        """
+        Collect timing data for a specific cycle and phase
+        
+        Args:
+            cycle_number: Current cycle number (1-based)
+            phase: "heating" or "cooling"
+        """
+        try:
+            mcu_service = self._hardware_services.mcu_service
+            timing_data = mcu_service.get_all_timing_data()
+            
+            if phase == "heating":
+                heating_transitions = timing_data.get("heating_transitions", [])
+                # Get the latest heating transition data
+                if heating_transitions and len(heating_transitions) >= cycle_number:
+                    latest_heating = heating_transitions[cycle_number - 1]  # 0-based index
+                    self._partial_heating_results.append(latest_heating)
+                    logger.debug(f"Collected heating data for cycle {cycle_number}: {latest_heating}")
+                    
+            elif phase == "cooling":
+                cooling_transitions = timing_data.get("cooling_transitions", [])
+                # Get the latest cooling transition data
+                if cooling_transitions and len(cooling_transitions) >= cycle_number:
+                    latest_cooling = cooling_transitions[cycle_number - 1]  # 0-based index
+                    self._partial_cooling_results.append(latest_cooling)
+                    logger.debug(f"Collected cooling data for cycle {cycle_number}: {latest_cooling}")
+                    
+        except Exception as timing_error:
+            logger.warning(f"Failed to collect {phase} timing data for cycle {cycle_number}: {timing_error}")
+
     def _get_timing_data(self) -> Dict[str, List[Dict[str, Any]]]:
         """
         Get timing data from MCU for all cycles
+        Fallback method - prefer using partial results collected during execution
 
         Returns:
             Dictionary containing heating and cooling timing results
         """
+        # Use partial results if available, otherwise fallback to MCU query
+        if self._partial_heating_results or self._partial_cooling_results:
+            return {
+                "heating_results": self._partial_heating_results,
+                "cooling_results": self._partial_cooling_results,
+            }
+        
+        # Fallback to original method
         mcu_service = self._hardware_services.mcu_service
         timing_data = mcu_service.get_all_timing_data()
 
         return {
             "heating_results": timing_data.get("heating_transitions", []),
             "cooling_results": timing_data.get("cooling_transitions", []),
+        }
+
+    def _get_partial_results(self) -> Dict[str, Any]:
+        """
+        Get partial results collected so far
+        
+        Returns:
+            Dictionary containing partial timing and power data
+        """
+        return {
+            "timing_data": {
+                "heating_results": self._partial_heating_results.copy(),
+                "cooling_results": self._partial_cooling_results.copy(),
+            },
+            "power_data": {},  # Power data will be collected separately
+            "completed_cycles": len(self._partial_cooling_results),  # Cooling is last phase of each cycle
+            "partial": True,
         }
