@@ -638,100 +638,6 @@ class LMAMCU(MCUService):
         except Exception as e:
             logger.error(f"Failed to parse temperature data: {e}")
 
-    def _wait_for_additional_response_legacy(
-        self, timeout: float = 15.0, description: str = "", quiet: bool = False
-    ) -> Optional[bytes]:
-        """
-        Legacy version of additional response waiting (kept for compatibility)
-        """
-        self._ensure_connected()
-
-        # First check if we have packets in the buffer from previous receive
-        if self._packet_buffer:
-            packet = self._packet_buffer.pop(0)
-            if not quiet:
-                logger.info(f"Using buffered packet: {packet.hex().upper()}")
-            return packet
-
-        if not quiet:
-            logger.info(f"WAITING for additional response: {description} (timeout: {timeout}s)")
-
-        start_time = time.time()
-        response_data = b""
-        data_chunks = []
-        expected_etx = b"\xfe\xfe"
-
-        while time.time() - start_time < timeout:
-            if self.serial_conn and self.serial_conn.in_waiting > 0:
-                new_data = self.serial_conn.read(self.serial_conn.in_waiting)
-                response_data += new_data
-
-                # Log each data chunk for debugging (only if not quiet)
-                chunk_hex = new_data.hex().upper()
-                elapsed_ms = (time.time() - start_time) * 1000
-                data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
-
-                if not quiet:
-                    logger.debug(
-                        f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
-                    )
-
-                # Check for complete packet
-                if response_data.endswith(expected_etx) and len(response_data) >= 6:
-                    # Extract valid packet from potentially noisy buffer
-                    valid_packet = self._extract_valid_packet(response_data)
-
-                    if valid_packet:
-                        response_hex = valid_packet.hex().upper()
-
-                        response_time = (time.time() - start_time) * 1000
-                        logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
-
-                        # Detailed packet analysis on clean packet
-                        self._analyze_response_packet(valid_packet, f"ADDITIONAL_{description}")
-
-                        return valid_packet
-                    else:
-                        # Buffer ends with FEFE but no valid additional packet found - continue waiting
-                        logger.warning(
-                            "ADDITIONAL_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
-                        )
-
-            time.sleep(0.01)  # 10ms wait
-
-        # Timeout occurred - log what we received for additional response
-        if response_data:
-            partial_hex = response_data.hex().upper()
-            logger.warning(
-                f"ADDITIONAL_TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}"
-            )
-            logger.warning(f"Additional data chunks received: {len(data_chunks)}")
-            for i, chunk in enumerate(data_chunks):
-                logger.warning(f"   [{i+1}] {chunk}")
-
-            # Try to analyze what we received even if incomplete
-            if len(response_data) >= 3:
-                cmd = response_data[2]
-                status_meanings = {
-                    0x04: (
-                        "ACK (Acknowledgment) - MCU received command but may not have completed operation"
-                    ),
-                    0x0B: "Temperature Reached Signal",
-                    0x01: "Test Mode Complete",
-                    0x05: "Operating Temp OK",
-                }
-                meaning = status_meanings.get(cmd, f"Unknown Status (0x{cmd:02X})")
-                logger.warning(f"   Last received status: {meaning}")
-                if description == "Temperature reached signal" and cmd == 0x04:
-                    logger.warning(
-                        "   → MCU acknowledged command but temperature target may not be reached yet"
-                    )
-        else:
-            logger.warning(
-                f"ADDITIONAL_TIMEOUT with NO additional response data received ({timeout}s)"
-            )
-
-        return None
 
     async def _wait_for_cooling_complete(
         self, target_temp: float, timeout: float = 120.0
@@ -753,71 +659,6 @@ class LMAMCU(MCUService):
             expected_cmd=0x0C,
         )
 
-    async def _wait_for_cooling_complete_legacy(
-        self, target_temp: float, timeout: float = 120.0
-    ) -> Optional[bytes]:
-        """
-        Legacy wait for cooling complete signal (kept for reference)
-
-        Args:
-            target_temp: Target temperature for cooling
-            timeout: Maximum wait time in seconds
-
-        Returns:
-            Cooling complete response packet or None if timeout
-        """
-        self._ensure_connected()
-
-        # First check if we have packets in the buffer from previous receive
-        if self._packet_buffer:
-            packet = self._packet_buffer.pop(0)
-            logger.info(f"Using buffered packet: {packet.hex().upper()}")
-            return packet
-
-        logger.info(f"WAITING for cooling complete signal (timeout: {timeout}s)")
-
-        start_time = time.time()
-        response_data = b""
-        expected_etx = b"\xfe\xfe"
-
-        while time.time() - start_time < timeout:
-            # Check for incoming data
-            if self.serial_conn and self.serial_conn.in_waiting > 0:
-                new_data = self.serial_conn.read(self.serial_conn.in_waiting)
-                response_data += new_data
-
-                # Check for complete packet
-                if response_data.endswith(expected_etx) and len(response_data) >= 6:
-                    # Extract valid packet from potentially noisy buffer
-                    valid_packet = self._extract_valid_packet(response_data)
-
-                    if valid_packet:
-                        response_hex = valid_packet.hex().upper()
-                        response_time = (time.time() - start_time) * 1000
-                        logger.info(f"PC <- MCU: {response_hex} (+{response_time:.1f}ms)")
-
-                        # Detailed packet analysis on clean packet
-                        self._analyze_response_packet(valid_packet, "COOLING_COMPLETE")
-
-                        return valid_packet
-                    else:
-                        # Buffer ends with FEFE but no valid packet found - continue waiting
-                        logger.warning(
-                            "COOLING_BUFFER_ENDS_WITH_FEFE but no valid packet extracted, continuing..."
-                        )
-
-            await asyncio.sleep(0.1)  # 100ms wait between checks
-
-        # Timeout occurred
-        if response_data:
-            partial_hex = response_data.hex().upper()
-            logger.warning(
-                f"COOLING_TIMEOUT with partial data ({len(response_data)} bytes): {partial_hex}"
-            )
-        else:
-            logger.warning(f"COOLING_TIMEOUT with NO response data received ({timeout}s)")
-
-        return None
 
     # ===== MCUService Interface Implementation =====
 
@@ -888,113 +729,167 @@ class LMAMCU(MCUService):
             logger.error(error_msg)
             raise HardwareOperationError("fast_lma_mcu", "wait_boot_complete", error_msg) from e
 
-    async def set_operating_temperature(self, target_temp: float) -> None:
+    async def set_operating_temperature(self, target_temp: float, max_retries: int = 3) -> None:
         """Set operating temperature"""
         self._ensure_connected()
 
-        try:
-            temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
-            packet = f"FFFF0504{temp_scaled:08X}FEFE"
+        # Retry logic for handling second ACK timeout
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for set operating temperature")
+                    await asyncio.sleep(1.0)  # Wait 1 second before retry
 
-            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
-            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
-            if self.serial_conn:
-                self.serial_conn.write(packet_bytes)
-            else:
-                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"PC -> MCU: {packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))")
+                temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
+                packet = f"FFFF0504{temp_scaled:08X}FEFE"
 
-            # Wait for the correct ACK response (0x05), ignoring unexpected packets like delayed 0x07 responses
-            response = await self._wait_for_additional_response(
-                timeout=self._timeout, description="CMD_SET_OPERATING_TEMP ACK", expected_cmd=0x05
-            )
+                # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+                packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+                if self.serial_conn:
+                    self.serial_conn.write(packet_bytes)
+                else:
+                    raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+                logger.info(f"PC -> MCU: {packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))")
 
-            if not response or len(response) < 6 or response[2] != 0x05:
-                raise HardwareOperationError(
-                    "fast_lma_mcu", "set_operating_temperature", "Invalid ACK response"
+                # Wait for the correct ACK response (0x05), ignoring unexpected packets like delayed 0x07 responses
+                response = await self._wait_for_additional_response(
+                    timeout=self._timeout, description="CMD_SET_OPERATING_TEMP ACK", expected_cmd=0x05
                 )
 
-            # Second response (temperature reached)
-            temp_response = await self._wait_for_additional_response(
-                timeout=10.0, description="Operating temperature reached signal", expected_cmd=0x0B
-            )
-
-            if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
-                logger.info("Operating temperature reached confirmed")
-            else:
-                # 타임아웃 또는 잘못된 응답을 에러로 처리
-                if temp_response:
-                    error_msg = (
-                        f"Invalid operating temperature response: {temp_response.hex().upper()}"
+                if not response or len(response) < 6 or response[2] != 0x05:
+                    raise HardwareOperationError(
+                        "fast_lma_mcu", "set_operating_temperature", "Invalid ACK response"
                     )
+
+                # Second response (temperature reached)
+                temp_response = await self._wait_for_additional_response(
+                    timeout=10.0, description="Operating temperature reached signal", expected_cmd=0x0B
+                )
+
+                if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
+                    logger.info("✅ Operating temperature reached confirmed")
+                    
+                    self._target_temperature = target_temp
+                    logger.info(f"Operating temperature set: {target_temp}°C (attempt {attempt + 1})")
+                    
+                    # Success - break out of retry loop
+                    return
+                    
                 else:
-                    error_msg = "Operating temperature reached signal not received within timeout"
-                logger.error(error_msg)
-                raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", error_msg)
+                    # 타임아웃 또는 잘못된 응답 - 재시도할 수 있도록 예외 발생
+                    if temp_response:
+                        received_cmd = temp_response[2] if len(temp_response) >= 3 else None
+                        error_msg = (
+                            f"Invalid operating temperature response: {temp_response.hex().upper()} "
+                            f"(received CMD=0x{received_cmd:02X}, expected CMD=0x0B)"
+                            if received_cmd is not None
+                            else f"Invalid operating temperature response: {temp_response.hex().upper()} (packet too short)"
+                        )
+                    else:
+                        error_msg = "Operating temperature reached signal not received within timeout"
+                    
+                    if attempt < max_retries - 1:
+                        logger.warning(f"⚠️ {error_msg} - will retry (attempt {attempt + 1}/{max_retries})")
+                    else:
+                        logger.error(f"❌ {error_msg} - max retries exceeded")
+                    
+                    raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", error_msg)
 
-            self._target_temperature = target_temp
-            logger.info(f"Operating temperature set: {target_temp}°C")
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    logger.warning(f"⚠️ Attempt {attempt + 1} failed: {e} - will retry")
+                    continue
+                else:
+                    logger.error(f"❌ All {max_retries} attempts failed")
+                    break
 
-        except Exception as e:
-            error_msg = f"Operating temperature setting failed: {e}"
-            logger.error(error_msg)
-            raise HardwareOperationError(
-                "fast_lma_mcu", "set_operating_temperature", error_msg
-            ) from e
+        # If we get here, all retries failed
+        error_msg = f"Operating temperature setting failed after {max_retries} attempts: {last_error}"
+        logger.error(error_msg)
+        raise HardwareOperationError("fast_lma_mcu", "set_operating_temperature", error_msg) from last_error
 
-    async def set_cooling_temperature(self, target_temp: float) -> None:
+    async def set_cooling_temperature(self, target_temp: float, max_retries: int = 3) -> None:
         """Set cooling temperature"""
         self._ensure_connected()
 
-        try:
-            temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
-            packet = f"FFFF0604{temp_scaled:08X}FEFE"
+        # Retry logic for handling second ACK timeout
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for set cooling temperature")
+                    await asyncio.sleep(1.0)  # Wait 1 second before retry
 
-            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
-            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
-            if self.serial_conn:
-                self.serial_conn.write(packet_bytes)
-            else:
-                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"PC -> MCU: {packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))")
+                temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
+                packet = f"FFFF0604{temp_scaled:08X}FEFE"
 
-            # Wait for the correct ACK response (0x06), ignoring unexpected packets like delayed 0x07 responses
-            response = await self._wait_for_additional_response(
-                timeout=self._timeout, description="CMD_SET_COOLING_TEMP ACK", expected_cmd=0x06
-            )
+                # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+                packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+                if self.serial_conn:
+                    self.serial_conn.write(packet_bytes)
+                else:
+                    raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+                logger.info(f"PC -> MCU: {packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))")
 
-            if not response or len(response) < 6 or response[2] != 0x06:
-                raise HardwareOperationError(
-                    "fast_lma_mcu", "set_cooling_temperature", "Invalid ACK response"
+                # Wait for the correct ACK response (0x06), ignoring unexpected packets like delayed 0x07 responses
+                response = await self._wait_for_additional_response(
+                    timeout=self._timeout, description="CMD_SET_COOLING_TEMP ACK", expected_cmd=0x06
                 )
 
-            # Second response (cooling complete signal)
-            cooling_response = await self._wait_for_additional_response(
-                timeout=120.0, description="Cooling temperature reached signal", expected_cmd=0x0D
-            )
-
-            if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0D:
-                logger.info("Cooling temperature reached confirmed")
-            else:
-                # 타임아웃 또는 잘못된 응답을 에러로 처리
-                if cooling_response:
-                    error_msg = (
-                        f"Invalid cooling temperature response: {cooling_response.hex().upper()}"
+                if not response or len(response) < 6 or response[2] != 0x06:
+                    raise HardwareOperationError(
+                        "fast_lma_mcu", "set_cooling_temperature", "Invalid ACK response"
                     )
+
+                # Second response (cooling complete signal)
+                cooling_response = await self._wait_for_additional_response(
+                    timeout=120.0, description="Cooling temperature reached signal", expected_cmd=0x0D
+                )
+
+                if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0D:
+                    logger.info("✅ Cooling temperature reached confirmed")
+                    
+                    self._target_temperature = target_temp
+                    logger.info(f"Cooling temperature set: {target_temp}°C (attempt {attempt + 1})")
+                    
+                    # Success - break out of retry loop
+                    return
+                    
                 else:
-                    error_msg = "Cooling temperature reached signal not received within timeout"
-                logger.error(error_msg)
-                raise HardwareOperationError("fast_lma_mcu", "set_cooling_temperature", error_msg)
+                    # 타임아웃 또는 잘못된 응답 - 재시도할 수 있도록 예외 발생
+                    if cooling_response:
+                        received_cmd = cooling_response[2] if len(cooling_response) >= 3 else None
+                        error_msg = (
+                            f"Invalid cooling temperature response: {cooling_response.hex().upper()} "
+                            f"(received CMD=0x{received_cmd:02X}, expected CMD=0x0D)"
+                            if received_cmd is not None
+                            else f"Invalid cooling temperature response: {cooling_response.hex().upper()} (packet too short)"
+                        )
+                    else:
+                        error_msg = "Cooling temperature reached signal not received within timeout"
+                    
+                    if attempt < max_retries - 1:
+                        logger.warning(f"⚠️ {error_msg} - will retry (attempt {attempt + 1}/{max_retries})")
+                    else:
+                        logger.error(f"❌ {error_msg} - max retries exceeded")
+                    
+                    raise HardwareOperationError("fast_lma_mcu", "set_cooling_temperature", error_msg)
 
-            self._target_temperature = target_temp
-            logger.info(f"Cooling temperature set: {target_temp}°C")
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    logger.warning(f"⚠️ Attempt {attempt + 1} failed: {e} - will retry")
+                    continue
+                else:
+                    logger.error(f"❌ All {max_retries} attempts failed")
+                    break
 
-        except Exception as e:
-            error_msg = f"Cooling temperature setting failed: {e}"
-            logger.error(error_msg)
-            raise HardwareOperationError(
-                "fast_lma_mcu", "set_cooling_temperature", error_msg
-            ) from e
+        # If we get here, all retries failed
+        error_msg = f"Cooling temperature setting failed after {max_retries} attempts: {last_error}"
+        logger.error(error_msg)
+        raise HardwareOperationError("fast_lma_mcu", "set_cooling_temperature", error_msg) from last_error
 
     async def get_temperature(self) -> float:
         """Get current temperature reading from MCU"""
@@ -1149,7 +1044,7 @@ class LMAMCU(MCUService):
         return int(self._current_fan_speed)
 
     async def start_standby_heating(
-        self, operating_temp: float, standby_temp: float, hold_time_ms: int = 60000
+        self, operating_temp: float, standby_temp: float, hold_time_ms: int = 60000, max_retries: int = 3
     ) -> None:
         """Start standby heating mode"""
         self._ensure_connected()
@@ -1158,169 +1053,227 @@ class LMAMCU(MCUService):
         self._current_operating_temp = operating_temp
         self._current_standby_temp = standby_temp
 
-        try:
-            # Temperature scaling
-            op_temp_scaled = int(operating_temp * TEMP_SCALE_FACTOR)
-            standby_temp_scaled = int(standby_temp * TEMP_SCALE_FACTOR)
+        # Retry logic for handling second ACK timeout
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for standby heating")
+                    await asyncio.sleep(1.0)  # Wait 1 second before retry
 
-            # Pack 12-byte data
-            data = f"{op_temp_scaled:08X}{standby_temp_scaled:08X}{hold_time_ms:08X}"
-            packet = f"FFFF040C{data}FEFE"
+                # Temperature scaling
+                op_temp_scaled = int(operating_temp * TEMP_SCALE_FACTOR)
+                standby_temp_scaled = int(standby_temp * TEMP_SCALE_FACTOR)
 
-            # Start timing measurement
-            start_time = time.perf_counter()
+                # Pack 12-byte data
+                data = f"{op_temp_scaled:08X}{standby_temp_scaled:08X}{hold_time_ms:08X}"
+                packet = f"FFFF040C{data}FEFE"
 
-            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
-            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
-            if self.serial_conn:
-                self.serial_conn.write(packet_bytes)
-            else:
-                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+                # Start timing measurement
+                start_time = time.perf_counter()
 
-            command_sent_time = time.perf_counter()
-            logger.info(f"PC -> MCU: {packet} (Heating: {standby_temp}°C → {operating_temp}°C)")
+                # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+                packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+                if self.serial_conn:
+                    self.serial_conn.write(packet_bytes)
+                else:
+                    raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
 
-            # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
-            response = await self._wait_for_additional_response(
-                timeout=self._timeout, description="CMD_LMA_INIT ACK", expected_cmd=0x04
-            )
+                command_sent_time = time.perf_counter()
+                logger.info(f"PC -> MCU: {packet} (Heating: {standby_temp}°C → {operating_temp}°C)")
 
-            ack_received_time = time.perf_counter()
-
-            if not response or len(response) < 6 or response[2] != 0x04:
-                raise HardwareOperationError(
-                    "fast_lma_mcu", "start_standby_heating", "Invalid ACK response"
+                # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
+                response = await self._wait_for_additional_response(
+                    timeout=self._timeout, description="CMD_LMA_INIT ACK", expected_cmd=0x04
                 )
 
-            # Second response (temperature reached)
-            temp_response = await self._wait_for_additional_response(
-                timeout=13.0,
-                description="Operating temperature reached",
-                quiet=False,
-                expected_cmd=0x0B,
-            )
+                ack_received_time = time.perf_counter()
 
-            final_response_time = time.perf_counter()
-
-            if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
-                logger.info(f"✅ Heating complete: {standby_temp}°C → {operating_temp}°C")
-            else:
-                # 타임아웃 또는 잘못된 응답을 에러로 처리
-                if temp_response:
-                    received_cmd = temp_response[2] if len(temp_response) >= 3 else None
-                    error_msg = (
-                        f"Invalid temperature reached response: {temp_response.hex().upper()} "
-                        f"(received CMD=0x{received_cmd:02X}, expected CMD=0x0B)"
-                        if received_cmd is not None
-                        else f"Invalid temperature reached response: {temp_response.hex().upper()} (packet too short)"
+                if not response or len(response) < 6 or response[2] != 0x04:
+                    raise HardwareOperationError(
+                        "fast_lma_mcu", "start_standby_heating", "Invalid ACK response"
                     )
+
+                # Second response (temperature reached)
+                temp_response = await self._wait_for_additional_response(
+                    timeout=13.0,
+                    description="Operating temperature reached",
+                    quiet=False,
+                    expected_cmd=0x0B,
+                )
+
+                final_response_time = time.perf_counter()
+
+                if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
+                    logger.info(f"✅ Heating complete: {standby_temp}°C → {operating_temp}°C")
+                    
+                    # Store timing data
+                    timing_data = {
+                        "transition": f"{standby_temp}°C → {operating_temp}°C",
+                        "from_temperature": standby_temp,
+                        "to_temperature": operating_temp,
+                        "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
+                        "total_duration_ms": (final_response_time - start_time) * 1000,
+                        "timestamp": datetime.now().isoformat(),
+                        "attempt_number": attempt + 1,
+                        "total_attempts": max_retries,
+                    }
+
+                    self._heating_timing_history.append(timing_data)
+                    logger.info(
+                        f"⏱️ Heating time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms (attempt {attempt + 1})"
+                    )
+
+                    self._mcu_status = MCUStatus.HEATING
+                    logger.info(
+                        f"Standby heating started: operating {operating_temp}°C, standby {standby_temp}°C"
+                    )
+                    
+                    # Success - break out of retry loop
+                    return
+                    
                 else:
-                    error_msg = "Temperature reached signal not received within timeout"
-                logger.error(error_msg)
-                raise HardwareOperationError("fast_lma_mcu", "start_standby_heating", error_msg)
+                    # 타임아웃 또는 잘못된 응답 - 재시도할 수 있도록 예외 발생
+                    if temp_response:
+                        received_cmd = temp_response[2] if len(temp_response) >= 3 else None
+                        error_msg = (
+                            f"Invalid temperature reached response: {temp_response.hex().upper()} "
+                            f"(received CMD=0x{received_cmd:02X}, expected CMD=0x0B)"
+                            if received_cmd is not None
+                            else f"Invalid temperature reached response: {temp_response.hex().upper()} (packet too short)"
+                        )
+                    else:
+                        error_msg = "Temperature reached signal not received within timeout"
+                    
+                    if attempt < max_retries - 1:
+                        logger.warning(f"⚠️ {error_msg} - will retry (attempt {attempt + 1}/{max_retries})")
+                    else:
+                        logger.error(f"❌ {error_msg} - max retries exceeded")
+                    
+                    raise HardwareOperationError("fast_lma_mcu", "start_standby_heating", error_msg)
 
-            # Store timing data
-            timing_data = {
-                "transition": f"{standby_temp}°C → {operating_temp}°C",
-                "from_temperature": standby_temp,
-                "to_temperature": operating_temp,
-                "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
-                "total_duration_ms": (final_response_time - start_time) * 1000,
-                "timestamp": datetime.now().isoformat(),
-            }
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    logger.warning(f"⚠️ Attempt {attempt + 1} failed: {e} - will retry")
+                    continue
+                else:
+                    logger.error(f"❌ All {max_retries} attempts failed")
+                    break
 
-            self._heating_timing_history.append(timing_data)
-            logger.info(
-                f"⏱️ Heating time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms"
-            )
+        # If we get here, all retries failed
+        error_msg = f"Standby heating start failed after {max_retries} attempts: {last_error}"
+        logger.error(error_msg)
+        raise HardwareOperationError("fast_lma_mcu", "start_standby_heating", error_msg) from last_error
 
-            self._mcu_status = MCUStatus.HEATING
-            logger.info(
-                f"Standby heating started: operating {operating_temp}°C, standby {standby_temp}°C"
-            )
-
-        except Exception as e:
-            error_msg = f"Standby heating start failed: {e}"
-            logger.error(error_msg)
-            raise HardwareOperationError("fast_lma_mcu", "start_standby_heating", error_msg) from e
-
-    async def start_standby_cooling(self) -> None:
+    async def start_standby_cooling(self, max_retries: int = 3) -> None:
         """Start standby cooling mode"""
         self._ensure_connected()
 
-        try:
-            packet = "FFFF0800FEFE"
+        # Retry logic for handling second ACK timeout
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for standby cooling")
+                    await asyncio.sleep(1.0)  # Wait 1 second before retry
 
-            # Use stored temperature information
-            from_temp = self._current_operating_temp or "unknown"
-            to_temp = self._current_standby_temp or "unknown"
+                packet = "FFFF0800FEFE"
 
-            # Start timing measurement
-            start_time = time.perf_counter()
+                # Use stored temperature information
+                from_temp = self._current_operating_temp or "unknown"
+                to_temp = self._current_standby_temp or "unknown"
 
-            # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
-            packet_bytes = bytes.fromhex(packet.replace(" ", ""))
-            if self.serial_conn:
-                self.serial_conn.write(packet_bytes)
-            else:
-                raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
+                # Start timing measurement
+                start_time = time.perf_counter()
 
-            command_sent_time = time.perf_counter()
-            logger.info(f"PC -> MCU: {packet} (Cooling: {from_temp}°C → {to_temp}°C)")
+                # Send command and wait for proper ACK (filtering out unexpected packets like delayed temperature responses)
+                packet_bytes = bytes.fromhex(packet.replace(" ", ""))
+                if self.serial_conn:
+                    self.serial_conn.write(packet_bytes)
+                else:
+                    raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
 
-            # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
-            response = await self._wait_for_additional_response(
-                timeout=self._timeout, description="CMD_STROKE_INIT_COMPLETE ACK", expected_cmd=0x08
-            )
+                command_sent_time = time.perf_counter()
+                logger.info(f"PC -> MCU: {packet} (Cooling: {from_temp}°C → {to_temp}°C)")
 
-            ack_received_time = time.perf_counter()
-
-            if not response or len(response) < 6 or response[2] != 0x08:
-                raise HardwareOperationError(
-                    "fast_lma_mcu", "start_standby_cooling", "Invalid ACK response"
+                # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
+                response = await self._wait_for_additional_response(
+                    timeout=self._timeout, description="CMD_STROKE_INIT_COMPLETE ACK", expected_cmd=0x08
                 )
 
-            # Second response (cooling complete)
-            cooling_response = await self._wait_for_additional_response(
-                timeout=120.0, description="Standby temperature reached", expected_cmd=0x0C
-            )
+                ack_received_time = time.perf_counter()
 
-            final_response_time = time.perf_counter()
-
-            if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
-                logger.info(f"✅ Cooling complete: {from_temp}°C → {to_temp}°C")
-            else:
-                # 타임아웃 또는 잘못된 응답을 에러로 처리
-                if cooling_response:
-                    error_msg = (
-                        f"Invalid cooling complete response: {cooling_response.hex().upper()}"
+                if not response or len(response) < 6 or response[2] != 0x08:
+                    raise HardwareOperationError(
+                        "fast_lma_mcu", "start_standby_cooling", "Invalid ACK response"
                     )
+
+                # Second response (cooling complete)
+                cooling_response = await self._wait_for_additional_response(
+                    timeout=120.0, description="Standby temperature reached", expected_cmd=0x0C
+                )
+
+                final_response_time = time.perf_counter()
+
+                if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0C:
+                    logger.info(f"✅ Cooling complete: {from_temp}°C → {to_temp}°C")
+                    
+                    # Store timing data
+                    timing_data = {
+                        "transition": f"{from_temp}°C → {to_temp}°C",
+                        "from_temperature": from_temp,
+                        "to_temperature": to_temp,
+                        "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
+                        "total_duration_ms": (final_response_time - start_time) * 1000,
+                        "timestamp": datetime.now().isoformat(),
+                        "attempt_number": attempt + 1,
+                        "total_attempts": max_retries,
+                    }
+
+                    self._cooling_timing_history.append(timing_data)
+                    logger.info(
+                        f"⏱️ Cooling time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms (attempt {attempt + 1})"
+                    )
+
+                    self._mcu_status = MCUStatus.COOLING
+                    
+                    # Success - break out of retry loop
+                    return
+                    
                 else:
-                    error_msg = "Cooling complete signal not received within timeout"
-                logger.error(error_msg)
-                raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg)
+                    # 타임아웃 또는 잘못된 응답 - 재시도할 수 있도록 예외 발생
+                    if cooling_response:
+                        received_cmd = cooling_response[2] if len(cooling_response) >= 3 else None
+                        error_msg = (
+                            f"Invalid cooling complete response: {cooling_response.hex().upper()} "
+                            f"(received CMD=0x{received_cmd:02X}, expected CMD=0x0C)"
+                            if received_cmd is not None
+                            else f"Invalid cooling complete response: {cooling_response.hex().upper()} (packet too short)"
+                        )
+                    else:
+                        error_msg = "Cooling complete signal not received within timeout"
+                    
+                    if attempt < max_retries - 1:
+                        logger.warning(f"⚠️ {error_msg} - will retry (attempt {attempt + 1}/{max_retries})")
+                    else:
+                        logger.error(f"❌ {error_msg} - max retries exceeded")
+                    
+                    raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg)
 
-            # Store timing data
-            timing_data = {
-                "transition": f"{from_temp}°C → {to_temp}°C",
-                "from_temperature": from_temp,
-                "to_temperature": to_temp,
-                "ack_duration_ms": (ack_received_time - command_sent_time) * 1000,
-                "total_duration_ms": (final_response_time - start_time) * 1000,
-                "timestamp": datetime.now().isoformat(),
-            }
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    logger.warning(f"⚠️ Attempt {attempt + 1} failed: {e} - will retry")
+                    continue
+                else:
+                    logger.error(f"❌ All {max_retries} attempts failed")
+                    break
 
-            self._cooling_timing_history.append(timing_data)
-            logger.info(
-                f"⏱️ Cooling time: ACK={timing_data['ack_duration_ms']:.1f}ms, Total={timing_data['total_duration_ms']:.1f}ms"
-            )
-
-            self._mcu_status = MCUStatus.COOLING
-
-        except Exception as e:
-            error_msg = f"Standby cooling start failed: {e}"
-            logger.error(error_msg)
-            raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg) from e
+        # If we get here, all retries failed
+        error_msg = f"Standby cooling start failed after {max_retries} attempts: {last_error}"
+        logger.error(error_msg)
+        raise HardwareOperationError("fast_lma_mcu", "start_standby_cooling", error_msg) from last_error
 
     def get_all_timing_data(self) -> Dict[str, Any]:
         """Get all heating/cooling timing data"""

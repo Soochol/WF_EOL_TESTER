@@ -5,10 +5,13 @@ Main orchestrator for heating/cooling time test use case.
 Coordinates hardware setup, test execution, and result processing.
 """
 
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.emergency_stop_service import (
@@ -17,8 +20,9 @@ from application.services.monitoring.emergency_stop_service import (
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-from .input import HeatingCoolingTimeTestInput
+# Local folder imports
 from .hardware_setup_service import HardwareSetupService
+from .input import HeatingCoolingTimeTestInput
 from .result import HeatingCoolingTimeTestResult
 from .statistics_calculator import StatisticsCalculator
 from .test_cycle_executor import TestCycleExecutor
@@ -174,7 +178,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         except Exception as cleanup_error:
             logger.warning(f"Cleanup warning in main use case: {cleanup_error}")
 
-    async def execute(self, input_data: HeatingCoolingTimeTestInput) -> HeatingCoolingTimeTestResult:
+    async def execute(
+        self, input_data: HeatingCoolingTimeTestInput
+    ) -> HeatingCoolingTimeTestResult:
         """
         Execute the heating/cooling time test with proper cleanup
 
