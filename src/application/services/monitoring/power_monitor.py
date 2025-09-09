@@ -100,7 +100,8 @@ class PowerMonitor:
 
         if self._monitoring_task:
             try:
-                logger.info("🔋 Waiting for monitoring task to complete...")
+                logger.info("🔋 Cancelling monitoring task...")
+                self._monitoring_task.cancel()
                 await self._monitoring_task
                 logger.info("✅ Monitoring task completed")
             except asyncio.CancelledError:
@@ -126,41 +127,54 @@ class PowerMonitor:
 
         logger.info(f"🔋 Power monitoring loop started with {interval}s interval")
         
-        while self._is_monitoring:
-            try:
-                logger.debug(f"📊 Taking power measurement sample #{len(self._power_data)}...")
-                
-                # Get all measurements at once using MEAS:ALL? command
-                measurements = await self._power_service.get_all_measurements()
-                voltage = measurements["voltage"]
-                current = measurements["current"]
-                power = measurements["power"]
-                timestamp = time.perf_counter() - self._start_time
+        try:
+            while self._is_monitoring:
+                try:
+                    logger.debug(f"📊 Taking power measurement sample #{len(self._power_data)}...")
+                    
+                    # Get all measurements at once using MEAS:ALL? command
+                    measurements = await self._power_service.get_all_measurements()
+                    voltage = measurements["voltage"]
+                    current = measurements["current"]
+                    power = measurements["power"]
+                    timestamp = time.perf_counter() - self._start_time
 
-                # Log detailed measurement info for debugging
-                if len(self._power_data) % 5 == 0:  # Log every 5th measurement (reduced from 10)
-                    logger.debug(f"📊 Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
-                    # Force immediate output flush
-                    import sys
-                    sys.stdout.flush()
-                    sys.stderr.flush()
+                    # Log detailed measurement info for debugging
+                    if len(self._power_data) % 5 == 0:  # Log every 5th measurement (reduced from 10)
+                        logger.debug(f"📊 Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
+                        # Force immediate output flush
+                        import sys
+                        sys.stdout.flush()
+                        sys.stderr.flush()
 
-                # Store data point
-                self._power_data.append(
-                    {"timestamp": timestamp, "voltage": voltage, "current": current, "power": power}
-                )
+                    # Store data point
+                    self._power_data.append(
+                        {"timestamp": timestamp, "voltage": voltage, "current": current, "power": power}
+                    )
 
-                failures = 0  # Reset failure count on success
+                    failures = 0  # Reset failure count on success
 
-            except Exception as e:
-                failures += 1
-                logger.warning(f"⚠️  Power measurement failed ({failures}/{max_failures}): {e}")
+                except Exception as e:
+                    failures += 1
+                    logger.warning(f"⚠️  Power measurement failed ({failures}/{max_failures}): {e}")
 
-                if failures >= max_failures:
-                    logger.error("❌ Power monitoring stopped due to repeated failures")
-                    break
+                    if failures >= max_failures:
+                        logger.error("❌ Power monitoring stopped due to repeated failures")
+                        break
 
-            await asyncio.sleep(interval)
+                # Break down sleep into smaller chunks for better cancellation responsiveness
+                sleep_chunk = 0.1  # 100ms chunks
+                remaining_sleep = interval
+                while remaining_sleep > 0 and self._is_monitoring:
+                    chunk_sleep = min(sleep_chunk, remaining_sleep)
+                    await asyncio.sleep(chunk_sleep)
+                    remaining_sleep -= chunk_sleep
+        
+        except asyncio.CancelledError:
+            logger.info("🔋 Power monitoring loop cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Power monitoring loop error: {e}")
         
         logger.info(f"🔋 Power monitoring loop ended. Total samples collected: {len(self._power_data)}")
 

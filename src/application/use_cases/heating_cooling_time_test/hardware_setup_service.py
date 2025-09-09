@@ -131,10 +131,20 @@ class HardwareSetupService:
         """
         Clean up hardware connections
 
-        Disables power supply and disconnects hardware services.
+        Stops power monitoring and disables power supply and disconnects hardware services.
         """
         try:
             logger.info("Cleaning up hardware...")
+            
+            # Clean up power monitor first
+            if self._power_monitor and self._power_monitor.is_monitoring():
+                try:
+                    logger.info("Stopping power monitor during hardware cleanup...")
+                    await self._power_monitor.stop_monitoring()
+                    logger.info("Power monitor stopped successfully")
+                except Exception as power_monitor_error:
+                    logger.warning(f"Power monitor cleanup warning: {power_monitor_error}")
+            
             power_service = self._hardware_services.power_service
             mcu_service = self._hardware_services.mcu_service
 
