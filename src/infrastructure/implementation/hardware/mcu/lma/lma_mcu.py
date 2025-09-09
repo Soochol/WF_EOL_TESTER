@@ -423,6 +423,8 @@ class LMAMCU(MCUService):
             return "COOLING_TEMPERATURE_REACHED_SIGNAL"
         elif cmd == 0x00:
             return "ACK_RESPONSE"
+        elif cmd == 0x01:
+            return "TEST_MODE_COMPLETE_RESPONSE"
         elif cmd == 0x04:
             return "INIT_RESPONSE"
         elif cmd == 0x08:

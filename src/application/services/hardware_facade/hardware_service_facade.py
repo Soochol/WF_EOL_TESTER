@@ -490,7 +490,7 @@ class HardwareServiceFacade:
             logger.info("MCU standby cooling started")
 
             # Final temperature verification
-            await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
+            await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
 
             logger.info("LMA standby sequence completed successfully")
 
