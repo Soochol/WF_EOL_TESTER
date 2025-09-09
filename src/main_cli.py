@@ -248,6 +248,8 @@ if __name__ == "__main__":
         asyncio.run(main(), debug=False)
     except KeyboardInterrupt:
         print("\\nEmergency stop executed - hardware safely shutdown")
+    except asyncio.CancelledError:
+        print("\\nEmergency stop executed - hardware safely shutdown")
     except EOFError:
         print("\\nEOF received, exiting...")
     except Exception as e:

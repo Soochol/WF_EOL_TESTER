@@ -160,7 +160,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet_hex} ({description})\033[0m")
+            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet_hex} ({description})\033[0m")
 
             # Wait for response
             response_data = b""
@@ -178,7 +178,7 @@ class LMAMCU(MCUService):
                     elapsed_ms = (last_data_time - start_time) * 1000
                     data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
                     logger.debug(
-                        f"\033[92mPC <- MCU:\033[0m \033[96m{chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms\033[0m"
+                        f"\033[96mPC <- MCU:\033[0m \033[96m{chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms\033[0m"
                     )
 
                     # Check for complete packet (ends with FEFE)
@@ -190,7 +190,7 @@ class LMAMCU(MCUService):
                             response_hex = valid_packet.hex().upper()
 
                             response_time = (time.time() - start_time) * 1000
-                            logger.info(f"\033[92mPC <- MCU:\033[0m \033[96m{response_hex} (+{response_time:.1f}ms)\033[0m")
+                            logger.info(f"\033[96mPC <- MCU:\033[0m \033[96m{response_hex} (+{response_time:.1f}ms)\033[0m")
 
                             # Detailed packet analysis on clean packet
                             self._analyze_response_packet(valid_packet, description)
@@ -527,7 +527,7 @@ class LMAMCU(MCUService):
                         self.serial_conn.write(temp_bytes)
                         elapsed = current_time - start_time
                         logger.debug(
-                            f"\033[94mPC -> MCU:\033[0m \033[93m{temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)\033[0m"
+                            f"\033[95mPC -> MCU:\033[0m \033[95m{temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)\033[0m"
                         )
                         last_temp_request = current_time
                 except Exception as e:
@@ -542,7 +542,7 @@ class LMAMCU(MCUService):
                 chunk_hex = new_data.hex().upper()
                 elapsed_ms = (current_time - start_time) * 1000
                 if not quiet:
-                    logger.debug(f"\033[92mPC <- MCU:\033[0m \033[96m{chunk_hex} @ +{elapsed_ms:.1f}ms\033[0m")
+                    logger.debug(f"\033[96mPC <- MCU:\033[0m \033[96m{chunk_hex} @ +{elapsed_ms:.1f}ms\033[0m")
 
                 # Try to extract complete packet(s)
                 while response_data:
@@ -560,11 +560,11 @@ class LMAMCU(MCUService):
                     # Only show temperature responses at DEBUG level, others at INFO
                     if valid_packet[2] == 0x07:  # Temperature response
                         logger.debug(
-                            f"\033[92mPC <- MCU:\033[0m \033[96m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
+                            f"\033[96mPC <- MCU:\033[0m \033[96m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
                         )
                     else:
                         logger.info(
-                            f"\033[92mPC <- MCU:\033[0m \033[96m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
+                            f"\033[96mPC <- MCU:\033[0m \033[96m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
                         )
 
                     # Handle different packet types
@@ -682,7 +682,7 @@ class LMAMCU(MCUService):
                     # Log received data for debugging
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (time.time() - start_time) * 1000
-                    logger.debug(f"\033[92mPC <- MCU:\033[0m \033[96m{chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms\033[0m")
+                    logger.debug(f"\033[96mPC <- MCU:\033[0m \033[96m{chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms\033[0m")
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
@@ -693,7 +693,7 @@ class LMAMCU(MCUService):
                             # Check for STATUS_BOOT_COMPLETE (0x00)
                             if len(valid_packet) >= 6 and valid_packet[2] == 0x00:
                                 response_hex = valid_packet.hex().upper()
-                                logger.info(f"\033[92mPC <- MCU:\033[0m \033[96m{response_hex} (boot complete confirmed)\033[0m")
+                                logger.info(f"\033[96mPC <- MCU:\033[0m \033[96m{response_hex} (boot complete confirmed)\033[0m")
 
                                 # Detailed packet analysis
                                 self._analyze_response_packet(valid_packet, "BOOT_COMPLETE")
@@ -705,7 +705,7 @@ class LMAMCU(MCUService):
                                 response_hex = valid_packet.hex().upper()
                                 status_code = valid_packet[2]
                                 logger.info(
-                                    f"\033[92mPC <- MCU:\033[0m \033[96m{response_hex} (status: 0x{status_code:02X}, not boot complete)\033[0m"
+                                    f"\033[96mPC <- MCU:\033[0m \033[96m{response_hex} (status: 0x{status_code:02X}, not boot complete)\033[0m"
                                 )
 
                         # Reset buffer if we processed a packet
@@ -750,7 +750,7 @@ class LMAMCU(MCUService):
                     self.serial_conn.write(packet_bytes)
                 else:
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))\033[0m")
+                logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))\033[0m")
 
                 # Wait for the correct ACK response (0x05), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
@@ -831,7 +831,7 @@ class LMAMCU(MCUService):
                     self.serial_conn.write(packet_bytes)
                 else:
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))\033[0m")
+                logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))\033[0m")
 
                 # Wait for the correct ACK response (0x06), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
@@ -953,7 +953,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_ENTER_TEST_MODE (mode {mode_value}))\033[0m")
+            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (CMD_ENTER_TEST_MODE (mode {mode_value}))\033[0m")
 
             # Wait for the correct ACK response (0x01), ignoring unexpected packets like delayed 0x07 responses
             response = await self._wait_for_additional_response(
@@ -989,7 +989,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_UPPER_TEMP ({upper_temp}°C))\033[0m")
+            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_UPPER_TEMP ({upper_temp}°C))\033[0m")
 
             # Wait for the correct ACK response (0x02), ignoring unexpected packets like delayed 0x07 responses
             response = await self._wait_for_additional_response(
@@ -1021,7 +1021,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_FAN_SPEED (level {fan_level}))\033[0m")
+            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_FAN_SPEED (level {fan_level}))\033[0m")
 
             # Wait for the correct ACK response (0x03), ignoring unexpected packets like delayed 0x07 responses
             response = await self._wait_for_additional_response(
@@ -1080,7 +1080,7 @@ class LMAMCU(MCUService):
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
 
                 command_sent_time = time.perf_counter()
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (Heating: {standby_temp}°C → {operating_temp}°C)\033[0m")
+                logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (Heating: {standby_temp}°C → {operating_temp}°C)\033[0m")
 
                 # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
@@ -1195,7 +1195,7 @@ class LMAMCU(MCUService):
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
 
                 command_sent_time = time.perf_counter()
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (Cooling: {from_temp}°C → {to_temp}°C)\033[0m")
+                logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{packet} (Cooling: {from_temp}°C → {to_temp}°C)\033[0m")
 
                 # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
