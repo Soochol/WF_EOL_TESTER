@@ -847,7 +847,7 @@ class LMAMCU(MCUService):
 
                 # Second response (cooling complete signal)
                 cooling_response = await self._wait_for_additional_response(
-                    timeout=120.0, description="Cooling temperature reached signal", expected_cmd=0x0D
+                    timeout=60.0, description="Cooling temperature reached signal", expected_cmd=0x0D
                 )
 
                 if cooling_response and len(cooling_response) >= 6 and cooling_response[2] == 0x0D:
@@ -1213,7 +1213,7 @@ class LMAMCU(MCUService):
 
                 # Second response (cooling complete)
                 cooling_response = await self._wait_for_additional_response(
-                    timeout=120.0, description="Standby temperature reached", expected_cmd=0x0C
+                    timeout=60.0, description="Standby temperature reached", expected_cmd=0x0C
                 )
 
                 final_response_time = time.perf_counter()
