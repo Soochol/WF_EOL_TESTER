@@ -160,7 +160,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet_hex} ({description})\033[0m")
+            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet_hex} ({description})\033[0m")
 
             # Wait for response
             response_data = b""
@@ -527,7 +527,7 @@ class LMAMCU(MCUService):
                         self.serial_conn.write(temp_bytes)
                         elapsed = current_time - start_time
                         logger.debug(
-                            f"\033[94mPC -> MCU:\033[0m \033[95m{temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)\033[0m"
+                            f"\033[94mPC -> MCU:\033[0m \033[93m{temp_packet_hex} (Temperature request @ +{elapsed:.1f}s)\033[0m"
                         )
                         last_temp_request = current_time
                 except Exception as e:
@@ -750,7 +750,7 @@ class LMAMCU(MCUService):
                     self.serial_conn.write(packet_bytes)
                 else:
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))\033[0m")
+                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_OPERATING_TEMP ({target_temp}°C))\033[0m")
 
                 # Wait for the correct ACK response (0x05), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
@@ -831,7 +831,7 @@ class LMAMCU(MCUService):
                     self.serial_conn.write(packet_bytes)
                 else:
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))\033[0m")
+                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_COOLING_TEMP ({target_temp}°C))\033[0m")
 
                 # Wait for the correct ACK response (0x06), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
@@ -953,7 +953,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (CMD_ENTER_TEST_MODE (mode {mode_value}))\033[0m")
+            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_ENTER_TEST_MODE (mode {mode_value}))\033[0m")
 
             # Wait for the correct ACK response (0x01), ignoring unexpected packets like delayed 0x07 responses
             response = await self._wait_for_additional_response(
@@ -989,7 +989,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_UPPER_TEMP ({upper_temp}°C))\033[0m")
+            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_UPPER_TEMP ({upper_temp}°C))\033[0m")
 
             # Wait for the correct ACK response (0x02), ignoring unexpected packets like delayed 0x07 responses
             response = await self._wait_for_additional_response(
@@ -1021,7 +1021,7 @@ class LMAMCU(MCUService):
                 self.serial_conn.write(packet_bytes)
             else:
                 raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
-            logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (CMD_SET_FAN_SPEED (level {fan_level}))\033[0m")
+            logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (CMD_SET_FAN_SPEED (level {fan_level}))\033[0m")
 
             # Wait for the correct ACK response (0x03), ignoring unexpected packets like delayed 0x07 responses
             response = await self._wait_for_additional_response(
@@ -1080,7 +1080,7 @@ class LMAMCU(MCUService):
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
 
                 command_sent_time = time.perf_counter()
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (Heating: {standby_temp}°C → {operating_temp}°C)\033[0m")
+                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (Heating: {standby_temp}°C → {operating_temp}°C)\033[0m")
 
                 # Wait for the correct ACK response (0x04), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
@@ -1195,7 +1195,7 @@ class LMAMCU(MCUService):
                     raise HardwareConnectionError("fast_lma_mcu", "Serial connection not available")
 
                 command_sent_time = time.perf_counter()
-                logger.info(f"\033[94mPC -> MCU:\033[0m \033[95m{packet} (Cooling: {from_temp}°C → {to_temp}°C)\033[0m")
+                logger.info(f"\033[94mPC -> MCU:\033[0m \033[93m{packet} (Cooling: {from_temp}°C → {to_temp}°C)\033[0m")
 
                 # Wait for the correct ACK response (0x08), ignoring unexpected packets like delayed 0x07 responses
                 response = await self._wait_for_additional_response(
