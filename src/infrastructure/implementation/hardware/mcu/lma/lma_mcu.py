@@ -178,7 +178,7 @@ class LMAMCU(MCUService):
                     elapsed_ms = (last_data_time - start_time) * 1000
                     data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
                     logger.debug(
-                        f"PC <- MCU: {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
+                        f"\033[92mPC <- MCU:\033[0m {chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms"
                     )
 
                     # Check for complete packet (ends with FEFE)
@@ -542,7 +542,7 @@ class LMAMCU(MCUService):
                 chunk_hex = new_data.hex().upper()
                 elapsed_ms = (current_time - start_time) * 1000
                 if not quiet:
-                    logger.debug(f"PC <- MCU: {chunk_hex} @ +{elapsed_ms:.1f}ms")
+                    logger.debug(f"\033[92mPC <- MCU:\033[0m {chunk_hex} @ +{elapsed_ms:.1f}ms")
 
                 # Try to extract complete packet(s)
                 while response_data:
@@ -682,7 +682,7 @@ class LMAMCU(MCUService):
                     # Log received data for debugging
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (time.time() - start_time) * 1000
-                    logger.debug(f"PC <- MCU: {chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms")
+                    logger.debug(f"\033[92mPC <- MCU:\033[0m {chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms")
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
