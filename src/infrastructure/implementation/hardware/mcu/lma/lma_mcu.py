@@ -413,22 +413,30 @@ class LMAMCU(MCUService):
             return "INVALID_PACKET"
 
         cmd = packet[2]
-        if cmd == 0x07:
+        if cmd == 0x00:
+            return "ACK_RESPONSE"
+        elif cmd == 0x01:
+            return "TEST_MODE_COMPLETE_RESPONSE"
+        elif cmd == 0x02:
+            return "UPPER_TEMP_OK_RESPONSE"
+        elif cmd == 0x03:
+            return "FAN_SPEED_OK_RESPONSE"
+        elif cmd == 0x04:
+            return "INIT_RESPONSE"
+        elif cmd == 0x05:
+            return "OPERATING_TEMP_OK_RESPONSE"
+        elif cmd == 0x06:
+            return "STANDBY_TEMP_OK_RESPONSE"
+        elif cmd == 0x07:
             return "TEMPERATURE_RESPONSE"
+        elif cmd == 0x08:
+            return "STROKE_INIT_COMPLETE_RESPONSE"
         elif cmd == 0x0B:
             return "TEMPERATURE_REACHED_SIGNAL"
         elif cmd == 0x0C:
             return "COOLING_COMPLETE_SIGNAL"
         elif cmd == 0x0D:
             return "COOLING_TEMPERATURE_REACHED_SIGNAL"
-        elif cmd == 0x00:
-            return "ACK_RESPONSE"
-        elif cmd == 0x01:
-            return "TEST_MODE_COMPLETE_RESPONSE"
-        elif cmd == 0x04:
-            return "INIT_RESPONSE"
-        elif cmd == 0x08:
-            return "STROKE_INIT_COMPLETE_RESPONSE"
         else:
             return f"UNKNOWN_CMD_0x{cmd:02X}"
 
