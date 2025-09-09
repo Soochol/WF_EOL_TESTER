@@ -150,6 +150,9 @@ class EmergencyStopService:
             # System-wide notification (can be extended for external systems)
             await self._notify_emergency_stop()
 
+        except asyncio.CancelledError:
+            logger.info("Emergency stop finalization cancelled due to shutdown - hardware safety already ensured")
+            # Don't re-raise CancelledError - hardware safety was already ensured in Phase 1
         except Exception as e:
             logger.error(f"Emergency stop finalization failed: {e}")
 
@@ -163,6 +166,9 @@ class EmergencyStopService:
             if robot_service and await robot_service.is_connected():
                 robot_status = await robot_service.get_status()
                 logger.debug(f"Robot status after emergency stop: servo_enabled={robot_status.get('servo_enabled', 'unknown')}")
+        except asyncio.CancelledError:
+            logger.info("Robot state verification cancelled due to shutdown - skipping robot verification")
+            # Don't re-raise CancelledError during emergency stop
         except Exception as e:
             logger.warning(f"Could not verify robot safe state: {e}")
 
@@ -172,6 +178,9 @@ class EmergencyStopService:
             if power_service and await power_service.is_connected():
                 power_status = await power_service.get_status()
                 logger.debug(f"Power status after emergency stop: output_enabled={power_status.get('output_enabled', 'unknown')}")
+        except asyncio.CancelledError:
+            logger.info("Power state verification cancelled due to shutdown - skipping power verification")
+            # Don't re-raise CancelledError during emergency stop
         except Exception as e:
             logger.warning(f"Could not verify power safe state: {e}")
 

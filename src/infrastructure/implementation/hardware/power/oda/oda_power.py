@@ -333,6 +333,13 @@ class OdaPower(PowerService):
                 status["current_current"] = await self.get_current()
                 status["output_enabled"] = await self.is_output_enabled()
                 status["last_error"] = None
+            except asyncio.CancelledError:
+                # During shutdown, return safe defaults without raising
+                status["current_voltage"] = None
+                status["current_current"] = None
+                status["output_enabled"] = False  # Assume safe state (output disabled)
+                status["last_error"] = "Status check cancelled during shutdown"
+                logger.debug("Power status check cancelled during shutdown - returning safe defaults")
             except Exception as e:
                 status["current_voltage"] = None
                 status["current_current"] = None
@@ -386,6 +393,10 @@ class OdaPower(PowerService):
 
             return response
 
+        except asyncio.CancelledError:
+            logger.debug(f"ODA command '{command}' cancelled during shutdown")
+            # Re-raise CancelledError to properly propagate cancellation
+            raise
         except Exception as e:
             logger.error(f"ODA command '{command}' failed: {e}")
             raise TCPError(f"Communication failed: {e}") from e
