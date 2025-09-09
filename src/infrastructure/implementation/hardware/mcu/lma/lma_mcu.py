@@ -314,7 +314,7 @@ class LMAMCU(MCUService):
 
                 additional_packets = packets_found[1:]
                 self._packet_buffer.extend(additional_packets)
-                logger.info(f"Stored {len(additional_packets)} additional packets in buffer:")
+                logger.info(f"\033[96mStored {len(additional_packets)} additional packets in buffer:\033[0m")
                 for j, packet in enumerate(additional_packets):
                     logger.info(f"  [{j+1}] {packet.hex().upper()}")
             return first_packet
@@ -492,7 +492,7 @@ class LMAMCU(MCUService):
             packet_type = self._classify_packet(packet)
 
             # Log buffered packet with classification
-            logger.info(f"Using buffered packet: {packet.hex().upper()} ({packet_type})")
+            logger.info(f"\033[96mUsing buffered packet: {packet.hex().upper()} ({packet_type})\033[0m")
 
             # Handle temperature response packets
             if packet[2] == 0x07:  # Temperature response
@@ -504,7 +504,7 @@ class LMAMCU(MCUService):
             # Otherwise, keep looking for the expected packet
 
         if not quiet:
-            logger.info(f"WAITING for additional response: {description} (timeout: {timeout}s)")
+            logger.info(f"\033[95mWAITING for additional response: {description} (timeout: {timeout}s)\033[0m")
 
         start_time = time.time()
         last_temp_request = 0
@@ -768,10 +768,10 @@ class LMAMCU(MCUService):
                 )
 
                 if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
-                    logger.info("✅ Operating temperature reached confirmed")
+                    logger.info("\033[96m✅ Operating temperature reached confirmed\033[0m")
                     
                     self._target_temperature = target_temp
-                    logger.info(f"Operating temperature set: {target_temp}°C (attempt {attempt + 1})")
+                    logger.info(f"\033[95mOperating temperature set: {target_temp}°C (attempt {attempt + 1})\033[0m")
                     
                     # Success - break out of retry loop
                     return
@@ -918,7 +918,7 @@ class LMAMCU(MCUService):
                 # Use ir_temp_max as the primary temperature
                 self._current_temperature = ir_temp_celsius
                 logger.info(
-                    f"Temperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C"
+                    f"\033[96mTemperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C\033[0m"
                 )
                 return ir_temp_celsius
             else:
