@@ -5,11 +5,14 @@ Lightweight coordinator that orchestrates hardware services following single res
 Previously 786 lines, now significantly reduced by delegating to specialized services.
 """
 
-import asyncio
-from typing import TYPE_CHECKING, Dict, Optional, cast
+# Standard library imports
+from typing import cast, Dict, Optional, TYPE_CHECKING
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.digital_io import DigitalIOService
 from application.interfaces.hardware.loadcell import LoadCellService
 from application.interfaces.hardware.mcu import MCUService
@@ -19,10 +22,12 @@ from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 
+
 # Note: All hardware service functionality has been integrated directly into this facade
 
 # IDE 개발용 타입 힌트 - 런타임에는 영향 없음
 if TYPE_CHECKING:
+    # Local application imports
     from infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import (
         AjinextekDIO,
     )
@@ -196,6 +201,7 @@ class HardwareServiceFacade:
                 await asyncio.gather(*connection_tasks)
                 logger.info(f"Successfully connected: {', '.join(hardware_names)}")
             except Exception as e:
+                # Local application imports
                 from domain.exceptions.hardware_exceptions import (
                     HardwareConnectionException,
                 )
@@ -314,6 +320,7 @@ class HardwareServiceFacade:
 
         except Exception as e:
             logger.debug(f"Hardware initialization failed with config: {test_config.to_dict()}")
+            # Local application imports
             from domain.exceptions.hardware_exceptions import (
                 HardwareConnectionException,
             )
@@ -373,6 +380,7 @@ class HardwareServiceFacade:
             logger.info("MCU boot complete signal received")
 
             # Enter test mode 1 (always executed)
+            # Local application imports
             from application.interfaces.hardware.mcu import TestMode
 
             await self._mcu.set_test_mode(TestMode.MODE_1)
@@ -387,6 +395,7 @@ class HardwareServiceFacade:
             logger.info("Test setup completed successfully")
 
         except asyncio.TimeoutError as e:
+            # Local application imports
             from domain.exceptions.hardware_exceptions import (
                 HardwareConnectionException,
             )
@@ -400,6 +409,7 @@ class HardwareServiceFacade:
             raise
         except Exception as e:
             logger.debug(f"Test setup failed with config: {test_config.to_dict()}")
+            # Local application imports
             from domain.exceptions.hardware_exceptions import (
                 HardwareConnectionException,
             )
@@ -449,10 +459,42 @@ class HardwareServiceFacade:
             # Verify MCU temperature reached operating temperature
             await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
 
+            # Robot movements and cooling sequence after temperature verification
+            await self._robot.move_absolute(
+                position=test_config.max_stroke,
+                velocity=test_config.velocity,
+                acceleration=test_config.acceleration,
+                deceleration=test_config.deceleration,
+            )
+            await asyncio.sleep(test_config.robot_move_stabilization)
+            logger.info(f"Robot moved to max stroke position: {test_config.max_stroke}μm")
+
+            # Delay for stabilization
+            await asyncio.sleep(test_config.robot_standby_stabilization)
+
+            # Move robot back to initial position
+            await self._robot.move_absolute(
+                position=test_config.initial_position,
+                velocity=test_config.velocity,
+                acceleration=test_config.acceleration,
+                deceleration=test_config.deceleration,
+            )
+            await asyncio.sleep(test_config.robot_move_stabilization)
+            logger.info(f"Robot moved to initial position: {test_config.initial_position}μm")
+
+            # Start standby cooling
+            await self._mcu.start_standby_cooling()
+            await asyncio.sleep(test_config.mcu_command_stabilization)
+            logger.info("MCU standby cooling started")
+
+            # Final temperature verification
+            await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
+
             logger.info("LMA standby sequence completed successfully")
 
         except Exception as e:
             logger.debug(f"LMA standby sequence failed with config: {test_config.to_dict()}")
+            # Local application imports
             from domain.exceptions.hardware_exceptions import (
                 HardwareConnectionException,
             )
@@ -556,6 +598,7 @@ class HardwareServiceFacade:
 
         except Exception as e:
             logger.debug(f"Force test sequence failed with config: {test_config.to_dict()}")
+            # Local application imports
             from domain.exceptions.hardware_exceptions import (
                 HardwareConnectionException,
             )
@@ -666,6 +709,7 @@ class HardwareServiceFacade:
                         # Final failure after all retries
                         error_msg = f"Temperature verification failed after {max_retries + 1} attempts - Final: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (>{test_config.temperature_tolerance:.1f}°C)"
                         logger.error(f"❌ {error_msg}")
+                        # Local application imports
                         from domain.exceptions.eol_exceptions import (
                             HardwareOperationError,
                         )
@@ -688,6 +732,7 @@ class HardwareServiceFacade:
                     # Final communication failure after all retries
                     error_msg = f"MCU temperature verification failed after {max_retries + 1} attempts due to communication errors: {str(e)}"
                     logger.error(error_msg)
+                    # Local application imports
                     from domain.exceptions.hardware_exceptions import (
                         HardwareConnectionException,
                     )
