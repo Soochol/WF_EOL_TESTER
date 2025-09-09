@@ -462,6 +462,7 @@ class HardwareServiceFacade:
             # Robot movements and cooling sequence after temperature verification
             await self._robot.move_absolute(
                 position=test_config.max_stroke,
+                axis_id=hardware_config.robot.axis_id,
                 velocity=test_config.velocity,
                 acceleration=test_config.acceleration,
                 deceleration=test_config.deceleration,
@@ -475,6 +476,7 @@ class HardwareServiceFacade:
             # Move robot back to initial position
             await self._robot.move_absolute(
                 position=test_config.initial_position,
+                axis_id=hardware_config.robot.axis_id,
                 velocity=test_config.velocity,
                 acceleration=test_config.acceleration,
                 deceleration=test_config.deceleration,
