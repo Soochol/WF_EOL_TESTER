@@ -596,7 +596,7 @@ class BS205LoadCell(LoadCellService):
             if sign == "-":
                 weight_value = -weight_value
 
-            logger.info(f"Successfully parsed BS205 weight: '{response}' → {weight_value} kg")
+            logger.info(f"\033[42mSuccessfully parsed BS205 weight: '{response}' → {weight_value} kg\033[0m")
 
             # BS205는 단위를 전송하지 않으므로 값만 반환
             return weight_value

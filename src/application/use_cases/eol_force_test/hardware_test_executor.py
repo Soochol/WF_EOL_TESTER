@@ -22,6 +22,23 @@ class HardwareTestExecutor:
     def __init__(self, hardware_services: HardwareServiceFacade):
         self._hardware_services = hardware_services
 
+    def _log_phase_separator(self, phase_name: str) -> None:
+        """
+        Log a visual box separator for major test phases
+
+        Args:
+            phase_name: Name of the test phase to display
+        """
+        # Create box with consistent width
+        box_width = max(40, len(phase_name) + 8)
+        top_line = "╭" + "─" * (box_width - 2) + "╮"
+        middle_line = f"│{phase_name:^{box_width - 2}}│"
+        bottom_line = "╰" + "─" * (box_width - 2) + "╯"
+        
+        logger.info(top_line)
+        logger.info(middle_line)
+        logger.info(bottom_line)
+
     def validate_configurations_loaded(
         self,
         test_config: TestConfiguration,
@@ -61,6 +78,7 @@ class HardwareTestExecutor:
         Raises:
             TestExecutionException: If hardware test execution fails
         """
+        self._log_phase_separator("STARTING HARDWARE TEST PHASES")
         logger.info(TestExecutionConstants.LOG_HARDWARE_TEST_START)
 
         try:

@@ -163,12 +163,30 @@ class HardwareServiceFacade:
         """
         return self._digital_io
 
+    def _log_phase_separator(self, phase_name: str) -> None:
+        """
+        Log a visual box separator for major test phases
+
+        Args:
+            phase_name: Name of the test phase to display
+        """
+        # Create box with consistent width
+        box_width = max(40, len(phase_name) + 8)
+        top_line = "╭" + "─" * (box_width - 2) + "╮"
+        middle_line = f"│{phase_name:^{box_width - 2}}│"
+        bottom_line = "╰" + "─" * (box_width - 2) + "╯"
+        
+        logger.info(top_line)
+        logger.info(middle_line)
+        logger.info(bottom_line)
+
     # ============================================================================
     # Connection Management (Delegated to HardwareConnectionManager)
     # ============================================================================
 
     async def connect_all_hardware(self, hardware_config: HardwareConfig) -> None:
         """Connect all required hardware"""
+        self._log_phase_separator("CONNECTING ALL HARDWARE")
         logger.info("Connecting hardware...")
 
         connection_tasks = []
@@ -225,6 +243,7 @@ class HardwareServiceFacade:
 
     async def shutdown_hardware(self, hardware_config: Optional[HardwareConfig] = None) -> None:
         """Safely shutdown all hardware"""
+        self._log_phase_separator("SHUTTING DOWN HARDWARE")
         logger.info("Shutting down hardware...")
 
         shutdown_tasks = []
@@ -269,6 +288,7 @@ class HardwareServiceFacade:
         hardware_config: HardwareConfig,
     ) -> None:
         """Initialize all hardware with configuration settings"""
+        self._log_phase_separator("INITIALIZING HARDWARE")
         logger.info("Initializing hardware with configuration...")
 
         try:
@@ -515,6 +535,7 @@ class HardwareServiceFacade:
         hardware_config: HardwareConfig,
     ) -> TestMeasurements:
         """Perform complete force test measurement sequence with temperature and position matrix"""
+        self._log_phase_separator("PERFORMING FORCE TEST SEQUENCE")
         logger.info("Starting force test sequence...")
 
         # Collect measurements in dictionary format
@@ -588,11 +609,17 @@ class HardwareServiceFacade:
                     logger.debug(
                         f"Robot returned to initial position: {test_config.initial_position}μm"
                     )
-
-                    # Complete standby transition with cooling
-                    logger.debug("Completing standby transition...")
+                    
+                    # Start standby cooling for temperature transition
+                    logger.debug("Starting standby cooling...")
+                    await self._mcu.start_standby_cooling()
+                    await asyncio.sleep(test_config.mcu_command_stabilization)
+                    logger.debug("MCU standby cooling started")
+                    
+                    # Verify standby temperature reached
+                    logger.debug("Verifying standby temperature...")
                     await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
-                    logger.debug("Standby transition completed successfully")
+                    logger.debug("Standby temperature verification completed")
 
             logger.info("Force test sequence completed successfully")
             # Create TestMeasurements object from collected dictionary
@@ -619,6 +646,7 @@ class HardwareServiceFacade:
         hardware_config: HardwareConfig,
     ) -> None:
         """Teardown test and return hardware to safe state"""
+        self._log_phase_separator("TEARING DOWN TEST")
         logger.info("Tearing down test...")
 
         try:
