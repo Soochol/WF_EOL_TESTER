@@ -473,9 +473,6 @@ class HardwareServiceFacade:
             logger.info(f"Fan speed set to {test_config.fan_speed}")
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
-            await self._mcu.set_cooling_temperature(test_config.standby_temperature)
-            logger.info(f"Cooling temperature set to {test_config.standby_temperature}°C")
-            await asyncio.sleep(test_config.mcu_command_stabilization)
 
             await self._mcu.start_standby_heating(
                 operating_temp=test_config.activation_temperature,
