@@ -5,11 +5,14 @@ Service layer that manages test result repository operations and data persistenc
 Uses Exception First principles for error handling.
 """
 
+# Standard library imports
 import csv
 from pathlib import Path
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
@@ -78,10 +81,9 @@ class RepositoryService:
             raw_data_dir = self._raw_data_dir
             raw_data_dir.mkdir(parents=True, exist_ok=True)
 
-            # Generate daily filename (date-based accumulation)
-            serial_number = test.dut.serial_number or "Unknown"
+            # Generate daily filename (date-based accumulation only)
             date_str = test.created_at.datetime.strftime("%Y%m%d")
-            filename = f"{serial_number}_{date_str}.csv"
+            filename = f"raw_measurements_{date_str}.csv"
             filepath = raw_data_dir / filename
 
             # Extract measurement data
@@ -108,7 +110,7 @@ class RepositoryService:
                 # Write test information header
                 csvfile.write("# Test Information\n")
                 csvfile.write(f"Test ID: {test.test_id}\n")
-                csvfile.write(f"DUT Serial: {serial_number}\n")
+                csvfile.write(f"DUT Serial: {test.dut.serial_number or 'Unknown'}\n")
                 csvfile.write(
                     f"Test Date: {test.created_at.datetime.strftime('%Y-%m-%d %H:%M:%S')}\n"
                 )
@@ -152,7 +154,8 @@ class RepositoryService:
                     writer.writerow(row)
 
             action = "created" if is_new_file else "appended to"
-            logger.info(f"Measurement raw data {action} daily file: {filepath}")
+            serial_num = test.dut.serial_number or "Unknown"
+            logger.info(f"Measurement raw data for {serial_num} {action} daily file: {filepath}")
 
         except Exception as e:
             logger.error(f"Failed to save measurement raw data: {e}")
@@ -202,9 +205,111 @@ class RepositoryService:
         )
         return None
 
+    def _validate_csv_data(self, data_row: list, expected_columns: int) -> list:
+        """
+        Validate and sanitize CSV data row
+
+        Args:
+            data_row: List of data values to validate
+            expected_columns: Expected number of columns
+
+        Returns:
+            Validated and sanitized data row
+        """
+        try:
+            # Ensure we have the right number of columns
+            if len(data_row) != expected_columns:
+                logger.warning(
+                    f"CSV row has {len(data_row)} columns, expected {expected_columns}. "
+                    f"Data: {data_row}"
+                )
+                # Pad with empty strings or truncate as needed
+                if len(data_row) < expected_columns:
+                    data_row.extend([""] * (expected_columns - len(data_row)))
+                else:
+                    data_row = data_row[:expected_columns]
+
+            # Sanitize each field
+            sanitized_row = []
+            for field in data_row:
+                if field is None:
+                    sanitized_field = ""
+                else:
+                    sanitized_field = str(field).strip()
+                    # Remove any problematic characters that might break CSV
+                    sanitized_field = sanitized_field.replace("\n", " ").replace("\r", " ")
+                    # Limit field length to prevent extremely long fields
+                    if len(sanitized_field) > 255:
+                        sanitized_field = sanitized_field[:252] + "..."
+                        logger.warning(f"Truncated long CSV field: {sanitized_field}")
+
+                sanitized_row.append(sanitized_field)
+
+            return sanitized_row
+
+        except Exception as e:
+            logger.error(f"Error validating CSV data: {e}")
+            # Return safe fallback
+            return ["Error"] * expected_columns
+
+    def _read_existing_csv_data(self, csv_file: Path) -> tuple[list, dict]:
+        """
+        Read existing CSV data and create a lookup for serial numbers
+
+        Args:
+            csv_file: Path to the CSV file
+
+        Returns:
+            Tuple of (all_rows, serial_to_row_index_map)
+        """
+        if not csv_file.exists():
+            return [], {}
+
+        try:
+            with open(csv_file, "r", newline="", encoding="utf-8") as csvfile:
+                reader = csv.reader(csvfile)
+                rows = list(reader)
+
+            if not rows:
+                return [], {}
+
+            # Create mapping of serial number to row index (skip header)
+            serial_map = {}
+            for i, row in enumerate(rows[1:], start=1):  # start=1 because we skip header
+                if len(row) >= 2:  # Ensure row has at least Test_ID and Serial_Number
+                    serial_number = row[1].strip()  # Serial_Number is column index 1
+                    if serial_number:
+                        serial_map[serial_number] = i
+
+            logger.debug(f"Read {len(rows)} rows from CSV, found {len(serial_map)} serial numbers")
+            return rows, serial_map
+
+        except Exception as e:
+            logger.error(f"Failed to read existing CSV data: {e}")
+            return [], {}
+
+    def _write_csv_data(self, csv_file: Path, rows: list) -> None:
+        """
+        Write all CSV data to file
+
+        Args:
+            csv_file: Path to the CSV file
+            rows: All rows including header to write
+        """
+        with open(csv_file, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(
+                csvfile,
+                delimiter=",",
+                quotechar='"',
+                quoting=csv.QUOTE_MINIMAL,
+                lineterminator="\n",
+            )
+            writer.writerows(rows)
+
     async def _update_test_summary(self, test: EOLTest) -> None:
         """
-        Update test summary file with basic test information
+        Update test summary file with basic test information.
+        Prevents duplicate entries for the same serial number by updating existing entries.
 
         Args:
             test: EOL test to add to summary
@@ -216,45 +321,68 @@ class RepositoryService:
 
             summary_file = test_results_dir / self._summary_filename
 
-            # Check if file exists and create header if needed
-            file_exists = summary_file.exists()
+            # Read existing data
+            existing_rows, serial_map = self._read_existing_csv_data(summary_file)
 
-            with open(summary_file, "a", newline="", encoding="utf-8") as csvfile:
-                writer = csv.writer(csvfile)
+            # Prepare header if needed
+            header = [
+                "Test_ID",
+                "Serial_Number",
+                "Test_Date",
+                "Status",
+                "Duration_sec",
+                "Operator_ID",
+            ]
 
-                # Write header if file is new
-                if not file_exists:
-                    header = [
-                        "Test_ID",
-                        "Serial_Number",
-                        "Test_Date",
-                        "Status",
-                        "Duration_sec",
-                        "Operator_ID",
-                    ]
-                    writer.writerow(header)
+            # If no existing data, start with header
+            if not existing_rows:
+                existing_rows = [header]
+                logger.debug(f"Creating new CSV file with header: {header}")
 
-                # Write test data
-                serial_number = test.dut.serial_number or "Unknown"
-                test_date = test.created_at.datetime.strftime("%Y-%m-%d %H:%M:%S")
-                status = "PASS" if test.test_result and test.test_result.is_passed() else "FAIL"
-                test_duration = test.get_duration()
-                duration = test_duration.seconds if test_duration else 0
+            # Prepare and validate test data
+            serial_number = str(test.dut.serial_number or "Unknown").strip()
+            test_date = test.created_at.datetime.strftime("%Y-%m-%d %H:%M:%S")
+            status = "PASS" if test.test_result and test.test_result.is_passed() else "FAIL"
+            test_duration = test.get_duration()
+            duration = f"{test_duration.seconds:.2f}" if test_duration else "0.00"
+            operator_id = str(test.operator_id).strip() if test.operator_id else "Unknown"
 
-                row = [
-                    str(test.test_id),
-                    serial_number,
-                    test_date,
-                    status,
-                    f"{duration:.2f}",
-                    str(test.operator_id),
-                ]
-                writer.writerow(row)
+            # Validate data fields don't contain problematic characters
+            test_id_str = str(test.test_id).strip()
+            if not test_id_str:
+                test_id_str = "Unknown"
 
-            logger.debug(f"Test summary updated for test {test.test_id}")
+            new_row = [
+                test_id_str,
+                serial_number,
+                test_date,
+                status,
+                duration,
+                operator_id,
+            ]
+
+            # Validate and sanitize the row data
+            validated_row = self._validate_csv_data(new_row, 6)
+
+            # Check if serial number already exists
+            if serial_number in serial_map:
+                row_index = serial_map[serial_number]
+                logger.info(f"Updating existing entry for serial number: {serial_number}")
+                existing_rows[row_index] = validated_row
+            else:
+                logger.info(f"Adding new entry for serial number: {serial_number}")
+                existing_rows.append(validated_row)
+
+            # Write all data back to file
+            self._write_csv_data(summary_file, existing_rows)
+
+            logger.debug(f"Test summary updated successfully for test {test.test_id}")
 
         except Exception as e:
             logger.error(f"Failed to update test summary: {e}")
+            logger.error(
+                f"Test data: ID={test.test_id}, DUT={test.dut.serial_number}, Operator={test.operator_id}"
+            )
             # Don't raise exception as this is supplementary to main save operation
 
     def get_all_repositories(self) -> dict:

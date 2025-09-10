@@ -180,7 +180,7 @@ class MockPower(PowerService):
             )
             actual_voltage = max(0, self._set_voltage + voltage_error)
 
-            logger.debug("Mock Power Supply voltage: %.3fV", actual_voltage)
+            logger.debug(f"Mock Power Supply voltage: {actual_voltage:.3f}V")
             return actual_voltage
 
         except Exception as e:
@@ -245,7 +245,7 @@ class MockPower(PowerService):
             )
             actual_current = max(0, self._set_current + current_error)
 
-            logger.debug("Mock Power Supply current: %.3fA", actual_current)
+            logger.debug(f"Mock Power Supply current: {actual_current:.3f}A")
             return actual_current
 
         except Exception as e:
@@ -321,7 +321,7 @@ class MockPower(PowerService):
     async def get_device_identity(self) -> Optional[str]:
         """
         Get device identification string (mock)
-        
+
         Returns:
             Mock device identification string
         """
@@ -479,8 +479,8 @@ class MockPower(PowerService):
 
         try:
             await asyncio.sleep(self._response_delay)
-            
-            logger.debug("Mock Power Supply current limit: %.3fA", self._set_current)
+
+            logger.debug(f"Mock Power Supply current limit: {self._set_current:.3f}A")
             return self._set_current
 
         except Exception as e:
@@ -490,13 +490,13 @@ class MockPower(PowerService):
     async def get_all_measurements(self) -> Dict[str, Any]:
         """
         Get all measurements at once (mock simulation)
-        
+
         Simulates simultaneous voltage and current measurement for testing purposes.
         Includes small random variations to simulate real hardware behavior.
-        
+
         Returns:
             Dictionary containing:
-            - 'voltage': Simulated voltage in volts  
+            - 'voltage': Simulated voltage in volts
             - 'current': Simulated current in amperes
             - 'power': Calculated power in watts (V × A)
 
@@ -513,10 +513,10 @@ class MockPower(PowerService):
         try:
             # Simulate communication delay (faster than individual calls)
             await asyncio.sleep(self._response_delay * 0.5)  # 50% of individual call delay
-            
+
             # Simulate voltage with small noise
             voltage = self._voltage + random.uniform(-self._voltage_noise, self._voltage_noise)
-            
+
             # Simulate current based on output state and some randomness
             if self._output_enabled:
                 # When output is enabled, simulate actual current draw
@@ -524,20 +524,18 @@ class MockPower(PowerService):
             else:
                 # When output is disabled, very small leakage current
                 base_current = random.uniform(0.0, 0.01)
-                
+
             current = base_current + random.uniform(-self._current_accuracy, self._current_accuracy)
             current = max(0.0, current)  # Ensure non-negative
-            
+
             # Calculate power
             power = voltage * current
-            
-            logger.debug(f"Mock all measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
-            
-            return {
-                'voltage': voltage,
-                'current': current, 
-                'power': power
-            }
+
+            logger.debug(
+                f"Mock all measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W"
+            )
+
+            return {"voltage": voltage, "current": current, "power": power}
 
         except Exception as e:
             logger.error(f"Failed to get mock Power Supply measurements: {e}")

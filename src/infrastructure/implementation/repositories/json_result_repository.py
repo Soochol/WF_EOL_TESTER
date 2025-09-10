@@ -64,7 +64,7 @@ class JsonResultRepository(TestResultRepository):
         if self._auto_save:
             await self._save_to_file(test_id, test_dict)
 
-        logger.debug("Test %s saved to repository", test_id)
+        logger.debug(f"Test {test_id} saved to repository")
         return test
 
     async def update(self, test: EOLTest) -> EOLTest:
@@ -125,7 +125,7 @@ class JsonResultRepository(TestResultRepository):
         # Sort by creation time (newest first)
         tests.sort(key=lambda t: t.created_at, reverse=True)
 
-        logger.debug("Found %d tests for DUT %s", len(tests), dut_id)
+        logger.debug(f"Found {len(tests)} tests for DUT {dut_id}")
         return tests
 
     async def delete(self, test_id: str) -> None:
@@ -153,12 +153,12 @@ class JsonResultRepository(TestResultRepository):
             if file_path.exists():
                 file_path.unlink()
 
-            logger.debug("Test %s deleted from repository", test_id)
+            logger.debug(f"Test {test_id} deleted from repository")
 
         except ConfigurationNotFoundError:
             raise
         except Exception as e:
-            logger.error("Failed to delete test %s: %s", test_id, e)
+            logger.error(f"Failed to delete test {test_id}: {e}")
             raise RepositoryAccessError(
                 "delete",
                 f"Failed to delete test {test_id}: {str(e)}",
@@ -171,8 +171,8 @@ class JsonResultRepository(TestResultRepository):
             # Use EOLTest's built-in to_dict method for complete serialization
             return test.to_dict()
         except Exception as e:
-            logger.error("Failed to convert EOLTest to dict: %s", e)
-            logger.debug("Test: %s", test)
+            logger.error(f"Failed to convert EOLTest to dict: {e}")
+            logger.debug(f"Test: {test}")
             raise
 
     async def _dict_to_test(self, test_dict: Dict[str, Any]) -> EOLTest:
@@ -181,8 +181,8 @@ class JsonResultRepository(TestResultRepository):
             # Use EOLTest's from_dict class method for complete entity restoration
             return EOLTest.from_dict(test_dict)
         except Exception as e:
-            logger.error("Failed to convert dict to EOLTest: %s", e)
-            logger.debug("Test dict: %s", test_dict)
+            logger.error(f"Failed to convert dict to EOLTest: {e}")
+            logger.debug(f"Test dict: {test_dict}")
             raise
 
     async def _save_to_file(self, test_id: str, test_dict: Dict[str, Any]) -> None:

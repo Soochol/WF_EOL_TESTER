@@ -59,14 +59,16 @@ class OdaPower(PowerService):
             # Create TCP connection with config values
             self._tcp_comm = TCPCommunication(self._host, self._port, self._timeout)
 
-            logger.info(f"Connecting to ODA Power Supply at {self._host}:{self._port} (Channel: {self._channel})")
+            logger.info(
+                f"Connecting to ODA Power Supply at {self._host}:{self._port} (Channel: {self._channel})"
+            )
 
             await self._tcp_comm.connect()
 
             # 연결 테스트 및 초기화
             response = await self._send_command("*IDN?")
             logger.info(f"*IDN? response received: {response!r}")  # 상세 응답 로깅
-            
+
             if response and len(response.strip()) > 0:
                 self._is_connected = True
                 self._device_identity = response  # Store device identity for CLI display
@@ -185,7 +187,7 @@ class OdaPower(PowerService):
                 )
 
             voltage = float(voltage_response.strip())
-            logger.debug("ODA voltage measurement: %.2fV", voltage)
+            logger.debug(f"ODA voltage measurement: {voltage:.2f}V")
             return voltage
 
         except ValueError as e:
@@ -296,7 +298,9 @@ class OdaPower(PowerService):
 
         # Return cached state directly to avoid unnecessary hardware queries during monitoring
         # Hardware state is synchronized when enable_output()/disable_output() is called
-        logger.debug(f"ODA output state (cached): {'ENABLED' if self._output_enabled else 'DISABLED'}")
+        logger.debug(
+            f"ODA output state (cached): {'ENABLED' if self._output_enabled else 'DISABLED'}"
+        )
         return self._output_enabled
 
     async def get_device_identity(self) -> Optional[str]:
@@ -339,7 +343,9 @@ class OdaPower(PowerService):
                 status["current_current"] = None
                 status["output_enabled"] = False  # Assume safe state (output disabled)
                 status["last_error"] = "Status check cancelled during shutdown"
-                logger.debug("Power status check cancelled during shutdown - returning safe defaults")
+                logger.debug(
+                    "Power status check cancelled during shutdown - returning safe defaults"
+                )
             except Exception as e:
                 status["current_voltage"] = None
                 status["current_current"] = None
@@ -365,7 +371,9 @@ class OdaPower(PowerService):
             raise HardwareConnectionError("oda_power", "TCP connection not available")
 
         # MyPy type narrowing: assert that _tcp_comm is not None after connection check
-        assert self._tcp_comm is not None, "TCP communication should be available after connection check"
+        assert (
+            self._tcp_comm is not None
+        ), "TCP communication should be available after connection check"
 
         try:
             # 명령 전송 및 응답 수신 (SCPI 형식)
@@ -459,7 +467,7 @@ class OdaPower(PowerService):
                 )
 
             current = float(current_response.strip())
-            logger.debug("ODA current measurement: %.2fA", current)
+            logger.debug(f"ODA current measurement: {current:.2f}A")
             return current
 
         except ValueError as e:
@@ -499,7 +507,7 @@ class OdaPower(PowerService):
                 )
 
             current_limit = float(limit_response.strip())
-            logger.debug("ODA current limit: %.2fA", current_limit)
+            logger.debug(f"ODA current limit: {current_limit:.2f}A")
             return current_limit
 
         except ValueError as e:
@@ -516,10 +524,10 @@ class OdaPower(PowerService):
     async def get_all_measurements(self) -> Dict[str, float]:
         """
         Get all measurements at once using MEAS:ALL? command
-        
+
         Uses SCPI MEAS:ALL? command to retrieve voltage and current simultaneously,
         reducing communication overhead and ensuring consistent measurement timing.
-        
+
         Returns:
             Dictionary containing:
             - 'voltage': Output voltage in volts
@@ -536,8 +544,10 @@ class OdaPower(PowerService):
         try:
             # Check power output status first
             output_enabled = await self.is_output_enabled()
-            logger.debug(f"Power output status before measurement: {'ENABLED' if output_enabled else 'DISABLED'}")
-            
+            logger.debug(
+                f"Power output status before measurement: {'ENABLED' if output_enabled else 'DISABLED'}"
+            )
+
             # Send MEAS:ALL? command for simultaneous voltage and current measurement
             logger.debug("Sending MEAS:ALL? command for simultaneous measurements")
             response = await self._send_command("MEAS:ALL?")
@@ -546,24 +556,24 @@ class OdaPower(PowerService):
             if response is None:
                 logger.error("MEAS:ALL? command returned None response")
                 raise HardwareOperationError(
-                    "oda_power",
-                    "get_all_measurements", 
-                    "No response from MEAS:ALL? command"
+                    "oda_power", "get_all_measurements", "No response from MEAS:ALL? command"
                 )
 
             # Parse response format: "voltage,current" e.g. "10.0000,1.0000"
             response_clean = response.strip()
             logger.debug(f"Cleaned response: '{response_clean}' (length: {len(response_clean)})")
-            
-            values = response_clean.split(',')
+
+            values = response_clean.split(",")
             logger.debug(f"Split values: {values} (count: {len(values)})")
-            
+
             if len(values) != 2:
-                logger.error(f"Invalid MEAS:ALL? response format. Expected 2 values, got {len(values)}")
+                logger.error(
+                    f"Invalid MEAS:ALL? response format. Expected 2 values, got {len(values)}"
+                )
                 raise HardwareOperationError(
                     "oda_power",
                     "get_all_measurements",
-                    f"Unexpected MEAS:ALL? response format: '{response}'. Expected 'voltage,current'"
+                    f"Unexpected MEAS:ALL? response format: '{response}'. Expected 'voltage,current'",
                 )
 
             try:
@@ -573,59 +583,61 @@ class OdaPower(PowerService):
             except (ValueError, IndexError) as e:
                 logger.error(f"Failed to parse voltage/current values: {values}, error: {e}")
                 raise
-                
+
             power = voltage * current
 
-            logger.info(f"⚡ MEAS:ALL? → \033[32mV:{voltage:.4f}V\033[0m \033[33mI:{current:.4f}A\033[0m \033[31mP:{power:.4f}W\033[0m")
+            logger.info(
+                f"⚡ MEAS:ALL? → \033[32mV:{voltage:.4f}V\033[0m \033[33mI:{current:.4f}A\033[0m \033[31mP:{power:.4f}W\033[0m"
+            )
 
-            return {
-                'voltage': voltage,
-                'current': current,
-                'power': power
-            }
+            return {"voltage": voltage, "current": current, "power": power}
 
         except ValueError as e:
-            logger.error(f"Failed to parse MEAS:ALL? response, trying fallback individual measurements: {e}")
+            logger.error(
+                f"Failed to parse MEAS:ALL? response, trying fallback individual measurements: {e}"
+            )
             return await self._get_measurements_fallback()
         except HardwareOperationError as e:
             logger.error(f"MEAS:ALL? command failed, trying fallback individual measurements: {e}")
             return await self._get_measurements_fallback()
         except TCPError as e:
-            logger.error(f"TCP error during MEAS:ALL?, trying fallback individual measurements: {e}")
+            logger.error(
+                f"TCP error during MEAS:ALL?, trying fallback individual measurements: {e}"
+            )
             return await self._get_measurements_fallback()
         except Exception as e:
-            logger.error(f"Unexpected error during MEAS:ALL?, trying fallback individual measurements: {e}")
+            logger.error(
+                f"Unexpected error during MEAS:ALL?, trying fallback individual measurements: {e}"
+            )
             return await self._get_measurements_fallback()
 
     async def _get_measurements_fallback(self) -> Dict[str, float]:
         """
         Fallback method to get measurements using individual commands
-        
+
         Used when MEAS:ALL? command fails or returns invalid response.
         Makes separate calls for voltage and current measurements.
-        
+
         Returns:
             Dictionary containing voltage, current, and calculated power
-            
+
         Raises:
             HardwareOperationError: If individual measurements also fail
         """
         try:
             logger.info("Using fallback individual measurements (MEAS:VOLT? + MEAS:CURR?)")
-            
+
             # Get voltage and current separately
             voltage = await self.get_voltage()
             current = await self.get_current()
             power = voltage * current
-            
-            logger.info(f"Fallback measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W")
-            
-            return {
-                'voltage': voltage,
-                'current': current,
-                'power': power
-            }
-            
+
+            logger.info(
+                f"Fallback measurements - Voltage: {voltage:.4f}V, Current: {current:.4f}A, Power: {power:.4f}W"
+            )
+
+            return {"voltage": voltage, "current": current, "power": power}
+
         except Exception as e:
             logger.error(f"Fallback individual measurements also failed: {e}")
             raise HardwareOperationError("oda_power", "_get_measurements_fallback", str(e)) from e

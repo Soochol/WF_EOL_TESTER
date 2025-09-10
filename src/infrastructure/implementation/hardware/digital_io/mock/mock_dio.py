@@ -70,7 +70,7 @@ class MockDIO(DigitalIOService):
         for i in range(32):
             self._input_states[i] = False  # All inputs default to LOW
             self._output_states[i] = False  # All outputs default to LOW
-            
+
         # Override with config if provided
         initial_input_states = config.get("initial_input_states", {})
         for channel, state in initial_input_states.items():
@@ -176,9 +176,7 @@ class MockDIO(DigitalIOService):
         # Validate output channel range
         if not (0 <= channel < 32):
             raise HardwareOperationError(
-                "mock_dio", 
-                "read_output", 
-                f"Output channel {channel} out of range [0-31]"
+                "mock_dio", "read_output", f"Output channel {channel} out of range [0-31]"
             )
 
         try:
@@ -235,7 +233,6 @@ class MockDIO(DigitalIOService):
         """
         return self._is_connected
 
-
     async def write_output(self, channel: int, level: bool) -> bool:
         """
         Write digital output to specified channel
@@ -257,9 +254,7 @@ class MockDIO(DigitalIOService):
         # Validate output channel range
         if not (0 <= channel < 32):
             raise HardwareOperationError(
-                "mock_dio", 
-                "write_output", 
-                f"Output channel {channel} out of range [0-31]"
+                "mock_dio", "write_output", f"Output channel {channel} out of range [0-31]"
             )
 
         try:
@@ -278,7 +273,6 @@ class MockDIO(DigitalIOService):
         except Exception as e:
             logger.error(f"Failed to write output channel {channel}: {e}")
             raise HardwareOperationError("mock_dio", "write_output", str(e)) from e
-
 
     async def read_multiple_inputs(self, pins: List[int]) -> Dict[int, bool]:
         """
@@ -325,12 +319,11 @@ class MockDIO(DigitalIOService):
                 logger.error(f"Mock: Failed to write pin {pin}: {e}")
 
         all_successful = success_count == len(pin_values)
-        
+
         logger.debug(
-            "Mock: Write multiple outputs: %d/%d pins successful",
-            success_count, len(pin_values)
+            "Mock: Write multiple outputs: %d/%d pins successful", success_count, len(pin_values)
         )
-        
+
         return all_successful
 
     async def read_all_inputs(self) -> List[bool]:
@@ -365,7 +358,6 @@ class MockDIO(DigitalIOService):
                 results.append(False)
         return results
 
-
     async def reset_all_outputs(self) -> bool:
         """
         모든 출력을 LOW로 리셋
@@ -377,13 +369,13 @@ class MockDIO(DigitalIOService):
             # Reset all 32 output channels to LOW
             reset_values = {channel: False for channel in range(32)}
             success = await self.write_multiple_outputs(reset_values)
-            
+
             if success:
                 logger.info("Mock: All outputs reset to LOW")
             return success
 
         except Exception as e:
-            logger.error("Failed to reset all outputs: %s", e)
+            logger.error(f"Failed to reset all outputs: {e}")
             raise HardwareOperationError("mock_dio", "reset_all_outputs", str(e)) from e
 
     async def get_status(self) -> Dict[str, Any]:
@@ -406,8 +398,12 @@ class MockDIO(DigitalIOService):
                 "read_operations": self._read_count,
                 "write_operations": self._write_count,
             },
-            "current_input_states": {f"input_{ch}": state for ch, state in self._input_states.items()},
-            "current_output_states": {f"output_{ch}": state for ch, state in self._output_states.items()},
+            "current_input_states": {
+                f"input_{ch}": state for ch, state in self._input_states.items()
+            },
+            "current_output_states": {
+                f"output_{ch}": state for ch, state in self._output_states.items()
+            },
         }
 
         return status
@@ -465,6 +461,3 @@ class MockDIO(DigitalIOService):
             "Mock: Random inputs generated for %d channels",
             len(channels),
         )
-
-
-
