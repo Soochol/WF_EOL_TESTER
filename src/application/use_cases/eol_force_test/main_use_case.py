@@ -455,7 +455,7 @@ class EOLForceTestUseCase(BaseUseCase):
             cycle_dut_info = DUTCommandInfo(
                 dut_id=f"{command.dut_info.dut_id}_cycle_{cycle:03d}",
                 model_number=command.dut_info.model_number,
-                serial_number=f"{command.dut_info.serial_number}_C{cycle:03d}",
+                serial_number=command.dut_info.serial_number,  # Use original serial number as entered by user
                 manufacturer=command.dut_info.manufacturer,
             )
 
