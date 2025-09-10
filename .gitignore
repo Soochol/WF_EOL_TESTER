@@ -56,3 +56,8 @@ venv_disabled/
 
 # uv
 .uv_cache/
+
+# Build and distribution
+build/
+dist/
+*.spec

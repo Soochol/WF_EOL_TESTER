@@ -292,6 +292,10 @@ class EOLForceTestUseCase(BaseUseCase):
                     # If KeyboardInterrupt occurs during cleanup, prioritize emergency stop
                     self._keyboard_interrupt_raised = True
                     raise
+                except Exception as cleanup_error:
+                    # If standard cleanup fails, ensure power is still turned off for safety
+                    logger.warning("Standard cleanup failed: {}, attempting emergency power off", cleanup_error)
+                    await self._emergency_power_off()
 
     def _calculate_execution_duration(self, start_time: float) -> TestDuration:
         """
@@ -408,6 +412,25 @@ class EOLForceTestUseCase(BaseUseCase):
             # Hardware cleanup errors should never fail the test
             test_context = f" for test entity {test_entity.test_id}" if test_entity else ""
             logger.warning("Hardware cleanup failed{}: {}", test_context, cleanup_error)
+
+    async def _emergency_power_off(self) -> None:
+        """
+        Emergency power off when standard cleanup fails
+        
+        Attempts to disable power output regardless of configuration state
+        for safety purposes. This is a last resort when normal teardown fails.
+        """
+        try:
+            # Direct power service access for emergency shutdown
+            power_service = self._hardware_services.power_service
+            if power_service and await power_service.is_connected():
+                await power_service.disable_output()
+                logger.info("Emergency power off completed successfully")
+            else:
+                logger.warning("Power service not available for emergency power off")
+        except Exception as emergency_error:
+            # Even emergency power off failed - log critical error but don't raise
+            logger.critical("Emergency power off failed: {}", emergency_error)
 
     async def _execute_repeated(
         self, command: EOLForceTestInput, repeat_count: int

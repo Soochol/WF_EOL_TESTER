@@ -54,6 +54,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self._hardware_services = hardware_services
         self._configuration_service = configuration_service
         self._hardware_setup = HardwareSetupService(hardware_services)
+        
+        # Emergency stop and interruption handling
+        self._keyboard_interrupt_raised = False
 
     async def _execute_implementation(
         self, input_data: HeatingCoolingTimeTestInput, context
@@ -71,108 +74,125 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         logger.info(
             f"Test parameters - Operator: {input_data.operator_id}, Cycles: {input_data.repeat_count}"
         )
+        
+        # Reset KeyboardInterrupt flag for each execution
+        self._keyboard_interrupt_raised = False
 
-        # 1. Load configurations
-        logger.info("Loading configurations...")
-        await self._configuration_service.load_hardware_config()  # Validate config exists
-        hc_config = await self._configuration_service.load_heating_cooling_config()
+        try:
+            # 1. Load configurations
+            logger.info("Loading configurations...")
+            await self._configuration_service.load_hardware_config()  # Validate config exists
+            hc_config = await self._configuration_service.load_heating_cooling_config()
 
-        # 2. Connect and setup hardware
-        await self._hardware_setup.connect_hardware()
-        await self._hardware_setup.setup_power_supply(
-            hc_config.voltage, hc_config.current, hc_config.poweron_stabilization
-        )
-        await self._hardware_setup.setup_mcu(hc_config)
-        await self._hardware_setup.initialize_temperature(hc_config)
-
-        # 3. Execute test cycles
-        test_executor = TestCycleExecutor(
-            self._hardware_services, self._hardware_setup.power_monitor
-        )
-
-        # Determine actual repeat count
-        actual_repeat_count = (
-            hc_config.repeat_count if hc_config.repeat_count != 1 else input_data.repeat_count
-        )
-        logger.info(
-            f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, input: {input_data.repeat_count})"
-        )
-
-        cycle_results = await test_executor.execute_test_cycles(hc_config, actual_repeat_count)
-
-        # 4. Process results based on execution success
-        timing_data = cycle_results["timing_data"]
-        power_data = cycle_results["power_data"]
-        execution_success = cycle_results.get("success", True)
-        completed_cycles = cycle_results.get("completed_cycles", 0)
-        execution_error = cycle_results.get("error_message")
-
-        heating_results = timing_data["heating_results"]
-        cooling_results = timing_data["cooling_results"]
-
-        # 5. Calculate statistics (works with partial data too)
-        statistics = StatisticsCalculator.calculate_statistics(
-            heating_results, cooling_results, power_data, completed_cycles
-        )
-
-        # Log summary
-        StatisticsCalculator.log_summary(statistics)
-
-        # 6. Create base measurements structure
-        measurements = {
-            "configuration": {
-                "activation_temperature": hc_config.activation_temperature,
-                "standby_temperature": hc_config.standby_temperature,
-                "voltage": hc_config.voltage,
-                "current": hc_config.current,
-                "fan_speed": hc_config.fan_speed,
-                "repeat_count": actual_repeat_count,
-                "heating_wait_time": hc_config.heating_wait_time,
-                "cooling_wait_time": hc_config.cooling_wait_time,
-                "stabilization_wait_time": hc_config.stabilization_wait_time,
-                "power_monitoring_interval": hc_config.power_monitoring_interval,
-                "power_monitoring_enabled": hc_config.power_monitoring_enabled,
-            },
-            "heating_measurements": heating_results,
-            "cooling_measurements": cooling_results,
-            "full_cycle_power_data": power_data,
-            "statistics": statistics,
-        }
-
-        # 7. Handle success vs partial results
-        if execution_success:
-            # Complete success
-            return HeatingCoolingTimeTestResult(
-                test_status=TestStatus.COMPLETED,
-                is_success=True,
-                measurements=measurements,
-                error_message=None,
+            # 2. Connect and setup hardware
+            await self._hardware_setup.connect_hardware()
+            await self._hardware_setup.setup_power_supply(
+                hc_config.voltage, hc_config.current, hc_config.poweron_stabilization
             )
-        else:
-            # Partial success - some cycles completed before error
-            if completed_cycles > 0:
-                logger.warning(
-                    f"Test partially completed: {completed_cycles}/{actual_repeat_count} cycles"
-                )
+            await self._hardware_setup.setup_mcu(hc_config)
+            await self._hardware_setup.initialize_temperature(hc_config)
 
-                # Add partial execution info to measurements
-                measurements["execution_info"] = {
-                    "partial_execution": True,
-                    "completed_cycles": completed_cycles,
-                    "requested_cycles": actual_repeat_count,
-                    "completion_percentage": (completed_cycles / actual_repeat_count) * 100,
-                    "failure_reason": execution_error,
-                }
+            # 3. Execute test cycles
+            test_executor = TestCycleExecutor(
+                self._hardware_services, self._hardware_setup.power_monitor
+            )
 
+            # Determine actual repeat count
+            actual_repeat_count = (
+                hc_config.repeat_count if hc_config.repeat_count != 1 else input_data.repeat_count
+            )
+            logger.info(
+                f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, input: {input_data.repeat_count})"
+            )
+
+            cycle_results = await test_executor.execute_test_cycles(hc_config, actual_repeat_count)
+
+            # 4. Process results based on execution success
+            timing_data = cycle_results["timing_data"]
+            power_data = cycle_results["power_data"]
+            execution_success = cycle_results.get("success", True)
+            completed_cycles = cycle_results.get("completed_cycles", 0)
+            execution_error = cycle_results.get("error_message")
+
+            heating_results = timing_data["heating_results"]
+            cooling_results = timing_data["cooling_results"]
+
+            # 5. Calculate statistics (works with partial data too)
+            statistics = StatisticsCalculator.calculate_statistics(
+                heating_results, cooling_results, power_data, completed_cycles
+            )
+
+            # Log summary
+            StatisticsCalculator.log_summary(statistics)
+
+            # 6. Create base measurements structure
+            measurements = {
+                "configuration": {
+                    "activation_temperature": hc_config.activation_temperature,
+                    "standby_temperature": hc_config.standby_temperature,
+                    "voltage": hc_config.voltage,
+                    "current": hc_config.current,
+                    "fan_speed": hc_config.fan_speed,
+                    "repeat_count": actual_repeat_count,
+                    "heating_wait_time": hc_config.heating_wait_time,
+                    "cooling_wait_time": hc_config.cooling_wait_time,
+                    "stabilization_wait_time": hc_config.stabilization_wait_time,
+                    "power_monitoring_interval": hc_config.power_monitoring_interval,
+                    "power_monitoring_enabled": hc_config.power_monitoring_enabled,
+                },
+                "heating_measurements": heating_results,
+                "cooling_measurements": cooling_results,
+                "full_cycle_power_data": power_data,
+                "statistics": statistics,
+            }
+
+            # 7. Handle success vs partial results
+            if execution_success:
+                # Complete success
                 return HeatingCoolingTimeTestResult(
-                    test_status=TestStatus.COMPLETED,  # Partial success still provides data
-                    is_success=False,  # But mark as failed due to incomplete execution
+                    test_status=TestStatus.COMPLETED,
+                    is_success=True,
                     measurements=measurements,
-                    error_message=f"Partial execution: {completed_cycles}/{actual_repeat_count} cycles completed. Error: {execution_error}",
+                    error_message=None,
                 )
             else:
-                # Complete failure - no cycles completed, delegate to error handler
-                raise RuntimeError(execution_error)
+                # Partial success - some cycles completed before error
+                if completed_cycles > 0:
+                    logger.warning(
+                        f"Test partially completed: {completed_cycles}/{actual_repeat_count} cycles"
+                    )
+
+                    # Add partial execution info to measurements
+                    measurements["execution_info"] = {
+                        "partial_execution": True,
+                        "completed_cycles": completed_cycles,
+                        "requested_cycles": actual_repeat_count,
+                        "completion_percentage": (completed_cycles / actual_repeat_count) * 100,
+                        "failure_reason": execution_error,
+                    }
+
+                    return HeatingCoolingTimeTestResult(
+                        test_status=TestStatus.COMPLETED,  # Partial success still provides data
+                        is_success=False,  # But mark as failed due to incomplete execution
+                        measurements=measurements,
+                        error_message=f"Partial execution: {completed_cycles}/{actual_repeat_count} cycles completed. Error: {execution_error}",
+                    )
+                else:
+                    # Complete failure - no cycles completed, delegate to error handler
+                    raise RuntimeError(execution_error)
+        except KeyboardInterrupt:
+            # Handle KeyboardInterrupt with emergency stop priority
+            # Set flag to prevent normal cleanup in finally block
+            self._keyboard_interrupt_raised = True
+            # Don't perform normal cleanup - let emergency stop handle hardware safety
+            # Re-raise to allow emergency stop service to execute
+            raise
+        except asyncio.CancelledError:
+            # Handle CancelledError (from asyncio.sleep interruptions) as KeyboardInterrupt
+            # Set flag to prevent normal cleanup in finally block
+            self._keyboard_interrupt_raised = True
+            # Convert CancelledError back to KeyboardInterrupt for emergency stop service
+            raise KeyboardInterrupt("Test cancelled by user interrupt") from None
 
     def _create_failure_result(
         self,
@@ -251,4 +271,15 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             # Cast to the correct type since BaseUseCase.execute returns BaseResult
             return result  # type: ignore
         finally:
-            await self.cleanup()
+            # Skip cleanup entirely if KeyboardInterrupt was raised - let Emergency Stop handle hardware safety
+            if self._keyboard_interrupt_raised:
+                # Skip cleanup - Emergency Stop Service will handle hardware safety
+                logger.info("Skipping cleanup due to keyboard interrupt - emergency stop will handle hardware safety")
+            else:
+                # Normal cleanup for successful/failed tests (not interrupted)
+                try:
+                    await self.cleanup()
+                except KeyboardInterrupt:
+                    # If KeyboardInterrupt occurs during cleanup, prioritize emergency stop
+                    self._keyboard_interrupt_raised = True
+                    raise
