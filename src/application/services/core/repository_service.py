@@ -319,8 +319,8 @@ class RepositoryService:
 
         except Exception as e:
             logger.error(f"Error validating CSV data: {e}")
-            # Return safe fallback with proper column count
-            return ["Error", "Unknown", "1970-01-01 00:00:00", "FAIL", "0.00", "Unknown"]
+            # Return safe fallback with proper column count (7 columns)
+            return ["Error", "Unknown", "1970-01-01", "00:00:00", "FAIL", "0.00", "Unknown"]
 
     def _read_existing_csv_rows(self, csv_file: Path) -> list:
         """
@@ -397,6 +397,7 @@ class RepositoryService:
                 "Test_ID",
                 "Serial_Number",
                 "Test_Date",
+                "Test_Time",
                 "Status",
                 "Duration_sec",
                 "Operator_ID",
@@ -408,11 +409,12 @@ class RepositoryService:
                 logger.debug(f"Creating new CSV file with header: {header}")
 
             # Prepare and validate test data
-            full_serial = str(test.dut.serial_number or "Unknown").strip()
-            # Extract short serial number (DEFAULT001_C001 -> C001)
-            serial_number = self._extract_serial_number(full_serial)
+            # Use original serial number as entered by user (no extraction)
+            serial_number = str(test.dut.serial_number or "Unknown").strip()
 
-            test_date = test.created_at.datetime.strftime("%Y-%m-%d %H:%M:%S")
+            # Separate date and time for proper CSV column alignment
+            test_date = test.created_at.datetime.strftime("%Y-%m-%d")
+            test_time = test.created_at.datetime.strftime("%H:%M:%S")
             status = "PASS" if test.test_result and test.test_result.is_passed() else "FAIL"
             test_duration = test.get_duration()
             duration = f"{test_duration.seconds:.2f}" if test_duration else "0.00"
@@ -427,13 +429,14 @@ class RepositoryService:
                 test_id_str,
                 serial_number,
                 test_date,
+                test_time,
                 status,
                 duration,
                 operator_id,
             ]
 
             # Validate and sanitize the row data
-            validated_row = self._validate_csv_data(new_row, 6)
+            validated_row = self._validate_csv_data(new_row, 7)
 
             # Always add as new row - each test is unique by Test_ID
             logger.info(f"Adding new test entry: {test_id_str} for serial {serial_number}")
