@@ -6,6 +6,7 @@ Previously 786 lines, now significantly reduced by delegating to specialized ser
 """
 
 # Standard library imports
+# Standard library imports
 # Third-party imports
 import asyncio
 from typing import TYPE_CHECKING, Dict, Optional, cast
@@ -18,6 +19,7 @@ from application.interfaces.hardware.loadcell import LoadCellService
 from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.power import PowerService
 from application.interfaces.hardware.robot import RobotService
+from domain.enums.robot_state import RobotState
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
@@ -82,6 +84,9 @@ class HardwareServiceFacade:
 
         # Robot homing state management (from initialization service)
         self._robot_homed = False
+
+        # Robot position state tracking
+        self._robot_state = RobotState.UNKNOWN
 
     # ============================================================================
     # Service Property Accessors (Backward Compatibility)
@@ -356,10 +361,12 @@ class HardwareServiceFacade:
         Args:
             axis_id: Robot axis ID to home
         """
-        if not self._robot_homed:
+        if not self._robot_homed or self._robot_state != RobotState.HOME:
             logger.info("Performing initial robot homing...")
+            self._robot_state = RobotState.MOVING
             await self._robot.home_axis(axis_id)
             self._robot_homed = True
+            self._robot_state = RobotState.HOME
             logger.info("Initial robot homing completed")
         else:
             logger.debug("Robot already homed, skipping homing")
@@ -483,6 +490,7 @@ class HardwareServiceFacade:
             await self.verify_mcu_temperature(test_config.activation_temperature, test_config)
 
             # Robot movements and cooling sequence after temperature verification
+            self._robot_state = RobotState.MOVING
             await self._robot.move_absolute(
                 position=test_config.max_stroke,
                 axis_id=hardware_config.robot.axis_id,
@@ -491,12 +499,14 @@ class HardwareServiceFacade:
                 deceleration=test_config.deceleration,
             )
             await asyncio.sleep(test_config.robot_move_stabilization)
+            self._robot_state = RobotState.MAX_STROKE
             logger.info(f"Robot moved to max stroke position: {test_config.max_stroke}μm")
 
             # Delay for stabilization
             await asyncio.sleep(test_config.robot_standby_stabilization)
 
             # Move robot back to initial position
+            self._robot_state = RobotState.MOVING
             await self._robot.move_absolute(
                 position=test_config.initial_position,
                 axis_id=hardware_config.robot.axis_id,
@@ -505,6 +515,7 @@ class HardwareServiceFacade:
                 deceleration=test_config.deceleration,
             )
             await asyncio.sleep(test_config.robot_move_stabilization)
+            self._robot_state = RobotState.INITIAL_POSITION
             logger.info(f"Robot moved to initial position: {test_config.initial_position}μm")
 
             # Start standby cooling
@@ -576,6 +587,7 @@ class HardwareServiceFacade:
                     )
 
                     # Move robot to measurement position
+                    self._robot_state = RobotState.MOVING
                     await self._robot.move_absolute(
                         position=position,
                         axis_id=hardware_config.robot.axis_id,
@@ -584,6 +596,7 @@ class HardwareServiceFacade:
                         deceleration=test_config.deceleration,
                     )
                     await asyncio.sleep(test_config.robot_move_stabilization)
+                    self._robot_state = RobotState.MEASUREMENT_POSITION
 
                     # Take force measurement
                     force = await self._loadcell.read_force()
@@ -595,23 +608,27 @@ class HardwareServiceFacade:
                         f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N"
                     )
 
-                # Prepare for standby transition between temperatures (except last)
-                if temp_idx < len(test_config.temperature_list) - 1:
+                # Prepare for standby transition after each temperature measurement
+                if temp_idx < len(test_config.temperature_list):
                     logger.debug("Preparing for standby transition...")
 
-                    # Move robot to initial position for standby transition
-                    await self._robot.move_absolute(
-                        position=test_config.initial_position,
-                        axis_id=hardware_config.robot.axis_id,
-                        velocity=test_config.velocity,
-                        acceleration=test_config.acceleration,
-                        deceleration=test_config.deceleration,
-                    )
-                    await asyncio.sleep(test_config.robot_move_stabilization)
-
-                    logger.debug(
-                        f"Robot returned to initial position: {test_config.initial_position}μm"
-                    )
+                    # Move robot to initial position for standby transition (if not already there)
+                    if self._robot_state != RobotState.INITIAL_POSITION:
+                        self._robot_state = RobotState.MOVING
+                        await self._robot.move_absolute(
+                            position=test_config.initial_position,
+                            axis_id=hardware_config.robot.axis_id,
+                            velocity=test_config.velocity,
+                            acceleration=test_config.acceleration,
+                            deceleration=test_config.deceleration,
+                        )
+                        await asyncio.sleep(test_config.robot_move_stabilization)
+                        self._robot_state = RobotState.INITIAL_POSITION
+                        logger.debug(
+                            f"Robot returned to initial position: {test_config.initial_position}μm"
+                        )
+                    else:
+                        logger.debug("Robot already at initial position, skipping movement")
 
                     # Start standby cooling for temperature transition
                     logger.debug("Starting standby cooling...")
@@ -653,16 +670,21 @@ class HardwareServiceFacade:
         logger.info("Tearing down test...")
 
         try:
-            # Move robot to initial position
-            logger.info(f"Moving robot to initial position: {test_config.initial_position}μm")
-            await self._robot.move_absolute(
-                position=test_config.initial_position,
-                axis_id=hardware_config.robot.axis_id,
-                velocity=test_config.velocity,
-                acceleration=test_config.acceleration,
-                deceleration=test_config.deceleration,
-            )
-            await asyncio.sleep(test_config.robot_move_stabilization)
+            # Move robot to initial position (if not already there)
+            if self._robot_state != RobotState.INITIAL_POSITION:
+                logger.info(f"Moving robot to initial position: {test_config.initial_position}μm")
+                self._robot_state = RobotState.MOVING
+                await self._robot.move_absolute(
+                    position=test_config.initial_position,
+                    axis_id=hardware_config.robot.axis_id,
+                    velocity=test_config.velocity,
+                    acceleration=test_config.acceleration,
+                    deceleration=test_config.deceleration,
+                )
+                await asyncio.sleep(test_config.robot_move_stabilization)
+                self._robot_state = RobotState.INITIAL_POSITION
+            else:
+                logger.info("Robot already at initial position, skipping movement")
 
             # Disable power output
             await self._power.disable_output()
