@@ -68,3 +68,14 @@ class TestExecutionConstants:
 
     # Timeout constants
     DEFAULT_HARDWARE_OPERATION_TIMEOUT = 30.0
+
+    # Logging messages - Repeated Test Cycles
+    LOG_REPEATED_TEST_START = "🔄 반복 테스트 시작: DUT {}에 대해 {}회 반복 실행"
+    LOG_REPEATED_TEST_COMPLETED = "📊 반복 테스트 완료: {}/{} 사이클 성공 (총 {:.1f}초) - DUT {}"
+    LOG_CYCLE_START = "사이클 {}/{} 시작"
+    LOG_CYCLE_START_WITH_TIME = "사이클 {}/{} 시작 - 예상 완료 시간: {}"
+    LOG_CYCLE_START_WITH_REMAINING = "사이클 {}/{} 시작 - 예상 남은 시간: {:.1f}초"
+    LOG_CYCLE_COMPLETED_PASS = "✅ 사이클 {}/{} 완료 ({:.1f}초) - PASS | 현재까지: {}/{} 성공"
+    LOG_CYCLE_COMPLETED_FAIL = "❌ 사이클 {}/{} 완료 ({:.1f}초) - FAIL | 현재까지: {}/{} 성공"
+    LOG_CYCLE_ERROR = "⚠️ 사이클 {}/{} 오류 - DUT {}: {}"
+    LOG_CYCLE_DELAY = "⏳ 다음 사이클까지 {:.1f}초 대기..."

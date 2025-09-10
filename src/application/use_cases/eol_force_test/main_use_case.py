@@ -423,7 +423,9 @@ class EOLForceTestUseCase(BaseUseCase):
             EOLTestResult containing aggregated results from all repetitions
         """
         logger.info(
-            f"Starting repeated EOL test execution: {repeat_count} repetitions for DUT {command.dut_info.dut_id}"
+            TestExecutionConstants.LOG_REPEATED_TEST_START,
+            command.dut_info.dut_id,
+            repeat_count
         )
 
         overall_start_time = asyncio.get_event_loop().time()
@@ -431,11 +433,23 @@ class EOLForceTestUseCase(BaseUseCase):
         all_results = []
         successful_tests = 0
         failed_tests = 0
+        cycle_times = []  # Track timing for each cycle
 
         for cycle in range(1, repeat_count + 1):
-            logger.info(
-                f"Executing test cycle {cycle}/{repeat_count} for DUT {command.dut_info.dut_id}"
-            )
+            cycle_start_time = asyncio.get_event_loop().time()
+            
+            # Log cycle start with timing information
+            if cycle == 1:
+                logger.info(TestExecutionConstants.LOG_CYCLE_START, cycle, repeat_count)
+            else:
+                # Calculate average time and estimate remaining time
+                avg_cycle_time = sum(cycle_times) / len(cycle_times)
+                remaining_cycles = repeat_count - cycle + 1
+                estimated_remaining_time = avg_cycle_time * remaining_cycles
+                logger.info(
+                    TestExecutionConstants.LOG_CYCLE_START_WITH_REMAINING,
+                    cycle, repeat_count, estimated_remaining_time
+                )
 
             # Create unique DUT info for this cycle
             cycle_dut_info = DUTCommandInfo(
@@ -453,33 +467,47 @@ class EOLForceTestUseCase(BaseUseCase):
                 # Execute single test cycle
                 result = await self.execute_single(cycle_command)
                 all_results.append(result)
+                
+                # Calculate cycle duration
+                cycle_end_time = asyncio.get_event_loop().time()
+                cycle_duration = cycle_end_time - cycle_start_time
+                cycle_times.append(cycle_duration)
 
                 if result.is_passed:
                     successful_tests += 1
                     logger.info(
-                        f"Test cycle {cycle}/{repeat_count} PASSED for DUT {cycle_dut_info.dut_id}"
+                        TestExecutionConstants.LOG_CYCLE_COMPLETED_PASS,
+                        cycle, repeat_count, cycle_duration, successful_tests, cycle
                     )
                 else:
                     failed_tests += 1
                     logger.warning(
-                        f"Test cycle {cycle}/{repeat_count} FAILED for DUT {cycle_dut_info.dut_id}"
+                        TestExecutionConstants.LOG_CYCLE_COMPLETED_FAIL,
+                        cycle, repeat_count, cycle_duration, successful_tests, cycle
                     )
 
             except Exception as cycle_error:
                 failed_tests += 1
+                # Calculate cycle duration even for failed cycles
+                cycle_end_time = asyncio.get_event_loop().time()
+                cycle_duration = cycle_end_time - cycle_start_time
+                cycle_times.append(cycle_duration)
+                
                 logger.error(
-                    f"Test cycle {cycle}/{repeat_count} ERROR for DUT {cycle_dut_info.dut_id}: {cycle_error}"
+                    TestExecutionConstants.LOG_CYCLE_ERROR,
+                    cycle, repeat_count, cycle_dut_info.dut_id, str(cycle_error)
                 )
                 # Continue with next cycle even if one fails
 
             # Add delay between cycles for hardware stabilization (except for last cycle)
             if cycle < repeat_count:
                 stabilization_delay = 2.0  # 2 seconds between cycles
-                logger.debug(f"Waiting {stabilization_delay}s between test cycles...")
+                logger.info(TestExecutionConstants.LOG_CYCLE_DELAY, stabilization_delay)
                 await asyncio.sleep(stabilization_delay)
 
         # Create aggregated result
         overall_duration = self._calculate_execution_duration(overall_start_time)
+        overall_duration_seconds = overall_duration.seconds
         overall_passed = successful_tests > 0  # At least one test must pass
 
         # Use the first successful result as template, or first result if none successful
@@ -517,6 +545,7 @@ class EOLForceTestUseCase(BaseUseCase):
         )
 
         logger.info(
-            f"Repeated EOL test completed: {successful_tests}/{repeat_count} cycles passed for DUT {command.dut_info.dut_id}"
+            TestExecutionConstants.LOG_REPEATED_TEST_COMPLETED,
+            successful_tests, repeat_count, overall_duration_seconds, command.dut_info.dut_id
         )
         return summary_result
