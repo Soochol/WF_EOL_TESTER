@@ -9,7 +9,15 @@
       "Bash(python:*)",
       "Bash(uv run black:*)",
       "Bash(uv run isort:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(move:*)",
+      "Bash(move version_info.txt build )",
+      "Bash(move build_executable.bat build )",
+      "Bash(move BUILD_INSTRUCTIONS.md build)",
+      "Bash(powershell:*)",
+      "Bash(cat:*)",
+      "Bash(taskkill:*)",
+      "Bash(mypy:*)"
     ],
     "deny": [],
     "ask": []

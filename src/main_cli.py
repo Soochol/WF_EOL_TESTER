@@ -32,6 +32,30 @@ CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
 EOL_TESTER_CLI_LOG_FILENAME = f"eol_tester_cli_{CURRENT_DATE}.log"
 
 
+def maximize_console_window() -> None:
+    """Maximize the console window on Windows."""
+    try:
+        import os
+        if os.name == 'nt':  # Windows only
+            import ctypes
+            from ctypes import wintypes
+            
+            # Get console window handle
+            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+            user32 = ctypes.WinDLL('user32', use_last_error=True)
+            
+            # Get console window
+            hwnd = kernel32.GetConsoleWindow()
+            if hwnd:
+                # SW_MAXIMIZE = 3
+                user32.ShowWindow(hwnd, 3)
+                # Also set focus to the window
+                user32.SetForegroundWindow(hwnd)
+    except Exception as e:
+        # Silently ignore errors - maximizing is not critical
+        pass
+
+
 async def main() -> None:
     """CLI-only application entry point with ApplicationContainer dependency injection."""
     # Force unbuffered output for real-time logging (Python environment variable equivalent)
@@ -40,6 +64,9 @@ async def main() -> None:
 
     os.environ["PYTHONUNBUFFERED"] = "1"
     os.environ["PYTHONIOENCODING"] = "utf-8"
+
+    # Maximize console window at startup
+    maximize_console_window()
 
     setup_logging(debug=False)
 

@@ -37,6 +37,7 @@ dependencies = [
     # Dependency Injection
     "dependency-injector[yaml]>=4.41.0",
     "pyside6>=6.9.1",
+    "pyinstaller>=6.15.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +49,7 @@ dev = [
     "mypy>=1.0.0",
     "flake8>=4.0.0",
     "pylint>=2.15.0",
+    "pyinstaller>=5.13.0",
 ]
 
 [tool.setuptools.packages.find]

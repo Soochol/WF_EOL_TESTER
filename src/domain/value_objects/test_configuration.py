@@ -167,7 +167,7 @@ class TestConfiguration:
                 "Upper current limit must be positive",
             )
 
-        if self.upper_current <= self.current:
+        if self.upper_current < self.current:
             raise ValidationException(
                 "upper_current",
                 self.upper_current,
