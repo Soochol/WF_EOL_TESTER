@@ -7,6 +7,7 @@ Uses Exception First principles for error handling.
 
 # Standard library imports
 import csv
+import re
 from pathlib import Path
 
 # Third-party imports
@@ -102,6 +103,10 @@ class RepositoryService:
             is_new_file = not filepath.exists()
             write_mode = "w" if is_new_file else "a"
 
+            # Extract clean serial number
+            full_serial = str(test.dut.serial_number or "Unknown").strip()
+            serial_number = self._extract_serial_number(full_serial)
+
             # Write CSV file
             with open(filepath, write_mode, newline="", encoding="utf-8") as csvfile:
                 # Add blank line separator if appending to existing file
@@ -110,7 +115,7 @@ class RepositoryService:
                 # Write test information header
                 csvfile.write("# Test Information\n")
                 csvfile.write(f"Test ID: {test.test_id}\n")
-                csvfile.write(f"DUT Serial: {test.dut.serial_number or 'Unknown'}\n")
+                csvfile.write(f"DUT Serial: {serial_number}\n")
                 csvfile.write(
                     f"Test Date: {test.created_at.datetime.strftime('%Y-%m-%d %H:%M:%S')}\n"
                 )
@@ -126,14 +131,21 @@ class RepositoryService:
                     all_positions.update(temp_data.keys())
                 sorted_positions = sorted(all_positions, key=float)
 
-                # Write CSV header
-                writer = csv.writer(csvfile)
+                # Write CSV header with enhanced writer settings
+                writer = csv.writer(
+                    csvfile,
+                    delimiter=",",
+                    quotechar='"',
+                    quoting=csv.QUOTE_MINIMAL,
+                    lineterminator="\n",
+                    escapechar=None,
+                )
                 header = ["Temperature"] + [str(pos) for pos in sorted_positions]
                 writer.writerow(header)
 
                 # Write measurement data
                 for temp in sorted(measurements_dict.keys(), key=float):
-                    row = [temp]
+                    row = [str(temp)]  # Ensure temperature is string for consistency
                     temp_measurements = measurements_dict[temp]
 
                     for pos in sorted_positions:
@@ -142,7 +154,7 @@ class RepositoryService:
                             # Extract force value using multiple strategies
                             force_value = self._extract_force_value(position_data, temp, str(pos))
 
-                            # Add force value to row
+                            # Add force value to row with proper formatting
                             if force_value is not None and isinstance(force_value, (int, float)):
                                 row.append(f"{force_value:.3f}")
                             else:
@@ -151,11 +163,28 @@ class RepositoryService:
                             logger.debug(f"Position {pos} not found in temperature {temp}")
                             row.append("")  # Empty cell for missing measurements
 
-                    writer.writerow(row)
+                    # Validate and sanitize the row data
+                    sanitized_row = []
+                    for field in row:
+                        if field is None:
+                            sanitized_field = ""
+                        else:
+                            sanitized_field = str(field).strip()
+                            # Remove problematic characters
+                            sanitized_field = (
+                                sanitized_field.replace("\n", " ")
+                                .replace("\r", " ")
+                                .replace("\t", " ")
+                                .replace('"', "'")
+                            )
+                            # Collapse multiple spaces
+                            sanitized_field = " ".join(sanitized_field.split())
+                        sanitized_row.append(sanitized_field)
+
+                    writer.writerow(sanitized_row)
 
             action = "created" if is_new_file else "appended to"
-            serial_num = test.dut.serial_number or "Unknown"
-            logger.info(f"Measurement raw data for {serial_num} {action} daily file: {filepath}")
+            logger.info(f"Measurement raw data for {serial_number} {action} daily file: {filepath}")
 
         except Exception as e:
             logger.error(f"Failed to save measurement raw data: {e}")
@@ -205,9 +234,33 @@ class RepositoryService:
         )
         return None
 
+    def _extract_serial_number(self, full_serial: str) -> str:
+        """
+        Extract short serial number from full DUT serial
+
+        Args:
+            full_serial: Full serial like 'DEFAULT001_C001'
+
+        Returns:
+            Short serial like 'C001', or the original if pattern not found
+        """
+        try:
+            # Pattern to match _C### at the end of the string
+            match = re.search(r"_([C]\d{3})$", full_serial)
+            if match:
+                return match.group(1)  # Return just the C001 part
+
+            # If no pattern match, return the original
+            logger.debug(f"No serial pattern found in '{full_serial}', using as-is")
+            return full_serial
+
+        except Exception as e:
+            logger.warning(f"Error extracting serial number from '{full_serial}': {e}")
+            return full_serial  # Safe fallback
+
     def _validate_csv_data(self, data_row: list, expected_columns: int) -> list:
         """
-        Validate and sanitize CSV data row
+        Validate and sanitize CSV data row with enhanced validation
 
         Args:
             data_row: List of data values to validate
@@ -229,18 +282,35 @@ class RepositoryService:
                 else:
                     data_row = data_row[:expected_columns]
 
-            # Sanitize each field
+            # Enhanced sanitization for each field
             sanitized_row = []
-            for field in data_row:
+            for i, field in enumerate(data_row):
                 if field is None:
                     sanitized_field = ""
                 else:
                     sanitized_field = str(field).strip()
-                    # Remove any problematic characters that might break CSV
-                    sanitized_field = sanitized_field.replace("\n", " ").replace("\r", " ")
+
+                    # Remove problematic characters that break CSV
+                    sanitized_field = (
+                        sanitized_field.replace("\n", " ")
+                        .replace("\r", " ")
+                        .replace("\t", " ")
+                        .replace('"', "'")  # Replace quotes to avoid CSV escaping issues
+                    )
+
+                    # Collapse multiple spaces
+                    sanitized_field = " ".join(sanitized_field.split())
+
+                    # Field-specific validation
+                    if i == 1:  # Serial_Number column
+                        # Ensure serial number is alphanumeric
+                        sanitized_field = "".join(c for c in sanitized_field if c.isalnum())
+                        if not sanitized_field:
+                            sanitized_field = "Unknown"
+
                     # Limit field length to prevent extremely long fields
-                    if len(sanitized_field) > 255:
-                        sanitized_field = sanitized_field[:252] + "..."
+                    if len(sanitized_field) > 100:  # Reduced from 255
+                        sanitized_field = sanitized_field[:97] + "..."
                         logger.warning(f"Truncated long CSV field: {sanitized_field}")
 
                 sanitized_row.append(sanitized_field)
@@ -249,62 +319,60 @@ class RepositoryService:
 
         except Exception as e:
             logger.error(f"Error validating CSV data: {e}")
-            # Return safe fallback
-            return ["Error"] * expected_columns
+            # Return safe fallback with proper column count
+            return ["Error", "Unknown", "1970-01-01 00:00:00", "FAIL", "0.00", "Unknown"]
 
-    def _read_existing_csv_data(self, csv_file: Path) -> tuple[list, dict]:
+    def _read_existing_csv_rows(self, csv_file: Path) -> list:
         """
-        Read existing CSV data and create a lookup for serial numbers
+        Read existing CSV rows (no duplicate checking needed)
 
         Args:
             csv_file: Path to the CSV file
 
         Returns:
-            Tuple of (all_rows, serial_to_row_index_map)
+            List of existing rows (including header if present)
         """
         if not csv_file.exists():
-            return [], {}
+            return []
 
         try:
             with open(csv_file, "r", newline="", encoding="utf-8") as csvfile:
                 reader = csv.reader(csvfile)
                 rows = list(reader)
 
-            if not rows:
-                return [], {}
-
-            # Create mapping of serial number to row index (skip header)
-            serial_map = {}
-            for i, row in enumerate(rows[1:], start=1):  # start=1 because we skip header
-                if len(row) >= 2:  # Ensure row has at least Test_ID and Serial_Number
-                    serial_number = row[1].strip()  # Serial_Number is column index 1
-                    if serial_number:
-                        serial_map[serial_number] = i
-
-            logger.debug(f"Read {len(rows)} rows from CSV, found {len(serial_map)} serial numbers")
-            return rows, serial_map
+            logger.debug(f"Read {len(rows)} existing rows from CSV file")
+            return rows
 
         except Exception as e:
             logger.error(f"Failed to read existing CSV data: {e}")
-            return [], {}
+            # Return empty list to start fresh on error
+            return []
 
     def _write_csv_data(self, csv_file: Path, rows: list) -> None:
         """
-        Write all CSV data to file
+        Write all CSV data to file with enhanced settings
 
         Args:
             csv_file: Path to the CSV file
             rows: All rows including header to write
         """
-        with open(csv_file, "w", newline="", encoding="utf-8") as csvfile:
-            writer = csv.writer(
-                csvfile,
-                delimiter=",",
-                quotechar='"',
-                quoting=csv.QUOTE_MINIMAL,
-                lineterminator="\n",
-            )
-            writer.writerows(rows)
+        try:
+            with open(csv_file, "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(
+                    csvfile,
+                    delimiter=",",
+                    quotechar='"',
+                    quoting=csv.QUOTE_MINIMAL,
+                    lineterminator="\n",
+                    escapechar=None,  # Use quoting instead of escaping
+                )
+                writer.writerows(rows)
+
+            logger.debug(f"Successfully wrote {len(rows)} rows to CSV file: {csv_file}")
+
+        except Exception as e:
+            logger.error(f"Failed to write CSV data to {csv_file}: {e}")
+            raise
 
     async def _update_test_summary(self, test: EOLTest) -> None:
         """
@@ -321,8 +389,8 @@ class RepositoryService:
 
             summary_file = test_results_dir / self._summary_filename
 
-            # Read existing data
-            existing_rows, serial_map = self._read_existing_csv_data(summary_file)
+            # Read existing data (no need for serial mapping since we don't check duplicates)
+            existing_rows = self._read_existing_csv_rows(summary_file)
 
             # Prepare header if needed
             header = [
@@ -340,7 +408,10 @@ class RepositoryService:
                 logger.debug(f"Creating new CSV file with header: {header}")
 
             # Prepare and validate test data
-            serial_number = str(test.dut.serial_number or "Unknown").strip()
+            full_serial = str(test.dut.serial_number or "Unknown").strip()
+            # Extract short serial number (DEFAULT001_C001 -> C001)
+            serial_number = self._extract_serial_number(full_serial)
+
             test_date = test.created_at.datetime.strftime("%Y-%m-%d %H:%M:%S")
             status = "PASS" if test.test_result and test.test_result.is_passed() else "FAIL"
             test_duration = test.get_duration()
@@ -364,14 +435,9 @@ class RepositoryService:
             # Validate and sanitize the row data
             validated_row = self._validate_csv_data(new_row, 6)
 
-            # Check if serial number already exists
-            if serial_number in serial_map:
-                row_index = serial_map[serial_number]
-                logger.info(f"Updating existing entry for serial number: {serial_number}")
-                existing_rows[row_index] = validated_row
-            else:
-                logger.info(f"Adding new entry for serial number: {serial_number}")
-                existing_rows.append(validated_row)
+            # Always add as new row - each test is unique by Test_ID
+            logger.info(f"Adding new test entry: {test_id_str} for serial {serial_number}")
+            existing_rows.append(validated_row)
 
             # Write all data back to file
             self._write_csv_data(summary_file, existing_rows)

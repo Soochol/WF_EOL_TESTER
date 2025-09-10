@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(tree:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python -m mypy:*)",
+      "Bash(python:*)",
+      "Bash(uv run black:*)",
+      "Bash(uv run isort:*)"
     ],
     "deny": [],
     "ask": []
