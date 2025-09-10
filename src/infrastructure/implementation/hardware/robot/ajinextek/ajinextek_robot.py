@@ -293,9 +293,7 @@ class AjinextekRobot(RobotService):
                 except Exception as status_error:
                     if isinstance(status_error, RobotMotionError):
                         raise
-                    logger.error(
-                        "Failed to check homing status for axis %s: %s", axis, status_error
-                    )
+                    logger.error(f"Failed to check homing status for axis {axis}: {status_error}")
                     raise RobotMotionError(
                         f"Failed to check homing status for axis {axis}: {status_error}",
                         "AJINEXTEK",
@@ -531,9 +529,7 @@ class AjinextekRobot(RobotService):
         self._ensure_servo_enabled()
 
         try:
-            logger.info(
-                "Stopping motion on axis %s with deceleration %s mm/s²", axis_id, deceleration
-            )
+            logger.info(f"Stopping motion on axis {axis_id} with deceleration {deceleration} mm/s²")
 
             result = self._axl.move_stop(axis_id, deceleration)
             if result != AXT_RT_SUCCESS:

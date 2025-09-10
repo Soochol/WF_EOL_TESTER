@@ -321,7 +321,7 @@ class MockDIO(DigitalIOService):
         all_successful = success_count == len(pin_values)
 
         logger.debug(
-            "Mock: Write multiple outputs: %d/%d pins successful", success_count, len(pin_values)
+            f"Mock: Write multiple outputs: {success_count}/{len(pin_values)} pins successful"
         )
 
         return all_successful

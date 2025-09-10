@@ -89,7 +89,9 @@ class TestEntityFactory:
             # Check if this test ID already exists
             try:
                 if self._repository_service.test_repository:
-                    existing_test = await self._repository_service.test_repository.find_by_id(str(test_id))
+                    existing_test = await self._repository_service.test_repository.find_by_id(
+                        str(test_id)
+                    )
                     if existing_test is None:
                         # ID is unique, we can use it
                         return test_id
@@ -102,14 +104,12 @@ class TestEntityFactory:
             except Exception as e:
                 # Error checking existence, assume it doesn't exist and use the ID
                 logger.warning(
-                    "Error checking test ID uniqueness for %s: %s. Using ID anyway.", test_id, e
+                    f"Error checking test ID uniqueness for {test_id}: {e}. Using ID anyway."
                 )
                 return test_id
 
         # If we exhausted all sequences, fall back to UUID
         logger.warning(
-            "Exhausted all sequence numbers for %s at %s. Falling back to UUID format.",
-            serial_number,
-            timestamp.strftime("%Y%m%d_%H%M%S"),
+            f"Exhausted all sequence numbers for {serial_number} at {timestamp.strftime('%Y%m%d_%H%M%S')}. Falling back to UUID format."
         )
         return TestId.generate()

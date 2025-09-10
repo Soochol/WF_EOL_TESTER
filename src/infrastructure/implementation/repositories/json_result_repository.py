@@ -202,18 +202,10 @@ class JsonResultRepository(TestResultRepository):
                     ensure_ascii=False,
                 )
 
-            logger.debug(
-                "Test %s saved to file %s",
-                test_id,
-                file_path,
-            )
+            logger.debug(f"Test {test_id} saved to file {file_path}")
 
         except Exception as e:
-            logger.error(
-                "Failed to save test %s to file: %s",
-                test_id,
-                e,
-            )
+            logger.error(f"Failed to save test {test_id} to file: {e}")
             raise
 
     async def _load_from_file(self, test_id: str) -> Optional[Dict[str, Any]]:
