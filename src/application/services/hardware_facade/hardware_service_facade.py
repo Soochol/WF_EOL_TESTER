@@ -6,10 +6,10 @@ Previously 786 lines, now significantly reduced by delegating to specialized ser
 """
 
 # Standard library imports
-from typing import cast, Dict, Optional, TYPE_CHECKING
-
 # Third-party imports
 import asyncio
+from typing import TYPE_CHECKING, Dict, Optional, cast
+
 from loguru import logger
 
 # Local application imports
@@ -21,7 +21,6 @@ from application.interfaces.hardware.robot import RobotService
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
-
 
 # Note: All hardware service functionality has been integrated directly into this facade
 
@@ -175,7 +174,7 @@ class HardwareServiceFacade:
         top_line = "╭" + "─" * (box_width - 2) + "╮"
         middle_line = f"│{phase_name:^{box_width - 2}}│"
         bottom_line = "╰" + "─" * (box_width - 2) + "╯"
-        
+
         logger.info(top_line)
         logger.info(middle_line)
         logger.info(bottom_line)
@@ -467,6 +466,10 @@ class HardwareServiceFacade:
             logger.info(f"Fan speed set to {test_config.fan_speed}")
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
+            await self._mcu.set_cooling_temperature(test_config.standby_temperature)
+            logger.info(f"Cooling temperature set to {test_config.standby_temperature}°C")
+            await asyncio.sleep(test_config.mcu_command_stabilization)
+
             await self._mcu.start_standby_heating(
                 operating_temp=test_config.activation_temperature,
                 standby_temp=test_config.standby_temperature,
@@ -609,13 +612,13 @@ class HardwareServiceFacade:
                     logger.debug(
                         f"Robot returned to initial position: {test_config.initial_position}μm"
                     )
-                    
+
                     # Start standby cooling for temperature transition
                     logger.debug("Starting standby cooling...")
                     await self._mcu.start_standby_cooling()
                     await asyncio.sleep(test_config.mcu_command_stabilization)
                     logger.debug("MCU standby cooling started")
-                    
+
                     # Verify standby temperature reached
                     logger.debug("Verifying standby temperature...")
                     await self.verify_mcu_temperature(test_config.standby_temperature, test_config)

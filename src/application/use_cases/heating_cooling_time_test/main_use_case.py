@@ -151,8 +151,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         else:
             # Partial success - some cycles completed before error
             if completed_cycles > 0:
-                logger.warning(f"Test partially completed: {completed_cycles}/{actual_repeat_count} cycles")
-                
+                logger.warning(
+                    f"Test partially completed: {completed_cycles}/{actual_repeat_count} cycles"
+                )
+
                 # Add partial execution info to measurements
                 measurements["execution_info"] = {
                     "partial_execution": True,
@@ -161,7 +163,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                     "completion_percentage": (completed_cycles / actual_repeat_count) * 100,
                     "failure_reason": execution_error,
                 }
-                
+
                 return HeatingCoolingTimeTestResult(
                     test_status=TestStatus.COMPLETED,  # Partial success still provides data
                     is_success=False,  # But mark as failed due to incomplete execution
@@ -178,7 +180,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         context,
         execution_duration,
         error_message: str,
-        partial_measurements: Dict[str, Any] = None,
+        partial_measurements: Optional[Dict[str, Any]] = None,
     ) -> HeatingCoolingTimeTestResult:
         """
         Create a failure result when execution fails
@@ -195,7 +197,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         """
         # Use partial measurements if available, otherwise empty
         measurements = partial_measurements or {}
-        
+
         # Add failure context information to measurements
         if not measurements:
             measurements = {
@@ -207,13 +209,15 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                     "total_failure": True,
                     "completed_cycles": 0,
                     "failure_reason": error_message,
-                    "execution_duration_seconds": execution_duration.seconds if execution_duration else 0,
+                    "execution_duration_seconds": (
+                        execution_duration.seconds if execution_duration else 0
+                    ),
                 },
                 "heating_measurements": [],
                 "cooling_measurements": [],
                 "statistics": {},
             }
-        
+
         return HeatingCoolingTimeTestResult(
             test_status=TestStatus.ERROR,
             is_success=False,
