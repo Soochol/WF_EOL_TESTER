@@ -237,7 +237,7 @@ def setup_logging(debug: bool = False) -> None:
                 "DEBUG": "dim",
                 "INFO": "bright_cyan",  # Changed to bright_cyan for better visibility on dark backgrounds
                 "SUCCESS": "green",
-                "WARNING": "yellow",
+                "WARNING": "bright_yellow",  # Changed to bright_yellow for better visibility
                 "ERROR": "red",
                 "CRITICAL": "bold red"
             }.get(level_name, "white")

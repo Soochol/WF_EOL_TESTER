@@ -178,7 +178,7 @@ class LMAMCU(MCUService):
                     elapsed_ms = (last_data_time - start_time) * 1000
                     data_chunks.append(f"{chunk_hex} @ +{elapsed_ms:.1f}ms")
                     logger.debug(
-                        f"\033[96mPC <- MCU:\033[0m \033[96m{chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms\033[0m"
+                        f"\033[92mPC <- MCU:\033[0m \033[92m{chunk_hex} (total: {len(response_data)} bytes) @ +{elapsed_ms:.1f}ms\033[0m"
                     )
 
                     # Check for complete packet (ends with FEFE)
@@ -190,7 +190,7 @@ class LMAMCU(MCUService):
                             response_hex = valid_packet.hex().upper()
 
                             response_time = (time.time() - start_time) * 1000
-                            logger.info(f"\033[96mPC <- MCU:\033[0m \033[96m{response_hex} (+{response_time:.1f}ms)\033[0m")
+                            logger.info(f"\033[92mPC <- MCU:\033[0m \033[92m{response_hex} (+{response_time:.1f}ms)\033[0m")
 
                             # Detailed packet analysis on clean packet
                             self._analyze_response_packet(valid_packet, description)
@@ -314,7 +314,7 @@ class LMAMCU(MCUService):
 
                 additional_packets = packets_found[1:]
                 self._packet_buffer.extend(additional_packets)
-                logger.info(f"\033[96mStored {len(additional_packets)} additional packets in buffer:\033[0m")
+                logger.info(f"\033[92mStored {len(additional_packets)} additional packets in buffer:\033[0m")
                 for j, packet in enumerate(additional_packets):
                     logger.info(f"  [{j+1}] {packet.hex().upper()}")
             return first_packet
@@ -502,7 +502,7 @@ class LMAMCU(MCUService):
             packet_type = self._classify_packet(packet)
 
             # Log buffered packet with classification
-            logger.info(f"\033[96mUsing buffered packet: {packet.hex().upper()} ({packet_type})\033[0m")
+            logger.info(f"\033[92mUsing buffered packet: {packet.hex().upper()} ({packet_type})\033[0m")
 
             # Handle temperature response packets
             if packet[2] == 0x07:  # Temperature response
@@ -552,7 +552,7 @@ class LMAMCU(MCUService):
                 chunk_hex = new_data.hex().upper()
                 elapsed_ms = (current_time - start_time) * 1000
                 if not quiet:
-                    logger.debug(f"\033[96mPC <- MCU:\033[0m \033[96m{chunk_hex} @ +{elapsed_ms:.1f}ms\033[0m")
+                    logger.debug(f"\033[92mPC <- MCU:\033[0m \033[92m{chunk_hex} @ +{elapsed_ms:.1f}ms\033[0m")
 
                 # Try to extract complete packet(s)
                 while response_data:
@@ -570,11 +570,11 @@ class LMAMCU(MCUService):
                     # Only show temperature responses at DEBUG level, others at INFO
                     if valid_packet[2] == 0x07:  # Temperature response
                         logger.debug(
-                            f"\033[96mPC <- MCU:\033[0m \033[96m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
+                            f"\033[92mPC <- MCU:\033[0m \033[92m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
                         )
                     else:
                         logger.info(
-                            f"\033[96mPC <- MCU:\033[0m \033[96m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
+                            f"\033[92mPC <- MCU:\033[0m \033[92m{valid_packet.hex().upper()} ({packet_type}) @ +{elapsed_ms:.1f}ms\033[0m"
                         )
 
                     # Handle different packet types
@@ -692,7 +692,7 @@ class LMAMCU(MCUService):
                     # Log received data for debugging
                     chunk_hex = new_data.hex().upper()
                     elapsed_ms = (time.time() - start_time) * 1000
-                    logger.debug(f"\033[96mPC <- MCU:\033[0m \033[96m{chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms\033[0m")
+                    logger.debug(f"\033[92mPC <- MCU:\033[0m \033[92m{chunk_hex} (boot data) @ +{elapsed_ms:.1f}ms\033[0m")
 
                     # Check for complete packet (ends with FEFE)
                     if response_data.endswith(b"\xfe\xfe") and len(response_data) >= 6:
@@ -703,7 +703,7 @@ class LMAMCU(MCUService):
                             # Check for STATUS_BOOT_COMPLETE (0x00)
                             if len(valid_packet) >= 6 and valid_packet[2] == 0x00:
                                 response_hex = valid_packet.hex().upper()
-                                logger.info(f"\033[96mPC <- MCU:\033[0m \033[96m{response_hex} (boot complete confirmed)\033[0m")
+                                logger.info(f"\033[92mPC <- MCU:\033[0m \033[92m{response_hex} (boot complete confirmed)\033[0m")
 
                                 # Detailed packet analysis
                                 self._analyze_response_packet(valid_packet, "BOOT_COMPLETE")
@@ -715,7 +715,7 @@ class LMAMCU(MCUService):
                                 response_hex = valid_packet.hex().upper()
                                 status_code = valid_packet[2]
                                 logger.info(
-                                    f"\033[96mPC <- MCU:\033[0m \033[96m{response_hex} (status: 0x{status_code:02X}, not boot complete)\033[0m"
+                                    f"\033[92mPC <- MCU:\033[0m \033[92m{response_hex} (status: 0x{status_code:02X}, not boot complete)\033[0m"
                                 )
 
                         # Reset buffer if we processed a packet
@@ -778,7 +778,7 @@ class LMAMCU(MCUService):
                 )
 
                 if temp_response and len(temp_response) >= 6 and temp_response[2] == 0x0B:
-                    logger.info("\033[96m✅ Operating temperature reached confirmed\033[0m")
+                    logger.info("\033[92m✅ Operating temperature reached confirmed\033[0m")
                     
                     self._target_temperature = target_temp
                     logger.info(f"\033[95mOperating temperature set: {target_temp}°C (attempt {attempt + 1})\033[0m")
@@ -928,7 +928,7 @@ class LMAMCU(MCUService):
                 # Use ir_temp_max as the primary temperature
                 self._current_temperature = ir_temp_celsius
                 logger.info(
-                    f"\033[96mTemperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C\033[0m"
+                    f"\033[92mTemperature reading - IR Max: {ir_temp_celsius:.1f}°C, Outside Air: {outside_temp_celsius:.1f}°C\033[0m"
                 )
                 return ir_temp_celsius
             else:
