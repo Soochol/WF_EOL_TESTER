@@ -195,9 +195,8 @@ class MenuSystem(IMenuSystem):
             return
 
         try:
-            self._formatter.print_header(
-                "Simple MCU Test", "Direct MCU communication testing sequence"
-            )
+            # Header will be displayed by the controller, avoid duplicate
+            pass
 
             # Create Simple MCU Test UseCase instance
             from application.use_cases.system_tests import SimpleMCUTestUseCase
@@ -334,9 +333,8 @@ class MenuSystem(IMenuSystem):
             return
 
         try:
-            self._formatter.print_header(
-                "Heating/Cooling Time Test", "MCU temperature transition timing measurement"
-            )
+            # Header will be displayed by the controller, avoid duplicate
+            pass
 
             # Create Heating/Cooling Time Test UseCase instance
             from application.use_cases.heating_cooling_time_test import (
@@ -439,7 +437,8 @@ class MenuSystem(IMenuSystem):
             return
 
         try:
-            self._formatter.print_header("Robot Home Operation", "Moving robot to home position")
+            # Header will be displayed by the hardware manager, avoid duplicate
+            pass
 
             # Execute robot home operation and get result
             success = await self._hardware_manager.execute_robot_home()

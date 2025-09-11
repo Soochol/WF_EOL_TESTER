@@ -58,9 +58,14 @@ class RichFormatter(IFormatter):
             console: Optional Rich Console instance. If None, creates a new one
                     with default settings optimized for the EOL Tester application.
         """
-        # Initialize console - shared across all formatters
+        # Initialize console - shared across all formatters with Windows-compatible settings
         self._console = console or Console(
-            force_terminal=True, legacy_windows=False, color_system="truecolor"
+            force_terminal=True, 
+            legacy_windows=False, 
+            color_system="auto",  # Auto-detect color support
+            width=120,  # Fixed width to prevent layout wrapping
+            height=40,  # Fixed height for consistent display
+            safe_box=True,  # Use ASCII box drawing for better compatibility
         )
 
         # Initialize specialized formatters with shared console

@@ -280,14 +280,16 @@ class EnhancedMenuSystem:
         menu_text.append(" Show input help\n\n")
         menu_text.append("Please select an option (1-6) or type 'help':")
 
-        # Create panel with properly styled content
-        self.console.print("\n")
+        # Clear screen and create panel with properly styled content
+        self.console.clear()
         menu_panel = Panel(
             menu_text,
             title="🧪 Enhanced Main Menu",
             title_align="left",
-            border_style="bright_blue",
+            border_style="blue",  # Simpler color for better compatibility
             padding=(1, 2),
+            width=100,  # Reduced width for better compatibility
+            expand=False,  # Prevent expansion beyond set width
         )
         self.console.print(menu_panel)
 
