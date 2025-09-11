@@ -571,7 +571,7 @@ class AjinextekRobot(RobotService):
 
         try:
             # Stop specific axis
-            logger.warning(f"EMERGENCY STOP activated for axis {axis}")
+            logger.info(f"EMERGENCY STOP activated for axis {axis}")
 
             # Use true emergency stop (immediate stop without deceleration)
             result = self._axl.move_emergency_stop(axis)
@@ -591,7 +591,7 @@ class AjinextekRobot(RobotService):
             except Exception as e:
                 logger.warning(f"Failed to turn off servo {axis} during emergency stop: {e}")
 
-            logger.warning(f"Emergency stop completed for axis {axis}")
+            logger.info(f"Emergency stop completed for axis {axis}")
 
         except Exception as e:
             logger.error(f"Emergency stop failed for axis {axis}: {e}")

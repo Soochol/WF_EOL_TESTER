@@ -58,7 +58,7 @@ class EmergencyStopService:
         2. UseCase state management and task cancellation
         3. System cleanup and safe state transition
         """
-        logger.warning("🚨 EMERGENCY STOP 🚨")
+        logger.info("🚨 EMERGENCY STOP 🚨")
         self._last_emergency_time = asyncio.get_event_loop().time()
 
         try:
