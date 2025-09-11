@@ -17,9 +17,15 @@
       "Bash(powershell:*)",
       "Bash(cat:*)",
       "Bash(taskkill:*)",
-      "Bash(mypy:*)"
+      "Bash(mypy:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl:*)",
+      "Bash(sudo cp:*)",
+      "Bash(systeminfo)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "default"
 }

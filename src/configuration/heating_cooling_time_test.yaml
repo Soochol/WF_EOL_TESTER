@@ -1,0 +1,73 @@
+# Heating/Cooling Time Test Configuration
+# Configuration parameters for heating/cooling time test including
+# wait times, power monitoring settings, and test execution parameters.
+
+# ========================================================================
+# TEST EXECUTION PARAMETERS
+# ========================================================================
+repeat_count: 1  # Number of heating/cooling cycles to perform
+
+# ========================================================================
+# WAIT TIME PARAMETERS (in seconds)
+# ========================================================================
+heating_wait_time: 2.0  # Wait time after heating completes
+cooling_wait_time: 2.0  # Wait time after cooling completes
+stabilization_wait_time: 1.0  # Wait time for temperature stabilization
+
+# ========================================================================
+# POWER MONITORING PARAMETERS
+# ========================================================================
+power_monitoring_interval: 0.5  # Power measurement interval (seconds)
+power_monitoring_enabled: true  # Enable/disable power monitoring
+
+# ========================================================================
+# TEMPERATURE PARAMETERS (°C)
+# ========================================================================
+activation_temperature: 52.0  # Temperature activation threshold
+standby_temperature: 38.0     # Standby temperature setting
+
+# ========================================================================
+# POWER SUPPLY PARAMETERS
+# ========================================================================
+voltage: 38.0  # Operating voltage (V)
+current: 25.0  # Operating current (A)
+
+# ========================================================================
+# MCU PARAMETERS
+# ========================================================================
+fan_speed: 10           # Fan speed level (1-10)
+upper_temperature: 80.0 # Maximum temperature limit (°C)
+
+# ========================================================================
+# STABILIZATION TIME PARAMETERS (in seconds)
+# ========================================================================
+poweron_stabilization: 0.5  # Power-on stabilization time
+mcu_boot_complete_stabilization: 2.0  # MCU boot complete stabilization time
+mcu_command_stabilization: 0.1  # MCU command stabilization time
+mcu_temperature_stabilization: 0.1  # MCU temperature stabilization time
+
+# ========================================================================
+# STATISTICS PARAMETERS
+# ========================================================================
+calculate_statistics: true    # Calculate power consumption statistics
+show_detailed_results: true   # Show detailed cycle-by-cycle results
+
+# ========================================================================
+# METADATA
+# ========================================================================
+metadata:
+  created_at: '2025-09-11T16:14:14.528167'
+  created_by: 'ConfigurationService (auto-generated)'
+  version: '1.0.0'
+  description: 'Heating/Cooling Time Test configuration with power monitoring'
+  notes: |
+    This configuration file contains parameters for heating/cooling time tests.
+
+    Key parameters:
+    - Wait times control delays between heating/cooling phases
+    - Power monitoring tracks energy consumption during test cycles
+    - Temperature parameters define test operating ranges
+    - Statistics options control data analysis and display
+
+    Modify these values to customize test behavior according to your
+    hardware specifications and testing requirements.
