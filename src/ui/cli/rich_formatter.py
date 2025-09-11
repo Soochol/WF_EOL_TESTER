@@ -63,8 +63,7 @@ class RichFormatter(IFormatter):
             force_terminal=True, 
             legacy_windows=False, 
             color_system="auto",  # Auto-detect color support
-            width=120,  # Fixed width to prevent layout wrapping
-            height=40,  # Fixed height for consistent display
+            width=95,  # Match panel width for consistency
             safe_box=True,  # Use ASCII box drawing for better compatibility
         )
 

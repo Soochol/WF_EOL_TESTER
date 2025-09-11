@@ -288,7 +288,7 @@ class EnhancedMenuSystem:
             title_align="left",
             border_style="blue",  # Simpler color for better compatibility
             padding=(1, 2),
-            width=100,  # Reduced width for better compatibility
+            width=95,  # Match message panel width for consistency
             expand=False,  # Prevent expansion beyond set width
         )
         self.console.print(menu_panel)

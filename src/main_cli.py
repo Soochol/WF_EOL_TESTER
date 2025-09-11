@@ -193,12 +193,36 @@ def setup_logging(debug: bool = False) -> None:
                 "<cyan>{name}</cyan> - <level>{message}</level>\n"
             )
 
+    # Create Rich Console for log output to prevent conflicts with Rich panels
+    from rich.console import Console
+    rich_console = Console(
+        file=sys.stderr,
+        force_terminal=True,
+        width=95,  # Fixed width to match panel width
+        color_system="auto",
+        legacy_windows=False
+    )
+    
+    def rich_log_handler(message):
+        """Custom loguru handler that outputs through Rich Console"""
+        try:
+            # Extract message content and clean it
+            record = message.record
+            formatted_message = cli_formatter(record)
+            # Remove the trailing newline as Rich Console adds its own
+            formatted_message = formatted_message.rstrip('\n')
+            rich_console.print(formatted_message, markup=True, highlight=False)
+        except Exception:
+            # Fallback to stderr if Rich fails
+            sys.stderr.write(str(message))
+            sys.stderr.flush()
+    
     logger.add(
-        sys.stderr,
+        rich_log_handler,
         level=log_level,
-        format=cli_formatter,
+        format=lambda record: record,  # Pass raw record to custom handler
         enqueue=False,  # Disable background queue for real-time output
-        colorize=True,  # Enable color output
+        colorize=False,  # Disable loguru coloring, use Rich markup instead
         serialize=False,  # Disable serialization for faster output
         backtrace=True,
         diagnose=True,

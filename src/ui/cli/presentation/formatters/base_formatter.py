@@ -107,7 +107,8 @@ class BaseFormatter:
             title_align="left",
             border_style=color,
             padding=self.layout.DEFAULT_PANEL_PADDING,
-            width=width,
+            width=width or 95,  # Fixed width to prevent layout conflicts
+            expand=False,  # Prevent expansion beyond set width
         )
 
     def create_header_banner(

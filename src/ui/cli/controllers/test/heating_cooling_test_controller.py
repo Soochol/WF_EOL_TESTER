@@ -55,6 +55,10 @@ class HeatingCoolingTestController:
             self.formatter.print_message(f"Test cycles: {repeat_count}")
             self.formatter.print_message("This test measures MCU temperature transition times")
 
+            # Brief pause to ensure panels are fully rendered before log output begins
+            import asyncio
+            await asyncio.sleep(0.1)
+
             # Create and execute command
             command = HeatingCoolingTimeTestInput(
                 operator_id="cli_user", repeat_count=repeat_count
@@ -364,6 +368,7 @@ This test measures the time taken for MCU temperature transitions:
                 self.formatter.print_message(
                     f"Loading cycle count from {config_file}", message_type="info"
                 )
+                
                 with open(config_file, "r", encoding="utf-8") as f:
                     yaml_data = yaml.safe_load(f)
 
