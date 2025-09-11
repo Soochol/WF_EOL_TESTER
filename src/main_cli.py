@@ -187,10 +187,22 @@ def setup_logging(debug: bool = False) -> None:
                 "<cyan>{name}</cyan> - <red><bold>{message}</bold></red>\n"
             )
         else:
-            # Default format
+            # Default format with proper Rich markup for each level
+            level_name = record.get("level", {}).get("name", "INFO")
+            if level_name == "INFO":
+                level_color = "blue"
+            elif level_name == "WARNING":
+                level_color = "yellow"
+            elif level_name == "ERROR":
+                level_color = "red"
+            elif level_name == "DEBUG":
+                level_color = "dim"
+            else:
+                level_color = "white"
+                
             return (
-                "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
-                "<cyan>{name}</cyan> - <level>{message}</level>\n"
+                f"<green>{{time:HH:mm:ss}}</green> | <{level_color}>{{level: <8}}</{level_color}> | "
+                f"<cyan>{{name}}</cyan> - <{level_color}>{{message}}</{level_color}>\n"
             )
 
     # Create Rich Console for log output to prevent conflicts with Rich panels
@@ -198,7 +210,7 @@ def setup_logging(debug: bool = False) -> None:
     rich_console = Console(
         file=sys.stderr,
         force_terminal=True,
-        width=95,  # Fixed width to match panel width
+        width=120,  # Wider width to accommodate long module names
         color_system="auto",
         legacy_windows=False
     )
@@ -206,20 +218,53 @@ def setup_logging(debug: bool = False) -> None:
     def rich_log_handler(message):
         """Custom loguru handler that outputs through Rich Console"""
         try:
-            # Use the preformatted message from loguru
-            formatted_message = str(message).rstrip('\n')
-            rich_console.print(formatted_message, markup=True, highlight=False)
-        except Exception:
+            from rich.text import Text
+            
+            # Extract record for direct formatting
+            record = message.record
+            
+            # Create Rich Text object with colors
+            text = Text()
+            
+            # Time (green)
+            time_str = record["time"].strftime("%H:%M:%S")
+            text.append(time_str, style="green")
+            text.append(" | ")
+            
+            # Level (colored by level)
+            level_name = record["level"].name
+            level_color = {
+                "DEBUG": "dim",
+                "INFO": "blue", 
+                "SUCCESS": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "bold red"
+            }.get(level_name, "white")
+            
+            text.append(f"{level_name: <8}", style=level_color)
+            text.append(" | ")
+            
+            # Module name (cyan)
+            text.append(record["name"], style="cyan")
+            text.append(" - ")
+            
+            # Message (same color as level)
+            text.append(str(record["message"]), style=level_color)
+            
+            rich_console.print(text)
+        except Exception as e:
             # Fallback to stderr if Rich fails
+            sys.stderr.write(f"Rich error: {e}\n")
             sys.stderr.write(str(message))
             sys.stderr.flush()
     
     logger.add(
         rich_log_handler,
         level=log_level,
-        format=cli_formatter,  # Use our formatter function as the format
+        format="{message}",  # Simple format, Rich Text handles the formatting
         enqueue=False,  # Disable background queue for real-time output
-        colorize=False,  # Disable loguru coloring, use Rich markup instead
+        colorize=False,  # Disable loguru coloring, use Rich colors instead
         serialize=False,  # Disable serialization for faster output
         backtrace=True,
         diagnose=True,
