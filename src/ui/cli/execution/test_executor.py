@@ -146,6 +146,11 @@ class TestExecutor(ITestExecutor):
             # Execute the actual test through the use case
             test_result = await self._use_case.execute(command)
 
+        except KeyboardInterrupt:
+            # KeyboardInterrupt from use case - emergency stop already executed
+            # Re-raise to allow MenuSystem to handle return to menu
+            logger.info("Test execution interrupted by user - emergency stop completed")
+            raise
         except Exception as e:
             # Handle test execution errors with clear feedback
             self._formatter.print_message(f"Test execution failed: {str(e)}", message_type="error")
