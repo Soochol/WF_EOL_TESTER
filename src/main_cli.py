@@ -206,8 +206,9 @@ def setup_logging(debug: bool = False) -> None:
     def rich_log_handler(message):
         """Custom loguru handler that outputs through Rich Console"""
         try:
-            # Extract message content and clean it
+            # Extract record from message for formatting
             record = message.record
+            # Use the cli_formatter function directly on the record
             formatted_message = cli_formatter(record)
             # Remove the trailing newline as Rich Console adds its own
             formatted_message = formatted_message.rstrip('\n')
@@ -220,7 +221,7 @@ def setup_logging(debug: bool = False) -> None:
     logger.add(
         rich_log_handler,
         level=log_level,
-        format=lambda record: record,  # Pass raw record to custom handler
+        format="{message}",  # Simple format, actual formatting done in handler
         enqueue=False,  # Disable background queue for real-time output
         colorize=False,  # Disable loguru coloring, use Rich markup instead
         serialize=False,  # Disable serialization for faster output
