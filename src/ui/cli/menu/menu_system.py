@@ -401,7 +401,11 @@ class MenuSystem(IMenuSystem):
 
         except KeyboardInterrupt:
             logger.info("Heating/Cooling Time Test interrupted by user (Ctrl+C)")
-            raise  # Re-raise to SessionManager for emergency stop
+            self._formatter.print_message(
+                "Test interrupted by user. Returning to main menu...", 
+                message_type="warning", 
+                title="Test Interrupted"
+            )
         except Exception as e:
             logger.error(f"Heating/Cooling Time Test execution error: {e}")
             self._formatter.print_message(
