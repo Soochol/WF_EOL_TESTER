@@ -210,7 +210,7 @@ def setup_logging(debug: bool = False) -> None:
     rich_console = Console(
         file=sys.stderr,
         force_terminal=True,
-        width=120,  # Wider width to accommodate long module names
+        # No width limit - use full terminal width
         color_system="auto",
         legacy_windows=False
     )
@@ -235,7 +235,7 @@ def setup_logging(debug: bool = False) -> None:
             level_name = record["level"].name
             level_color = {
                 "DEBUG": "dim",
-                "INFO": "blue", 
+                "INFO": "bright_blue",  # Changed from blue to bright_blue for better visibility on dark backgrounds
                 "SUCCESS": "green",
                 "WARNING": "yellow",
                 "ERROR": "red",

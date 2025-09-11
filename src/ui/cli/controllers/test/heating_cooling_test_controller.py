@@ -50,10 +50,6 @@ class HeatingCoolingTestController:
             repeat_count: Number of heating/cooling cycles to perform
         """
         try:
-            # Display test header
-            self.formatter.print_header("Heating/Cooling Time Test")
-            self.formatter.print_message(f"Test cycles: {repeat_count}")
-            self.formatter.print_message("This test measures MCU temperature transition times")
 
             # Brief pause to ensure panels are fully rendered before log output begins
             import asyncio

@@ -398,11 +398,7 @@ class MenuSystem(IMenuSystem):
             # Get cycle count from configuration file
             cycle_count = controller.get_cycle_count_from_config()
 
-            self._formatter.print_message(
-                f"Starting test with {cycle_count} cycles...", message_type="info"
-            )
-
-            # Run the test through controller
+            # Run the test through controller (controller will display necessary info)
             await controller.run_test(cycle_count)
 
             # Wait for user acknowledgment
