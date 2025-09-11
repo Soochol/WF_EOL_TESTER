@@ -112,18 +112,15 @@ class BaseUseCase(ABC):
             context.end_time = Timestamp.now()
             execution_duration = TestDuration(context.end_time.value - context.start_time.value)
 
-            # Execute emergency stop if service is available and not already active
+            # Execute emergency stop if service is available
             if self._emergency_stop_service:
-                if not self._emergency_stop_service.is_emergency_active():
-                    try:
-                        logger.info("Executing emergency stop from UseCase...")
-                        await self._emergency_stop_service.execute_emergency_stop()
-                        logger.info("Emergency stop completed from UseCase")
-                    except Exception as emergency_error:
-                        logger.error(f"Emergency stop failed in UseCase: {emergency_error}")
-                        # Continue with normal interrupt handling even if emergency stop fails
-                else:
-                    logger.debug("Emergency stop already active in BaseUseCase, skipping")
+                try:
+                    logger.info("Executing emergency stop from UseCase...")
+                    await self._emergency_stop_service.execute_emergency_stop()
+                    logger.info("Emergency stop completed from UseCase")
+                except Exception as emergency_error:
+                    logger.error(f"Emergency stop failed in UseCase: {emergency_error}")
+                    # Continue with normal interrupt handling even if emergency stop fails
 
             # Create interruption result
             result = self._create_failure_result(
