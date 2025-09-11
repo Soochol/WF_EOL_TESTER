@@ -6,6 +6,7 @@ Coordinates hardware setup, test execution, and result processing.
 """
 
 # Standard library imports
+import asyncio
 from typing import Any, Dict, Optional
 
 # Third-party imports
