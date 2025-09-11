@@ -58,20 +58,16 @@ class EmergencyStopService:
         2. UseCase state management and task cancellation
         3. System cleanup and safe state transition
         """
-        logger.critical("🚨 EXECUTING EMERGENCY STOP PROCEDURE 🚨")
+        logger.error("🚨 EMERGENCY STOP 🚨")
         self._last_emergency_time = asyncio.get_event_loop().time()
 
         try:
-            # Phase 1: Hardware-level immediate safety actions (HIGHEST PRIORITY)
+            # Hardware emergency stop and cleanup
             await self._execute_hardware_emergency_stop()
-
-            # Phase 2: Software cleanup (UseCase emergency stop is handled by BaseUseCase)
             await self._handle_software_cleanup()
-
-            # Phase 3: System-wide cleanup and safe state
             await self._finalize_emergency_stop()
 
-            logger.critical("🚨 EMERGENCY STOP PROCEDURE COMPLETED SUCCESSFULLY 🚨")
+            logger.error("✅ Emergency stop completed")
 
         except Exception as e:
             logger.error(f"Error during emergency stop procedure: {e}")
@@ -80,13 +76,10 @@ class EmergencyStopService:
             raise
         finally:
             # Always maintain emergency state until manually reset
-            logger.critical(
-                "Emergency stop system is now in EMERGENCY STATE - manual reset required"
-            )
+            pass
 
     async def _execute_hardware_emergency_stop(self) -> None:
         """Execute immediate hardware safety actions"""
-        logger.critical("Phase 1: Executing hardware-level emergency stop")
 
         # Robot emergency stop - highest priority
         try:
@@ -96,9 +89,7 @@ class EmergencyStopService:
                 hardware_config = await self.configuration_service.load_hardware_config()
                 robot_axis = hardware_config.robot.axis_id
                 await robot_service.emergency_stop(axis=robot_axis)
-                logger.critical(
-                    f"✓ Robot emergency stop executed on axis {robot_axis} - motion stopped and servo disabled"
-                )
+                logger.info(f"✓ Robot emergency stop executed on axis {robot_axis}")
             else:
                 logger.warning("Robot service not available - skipping robot emergency stop")
         except Exception as e:
@@ -110,7 +101,7 @@ class EmergencyStopService:
             power_service = self.hardware_facade.power_service
             if power_service and await power_service.is_connected():
                 await power_service.disable_output()
-                logger.critical("✓ Power supply emergency shutdown executed")
+                logger.info("✓ Power supply emergency shutdown executed")
             else:
                 logger.warning("Power service not available - skipping power emergency stop")
         except Exception as e:
@@ -120,16 +111,14 @@ class EmergencyStopService:
         # Additional hardware safety actions can be added here
         # (e.g., pneumatic systems, hydraulics, etc.)
 
-        logger.critical("Phase 1 completed: Hardware emergency stop actions executed")
+        pass
 
     async def _handle_software_cleanup(self) -> None:
         """Handle software cleanup during emergency stop"""
-        logger.critical("Phase 2: Handling software cleanup")
 
         try:
             # Software cleanup operations
-            logger.info("Emergency stop initiated - UseCase emergency stop handled by BaseUseCase")
-            logger.info("Hardware emergency stop completed, software cleanup in progress")
+            pass
 
             # Disconnect all hardware services to ensure clean state
             await self._disconnect_all_hardware()
@@ -139,7 +128,6 @@ class EmergencyStopService:
 
     async def _finalize_emergency_stop(self) -> None:
         """Finalize emergency stop with system cleanup"""
-        logger.critical("Phase 3: Finalizing emergency stop procedure")
 
         try:
             # Ensure all hardware is in safe state
@@ -158,7 +146,7 @@ class EmergencyStopService:
 
     async def _verify_hardware_safe_state(self) -> None:
         """Verify that all hardware is in safe state after emergency stop"""
-        logger.info("Verifying hardware safe state after emergency stop")
+        pass
 
         # Check robot state
         try:
@@ -234,14 +222,14 @@ class EmergencyStopService:
 
     async def _disconnect_all_hardware(self) -> None:
         """Disconnect all hardware services during emergency stop cleanup"""
-        logger.info("Disconnecting all hardware services during emergency stop cleanup")
+        pass
 
         # Disconnect robot service
         try:
             robot_service = self.hardware_facade.robot_service
             if robot_service and await robot_service.is_connected():
                 await robot_service.disconnect()
-                logger.info("Robot service disconnected during emergency stop")
+                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect robot service: {e}")
 
@@ -250,7 +238,7 @@ class EmergencyStopService:
             power_service = self.hardware_facade.power_service
             if power_service and await power_service.is_connected():
                 await power_service.disconnect()
-                logger.info("Power service disconnected during emergency stop")
+                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect power service: {e}")
 
@@ -259,7 +247,7 @@ class EmergencyStopService:
             mcu_service = self.hardware_facade.mcu_service
             if mcu_service and await mcu_service.is_connected():
                 await mcu_service.disconnect()
-                logger.info("MCU service disconnected during emergency stop")
+                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect MCU service: {e}")
 
@@ -268,8 +256,8 @@ class EmergencyStopService:
             loadcell_service = self.hardware_facade.loadcell_service
             if loadcell_service and await loadcell_service.is_connected():
                 await loadcell_service.disconnect()
-                logger.info("Loadcell service disconnected during emergency stop")
+                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect loadcell service: {e}")
 
-        logger.info("Hardware disconnect cleanup completed during emergency stop")
+        pass
