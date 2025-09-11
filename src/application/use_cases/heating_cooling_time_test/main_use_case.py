@@ -6,10 +6,10 @@ Coordinates hardware setup, test execution, and result processing.
 """
 
 # Standard library imports
+# Third-party imports
 import asyncio
 from typing import Any, Dict, Optional
 
-# Third-party imports
 from loguru import logger
 
 # Local application imports
@@ -55,7 +55,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self._hardware_services = hardware_services
         self._configuration_service = configuration_service
         self._hardware_setup = HardwareSetupService(hardware_services)
-        
+
         # Emergency stop and interruption handling
         self._keyboard_interrupt_raised = False
 
@@ -75,7 +75,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         logger.info(
             f"Test parameters - Operator: {input_data.operator_id}, Cycles: {input_data.repeat_count}"
         )
-        
+
         # Reset KeyboardInterrupt flag for each execution
         self._keyboard_interrupt_raised = False
 
@@ -275,7 +275,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             # Skip cleanup entirely if KeyboardInterrupt was raised - let Emergency Stop handle hardware safety
             if self._keyboard_interrupt_raised:
                 # Skip cleanup - Emergency Stop Service will handle hardware safety
-                logger.info("Skipping cleanup due to keyboard interrupt - emergency stop will handle hardware safety")
+                logger.info(
+                    "Skipping cleanup due to keyboard interrupt - emergency stop will handle hardware safety"
+                )
             else:
                 # Normal cleanup for successful/failed tests (not interrupted)
                 try:

@@ -5,10 +5,12 @@ Handles hardware initialization and configuration for heating/cooling time testi
 Manages power supply, MCU configuration, and initial temperature setup.
 """
 
+# Third-party imports
 import asyncio
 
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.power_monitor import PowerMonitor
 from domain.enums.mcu_enums import TestMode
@@ -69,6 +71,10 @@ class HardwareSetupService:
         """
         logger.info(f"Setting up power supply: {voltage}V, {current}A")
         power_service = self._hardware_services.power_service
+
+        # Power off first to ensure clean state
+        await power_service.disable_output()
+        await asyncio.sleep(0.5)  # Brief delay after power off
 
         await power_service.set_voltage(voltage)
         await power_service.set_current(current)
@@ -135,7 +141,7 @@ class HardwareSetupService:
         """
         try:
             logger.info("Cleaning up hardware...")
-            
+
             # Clean up power monitor first
             if self._power_monitor and self._power_monitor.is_monitoring():
                 try:
@@ -144,7 +150,7 @@ class HardwareSetupService:
                     logger.info("Power monitor stopped successfully")
                 except Exception as power_monitor_error:
                     logger.warning(f"Power monitor cleanup warning: {power_monitor_error}")
-            
+
             power_service = self._hardware_services.power_service
             mcu_service = self._hardware_services.mcu_service
 
