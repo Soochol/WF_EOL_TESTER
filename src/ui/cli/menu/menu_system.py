@@ -169,6 +169,13 @@ class MenuSystem(IMenuSystem):
 
         try:
             await self._test_executor.execute_eol_test()
+        except KeyboardInterrupt:
+            logger.info("EOL Force Test interrupted by user (Ctrl+C)")
+            self._formatter.print_message(
+                "Test interrupted by user. Returning to main menu...", 
+                message_type="warning", 
+                title="Test Interrupted"
+            )
         except Exception as e:
             self._formatter.print_message(f"Test execution error: {str(e)}", message_type="error")
             logger.error(f"EOL test execution error: {e}")
@@ -257,7 +264,11 @@ class MenuSystem(IMenuSystem):
 
         except KeyboardInterrupt:
             logger.info("Simple MCU Test interrupted by user (Ctrl+C)")
-            raise  # Re-raise to SessionManager for emergency stop
+            self._formatter.print_message(
+                "Test interrupted by user. Returning to main menu...", 
+                message_type="warning", 
+                title="Test Interrupted"
+            )
         except Exception as e:
             self._formatter.print_message(
                 f"Simple MCU Test execution failed: {str(e)}",
@@ -449,6 +460,13 @@ class MenuSystem(IMenuSystem):
             # Wait for user acknowledgment
             await self._wait_for_user_acknowledgment()
 
+        except KeyboardInterrupt:
+            logger.info("Robot Home operation interrupted by user (Ctrl+C)")
+            self._formatter.print_message(
+                "Operation interrupted by user. Returning to main menu...", 
+                message_type="warning", 
+                title="Operation Interrupted"
+            )
         except Exception as e:
             self._formatter.print_message(
                 f"Robot home operation failed: {str(e)}",
