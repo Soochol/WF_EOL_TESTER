@@ -212,8 +212,7 @@ def setup_logging(debug: bool = False) -> None:
         force_terminal=True,
         # No width limit - use full terminal width
         color_system="auto",
-        legacy_windows=True,  # Enable legacy Windows compatibility
-        safe_box=True  # Use ASCII box drawing for better compatibility
+        legacy_windows=False
     )
     
     def rich_log_handler(message):

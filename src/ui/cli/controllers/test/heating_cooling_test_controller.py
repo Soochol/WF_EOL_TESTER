@@ -40,7 +40,7 @@ class HeatingCoolingTestController:
         """
         self.use_case = use_case
         self.formatter = formatter
-        self.console = console or Console(legacy_windows=True, safe_box=True)
+        self.console = console or Console()
 
     async def run_test(self, repeat_count: int = 1) -> None:
         """

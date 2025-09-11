@@ -40,10 +40,7 @@ class BaseFormatter:
                     with default settings optimized for the EOL Tester application.
         """
         self.console = console or Console(
-            force_terminal=True, 
-            legacy_windows=True, 
-            color_system="auto",
-            safe_box=True  # Use ASCII box drawing for better Windows compatibility
+            force_terminal=True, legacy_windows=False, color_system="truecolor"
         )
 
         # Initialize theme components via dependency injection

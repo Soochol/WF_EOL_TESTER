@@ -415,7 +415,7 @@ def create_enhanced_menu_system(integrator: EnhancedInputIntegrator) -> Enhanced
 # Example usage and testing
 async def demo_enhanced_integration() -> None:
     """Demonstration of enhanced CLI integration"""
-    console = Console(force_terminal=True, legacy_windows=True, color_system="auto", safe_box=True)
+    console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
     formatter = RichFormatter(console)
 
     # Create enhanced components
