@@ -235,7 +235,7 @@ def setup_logging(debug: bool = False) -> None:
             level_name = record["level"].name
             level_color = {
                 "DEBUG": "dim",
-                "INFO": "bright_blue",  # Changed from blue to bright_blue for better visibility on dark backgrounds
+                "INFO": "bright_cyan",  # Changed to bright_cyan for better visibility on dark backgrounds
                 "SUCCESS": "green",
                 "WARNING": "yellow",
                 "ERROR": "red",
