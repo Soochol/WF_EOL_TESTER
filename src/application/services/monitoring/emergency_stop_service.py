@@ -5,6 +5,8 @@ Handles emergency stop operations with hardware-first safety approach.
 Integrates with button monitoring, hardware services, and use case management.
 """
 
+# Standard library imports
+# Third-party imports
 import asyncio
 from typing import TYPE_CHECKING, Optional
 
@@ -13,8 +15,9 @@ from loguru import logger
 # Hardware interface imports removed - accessed through facade
 
 if TYPE_CHECKING:
-    from application.services.hardware_facade import HardwareServiceFacade
+    # Local application imports
     from application.services.core.configuration_service import ConfigurationService
+    from application.services.hardware_facade import HardwareServiceFacade
 
 
 class EmergencyStopService:
@@ -128,6 +131,9 @@ class EmergencyStopService:
             logger.info("Emergency stop initiated - UseCase emergency stop handled by BaseUseCase")
             logger.info("Hardware emergency stop completed, software cleanup in progress")
 
+            # Disconnect all hardware services to ensure clean state
+            await self._disconnect_all_hardware()
+
         except Exception as e:
             logger.error(f"Software cleanup failed: {e}")
 
@@ -143,7 +149,9 @@ class EmergencyStopService:
             await self._notify_emergency_stop()
 
         except asyncio.CancelledError:
-            logger.info("Emergency stop finalization cancelled due to shutdown - hardware safety already ensured")
+            logger.info(
+                "Emergency stop finalization cancelled due to shutdown - hardware safety already ensured"
+            )
             # Don't re-raise CancelledError - hardware safety was already ensured in Phase 1
         except Exception as e:
             logger.error(f"Emergency stop finalization failed: {e}")
@@ -157,9 +165,13 @@ class EmergencyStopService:
             robot_service = self.hardware_facade.robot_service
             if robot_service and await robot_service.is_connected():
                 robot_status = await robot_service.get_status()
-                logger.debug(f"Robot status after emergency stop: servo_enabled={robot_status.get('servo_enabled', 'unknown')}")
+                logger.debug(
+                    f"Robot status after emergency stop: servo_enabled={robot_status.get('servo_enabled', 'unknown')}"
+                )
         except asyncio.CancelledError:
-            logger.info("Robot state verification cancelled due to shutdown - skipping robot verification")
+            logger.info(
+                "Robot state verification cancelled due to shutdown - skipping robot verification"
+            )
             # Don't re-raise CancelledError during emergency stop
         except Exception as e:
             logger.warning(f"Could not verify robot safe state: {e}")
@@ -169,9 +181,13 @@ class EmergencyStopService:
             power_service = self.hardware_facade.power_service
             if power_service and await power_service.is_connected():
                 power_status = await power_service.get_status()
-                logger.debug(f"Power status after emergency stop: output_enabled={power_status.get('output_enabled', 'unknown')}")
+                logger.debug(
+                    f"Power status after emergency stop: output_enabled={power_status.get('output_enabled', 'unknown')}"
+                )
         except asyncio.CancelledError:
-            logger.info("Power state verification cancelled due to shutdown - skipping power verification")
+            logger.info(
+                "Power state verification cancelled due to shutdown - skipping power verification"
+            )
             # Don't re-raise CancelledError during emergency stop
         except Exception as e:
             logger.warning(f"Could not verify power safe state: {e}")
@@ -215,3 +231,45 @@ class EmergencyStopService:
         self._last_emergency_time = None
 
         logger.info("Emergency stop state reset - system ready for normal operation")
+
+    async def _disconnect_all_hardware(self) -> None:
+        """Disconnect all hardware services during emergency stop cleanup"""
+        logger.info("Disconnecting all hardware services during emergency stop cleanup")
+
+        # Disconnect robot service
+        try:
+            robot_service = self.hardware_facade.robot_service
+            if robot_service and await robot_service.is_connected():
+                await robot_service.disconnect()
+                logger.info("Robot service disconnected during emergency stop")
+        except Exception as e:
+            logger.warning(f"Failed to disconnect robot service: {e}")
+
+        # Disconnect power service
+        try:
+            power_service = self.hardware_facade.power_service
+            if power_service and await power_service.is_connected():
+                await power_service.disconnect()
+                logger.info("Power service disconnected during emergency stop")
+        except Exception as e:
+            logger.warning(f"Failed to disconnect power service: {e}")
+
+        # Disconnect MCU service
+        try:
+            mcu_service = self.hardware_facade.mcu_service
+            if mcu_service and await mcu_service.is_connected():
+                await mcu_service.disconnect()
+                logger.info("MCU service disconnected during emergency stop")
+        except Exception as e:
+            logger.warning(f"Failed to disconnect MCU service: {e}")
+
+        # Disconnect loadcell service
+        try:
+            loadcell_service = self.hardware_facade.loadcell_service
+            if loadcell_service and await loadcell_service.is_connected():
+                await loadcell_service.disconnect()
+                logger.info("Loadcell service disconnected during emergency stop")
+        except Exception as e:
+            logger.warning(f"Failed to disconnect loadcell service: {e}")
+
+        logger.info("Hardware disconnect cleanup completed during emergency stop")
