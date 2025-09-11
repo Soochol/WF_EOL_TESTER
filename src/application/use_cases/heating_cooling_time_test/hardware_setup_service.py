@@ -93,6 +93,7 @@ class HardwareSetupService:
         # Wait for MCU boot completion
         logger.info("Waiting for MCU boot completion...")
         await mcu_service.wait_boot_complete()
+        logger.info(f"MCU boot complete stabilization delay: {hc_config.mcu_boot_complete_stabilization}s...")
         await asyncio.sleep(hc_config.mcu_boot_complete_stabilization)
 
         # MCU setup
