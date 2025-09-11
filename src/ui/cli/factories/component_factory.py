@@ -198,7 +198,7 @@ class CLIComponentFactory(ComponentFactory):
         from ..usecase_manager import UseCaseManager
 
         # Create core components directly with proper dependencies
-        console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
+        console = Console(force_terminal=True, legacy_windows=True, color_system="auto", safe_box=True)
 
         # Create formatter
         from ..rich_formatter import RichFormatter

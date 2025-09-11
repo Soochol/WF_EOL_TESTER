@@ -61,7 +61,7 @@ class RichFormatter(IFormatter):
         # Initialize console - shared across all formatters with Windows-compatible settings
         self._console = console or Console(
             force_terminal=True, 
-            legacy_windows=False, 
+            legacy_windows=True,  # Enable legacy Windows compatibility
             color_system="auto",  # Auto-detect color support
             width=95,  # Match panel width for consistency
             safe_box=True,  # Use ASCII box drawing for better compatibility

@@ -37,7 +37,7 @@ class HardwareControlManager:
         configuration_service: ConfigurationService,
         console: Optional[Console] = None,
     ):
-        self.console = console or Console()
+        self.console = console or Console(legacy_windows=True, safe_box=True)
         self.formatter = RichFormatter(self.console)
         self.configuration_service = configuration_service
 

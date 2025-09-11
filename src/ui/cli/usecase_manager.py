@@ -160,7 +160,7 @@ class UseCaseManager:
     def __init__(
         self, console: Optional[Console] = None, configuration_service: Optional[Any] = None
     ):
-        self.console = console or Console()
+        self.console = console or Console(legacy_windows=True, safe_box=True)
         self.formatter = RichFormatter(self.console)
         # self.ui_manager = RichUIManager(self.console)  # Removed
         self.discovered_usecases: List[UseCaseInfo] = []
