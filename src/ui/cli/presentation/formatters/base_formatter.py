@@ -99,6 +99,13 @@ class BaseFormatter:
         content.append_text(icon_text)
         content.append_text(message_text)
 
+        # Ensure consistent width by padding shorter content
+        target_width = width or 95
+        content_length = len(content.plain)
+        if content_length < target_width - 10:  # Account for padding and borders
+            padding_needed = target_width - content_length - 10
+            content.append(" " * padding_needed)
+
         panel_title = title or message_type.upper()
 
         return Panel(
@@ -107,7 +114,7 @@ class BaseFormatter:
             title_align="left",
             border_style=color,
             padding=self.layout.DEFAULT_PANEL_PADDING,
-            width=width or 95,  # Fixed width to prevent layout conflicts
+            width=target_width,  # Fixed width to prevent layout conflicts
             expand=False,  # Prevent expansion beyond set width
         )
 
