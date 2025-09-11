@@ -55,15 +55,7 @@ class EmergencyStopService:
         2. UseCase state management and task cancellation
         3. System cleanup and safe state transition
         """
-        # Check if emergency stop is already active to prevent redundant execution
-        if self._emergency_active:
-            logger.info("Emergency stop already active - skipping redundant execution")
-            return
-
         logger.critical("🚨 EXECUTING EMERGENCY STOP PROCEDURE 🚨")
-
-        # Set emergency state flag immediately to prevent concurrent execution
-        self._emergency_active = True
         self._last_emergency_time = asyncio.get_event_loop().time()
 
         try:
