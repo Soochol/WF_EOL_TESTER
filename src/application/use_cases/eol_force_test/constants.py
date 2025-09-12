@@ -79,3 +79,9 @@ class TestExecutionConstants:
     LOG_CYCLE_COMPLETED_FAIL = "❌ Cycle {}/{} completed ({:.1f}s) - FAIL | Progress: {}/{} passed"
     LOG_CYCLE_ERROR = "⚠️ Cycle {}/{} error - DUT {}: {}"
     LOG_CYCLE_DELAY = "⏳ Waiting {:.1f}s until next cycle..."
+
+    # Enhanced Cycle Header Display Constants
+    CYCLE_HEADER_SEPARATOR = "═" * 50
+    CYCLE_HEADER_FORMAT = "🔄 Test Cycle {}/{}"
+    CYCLE_HEADER_COLOR_START = "\033[44;97;1m"  # Blue background, white text, bold
+    CYCLE_HEADER_COLOR_END = "\033[0m"  # Reset color

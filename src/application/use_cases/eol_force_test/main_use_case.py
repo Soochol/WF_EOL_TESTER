@@ -461,10 +461,18 @@ class EOLForceTestUseCase(BaseUseCase):
         for cycle in range(1, repeat_count + 1):
             cycle_start_time = asyncio.get_event_loop().time()
             
-            # Log cycle start with timing information
-            if cycle == 1:
-                logger.info(TestExecutionConstants.LOG_CYCLE_START, cycle, repeat_count)
-            else:
+            # Create prominent test cycle header with background color (Heating/Cooling style)
+            cycle_header = TestExecutionConstants.CYCLE_HEADER_FORMAT.format(cycle, repeat_count)
+            separator = TestExecutionConstants.CYCLE_HEADER_SEPARATOR
+            color_start = TestExecutionConstants.CYCLE_HEADER_COLOR_START
+            color_end = TestExecutionConstants.CYCLE_HEADER_COLOR_END
+            
+            logger.info(f"{color_start}{separator}{color_end}")
+            logger.info(f"{color_start}{cycle_header:^50}{color_end}")
+            logger.info(f"{color_start}{separator}{color_end}")
+            
+            # Log additional timing information for cycles after the first
+            if cycle > 1:
                 # Calculate average time and estimate remaining time
                 avg_cycle_time = sum(cycle_times) / len(cycle_times)
                 remaining_cycles = repeat_count - cycle + 1
