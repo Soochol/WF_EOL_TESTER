@@ -280,8 +280,10 @@ class EnhancedMenuSystem:
         menu_text.append(" Show input help\n\n")
         menu_text.append("Please select an option (1-6) or type 'help':")
 
-        # Clear screen and create panel with properly styled content
-        self.console.clear()
+        # Create visual separation without clearing previous logs
+        self.console.print("\n")
+        self.console.rule("[bold blue]🧪 Main Menu[/bold blue]", style="blue")
+        self.console.print()
         menu_panel = Panel(
             menu_text,
             title="🧪 Enhanced Main Menu",
