@@ -152,7 +152,8 @@ class TestId(BaseId):
         super()._validate_string_format(value)
 
         # Test ID format patterns
-        serial_pattern = r"^[A-Za-z0-9]+_\d{8}_\d{6}_\d{3}$"  # SerialNumber_YYYYMMDD_HHMMSS_XXX
+        serial_pattern_with_seq = r"^[A-Za-z0-9]+_\d{8}_\d{6}_\d{3}$"  # SerialNumber_YYYYMMDD_HHMMSS_XXX
+        serial_pattern_no_seq = r"^[A-Za-z0-9]+_\d{8}_\d{6}$"  # SerialNumber_YYYYMMDD_HHMMSS
         test_pattern = r"^TEST_\d{8}_\d{6}_\d{3}$"  # TEST_YYYYMMDD_HHMMSS_XXX
         uuid_pattern = (
             r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
@@ -160,14 +161,15 @@ class TestId(BaseId):
 
         value_stripped = value.strip()
         if not (
-            re.match(serial_pattern, value_stripped)
+            re.match(serial_pattern_with_seq, value_stripped)
+            or re.match(serial_pattern_no_seq, value_stripped)
             or re.match(test_pattern, value_stripped)
             or re.match(uuid_pattern, value_stripped)
         ):
             raise InvalidFormatException(
                 "test_id",
                 value,
-                "Must be SerialNumber_YYYYMMDD_HHMMSS_XXX, TEST_YYYYMMDD_HHMMSS_XXX, or UUID format",
+                "Must be SerialNumber_YYYYMMDD_HHMMSS[_XXX], TEST_YYYYMMDD_HHMMSS_XXX, or UUID format",
             )
 
     @classmethod
@@ -230,6 +232,46 @@ class TestId(BaseId):
         seq_str = f"{sequence:03d}"
 
         test_id_str = f"{clean_serial}_{date_str}_{time_str}_{seq_str}"
+        return cls(test_id_str)
+
+    @classmethod
+    def generate_from_serial_datetime_no_sequence(
+        cls,
+        serial_number: str,
+        timestamp: Optional[datetime] = None,
+    ) -> "TestId":
+        """
+        Generate a test ID using serial number and datetime format WITHOUT sequence number
+        
+        Args:
+            serial_number: DUT serial number
+            timestamp: Test timestamp (defaults to now)
+            
+        Returns:
+            TestId in format: SerialNumber_YYYYMMDD_HHMMSS (no sequence suffix)
+            
+        Raises:
+            ValidationException: If serial number is invalid
+        """
+        if not serial_number or not serial_number.strip():
+            raise ValidationException(
+                "serial_number",
+                serial_number,
+                "Serial number cannot be empty",
+            )
+
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+
+        # Clean serial number to ensure it's alphanumeric
+        clean_serial = re.sub(r"[^A-Za-z0-9]", "", serial_number)
+        if not clean_serial:
+            clean_serial = "UNKNOWN"
+
+        date_str = timestamp.strftime("%Y%m%d")
+        time_str = timestamp.strftime("%H%M%S")
+
+        test_id_str = f"{clean_serial}_{date_str}_{time_str}"
         return cls(test_id_str)
 
     @classmethod

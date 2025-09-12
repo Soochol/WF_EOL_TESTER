@@ -68,18 +68,34 @@ class TestEntityFactory:
         self, serial_number: str, timestamp: Optional[datetime] = None
     ) -> TestId:
         """
-        Generate a unique test ID with sequence handling to avoid conflicts
+        Generate a unique test ID, preferring no sequence number for cleaner IDs
 
         Args:
             serial_number: DUT serial number
             timestamp: Test timestamp (defaults to now)
 
         Returns:
-            TestId: Unique test ID with format SerialNumber_YYYYMMDD_HHMMSS_XXX
+            TestId: Unique test ID, preferring SerialNumber_YYYYMMDD_HHMMSS format (no sequence)
         """
         if timestamp is None:
             timestamp = datetime.now()
 
+        # First, try without sequence number for cleaner ID
+        try:
+            test_id_no_seq = TestId.generate_from_serial_datetime_no_sequence(serial_number, timestamp)
+            
+            # Check if this test ID already exists
+            if self._repository_service.test_repository:
+                existing_test = await self._repository_service.test_repository.find_by_id(
+                    str(test_id_no_seq)
+                )
+                if existing_test is None:
+                    # ID is unique, use it without sequence
+                    return test_id_no_seq
+        except Exception as e:
+            logger.warning(f"Failed to generate no-sequence test ID: {e}")
+
+        # If no-sequence ID exists or failed, fall back to sequence-based generation
         sequence = TestExecutionConstants.INITIAL_SEQUENCE
         max_attempts = TestExecutionConstants.MAX_TEST_ID_ATTEMPTS
 

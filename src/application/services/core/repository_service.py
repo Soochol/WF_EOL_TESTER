@@ -122,7 +122,7 @@ class RepositoryService:
                 csvfile.write(f"Status: {'PASS' if test.test_result.is_passed() else 'FAIL'}\n")
                 csvfile.write("\n")
                 csvfile.write(
-                    "# Raw Measurement Data (Temperature[°C] vs Distance[mm] → Force[kgf])\n"
+                    "# Raw Measurement Data (Temperature[degC] vs Distance[mm] -> Force[kgf])\n"
                 )
 
                 # Get all unique positions (distances) across all temperatures
@@ -140,7 +140,11 @@ class RepositoryService:
                     lineterminator="\n",
                     escapechar=None,
                 )
-                header = ["Temperature"] + [str(pos) for pos in sorted_positions]
+                # Convert positions from micrometers to millimeters for CSV header display
+                header = ["Temperature"] + [
+                    str(self._convert_micrometers_to_millimeters(float(pos))) 
+                    for pos in sorted_positions
+                ]
                 writer.writerow(header)
 
                 # Write measurement data
@@ -233,6 +237,18 @@ class RepositoryService:
             type(position_data),
         )
         return None
+
+    def _convert_micrometers_to_millimeters(self, value_um: float) -> float:
+        """
+        Convert micrometers to millimeters for CSV display
+        
+        Args:
+            value_um: Value in micrometers (μm)
+            
+        Returns:
+            Value in millimeters (mm)
+        """
+        return value_um / 1000.0
 
     def _extract_serial_number(self, full_serial: str) -> str:
         """
