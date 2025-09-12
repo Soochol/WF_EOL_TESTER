@@ -210,7 +210,7 @@ class TestId(BaseId):
             )
 
         if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now()
 
         if sequence is None:
             sequence = 1
@@ -261,7 +261,7 @@ class TestId(BaseId):
             )
 
         if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now()
 
         # Clean serial number to ensure it's alphanumeric
         clean_serial = re.sub(r"[^A-Za-z0-9]", "", serial_number)
@@ -288,7 +288,7 @@ class TestId(BaseId):
             TestId in standard TEST format
         """
         if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now()
 
         if sequence is None:
             sequence = 1
