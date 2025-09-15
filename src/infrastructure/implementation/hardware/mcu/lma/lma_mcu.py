@@ -680,7 +680,7 @@ class LMAMCU(MCUService):
             logger.info("Waiting for MCU boot complete signal...")
 
             # Wait for boot complete signal with proper packet parsing
-            boot_timeout = 30.0  # 30 second timeout
+            boot_timeout = 60.0  # 60 second timeout
             start_time = time.time()
             response_data = b""
 
