@@ -749,7 +749,33 @@ class LMAMCU(MCUService):
             try:
                 if attempt > 0:
                     logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for set operating temperature")
-                    await asyncio.sleep(1.0)  # Wait 1 second before retry
+
+                    # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
+                    try:
+                        logger.info("📡 Sending test mode 1 before retry...")
+                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
+
+                        if self.serial_conn:
+                            self.serial_conn.write(test_packet_bytes)
+                            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{test_mode_packet} (Test Mode 1)\033[0m")
+
+                            # Test mode 응답 대기 (짧은 타임아웃)
+                            await self._wait_for_additional_response(
+                                timeout=2.0,
+                                description="Test mode 1 ACK",
+                                expected_cmd=0x01,
+                                quiet=True
+                            )
+
+                            await asyncio.sleep(0.5)  # MCU 안정화 대기
+                        else:
+                            logger.warning("⚠️ Serial connection not available for test mode")
+
+                    except Exception as test_error:
+                        logger.warning(f"⚠️ Test mode 1 failed: {test_error} - proceeding with retry anyway")
+
+                    await asyncio.sleep(0.5)  # 추가 대기 후 재시도
 
                 temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
                 packet = f"FFFF0504{temp_scaled:08X}FEFE"
@@ -830,7 +856,33 @@ class LMAMCU(MCUService):
             try:
                 if attempt > 0:
                     logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for set cooling temperature")
-                    await asyncio.sleep(1.0)  # Wait 1 second before retry
+
+                    # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
+                    try:
+                        logger.info("📡 Sending test mode 1 before retry...")
+                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
+
+                        if self.serial_conn:
+                            self.serial_conn.write(test_packet_bytes)
+                            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{test_mode_packet} (Test Mode 1)\033[0m")
+
+                            # Test mode 응답 대기 (짧은 타임아웃)
+                            await self._wait_for_additional_response(
+                                timeout=2.0,
+                                description="Test mode 1 ACK",
+                                expected_cmd=0x01,
+                                quiet=True
+                            )
+
+                            await asyncio.sleep(0.5)  # MCU 안정화 대기
+                        else:
+                            logger.warning("⚠️ Serial connection not available for test mode")
+
+                    except Exception as test_error:
+                        logger.warning(f"⚠️ Test mode 1 failed: {test_error} - proceeding with retry anyway")
+
+                    await asyncio.sleep(0.5)  # 추가 대기 후 재시도
 
                 temp_scaled = int(target_temp * TEMP_SCALE_FACTOR)
                 packet = f"FFFF0604{temp_scaled:08X}FEFE"
@@ -1069,7 +1121,33 @@ class LMAMCU(MCUService):
             try:
                 if attempt > 0:
                     logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for standby heating")
-                    await asyncio.sleep(1.0)  # Wait 1 second before retry
+
+                    # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
+                    try:
+                        logger.info("📡 Sending test mode 1 before retry...")
+                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
+
+                        if self.serial_conn:
+                            self.serial_conn.write(test_packet_bytes)
+                            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{test_mode_packet} (Test Mode 1)\033[0m")
+
+                            # Test mode 응답 대기 (짧은 타임아웃)
+                            await self._wait_for_additional_response(
+                                timeout=2.0,
+                                description="Test mode 1 ACK",
+                                expected_cmd=0x01,
+                                quiet=True
+                            )
+
+                            await asyncio.sleep(0.5)  # MCU 안정화 대기
+                        else:
+                            logger.warning("⚠️ Serial connection not available for test mode")
+
+                    except Exception as test_error:
+                        logger.warning(f"⚠️ Test mode 1 failed: {test_error} - proceeding with retry anyway")
+
+                    await asyncio.sleep(0.5)  # 추가 대기 후 재시도
 
                 # Temperature scaling
                 op_temp_scaled = int(operating_temp * TEMP_SCALE_FACTOR)
@@ -1186,7 +1264,33 @@ class LMAMCU(MCUService):
             try:
                 if attempt > 0:
                     logger.warning(f"🔄 Retry attempt {attempt + 1}/{max_retries} for standby cooling")
-                    await asyncio.sleep(1.0)  # Wait 1 second before retry
+
+                    # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
+                    try:
+                        logger.info("📡 Sending test mode 1 before retry...")
+                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
+
+                        if self.serial_conn:
+                            self.serial_conn.write(test_packet_bytes)
+                            logger.info(f"\033[95mPC -> MCU:\033[0m \033[95m{test_mode_packet} (Test Mode 1)\033[0m")
+
+                            # Test mode 응답 대기 (짧은 타임아웃)
+                            await self._wait_for_additional_response(
+                                timeout=2.0,
+                                description="Test mode 1 ACK",
+                                expected_cmd=0x01,
+                                quiet=True
+                            )
+
+                            await asyncio.sleep(0.5)  # MCU 안정화 대기
+                        else:
+                            logger.warning("⚠️ Serial connection not available for test mode")
+
+                    except Exception as test_error:
+                        logger.warning(f"⚠️ Test mode 1 failed: {test_error} - proceeding with retry anyway")
+
+                    await asyncio.sleep(0.5)  # 추가 대기 후 재시도
 
                 packet = "FFFF0800FEFE"
 
