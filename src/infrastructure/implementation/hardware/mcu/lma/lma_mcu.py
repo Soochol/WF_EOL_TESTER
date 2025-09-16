@@ -753,7 +753,7 @@ class LMAMCU(MCUService):
                     # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
                     try:
                         logger.info("📡 Sending test mode 1 before retry...")
-                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_mode_packet = "FFFF010400000001FEFE"
                         test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
 
                         if self.serial_conn:
@@ -860,7 +860,7 @@ class LMAMCU(MCUService):
                     # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
                     try:
                         logger.info("📡 Sending test mode 1 before retry...")
-                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_mode_packet = "FFFF010400000001FEFE"
                         test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
 
                         if self.serial_conn:
@@ -1125,7 +1125,7 @@ class LMAMCU(MCUService):
                     # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
                     try:
                         logger.info("📡 Sending test mode 1 before retry...")
-                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_mode_packet = "FFFF010400000001FEFE"
                         test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
 
                         if self.serial_conn:
@@ -1268,7 +1268,7 @@ class LMAMCU(MCUService):
                     # 재시도 시 test mode 1을 먼저 전송하여 MCU 상태 초기화
                     try:
                         logger.info("📡 Sending test mode 1 before retry...")
-                        test_mode_packet = "FFFF010100000000FEFE"
+                        test_mode_packet = "FFFF010400000001FEFE"
                         test_packet_bytes = bytes.fromhex(test_mode_packet.replace(" ", ""))
 
                         if self.serial_conn:
