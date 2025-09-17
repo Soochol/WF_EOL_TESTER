@@ -56,14 +56,14 @@ class TestConfiguration:
     # MOTION CONTROL SETTINGS
     # ========================================================================
     velocity: float = 100000.0  # Operating velocity (μm/s)
-    acceleration: float = 60000.0  # Operating acceleration (μm/s²)
-    deceleration: float = 60000.0  # Operating deceleration (μm/s²)
+    acceleration: float = 85000.0  # Operating acceleration (μm/s²)
+    deceleration: float = 85000.0  # Operating deceleration (μm/s²)
 
     # ========================================================================
     # POSITIONING SETTINGS
     # ========================================================================
     initial_position: float = 1000.0  # Starting position (μm)
-    operating_position: float = 220000.0  # Maximum stroke length (μm)
+    operating_position: float = 170000.0  # Maximum stroke length (μm)
 
     # ========================================================================
     # TEST PARAMETERS
@@ -77,11 +77,7 @@ class TestConfiguration:
     )
     stroke_positions: List[float] = field(
         default_factory=lambda: [
-            10000.0,  # 10mm position (μm)
-            60000.0,  # 60mm position (μm)
-            120000.0,  # 120mm position (μm)
-            180000.0,  # 180mm position (μm)
-            220000.0,  # 220mm position (μm)
+            170000.0,  # 170mm position (μm)
         ]
     )
 
