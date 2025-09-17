@@ -65,6 +65,10 @@ async def main() -> None:
     os.environ["PYTHONUNBUFFERED"] = "1"
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
+    # Change working directory to project root to ensure relative paths work correctly
+    project_root = Path(__file__).parent.parent
+    os.chdir(project_root)
+
     # Maximize console window at startup
     maximize_console_window()
 
