@@ -23,6 +23,61 @@ class YamlConfiguration:
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(exist_ok=True)
 
+        # Initialize test_profiles directory and default profile at startup
+        self._initialize_profile_system()
+
+    def _initialize_profile_system(self) -> None:
+        """
+        Initialize the profile system at startup:
+        1. Create test_profiles directory
+        2. Create default profile if it doesn't exist
+        3. Ensure profile configuration exists
+        """
+        try:
+            # Create test_profiles directory
+            profiles_dir = self.config_dir / "test_profiles"
+            profiles_dir.mkdir(exist_ok=True)
+            logger.debug(f"Created test_profiles directory: {profiles_dir}")
+
+            # Check if default profile exists, create if not
+            default_profile_path = profiles_dir / "default.yaml"
+            if not default_profile_path.exists():
+                logger.info("Creating default test profile at startup...")
+                # Use the existing load_profile logic to create default profile
+                # This will use the same code path as the existing implementation
+                from domain.value_objects.test_configuration import TestConfiguration
+
+                # Create default TestConfiguration
+                default_test_config = TestConfiguration()
+                config_data = default_test_config.to_structured_dict()
+
+                # Add metadata
+                from datetime import datetime
+                config_data["metadata"] = {
+                    "profile_name": "default",
+                    "created_at": datetime.now().isoformat(),
+                    "note": "Auto-generated default test profile at startup",
+                    "created_by": "YamlConfiguration (startup initialization)",
+                }
+
+                # Save the default profile with formatting
+                yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
+                formatted_content = self._format_yaml_with_spacing(yaml_content)
+
+                with open(default_profile_path, "w", encoding="utf-8") as f:
+                    f.write(formatted_content)
+
+                logger.info(f"Created default test profile at startup: {default_profile_path}")
+
+            # Ensure profile configuration exists
+            self._ensure_profile_config()
+
+            # Ensure DUT defaults configuration exists
+            self._ensure_dut_defaults_config()
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize profile system at startup: {e}")
+
     def _format_yaml_with_spacing(self, yaml_content: str) -> str:
         """
         Add blank lines before major sections for better readability
@@ -255,7 +310,7 @@ class YamlConfiguration:
         profile_config_path = self.config_dir / "profile.yaml"
 
         if not profile_config_path.exists():
-            logger.info("Creating default profile configuration file")
+            logger.info("Creating default profile configuration file at startup...")
 
             # Check available profiles in test_profiles directory
             profiles_dir = self.config_dir / "test_profiles"
@@ -288,7 +343,7 @@ class YamlConfiguration:
             with open(profile_config_path, "w", encoding="utf-8") as f:
                 f.write(formatted_content)
 
-            logger.info(f"Created profile configuration: {profile_config_path}")
+            logger.info(f"Created profile configuration at startup: {profile_config_path}")
 
     def _update_profile_config_with_new_profile(self, profile_name: str) -> None:
         """Update profile configuration when a new profile is created"""
@@ -325,6 +380,42 @@ class YamlConfiguration:
             logger.warning(
                 f"Failed to update profile configuration with new profile '{profile_name}': {e}"
             )
+
+    def _ensure_dut_defaults_config(self) -> None:
+        """Ensure DUT defaults configuration file exists with default settings"""
+        dut_defaults_path = self.config_dir / "dut_defaults.yaml"
+
+        if not dut_defaults_path.exists():
+            logger.info("Creating default DUT defaults configuration file at startup...")
+
+            # Create default DUT configuration (same as in load_dut_defaults method)
+            from datetime import datetime
+
+            default_config = {
+                "active_profile": "default",
+                "default": {
+                    "dut_id": "DEFAULT001",
+                    "model": "Default Model",
+                    "operator_id": "DEFAULT_OP",
+                    "manufacturer": "Default Manufacturer",
+                    "serial_number": "SN001",
+                    "part_number": "PN001",
+                },
+                "metadata": {
+                    "created_at": datetime.now().isoformat(),
+                    "note": "Auto-generated default DUT configuration at startup",
+                    "created_by": "YamlConfiguration (startup initialization)",
+                },
+            }
+
+            # Save the default configuration for future use with formatting
+            yaml_content = yaml.dump(default_config, default_flow_style=False, sort_keys=False)
+            formatted_content = self._format_yaml_with_spacing(yaml_content)
+
+            with open(dut_defaults_path, "w", encoding="utf-8") as f:
+                f.write(formatted_content)
+
+            logger.info(f"Created default DUT defaults configuration at startup: {dut_defaults_path}")
 
     async def load_last_used_profile(self) -> Optional[str]:
         """Load the last used profile name from profile configuration and preferences"""

@@ -88,6 +88,15 @@ async def main() -> None:
 
         logger.info("Core services injected from container")
 
+        # Ensure profile system is fully initialized at startup
+        try:
+            logger.info("Initializing configuration profiles at startup...")
+            await configuration_service._ensure_profile_system_initialized()
+            logger.info("✅ Configuration profiles initialized successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ Profile system initialization warning: {e}")
+            logger.info("💡 Application will continue with basic profile support")
+
         # Get Emergency Stop Service from container
         emergency_stop_service = container.emergency_stop_service()
         logger.info("Emergency Stop Service injected from container")
