@@ -61,3 +61,6 @@ venv_disabled/
 build/
 dist/
 *.spec
+
+# Claude settings
+.claude/settings.local.json
