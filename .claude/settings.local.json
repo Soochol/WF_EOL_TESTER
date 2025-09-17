@@ -22,7 +22,14 @@
       "Bash(curl:*)",
       "Bash(sudo cp:*)",
       "Bash(systeminfo)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git revert:*)",
+      "Bash(pyinstaller:*)",
+      "Bash(uv run pyinstaller:*)",
+      "Bash(./WF_EOL_Tester_CLI_v2.exe --help)",
+      "Bash(7z:*)",
+      "Bash(dir:*)",
+      "Bash(uv run:*)"
     ],
     "deny": [],
     "ask": []

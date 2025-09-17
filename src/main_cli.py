@@ -25,7 +25,7 @@ from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
 
 # Application configuration constants
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"
-LOGS_DIRECTORY_NAME = "Logs/application"
+LOGS_DIRECTORY_NAME = Path(__file__).parent.parent / "Logs" / "application"
 
 # Generate date-based log filename to prevent Windows file lock issues
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
@@ -277,7 +277,7 @@ def setup_logging(debug: bool = False) -> None:
         sys.stdout.reconfigure(line_buffering=True)  # type: ignore
 
     # File logging setup
-    logs_directory = Path(LOGS_DIRECTORY_NAME)
+    logs_directory = LOGS_DIRECTORY_NAME
     logs_directory.mkdir(parents=True, exist_ok=True)
 
     logger.add(

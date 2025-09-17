@@ -32,17 +32,17 @@ def get_dll_path() -> Path:
 
     # Verify primary path
     if dll_path.exists():
-        print(f'✓ Using {arch_type} AXL DLL: {dll_path}')
+        print(f'[OK] Using {arch_type} AXL DLL: {dll_path}')
         return dll_path
 
     # Try fallback path if primary doesn't exist
     if fallback_path.exists():
-        print(f'⚠ {arch_type} DLL not found, using {fallback_arch} fallback: {fallback_path}')
+        print(f'[WARNING] {arch_type} DLL not found, using {fallback_arch} fallback: {fallback_path}')
         print('  Warning: Architecture mismatch may cause loading issues')
         return fallback_path
 
     # Neither path exists - return primary for error reporting
-    print(f'❌ No AXL DLL found in either {arch_type} or {fallback_arch} directories')
+    print(f'[ERROR] No AXL DLL found in either {arch_type} or {fallback_arch} directories')
     print(f'  Primary path: {dll_path}')
     print(f'  Fallback path: {fallback_path}')
     print(f'  Library directory: {AXL_LIBRARY_DIR}')
