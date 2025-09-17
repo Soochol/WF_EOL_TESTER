@@ -2,7 +2,7 @@
 LoadCell Hardware Controller
 
 Provides LoadCell-specific control operations including force measurement,
-calibration, and real-time monitoring for BS205 force sensors.
+and calibration for BS205 force sensors.
 """
 
 import asyncio
@@ -126,7 +126,8 @@ class LoadCellController(HardwareController):
             "2": "Disconnect",
             "3": f"Read Force [{force_info}]",
             "4": "Zero Calibration [Reset to 0.000]",
-            "5": f"Monitor Force (Live) [{force_info}]",
+            "5": "Hold Current Value [Fix Display]",
+            "6": "Release Hold [Live Display]",
             "b": "Back to Hardware Menu",
         }
 
@@ -134,7 +135,7 @@ class LoadCellController(HardwareController):
         enhanced_title = (
             f"LoadCell Control System\n"
             f"Status: {connection_status}  |  {force_info}  |  {device_info}\n"
-            f"[dim]Use numbers 1-5 to select options, or 'b' to go back[/dim]"
+            f"[dim]Use numbers 1-6 to select options, or 'b' to go back[/dim]"
         )
 
         return simple_interactive_menu(
@@ -159,7 +160,9 @@ class LoadCellController(HardwareController):
             elif cmd == "4":
                 await self._zero_calibration()
             elif cmd == "5":
-                await self._monitor_force()
+                await self._hold_current_value()
+            elif cmd == "6":
+                await self._release_hold()
             else:
                 return False
             return True
@@ -197,30 +200,33 @@ class LoadCellController(HardwareController):
             show_time=0.8,  # Show spinner longer for calibration
         )
 
-    async def _monitor_force(self) -> None:
-        """Monitor force readings in real-time"""
-        try:
-            self.formatter.print_message(
-                "Starting force monitoring. Press Ctrl+C to stop.",
-                message_type="info",
-                title="Force Monitor",
-            )
+    async def _hold_current_value(self) -> None:
+        """Hold current force value"""
 
-            # Create live display for force monitoring
-            self.formatter.print_message(
-                "Starting live force monitoring (Ctrl+C to stop)...", "info"
-            )
+        async def hold_operation():
+            await self.loadcell_service.hold()
+            return True
 
-            try:
-                while True:
-                    force = await self.loadcell_service.read_force()
-                    self.formatter.print_message(
-                        f"Force: {force:.3f} {force.unit}", message_type="info"
-                    )
-                    await asyncio.sleep(0.5)
+        await self._show_progress_with_message(
+            "Setting hold on current value...",
+            hold_operation,
+            "Current value held successfully",
+            "Failed to set hold",
+            show_time=0.3,
+        )
 
-            except KeyboardInterrupt:
-                self.formatter.print_message("Force monitoring stopped", message_type="info")
+    async def _release_hold(self) -> None:
+        """Release hold and return to live display"""
 
-        except Exception as e:
-            self.formatter.print_message(f"Force monitoring failed: {str(e)}", message_type="error")
+        async def release_operation():
+            await self.loadcell_service.hold_release()
+            return True
+
+        await self._show_progress_with_message(
+            "Releasing hold...",
+            release_operation,
+            "Hold released - live display active",
+            "Failed to release hold",
+            show_time=0.3,
+        )
+
