@@ -4,10 +4,13 @@ Hardware Command
 Handles hardware status and management commands.
 """
 
+# Standard library imports
 from typing import Dict, List, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import (
     HardwareServiceFacade,
 )

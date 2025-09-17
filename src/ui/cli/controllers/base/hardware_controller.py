@@ -5,12 +5,15 @@ Provides common functionality for all hardware controllers including
 connection management, status display, and shared UI patterns.
 """
 
-import asyncio
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import Optional
 
+# Third-party imports
+import asyncio
 from rich.status import Status
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 
 

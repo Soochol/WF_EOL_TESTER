@@ -5,25 +5,25 @@ Single comprehensive dependency injection container that combines all applicatio
 Manages configuration, infrastructure, core services, hardware, persistence, and use cases.
 """
 
+# Third-party imports
 from dependency_injector import containers, providers
+from loguru import logger
 
+# Local application imports
 # Configuration and Infrastructure
 from application.services.core.configuration_service import ConfigurationService
 from application.services.core.configuration_validator import ConfigurationValidator
-from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
-from infrastructure.implementation.configuration.yaml_container_configuration import YamlContainerConfigurationLoader
 
 # Core Services
 from application.services.core.exception_handler import ExceptionHandler
 from application.services.core.repository_service import RepositoryService
-from application.services.test.test_result_evaluator import TestResultEvaluator
 
 # Hardware
 from application.services.hardware_facade import HardwareServiceFacade
-from infrastructure.factories.hardware_factory import HardwareFactory
 
-# Persistence
-from infrastructure.implementation.repositories.json_result_repository import JsonResultRepository
+# Monitoring Services
+from application.services.monitoring.emergency_stop_service import EmergencyStopService
+from application.services.test.test_result_evaluator import TestResultEvaluator
 
 # Use Cases
 from application.use_cases.eol_force_test import EOLForceTestUseCase
@@ -31,19 +31,22 @@ from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTe
 from application.use_cases.robot_operations import RobotHomeUseCase
 from application.use_cases.system_tests import SimpleMCUTestUseCase
 
-# Monitoring Services
-from application.services.monitoring.emergency_stop_service import EmergencyStopService
-
 # Domain Configuration
 from domain.value_objects.application_config import ApplicationConfig
+from infrastructure.factories.hardware_factory import HardwareFactory
+from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
+from infrastructure.implementation.configuration.yaml_container_configuration import (
+    YamlContainerConfigurationLoader,
+)
 
-from loguru import logger
+# Persistence
+from infrastructure.implementation.repositories.json_result_repository import JsonResultRepository
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
     """
     Unified application container for dependency injection.
-    
+
     Manages all application dependencies in a single container:
     - Configuration loading and management
     - Infrastructure components (YAML, repositories, hardware factory)
@@ -55,7 +58,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Configuration provider
     config = providers.Configuration()
-    
+
     # Default application configuration
     _default_config = ApplicationConfig()
 
@@ -218,7 +221,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         """
         if kwargs:
             logger.warning(f"Path arguments are ignored: {list(kwargs.keys())}")
-            
+
         try:
             config_loader = YamlContainerConfigurationLoader()
             config_loader.ensure_configurations_exist()
@@ -231,7 +234,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
         """Apply fallback configuration to container."""
         # Use default configurations separately
         app_config = ApplicationConfig()
+        # Local application imports
         from domain.value_objects.hardware_config import HardwareConfig
+
         hardware_config = HardwareConfig()
 
         # Apply configurations separately
@@ -239,4 +244,3 @@ class ApplicationContainer(containers.DeclarativeContainer):
         container.config.from_dict({"hardware": hardware_config.to_dict()})
 
         logger.info("In-memory default configuration applied successfully")
-

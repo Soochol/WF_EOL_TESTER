@@ -4,6 +4,7 @@ TCP Communication Exceptions
 Base exception classes for TCP/IP communication errors.
 """
 
+# Standard library imports
 from typing import Optional
 
 
@@ -26,9 +27,7 @@ class TCPError(Exception):
     def __str__(self) -> str:
         base_msg = self.message
         if self.details:
-            base_msg = (
-                f"{base_msg}. Details: {self.details}"
-            )
+            base_msg = f"{base_msg}. Details: {self.details}"
 
         if self.host and self.port:
             base_msg = f"{base_msg} (Host: {self.host}:{self.port})"

@@ -6,8 +6,10 @@ Manages robot, power, MCU, loadcell, and digital I/O services creation.
 Uses Abstract Factory pattern to select appropriate hardware implementations.
 """
 
+# Third-party imports
 from dependency_injector import containers, providers
 
+# Local application imports
 from infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import (
     AjinextekDIO,
 )

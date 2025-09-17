@@ -3,14 +3,15 @@ Hardware Status Monitoring Component
 Magic MCP Generated - Real-time hardware monitoring with modern UI patterns
 """
 
+# Future imports
 from __future__ import annotations
 
-import asyncio
-import json
+# Standard library imports
 from collections import deque
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
+import json
 from typing import (
     Any,
     Callable,
@@ -19,6 +20,10 @@ from typing import (
     Optional,
 )
 
+# Third-party imports
+import asyncio
+
+# Local application imports
 from domain.enums.hardware_status import HardwareStatus
 
 

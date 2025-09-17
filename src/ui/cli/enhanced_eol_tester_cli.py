@@ -17,17 +17,21 @@ This compatibility module will be deprecated in a future version.
 """
 
 # Standard library imports
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
+# Local folder imports
 # Local imports - New modular architecture
 from .application_factory import create_production_cli_application
 from .validation.input_validator import InputValidator, ValidationConstants
 
+
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
+    # Local application imports
     from application.services.hardware_facade import HardwareServiceFacade
     from application.use_cases.eol_force_test import EOLForceTestUseCase
 
+    # Local folder imports
     from .config_reader import CLIConfigReader
 
 
@@ -82,6 +86,7 @@ class EnhancedEOLTesterCLI:
 
         # Configuration reader compatibility
         if self._hardware_facade:
+            # Local folder imports
             from .config_reader import CLIConfigReader
 
             self._config_reader = CLIConfigReader()

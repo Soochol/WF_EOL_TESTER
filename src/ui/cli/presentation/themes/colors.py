@@ -6,8 +6,10 @@ This module defines all color constants used throughout the Rich UI system
 to ensure consistent visual styling and easy maintenance.
 """
 
+# Standard library imports
 from typing import Dict
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 
 

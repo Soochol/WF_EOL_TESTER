@@ -5,12 +5,15 @@ Provides MCU-specific control operations including temperature control,
 test mode management, and status monitoring for LMA controllers.
 """
 
+# Standard library imports
 from typing import Optional
 
+# Local application imports
 from application.interfaces.hardware.mcu import MCUService
 from domain.enums.mcu_enums import TestMode
 from domain.value_objects.hardware_config import MCUConfig
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
 
@@ -352,6 +355,7 @@ class MCUController(HardwareController):
                     await self.mcu_service.wait_boot_complete()
                 else:
                     # Fallback: just show that we're waiting
+                    # Third-party imports
                     import asyncio
 
                     await asyncio.sleep(2.0)

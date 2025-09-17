@@ -6,11 +6,13 @@ Integrates with button monitoring, hardware services, and use case management.
 """
 
 # Standard library imports
+# Standard library imports
+from typing import Optional, TYPE_CHECKING
+
 # Third-party imports
 import asyncio
-from typing import TYPE_CHECKING, Optional
-
 from loguru import logger
+
 
 # Hardware interface imports removed - accessed through facade
 

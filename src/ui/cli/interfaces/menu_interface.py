@@ -8,11 +8,14 @@ This interface enables dependency injection and flexible implementation
 substitution for different menu system strategies.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+
 # TYPE_CHECKING imports to avoid circular dependencies
 if TYPE_CHECKING:
+    # Local folder imports
     from .execution_interface import ITestExecutor
     from .session_interface import ISessionManager
 

@@ -7,10 +7,11 @@ Previously 786 lines, now significantly reduced by delegating to specialized ser
 
 # Standard library imports
 # Standard library imports
+# Standard library imports
+from typing import cast, Dict, Optional, TYPE_CHECKING
+
 # Third-party imports
 import asyncio
-from typing import TYPE_CHECKING, Dict, Optional, cast
-
 from loguru import logger
 
 # Local application imports
@@ -23,6 +24,7 @@ from domain.enums.robot_state import RobotState
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
+
 
 # Note: All hardware service functionality has been integrated directly into this facade
 
@@ -473,7 +475,6 @@ class HardwareServiceFacade:
             logger.info(f"Fan speed set to {test_config.fan_speed}")
             await asyncio.sleep(test_config.mcu_command_stabilization)
 
-
             await self._mcu.start_standby_heating(
                 operating_temp=test_config.activation_temperature,
                 standby_temp=test_config.standby_temperature,
@@ -595,8 +596,8 @@ class HardwareServiceFacade:
                     await asyncio.sleep(test_config.robot_move_stabilization)
                     self._robot_state = RobotState.MEASUREMENT_POSITION
 
-                    # Take force measurement
-                    force = await self._loadcell.read_force()
+                    # Take peak force measurement
+                    force = await self._loadcell.read_peak_force()
 
                     # Store measurement in dictionary format
                     measurements_dict[temperature][position] = {"force": force.value}

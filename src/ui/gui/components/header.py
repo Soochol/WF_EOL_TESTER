@@ -4,10 +4,11 @@ Header Widget for WF EOL Tester GUI
 Displays application title, current status, and time display.
 """
 
+# Standard library imports
 from datetime import datetime
 from typing import Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -18,9 +19,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from loguru import logger
 
+# Local application imports
 from ui.gui.services.gui_state_manager import GUIStateManager
-
 
 
 class HeaderWidget(QWidget):

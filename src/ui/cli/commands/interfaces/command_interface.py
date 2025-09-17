@@ -11,6 +11,7 @@ Key Features:
 - Registry pattern for command management
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum

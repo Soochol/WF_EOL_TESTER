@@ -8,17 +8,20 @@ This interface enables dependency injection and flexible implementation
 substitution for different application strategies.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
-from typing import TYPE_CHECKING
-
+# Third-party imports
 from rich.console import Console
 
+# Local folder imports
 from .validation_interface import IInputValidator
+
 
 # TYPE_CHECKING imports to avoid circular dependencies
 if TYPE_CHECKING:
+    # Local folder imports
     from ..rich_formatter import RichFormatter
     from ..usecase_manager import UseCaseManager
 

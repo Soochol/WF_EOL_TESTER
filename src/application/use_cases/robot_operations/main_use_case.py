@@ -5,15 +5,18 @@ Main orchestrator for robot homing operation.
 Coordinates Digital I/O setup, robot connection, and homing execution.
 """
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
-from .input import RobotHomeInput
+# Local folder imports
 from .digital_io_setup_service import DigitalIOSetupService
+from .input import RobotHomeInput
 from .result import RobotHomeResult
 from .robot_connection_service import RobotConnectionService
 

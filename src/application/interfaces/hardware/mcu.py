@@ -4,9 +4,11 @@ MCU Interface
 Interface for MCU (Microcontroller Unit) operations and control.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+# Local application imports
 from domain.enums.mcu_enums import TestMode
 
 
@@ -194,7 +196,7 @@ class MCUService(ABC):
     def clear_timing_history(self) -> None:
         """
         Clear timing history for new test sessions
-        
+
         This is a non-async method for clearing internal timing data.
         """
         ...
@@ -202,7 +204,7 @@ class MCUService(ABC):
     def get_all_timing_data(self) -> Dict[str, Any]:
         """
         Get all heating/cooling timing data
-        
+
         Returns:
             Dictionary containing timing data for heating and cooling transitions
         """

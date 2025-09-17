@@ -4,8 +4,10 @@ GUI Styling and Theme Management
 Industrial theme styling with WCAG compliance for the EOL Tester GUI.
 """
 
+# Standard library imports
 from typing import Any, Dict
 
+# Third-party imports
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QWidget

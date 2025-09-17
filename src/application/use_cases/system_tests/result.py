@@ -5,8 +5,10 @@ Result object for simple MCU communication test.
 Contains test outcomes and detailed step results.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
+# Local application imports
 from application.use_cases.common.command_result_patterns import BaseResult
 from domain.enums.test_status import TestStatus
 from domain.value_objects.identifiers import TestId

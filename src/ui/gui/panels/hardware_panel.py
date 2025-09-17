@@ -4,10 +4,10 @@ Hardware Panel for WF EOL Tester GUI
 Panel for manual hardware control and monitoring.
 """
 
-import asyncio
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -29,7 +29,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import asyncio
+from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import ConnectionStatus, GUIStateManager
 
@@ -523,6 +526,7 @@ class HardwarePanel(QWidget):
             message: Message to add
         """
         if self.command_log:
+            # Standard library imports
             from datetime import datetime
 
             timestamp = datetime.now().strftime("%H:%M:%S")

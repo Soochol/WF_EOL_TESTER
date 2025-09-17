@@ -4,8 +4,10 @@ Test Execution Domain Exceptions
 Contains exceptions related to test execution business rules and constraints.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
+# Local application imports
 from domain.exceptions.domain_exceptions import (
     DomainException,
 )
@@ -64,9 +66,7 @@ class InvalidTestStateException(TestExecutionException):
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.current_state = current_state
         self.required_state = required_state
         self.operation = operation
@@ -107,17 +107,13 @@ class TestSequenceException(TestExecutionException):
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.step_name = step_name
         self.sequence_violation = sequence_violation
         self.expected_previous_step = expected_previous_step
 
 
-class MeasurementValidationException(
-    TestExecutionException
-):
+class MeasurementValidationException(TestExecutionException):
     """Exception raised when measurement validation violates business rules"""
 
     def __init__(
@@ -156,9 +152,7 @@ class MeasurementValidationException(
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.measurement_type = measurement_type
         self.measured_value = measured_value
         self.validation_failure = validation_failure
@@ -194,9 +188,7 @@ class TestTimeoutException(TestExecutionException):
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.step_name = step_name
         self.timeout_seconds = timeout_seconds
 
@@ -227,13 +219,9 @@ class TestResourceException(TestExecutionException):
         message = f"Test resource issue with {resource_type}: {resource_issue}"
 
         if required_resources and available_resources:
-            missing = set(required_resources) - set(
-                available_resources
-            )
+            missing = set(required_resources) - set(available_resources)
             if missing:
-                message += (
-                    f". Missing resources: {list(missing)}"
-                )
+                message += f". Missing resources: {list(missing)}"
 
         exception_details = details or {}
         exception_details.update(
@@ -245,9 +233,7 @@ class TestResourceException(TestExecutionException):
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.resource_type = resource_type
         self.resource_issue = resource_issue
         self.required_resources = required_resources
@@ -276,7 +262,9 @@ class TestDataException(TestExecutionException):
             details: Additional data context
         """
         if invalid_data is not None:
-            message = f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
+            message = (
+                f"Test data issue with {data_type}: {data_issue}. Invalid data: {invalid_data}"
+            )
         else:
             message = f"Test data issue with {data_type}: {data_issue}"
 
@@ -289,9 +277,7 @@ class TestDataException(TestExecutionException):
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.data_type = data_type
         self.data_issue = data_issue
         self.invalid_data = invalid_data
@@ -335,9 +321,7 @@ class TestCriteriaException(TestExecutionException):
             }
         )
 
-        super().__init__(
-            message, test_id, exception_details
-        )
+        super().__init__(message, test_id, exception_details)
         self.criteria_type = criteria_type
         self.criteria_violation = criteria_violation
         self.actual_value = actual_value

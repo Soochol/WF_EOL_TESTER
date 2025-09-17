@@ -9,13 +9,16 @@ This formatter handles vertical, horizontal, and grid layouts with automatic
 fallback strategies for optimal component organization.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Tuple
 
+# Third-party imports
 from rich.console import Group
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.text import Text
 
+# Local folder imports
 from .base_formatter import BaseFormatter
 
 

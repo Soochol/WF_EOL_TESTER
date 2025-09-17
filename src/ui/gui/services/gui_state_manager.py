@@ -4,15 +4,18 @@ GUI State Management Service
 Manages application state, hardware status, and UI component synchronization.
 """
 
-import asyncio
+# Standard library imports
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import QObject, QTimer, Signal
+import asyncio
+from loguru import logger
 
+# Local application imports
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 
@@ -332,8 +335,9 @@ class GUIStateManager(QObject):
     def _update_hardware_status(self) -> None:
         """Update hardware status (called by timer)"""
         # Use thread pool to run async operation
-        import threading
+        # Standard library imports
         from concurrent.futures import ThreadPoolExecutor
+        import threading
 
         def run_async_update():
             try:
@@ -394,6 +398,7 @@ class GUIStateManager(QObject):
         """Load application configuration"""
         try:
             # Use thread pool to run async operation
+            # Standard library imports
             import threading
 
             def run_async_config_load():

@@ -1,4 +1,6 @@
 """MCU-related enumerations for domain layer"""
+
+# Standard library imports
 from enum import Enum
 
 

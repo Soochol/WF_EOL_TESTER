@@ -4,14 +4,17 @@ Configuration Implementation
 Provides YAML file-based configuration loading/saving and profile preference management.
 """
 
-import re
+# Standard library imports
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional
 
-import yaml
+# Third-party imports
 from loguru import logger
+import yaml
 
+# Local application imports
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import TestConfiguration
 
@@ -45,6 +48,7 @@ class YamlConfiguration:
                 logger.info("Creating default test profile at startup...")
                 # Use the existing load_profile logic to create default profile
                 # This will use the same code path as the existing implementation
+                # Local application imports
                 from domain.value_objects.test_configuration import TestConfiguration
 
                 # Create default TestConfiguration
@@ -52,7 +56,9 @@ class YamlConfiguration:
                 config_data = default_test_config.to_structured_dict()
 
                 # Add metadata
+                # Standard library imports
                 from datetime import datetime
+
                 config_data["metadata"] = {
                     "profile_name": "default",
                     "created_at": datetime.now().isoformat(),
@@ -129,6 +135,7 @@ class YamlConfiguration:
 
         if not profile_path.exists():
             # Create default test configuration when profile is missing
+            # Standard library imports
             from datetime import datetime
 
             # Create test_profiles directory if it doesn't exist
@@ -194,6 +201,7 @@ class YamlConfiguration:
 
         if not dut_path.exists():
             # Create default DUT configuration when file is missing
+            # Standard library imports
             from datetime import datetime
 
             default_config = {
@@ -389,6 +397,7 @@ class YamlConfiguration:
             logger.info("Creating default DUT defaults configuration file at startup...")
 
             # Create default DUT configuration (same as in load_dut_defaults method)
+            # Standard library imports
             from datetime import datetime
 
             default_config = {
@@ -415,7 +424,9 @@ class YamlConfiguration:
             with open(dut_defaults_path, "w", encoding="utf-8") as f:
                 f.write(formatted_content)
 
-            logger.info(f"Created default DUT defaults configuration at startup: {dut_defaults_path}")
+            logger.info(
+                f"Created default DUT defaults configuration at startup: {dut_defaults_path}"
+            )
 
     async def load_last_used_profile(self) -> Optional[str]:
         """Load the last used profile name from profile configuration and preferences"""

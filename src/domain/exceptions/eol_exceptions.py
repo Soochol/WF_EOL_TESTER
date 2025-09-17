@@ -4,6 +4,7 @@ EOL Tester Exception Hierarchy
 Comprehensive exception classes for the EOL Tester application following Exception First principles.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
 
@@ -31,16 +32,12 @@ class EOLTesterError(Exception):
         self.context = context or {}
         self.message = message
 
-    def add_context(
-        self, key: str, value: Any
-    ) -> "EOLTesterError":
+    def add_context(self, key: str, value: Any) -> "EOLTesterError":
         """Add context information to the exception"""
         self.context[key] = value
         return self
 
-    def get_context(
-        self, key: str, default: Any = None
-    ) -> Any:
+    def get_context(self, key: str, default: Any = None) -> Any:
         """Get context information from the exception"""
         return self.context.get(key, default)
 
@@ -96,10 +93,7 @@ class ConfigurationValidationError(ValidationError):
 
     def has_error_containing(self, text: str) -> bool:
         """Check if any error message contains the specified text"""
-        return any(
-            text.lower() in error.lower()
-            for error in self.errors
-        )
+        return any(text.lower() in error.lower() for error in self.errors)
 
 
 class MultiConfigurationValidationError(ValidationError):
@@ -110,9 +104,7 @@ class MultiConfigurationValidationError(ValidationError):
     and provides structured access to errors by configuration type.
     """
 
-    def __init__(
-        self, errors_by_type: Dict[str, List[str]]
-    ):
+    def __init__(self, errors_by_type: Dict[str, List[str]]):
         """
         Initialize multi-configuration validation error
 
@@ -121,36 +113,28 @@ class MultiConfigurationValidationError(ValidationError):
         """
         self.errors_by_type = errors_by_type
 
-        total_errors = sum(
-            len(errors)
-            for errors in errors_by_type.values()
-        )
+        total_errors = sum(len(errors) for errors in errors_by_type.values())
         config_types = ", ".join(errors_by_type.keys())
 
-        message = f"Multiple configuration validation failed: {total_errors} errors across {config_types}"
+        message = (
+            f"Multiple configuration validation failed: {total_errors} errors across {config_types}"
+        )
         super().__init__(
             message,
             {
                 "errors_by_type": errors_by_type,
                 "total_errors": total_errors,
-                "failed_config_types": list(
-                    errors_by_type.keys()
-                ),
+                "failed_config_types": list(errors_by_type.keys()),
             },
         )
 
-    def get_errors_for_type(
-        self, config_type: str
-    ) -> List[str]:
+    def get_errors_for_type(self, config_type: str) -> List[str]:
         """Get validation errors for a specific configuration type"""
         return self.errors_by_type.get(config_type, [])
 
     def has_errors_for_type(self, config_type: str) -> bool:
         """Check if there are validation errors for a specific configuration type"""
-        return (
-            config_type in self.errors_by_type
-            and len(self.errors_by_type[config_type]) > 0
-        )
+        return config_type in self.errors_by_type and len(self.errors_by_type[config_type]) > 0
 
 
 # === Test Evaluation Exceptions ===
@@ -178,9 +162,7 @@ class TestEvaluationError(EOLTesterError):
         """
         self.failed_points = failed_points
         self.total_points = total_points
-        self.passed_points = max(
-            0, total_points - len(failed_points)
-        )
+        self.passed_points = max(0, total_points - len(failed_points))
 
         message = f"Test evaluation failed: {len(failed_points)} of {total_points} points failed"
         super().__init__(
@@ -200,26 +182,15 @@ class TestEvaluationError(EOLTesterError):
 
         failure_types: Dict[str, int] = {}
         for point in self.failed_points:
-            error_type = point.get(
-                "error", "unknown_failure"
-            )
-            failure_types[error_type] = (
-                failure_types.get(error_type, 0) + 1
-            )
+            error_type = point.get("error", "unknown_failure")
+            failure_types[error_type] = failure_types.get(error_type, 0) + 1
 
-        summary_parts = [
-            f"{count} {error_type}"
-            for error_type, count in failure_types.items()
-        ]
+        summary_parts = [f"{count} {error_type}" for error_type, count in failure_types.items()]
         return f"Failures: {', '.join(summary_parts)}"
 
     def get_failed_measurements(self) -> List[str]:
         """Get list of failed measurement keys"""
-        return [
-            point.get("key", "unknown")
-            for point in self.failed_points
-            if "key" in point
-        ]
+        return [point.get("key", "unknown") for point in self.failed_points if "key" in point]
 
 
 # === Hardware Exceptions ===
@@ -262,9 +233,7 @@ class HardwareConnectionError(HardwareError):
 class HardwareOperationError(HardwareError):
     """Exception raised when hardware operation fails"""
 
-    def __init__(
-        self, device: str, operation: str, reason: str
-    ):
+    def __init__(self, device: str, operation: str, reason: str):
         self.device = device
         self.operation = operation
         self.reason = reason
@@ -368,9 +337,7 @@ class TestSequenceError(TestExecutionError):
             {
                 "step": step,
                 "reason": reason,
-                "measurements_count": len(
-                    self.measurements
-                ),
+                "measurements_count": len(self.measurements),
             },
         )
 
@@ -382,9 +349,7 @@ class TestSetupError(TestExecutionError):
         self.component = component
         self.reason = reason
 
-        message = (
-            f"Test setup failed for {component}: {reason}"
-        )
+        message = f"Test setup failed for {component}: {reason}"
         super().__init__(
             message,
             {"component": component, "reason": reason},

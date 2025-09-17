@@ -5,13 +5,15 @@ Mock implementation of digital input hardware service for testing and developmen
 Simulates digital I/O operations without requiring actual hardware.
 """
 
+# Standard library imports
 import random
 from typing import Any, Dict, List
 
+# Third-party imports
 import asyncio
-
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )

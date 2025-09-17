@@ -1,6 +1,8 @@
 # Business Rule Exceptions
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Local application imports
 from domain.exceptions.domain_exceptions import (
     DomainException,
 )

@@ -4,6 +4,7 @@ Domain Exceptions Package
 Contains domain-specific exceptions for EOL Tester application following Exception First principles.
 """
 
+# Local application imports
 from domain.exceptions.domain_exceptions import (
     DomainException,
 )
@@ -40,6 +41,7 @@ from domain.exceptions.robot_exceptions import (
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
+
 
 __all__ = [
     # Legacy domain exceptions

@@ -5,11 +5,14 @@ Handles creation and initialization of EOL test entities.
 Extracted from EOLForceTestUseCase for better separation of concerns.
 """
 
+# Standard library imports
 from datetime import datetime
 from typing import Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.core.repository_service import RepositoryService
 from domain.entities.dut import DUT
 from domain.entities.eol_test import EOLTest
@@ -17,6 +20,7 @@ from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.identifiers import DUTId, OperatorId, TestId
 from domain.value_objects.test_configuration import TestConfiguration
 
+# Local folder imports
 from .constants import TestExecutionConstants
 
 
@@ -85,8 +89,10 @@ class TestEntityFactory:
 
         # First, try without sequence number for cleaner ID
         try:
-            test_id_no_seq = TestId.generate_from_serial_datetime_no_sequence(serial_number, timestamp)
-            
+            test_id_no_seq = TestId.generate_from_serial_datetime_no_sequence(
+                serial_number, timestamp
+            )
+
             # Check if this test ID already exists
             if self._repository_service.test_repository:
                 existing_test = await self._repository_service.test_repository.find_by_id(

@@ -5,8 +5,10 @@ Calculates statistics and energy consumption from heating/cooling test results.
 Handles timing analysis and power consumption calculations.
 """
 
+# Standard library imports
 from typing import Any, Dict, List
 
+# Third-party imports
 from loguru import logger
 
 

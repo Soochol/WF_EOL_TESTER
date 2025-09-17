@@ -5,8 +5,10 @@ Input object for heating/cooling time test use case.
 Contains all input parameters for the test execution.
 """
 
+# Standard library imports
 from typing import Any, Dict
 
+# Local application imports
 from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 
 

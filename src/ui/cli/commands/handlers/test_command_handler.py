@@ -4,10 +4,13 @@ Enhanced test command handler with dependency injection support and
 integration with the new command system architecture.
 """
 
-from typing import Dict, List, Optional, Tuple, cast
+# Standard library imports
+from typing import cast, Dict, List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.use_cases.eol_force_test import (
     EOLForceTestInput,
     EOLForceTestUseCase,
@@ -304,6 +307,7 @@ class TestCommandHandler(BaseCommand):
             CommandResult with test execution results
         """
         try:
+            # Standard library imports
             import time
 
             # Generate test data

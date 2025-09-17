@@ -5,11 +5,14 @@ Integrated service for BS205 LoadCell hardware control.
 Combines adapter and controller functionality into a single service.
 """
 
-import asyncio
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
@@ -94,6 +97,7 @@ class BS205LoadCell(LoadCellService):
         try:
             # 사용 가능한 COM 포트 체크
             try:
+                # Third-party imports
                 import serial.tools.list_ports
 
                 available_ports = [port.device for port in serial.tools.list_ports.comports()]
@@ -150,6 +154,7 @@ class BS205LoadCell(LoadCellService):
 
         except Exception as e:
             logger.error(f"Error disconnecting BS205 LoadCell: {e}")
+            # Local application imports
             from domain.exceptions.eol_exceptions import (
                 HardwareOperationError,
             )
@@ -220,6 +225,106 @@ class BS205LoadCell(LoadCellService):
         except Exception as e:
             raise BS205OperationError(
                 f"Unexpected error reading force: {e}",
+                error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
+            ) from e
+
+    async def read_peak_force(
+        self, duration_ms: int = 1000, sampling_interval_ms: int = 200
+    ) -> ForceValue:
+        """
+        Read peak force measurement over a specified duration using continuous sampling
+
+        Args:
+            duration_ms: Total sampling duration in milliseconds (default: 1000ms)
+            sampling_interval_ms: Interval between samples in milliseconds (default: 200ms)
+
+        Returns:
+            ForceValue object containing the peak (maximum absolute) force measured
+
+        Raises:
+            BS205HardwareError: 연결되지 않은 경우
+            BS205OperationError: 측정 실패
+            BS205CommunicationError: 통신 실패
+        """
+        if not await self.is_connected():
+            raise BS205HardwareError(
+                "BS205 LoadCell is not connected",
+                error_code=int(BS205ErrorCode.HARDWARE_NOT_CONNECTED),
+            )
+
+        # Validate parameters
+        if duration_ms <= 0:
+            raise BS205OperationError(
+                f"Invalid duration: {duration_ms}ms. Must be positive.",
+                error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
+            )
+
+        # Ensure sampling interval respects RS232 communication constraints
+        min_sampling_interval = max(sampling_interval_ms, self._min_command_interval * 1000)
+        if min_sampling_interval != sampling_interval_ms:
+            logger.warning(
+                f"Sampling interval adjusted from {sampling_interval_ms}ms to {min_sampling_interval}ms "
+                f"to respect RS232 communication constraints"
+            )
+            sampling_interval_ms = int(min_sampling_interval)
+
+        try:
+            logger.info(
+                f"Starting peak force measurement - Duration: {duration_ms}ms, Interval: {sampling_interval_ms}ms"
+            )
+
+            # Calculate number of samples
+            max_samples = max(1, duration_ms // sampling_interval_ms)
+            samples = []
+            start_time = asyncio.get_event_loop().time()
+            target_end_time = start_time + (duration_ms / 1000.0)
+
+            sample_count = 0
+            while asyncio.get_event_loop().time() < target_end_time and sample_count < max_samples:
+                try:
+                    # Read force measurement
+                    force_value = await self.read_force()
+                    samples.append(force_value)
+                    sample_count += 1
+
+                    logger.debug(f"Sample {sample_count}: {force_value.value:.3f}kgf")
+
+                    # Wait for next sample if not the last one
+                    if (
+                        sample_count < max_samples
+                        and asyncio.get_event_loop().time() < target_end_time
+                    ):
+                        wait_time = sampling_interval_ms / 1000.0
+                        await asyncio.sleep(wait_time)
+
+                except BS205Error:
+                    # Log error but continue sampling if possible
+                    logger.warning(f"Failed to read sample {sample_count + 1}, continuing...")
+                    continue
+
+            if not samples:
+                raise BS205OperationError(
+                    "No valid force samples collected during peak measurement",
+                    error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
+                )
+
+            # Find peak value (maximum absolute force)
+            peak_force = max(samples, key=lambda f: abs(f.value))
+
+            actual_duration = (asyncio.get_event_loop().time() - start_time) * 1000
+            logger.info(
+                f"Peak force measurement completed - "
+                f"Samples: {len(samples)}, Duration: {actual_duration:.0f}ms, "
+                f"Peak: {peak_force.value:.3f}kgf"
+            )
+
+            return peak_force
+
+        except BS205Error:
+            raise  # Re-raise BS205 specific errors
+        except Exception as e:
+            raise BS205OperationError(
+                f"Unexpected error during peak force measurement: {e}",
                 error_code=int(BS205ErrorCode.OPERATION_TIMEOUT),
             ) from e
 
@@ -302,6 +407,7 @@ class BS205LoadCell(LoadCellService):
         Raises:
             HardwareOperationError: If calibration fails
         """
+        # Local application imports
         from domain.exceptions.eol_exceptions import (
             HardwareOperationError,
         )
@@ -569,6 +675,7 @@ class BS205LoadCell(LoadCellService):
             # 값 정리: 언더스코어(_)를 공백으로 변환, 연속 공백 정리
             value_clean = value_part.replace("_", " ").strip()
             # 연속된 공백을 하나로 정리
+            # Standard library imports
             import re
 
             value_clean = re.sub(r"\s+", " ", value_clean)
@@ -584,6 +691,7 @@ class BS205LoadCell(LoadCellService):
                 weight_value = float(value_clean)
             except ValueError:
                 # 마지막 시도: 숫자만 추출
+                # Standard library imports
                 import re
 
                 numbers = re.findall(r"\d+\.?\d*", value_clean)
@@ -596,7 +704,9 @@ class BS205LoadCell(LoadCellService):
             if sign == "-":
                 weight_value = -weight_value
 
-            logger.info(f"\033[42mSuccessfully parsed BS205 weight: '{response}' → {weight_value} kg\033[0m")
+            logger.info(
+                f"\033[42mSuccessfully parsed BS205 weight: '{response}' → {weight_value} kg\033[0m"
+            )
 
             # BS205는 단위를 전송하지 않으므로 값만 반환
             return weight_value

@@ -4,13 +4,16 @@ Results Command
 Handles test results management and display commands.
 """
 
-import json
+# Standard library imports
 from datetime import datetime, timedelta
+import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast, Dict, List, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
@@ -380,6 +383,7 @@ class ResultsCommand(Command):
 
             if format_type == "csv":
                 # Export as CSV
+                # Standard library imports
                 import csv
 
                 export_path = Path(filename)

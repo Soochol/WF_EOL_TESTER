@@ -9,7 +9,9 @@ Components:
 - CLIComponentFactory: Specialized factory for CLI components
 """
 
-from .component_factory import ComponentFactory, CLIComponentFactory
+# Local folder imports
+from .component_factory import CLIComponentFactory, ComponentFactory
+
 
 __all__ = [
     "ComponentFactory",

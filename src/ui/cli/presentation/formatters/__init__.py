@@ -8,11 +8,13 @@ The formatter classes are designed to work together through composition and
 inherit common functionality from the BaseFormatter class.
 """
 
+# Local folder imports
 from .base_formatter import BaseFormatter
+from .layout_formatter import LayoutFormatter
+from .progress_formatter import ProgressFormatter
 from .status_formatter import StatusFormatter
 from .table_formatter import TableFormatter
-from .progress_formatter import ProgressFormatter
-from .layout_formatter import LayoutFormatter
+
 
 __all__ = [
     "BaseFormatter",

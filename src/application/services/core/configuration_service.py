@@ -5,12 +5,15 @@ Service layer that manages configuration and profile preference operations.
 Uses Exception First principles for error handling.
 """
 
+# Standard library imports
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
+# Third-party imports
 from loguru import logger
+import yaml
 
+# Local application imports
 from application.interfaces.configuration.configuration import Configuration
 from domain.exceptions import (
     ConfigurationNotFoundError,
@@ -223,6 +226,7 @@ class ConfigurationService:
         self, config_file: Path, default_config: HeatingCoolingConfiguration
     ) -> None:
         """Create default heating/cooling configuration YAML file"""
+        # Standard library imports
         from datetime import datetime
 
         # Use to_dict for the main configuration data

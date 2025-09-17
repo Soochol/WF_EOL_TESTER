@@ -5,11 +5,14 @@ Simplified serial communication for hardware devices.
 Optimized for request-response patterns like BS205 LoadCell.
 """
 
-import asyncio
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from driver.serial.constants import (
     COMMAND_TERMINATOR,
     CONNECT_TIMEOUT,
@@ -24,7 +27,9 @@ from driver.serial.exceptions import (
     SerialTimeoutError,
 )
 
+
 try:
+    # Third-party imports
     import serial_asyncio
 except ImportError:
     logger.warning("serial_asyncio not available, install with: pip install pyserial-asyncio")

@@ -5,16 +5,20 @@ Orchestrates individual hardware controllers and provides unified
 hardware management interface with Rich UI integration.
 """
 
-import asyncio
+# Standard library imports
 from typing import List, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 from rich.console import Console
 
+# Local application imports
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
 from ..hardware.digital_io_controller import DigitalIOController
@@ -148,6 +152,7 @@ class HardwareControlManager:
                     )
                     try:
                         # Try using run_in_executor to run async code in thread
+                        # Standard library imports
                         import concurrent.futures
 
                         def load_config_sync():
@@ -203,6 +208,7 @@ class HardwareControlManager:
         except Exception as e:
             logger.error(f"Exception in hardware configuration loading: {type(e).__name__}: {e}")
             logger.error("Using default hardware configurations as fallback")
+            # Standard library imports
             import traceback
 
             logger.debug(f"Full traceback: {traceback.format_exc()}")
@@ -328,6 +334,7 @@ class HardwareControlManager:
             return "Robot controller not available. Please check system configuration."
 
         # Cast to RobotController to access robot_service attribute
+        # Local folder imports
         from ..hardware.robot_controller import RobotController as RobotControllerType
 
         if not isinstance(robot_controller, RobotControllerType):
@@ -423,6 +430,7 @@ class HardwareControlManager:
 
             # Get robot service
             robot_controller = self.controllers["Robot"]  # We know it exists from validation
+            # Local folder imports
             from ..hardware.robot_controller import (
                 RobotController as RobotControllerType,
             )
@@ -510,6 +518,7 @@ class HardwareControlManager:
 
     async def _create_and_execute_home_use_case(self, robot_service):
         """Create and execute robot home use case"""
+        # Local application imports
         from application.use_cases.robot_operations import (
             RobotHomeInput,
             RobotHomeUseCase,

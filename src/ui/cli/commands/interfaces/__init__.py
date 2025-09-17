@@ -5,15 +5,17 @@ middleware pipeline, and registry pattern support. These interfaces enable
 loose coupling, testability, and extensibility.
 """
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
+    CommandMetadata,
     ICommand,
+    ICommandExecutionContext,
+    ICommandMiddleware,
     ICommandParser,
     ICommandRegistry,
-    ICommandMiddleware,
-    ICommandExecutionContext,
-    CommandMetadata,
     MiddlewareResult,
 )
+
 
 __all__ = [
     "ICommand",

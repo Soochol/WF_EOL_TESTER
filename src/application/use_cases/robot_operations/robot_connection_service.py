@@ -5,10 +5,13 @@ Handles robot connection, servo enable/disable, and status verification.
 Manages robot hardware lifecycle for operations.
 """
 
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 

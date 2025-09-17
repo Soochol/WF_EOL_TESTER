@@ -9,14 +9,18 @@ This formatter handles both simple status strings and complex status dictionarie
 with appropriate visual indicators for different status types and conditions.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional, Union
 
+# Third-party imports
 from rich.console import Group
 from rich.panel import Panel
 from rich.text import Text
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 
+# Local folder imports
 from .base_formatter import BaseFormatter
 
 

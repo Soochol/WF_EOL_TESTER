@@ -6,10 +6,11 @@ Coordinates hardware setup, test execution, and result processing.
 """
 
 # Standard library imports
-# Third-party imports
-import asyncio
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
 # Local application imports
@@ -107,10 +108,14 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             )
 
             # Generate test ID for CSV logging
+            # Standard library imports
             from datetime import datetime
+
             test_id_str = f"HC_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
-            cycle_results = await test_executor.execute_test_cycles(hc_config, actual_repeat_count, test_id_str)
+
+            cycle_results = await test_executor.execute_test_cycles(
+                hc_config, actual_repeat_count, test_id_str
+            )
 
             # 4. Process results based on execution success
             timing_data = cycle_results["timing_data"]

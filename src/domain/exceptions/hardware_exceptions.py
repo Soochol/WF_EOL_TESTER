@@ -4,8 +4,10 @@ Hardware-related Domain Exceptions
 Contains exceptions related to hardware business rules and constraints.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Local application imports
 from domain.exceptions.domain_exceptions import (
     DomainException,
 )
@@ -58,17 +60,11 @@ class HardwareNotReadyException(HardwareException):
         exception_details = details or {}
 
         if hardware_type:
-            exception_details["hardware_type"] = (
-                hardware_type
-            )
+            exception_details["hardware_type"] = hardware_type
         if current_status:
-            exception_details["current_status"] = (
-                current_status
-            )
+            exception_details["current_status"] = current_status
         if required_status:
-            exception_details["required_status"] = (
-                required_status
-            )
+            exception_details["required_status"] = required_status
         if operation:
             exception_details["operation"] = operation
 
@@ -106,13 +102,9 @@ class HardwareConnectionException(HardwareException):
         exception_details = details or {}
 
         if hardware_type:
-            exception_details["hardware_type"] = (
-                hardware_type
-            )
+            exception_details["hardware_type"] = hardware_type
         if connection_status:
-            exception_details["connection_status"] = (
-                connection_status
-            )
+            exception_details["connection_status"] = connection_status
         if operation:
             exception_details["operation"] = operation
 
@@ -148,10 +140,7 @@ class UnsafeOperationException(HardwareException):
             safe_limit: Safe limit that was exceeded
             details: Additional safety context
         """
-        if (
-            current_value is not None
-            and safe_limit is not None
-        ):
+        if current_value is not None and safe_limit is not None:
             message = f"Unsafe operation '{operation}': {safety_violation} (Current: {current_value}, Limit: {safe_limit})"
         else:
             message = f"Unsafe operation '{operation}': {safety_violation}"
@@ -166,9 +155,7 @@ class UnsafeOperationException(HardwareException):
             }
         )
 
-        super().__init__(
-            message, hardware_type, exception_details
-        )
+        super().__init__(message, hardware_type, exception_details)
         self.operation = operation
         self.safety_violation = safety_violation
         self.current_value = current_value
@@ -207,9 +194,7 @@ class HardwareCalibrationException(HardwareException):
             }
         )
 
-        super().__init__(
-            message, hardware_type, exception_details
-        )
+        super().__init__(message, hardware_type, exception_details)
         self.calibration_issue = calibration_issue
         self.operation = operation
 
@@ -243,9 +228,7 @@ class HardwareTimeoutException(HardwareException):
             }
         )
 
-        super().__init__(
-            message, hardware_type, exception_details
-        )
+        super().__init__(message, hardware_type, exception_details)
         self.operation = operation
         self.timeout_seconds = timeout_seconds
 
@@ -288,9 +271,7 @@ class HardwareLimitExceededException(HardwareException):
             }
         )
 
-        super().__init__(
-            message, hardware_type, exception_details
-        )
+        super().__init__(message, hardware_type, exception_details)
         self.limit_type = limit_type
         self.current_value = current_value
         self.limit_value = limit_value

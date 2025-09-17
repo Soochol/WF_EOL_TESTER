@@ -4,8 +4,10 @@ Help Command
 Provides help and documentation for all available commands.
 """
 
+# Standard library imports
 from typing import Dict, List
 
+# Local application imports
 from ui.cli.commands.base import Command, CommandResult
 
 

@@ -5,13 +5,16 @@ Business service for evaluating test measurements against pass criteria.
 Uses Exception First principles for error handling.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from domain.exceptions import (
-    TestEvaluationError,
     create_test_evaluation_error,
+    TestEvaluationError,
 )
 from domain.value_objects.pass_criteria import PassCriteria
 

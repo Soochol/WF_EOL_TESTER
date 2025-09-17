@@ -12,6 +12,7 @@ New structure:
 For new development, import directly from the controllers package.
 """
 
+# Local folder imports
 # Legacy compatibility imports - use controllers package for new development
 from .controllers import (
     HardwareController,
@@ -22,6 +23,7 @@ from .controllers import (
     RobotController,
 )
 from .controllers.base.hardware_controller import simple_interactive_menu
+
 
 # Re-export for backward compatibility
 __all__ = [

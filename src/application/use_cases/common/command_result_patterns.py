@@ -5,9 +5,11 @@ Base classes for input and result objects used across all use cases.
 Implements consistent patterns and ensures type safety.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 from domain.value_objects.identifiers import TestId
 from domain.value_objects.time_values import TestDuration

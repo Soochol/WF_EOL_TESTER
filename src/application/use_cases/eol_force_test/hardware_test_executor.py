@@ -5,14 +5,17 @@ Handles execution of all hardware test phases and measurement collection.
 Extracted from EOLForceTestUseCase for better separation of concerns.
 """
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.test_exceptions import TestExecutionException
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 
+# Local folder imports
 from .constants import TestExecutionConstants
 
 
@@ -34,7 +37,7 @@ class HardwareTestExecutor:
         top_line = "╭" + "─" * (box_width - 2) + "╮"
         middle_line = f"│{phase_name:^{box_width - 2}}│"
         bottom_line = "╰" + "─" * (box_width - 2) + "╯"
-        
+
         logger.info(top_line)
         logger.info(middle_line)
         logger.info(bottom_line)

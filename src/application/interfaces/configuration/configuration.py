@@ -4,8 +4,10 @@ Configuration Interface Protocols
 Defines the interface contracts for configuration and profile preference implementations.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional, Protocol
 
+# Local application imports
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.test_configuration import TestConfiguration
 
@@ -55,4 +57,3 @@ class Configuration(Protocol):
     async def clear_preferences(self) -> None:
         """Clear all profile preferences"""
         ...
-

@@ -6,6 +6,7 @@ parameters used throughout the Rich UI system to maintain visual consistency
 and improve code maintainability.
 """
 
+# Standard library imports
 from typing import Tuple
 
 

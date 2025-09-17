@@ -4,11 +4,14 @@ Provides comprehensive error handling and recovery for command execution
 with user-friendly error messages and debugging support.
 """
 
+# Standard library imports
 import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,

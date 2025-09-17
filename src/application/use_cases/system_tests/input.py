@@ -5,8 +5,10 @@ Input object for simple MCU communication test.
 Contains operator identification for the test execution.
 """
 
+# Standard library imports
 from typing import Any, Dict
 
+# Local application imports
 from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 
 

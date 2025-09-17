@@ -5,6 +5,7 @@ Defines the possible states of hardware devices in the EOL testing system.
 Migrated from infrastructure layer to maintain business logic in domain.
 """
 
+# Standard library imports
 from enum import Enum
 
 

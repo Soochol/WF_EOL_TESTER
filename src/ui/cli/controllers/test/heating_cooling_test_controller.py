@@ -4,15 +4,18 @@ Heating/Cooling Time Test Controller
 CLI controller for managing heating/cooling time measurement tests.
 """
 
-import json
+# Standard library imports
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Dict, Optional
 
-import yaml
+# Third-party imports
 from rich.console import Console
 from rich.table import Table
+import yaml
 
+# Local application imports
 from application.use_cases.heating_cooling_time_test import (
     HeatingCoolingTimeTestInput,
     HeatingCoolingTimeTestResult,
@@ -52,13 +55,13 @@ class HeatingCoolingTestController:
         try:
 
             # Brief pause to ensure panels are fully rendered before log output begins
+            # Third-party imports
             import asyncio
+
             await asyncio.sleep(0.1)
 
             # Create and execute command
-            command = HeatingCoolingTimeTestInput(
-                operator_id="cli_user", repeat_count=repeat_count
-            )
+            command = HeatingCoolingTimeTestInput(operator_id="cli_user", repeat_count=repeat_count)
 
             # Execute test without spinner to avoid log interference
             result = await self.use_case.execute(command)
@@ -70,7 +73,9 @@ class HeatingCoolingTestController:
             await self._save_results_to_file(result)
 
         except KeyboardInterrupt:
-            self.formatter.print_message("Test interrupted by user. Cleaning up hardware...", message_type="warning")
+            self.formatter.print_message(
+                "Test interrupted by user. Cleaning up hardware...", message_type="warning"
+            )
             # Use case cleanup will be handled by BaseUseCase's finally block and custom cleanup
             raise
         except Exception as e:
@@ -364,7 +369,7 @@ This test measures the time taken for MCU temperature transitions:
                 self.formatter.print_message(
                     f"Loading cycle count from {config_file}", message_type="info"
                 )
-                
+
                 with open(config_file, "r", encoding="utf-8") as f:
                     yaml_data = yaml.safe_load(f)
 

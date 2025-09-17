@@ -5,12 +5,14 @@ Provides configuration reading capabilities for CLI slash commands.
 Supports YAML and JSON formats with fallback to default values.
 """
 
+# Standard library imports
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import yaml
+# Third-party imports
 from loguru import logger
+import yaml
 
 
 class CLIConfigError(Exception):

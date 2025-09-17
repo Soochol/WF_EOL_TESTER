@@ -4,8 +4,10 @@ GUI Helper Utilities
 Common utility functions and helpers for GUI operations.
 """
 
+# Standard library imports
 from typing import Optional, Tuple, Union
 
+# Third-party imports
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import QApplication, QMessageBox, QWidget

@@ -4,8 +4,10 @@ Exit Command
 Handles application exit.
 """
 
+# Standard library imports
 from typing import Dict, List
 
+# Local application imports
 from ui.cli.commands.base import Command, CommandResult
 
 

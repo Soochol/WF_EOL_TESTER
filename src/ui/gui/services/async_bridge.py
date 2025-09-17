@@ -4,13 +4,15 @@ Async Bridge Service
 Utility for bridging asyncio operations with Qt GUI thread.
 """
 
-import asyncio
-import threading
+# Standard library imports
 from concurrent.futures import ThreadPoolExecutor
+import threading
 from typing import Any, Awaitable, Callable, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import QObject, QTimer, Signal
+import asyncio
+from loguru import logger
 
 
 class AsyncBridge(QObject):

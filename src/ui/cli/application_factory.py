@@ -11,10 +11,13 @@ Key Features:
 - Support for testing and mock modes
 """
 
+# Standard library imports
 from typing import Any, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local folder imports
 from .config.component_config import ConfigurationMode
 from .factories.component_factory import CLIComponentFactory
 from .interfaces.application_interface import ICLIApplication

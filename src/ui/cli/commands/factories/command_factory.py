@@ -5,16 +5,20 @@ and lifecycle management. Supports configuration-driven command creation
 and component integration.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.cli.commands.interfaces.command_interface import (
     CommandMetadata,
     ICommand,
     ICommandMiddleware,
 )
+
 
 # Type variable for command creation
 T = TypeVar("T", bound=ICommand)
@@ -267,6 +271,7 @@ class CommandFactory:
         Returns:
             Created instance
         """
+        # Standard library imports
         import inspect
 
         # Get constructor signature

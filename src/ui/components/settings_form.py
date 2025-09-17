@@ -3,10 +3,11 @@ Settings Management Form Component
 Magic MCP Generated - Modern form with validation and accessibility
 """
 
-import re
+# Standard library imports
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import re
 from typing import (
     Any,
     Callable,

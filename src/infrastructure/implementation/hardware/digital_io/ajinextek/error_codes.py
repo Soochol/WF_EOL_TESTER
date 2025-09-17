@@ -4,6 +4,7 @@ Ajinextek DIO Error Codes and Handling
 This module defines error codes and error handling utilities for Ajinextek DIO cards.
 """
 
+# Standard library imports
 from enum import IntEnum
 from typing import Dict, List, Optional
 
@@ -274,6 +275,7 @@ def parse_axl_error(axl_return_code: int) -> str:
         Human readable error message
     """
     # Import here to avoid circular imports
+    # Local application imports
     from infrastructure.implementation.hardware.digital_io.ajinextek.constants import (
         AXT_RT_DIO_INVALID_MODULE_NO,
         AXT_RT_DIO_INVALID_OFFSET_NO,

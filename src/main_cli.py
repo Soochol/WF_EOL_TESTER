@@ -7,21 +7,24 @@ Simplified main application optimized for command-line interface usage.
 """
 
 # Standard library imports
-import asyncio
-import signal
-import sys
 from datetime import datetime
 from pathlib import Path
+import signal
+import sys
+
+# Third-party imports
+import asyncio
 
 # Module imports now work directly since main_cli.py is in the src/ directory
-# Third-party imports
 from loguru import logger
 
+# Local application imports
 # Local infrastructure imports - Dependency Injection
 from application.containers import ApplicationContainer
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
+
 
 # Application configuration constants
 DEFAULT_LOG_RETENTION_PERIOD = "7 days"
@@ -35,15 +38,18 @@ EOL_TESTER_CLI_LOG_FILENAME = f"eol_tester_cli_{CURRENT_DATE}.log"
 def maximize_console_window() -> None:
     """Maximize the console window on Windows."""
     try:
+        # Standard library imports
         import os
-        if os.name == 'nt':  # Windows only
+
+        if os.name == "nt":  # Windows only
+            # Standard library imports
             import ctypes
             from ctypes import wintypes
-            
+
             # Get console window handle
-            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-            user32 = ctypes.WinDLL('user32', use_last_error=True)
-            
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            user32 = ctypes.WinDLL("user32", use_last_error=True)
+
             # Get console window
             hwnd = kernel32.GetConsoleWindow()
             if hwnd:
@@ -60,6 +66,7 @@ async def main() -> None:
     """CLI-only application entry point with ApplicationContainer dependency injection."""
     # Force unbuffered output for real-time logging (Python environment variable equivalent)
     # This ensures logs appear immediately without keyboard input
+    # Standard library imports
     import os
 
     os.environ["PYTHONUNBUFFERED"] = "1"
@@ -212,38 +219,41 @@ def setup_logging(debug: bool = False) -> None:
                 level_color = "dim"
             else:
                 level_color = "white"
-                
+
             return (
                 f"<green>{{time:HH:mm:ss}}</green> | <{level_color}>{{level: <8}}</{level_color}> | "
                 f"<cyan>{{name}}</cyan> - <{level_color}>{{message}}</{level_color}>\n"
             )
 
     # Create Rich Console for log output to prevent conflicts with Rich panels
+    # Third-party imports
     from rich.console import Console
+
     rich_console = Console(
         file=sys.stderr,
         force_terminal=True,
         # No width limit - use full terminal width
         color_system="auto",
-        legacy_windows=False
+        legacy_windows=False,
     )
-    
+
     def rich_log_handler(message):
         """Custom loguru handler that outputs through Rich Console"""
         try:
+            # Third-party imports
             from rich.text import Text
-            
+
             # Extract record for direct formatting
             record = message.record
-            
+
             # Create Rich Text object with colors
             text = Text()
-            
+
             # Time (green)
             time_str = record["time"].strftime("%H:%M:%S")
             text.append(time_str, style="green")
             text.append(" | ")
-            
+
             # Level (colored by level)
             level_name = record["level"].name
             level_color = {
@@ -252,26 +262,26 @@ def setup_logging(debug: bool = False) -> None:
                 "SUCCESS": "green",
                 "WARNING": "bright_yellow",  # Changed to bright_yellow for better visibility
                 "ERROR": "red",
-                "CRITICAL": "bold red"
+                "CRITICAL": "bold red",
             }.get(level_name, "white")
-            
+
             text.append(f"{level_name: <8}", style=level_color)
             text.append(" | ")
-            
+
             # Module name (cyan)
             text.append(record["name"], style="cyan")
             text.append(" - ")
-            
+
             # Message (same color as level)
             text.append(str(record["message"]), style=level_color)
-            
+
             rich_console.print(text)
         except Exception as e:
             # Fallback to stderr if Rich fails
             sys.stderr.write(f"Rich error: {e}\n")
             sys.stderr.write(str(message))
             sys.stderr.flush()
-    
+
     logger.add(
         rich_log_handler,
         level=log_level,
@@ -321,7 +331,7 @@ def setup_signal_handlers():
 
         signal_name = signal_names.get(signum, f"Signal {signum}")
         print(f"\\nReceived {signal_name}, cancelling all tasks for emergency stop...")
-        
+
         # Cancel all running asyncio tasks (this will raise CancelledError in tasks)
         try:
             loop = asyncio.get_running_loop()
@@ -332,7 +342,7 @@ def setup_signal_handlers():
         except RuntimeError:
             # No event loop running
             pass
-        
+
         # Don't raise KeyboardInterrupt here - let CancelledError propagate naturally
         # The BaseUseCase will convert CancelledError to KeyboardInterrupt for consistent handling
 

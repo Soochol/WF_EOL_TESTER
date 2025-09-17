@@ -4,12 +4,15 @@ Mock Power Service
 Mock implementation for testing and development without real hardware.
 """
 
+# Standard library imports
 import random
 from typing import Any, Dict, Optional
 
+# Third-party imports
 import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.power import (
     PowerService,
 )

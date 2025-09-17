@@ -5,14 +5,18 @@ Provides robot-specific control operations including movement,
 positioning, and status monitoring for AJINEXTEK motion controllers.
 """
 
-import asyncio
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
+import asyncio
 from rich.status import Status
 
+# Local application imports
 from application.interfaces.hardware.robot import RobotService
 from domain.value_objects.hardware_config import RobotConfig
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
 

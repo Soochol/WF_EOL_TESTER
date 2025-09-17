@@ -4,11 +4,14 @@ Enhanced base command class with dependency injection support, metadata
 management, and improved validation capabilities.
 """
 
+# Standard library imports
 from abc import ABC
 from typing import List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandMetadata,
     CommandResult,
@@ -197,6 +200,7 @@ class BaseCommand(ICommand, ABC):
         Returns:
             CommandResult with execution timing
         """
+        # Standard library imports
         import time
 
         start_time = time.perf_counter()

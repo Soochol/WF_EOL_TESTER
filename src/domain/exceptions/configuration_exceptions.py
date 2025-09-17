@@ -1,6 +1,8 @@
 # Configuration Domain Exceptions
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
+# Local application imports
 from domain.exceptions.domain_exceptions import (
     DomainException,
 )

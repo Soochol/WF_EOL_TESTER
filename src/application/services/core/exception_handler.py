@@ -4,14 +4,17 @@ Exception Handler Service
 Service for classifying, handling, and providing recovery strategies for exceptions.
 """
 
-import asyncio
-import time
+# Standard library imports
 from dataclasses import dataclass
 from enum import Enum
+import time
 from typing import Any, Callable, Dict, Optional, Type
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from domain.exceptions.configuration_exceptions import (
     ConfigurationSecurityException,
     InvalidConfigurationException,

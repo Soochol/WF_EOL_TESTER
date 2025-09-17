@@ -13,18 +13,21 @@ Key Features:
 """
 
 # Standard library imports
-from typing import TYPE_CHECKING, Optional
+from typing import Optional, TYPE_CHECKING
 
 # Third-party imports
 from loguru import logger
 from rich.console import Console
 
+# Local folder imports
 # Local imports
 from ..interfaces.session_interface import ISessionManager
 from ..rich_formatter import RichFormatter
 
+
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
+    # Local folder imports
     from ..menu.menu_system import MenuSystem
 
 

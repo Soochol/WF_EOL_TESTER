@@ -4,10 +4,11 @@ Status Bar Widget for WF EOL Tester GUI
 Enhanced status bar with hardware status, system information, and messages.
 """
 
+# Standard library imports
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -20,7 +21,9 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QWidget,
 )
+from loguru import logger
 
+# Local application imports
 from ui.gui.services.gui_state_manager import ConnectionStatus, GUIStateManager
 
 

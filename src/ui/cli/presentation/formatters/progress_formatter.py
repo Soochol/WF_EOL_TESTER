@@ -9,8 +9,10 @@ This formatter handles both deterministic progress (with known total steps)
 and indeterminate progress (unknown duration) with appropriate visual feedback.
 """
 
+# Standard library imports
 from typing import Optional, Union
 
+# Third-party imports
 from rich.progress import (
     BarColumn,
     Progress,
@@ -20,6 +22,7 @@ from rich.progress import (
 )
 from rich.status import Status
 
+# Local folder imports
 from .base_formatter import BaseFormatter
 
 
@@ -178,6 +181,7 @@ class ProgressFormatter(BaseFormatter):
 
         # Use simpler spinner for Windows/basic terminals for better compatibility
         try:
+            # Standard library imports
             import os
 
             if os.name == "nt":  # Windows

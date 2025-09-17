@@ -4,6 +4,7 @@ Digital Input Related Enumerations
 Digital input/output related enums for pin modes and logic levels.
 """
 
+# Standard library imports
 from enum import Enum
 
 

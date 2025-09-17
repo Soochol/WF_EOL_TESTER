@@ -4,14 +4,17 @@ YAML Container Configuration Implementation
 Provides YAML file-based configuration loading specifically for dependency injection containers.
 """
 
-import re
+# Standard library imports
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Any, Dict
 
-import yaml
+# Third-party imports
 from loguru import logger
+import yaml
 
+# Local application imports
 from domain.value_objects.application_config import ApplicationConfig
 from domain.value_objects.hardware_config import HardwareConfig
 
@@ -30,34 +33,34 @@ class YamlContainerConfigurationLoader:
     def _format_yaml_with_spacing(self, yaml_content: str) -> str:
         """
         Add blank lines before major sections for better readability
-        
+
         Args:
             yaml_content: Raw YAML content string
-            
+
         Returns:
             Formatted YAML content with spacing
         """
         # Define major section keywords that should have blank lines before them
         section_keywords = [
-            'services:',
-            'logging:', 
-            'metadata:',
-            'hardware:',
-            'digital_io:',
-            'power:',
-            'loadcell:',
-            'mcu:',
-            'robot:'
+            "services:",
+            "logging:",
+            "metadata:",
+            "hardware:",
+            "digital_io:",
+            "power:",
+            "loadcell:",
+            "mcu:",
+            "robot:",
         ]
-        
+
         # Add blank line before each major section (except if it's at the start of file)
         formatted_content = yaml_content
         for keyword in section_keywords:
             # Match the keyword at the start of a line, not preceded by a blank line
-            pattern = f'(?<!\\n\\n)^({re.escape(keyword)})'
-            replacement = '\\n\\1'
+            pattern = f"(?<!\\n\\n)^({re.escape(keyword)})"
+            replacement = "\\n\\1"
             formatted_content = re.sub(pattern, replacement, formatted_content, flags=re.MULTILINE)
-        
+
         return formatted_content
 
     def load_all_configurations(self) -> Dict[str, Any]:
@@ -177,7 +180,7 @@ class YamlContainerConfigurationLoader:
             # Write to target file with formatting
             yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
             formatted_content = self._format_yaml_with_spacing(yaml_content)
-            
+
             with open(target_file, "w", encoding="utf-8") as f:
                 f.write(formatted_content)
 

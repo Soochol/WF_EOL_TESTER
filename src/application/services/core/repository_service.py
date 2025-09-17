@@ -7,8 +7,8 @@ Uses Exception First principles for error handling.
 
 # Standard library imports
 import csv
-import re
 from pathlib import Path
+import re
 
 # Third-party imports
 from loguru import logger
@@ -89,15 +89,15 @@ class RepositoryService:
             else:
                 # Priority 2: Extract timestamp from test_id (format: DEFAULT001_20250918_012300)
                 test_id_str = str(test.test_id)
-                test_id_parts = test_id_str.split('_')
-                
+                test_id_parts = test_id_str.split("_")
+
                 if len(test_id_parts) >= 3:
                     # Use test ID timestamp for filename (test session based)
                     date_time_str = f"{test_id_parts[-2]}_{test_id_parts[-1]}"
                 else:
                     # Fallback: use test creation time
                     date_time_str = test.created_at.datetime.strftime("%Y%m%d_%H%M%S")
-            
+
             filename = f"raw_measurements_{date_time_str}.csv"
             filepath = raw_data_dir / filename
 
@@ -134,24 +134,26 @@ class RepositoryService:
 
             # Check if file exists and if headers match
             is_new_file = not filepath.exists()
-            
+
             # Prepare row data
-            test_date = test.created_at.datetime.strftime('%Y-%m-%d')
-            test_time = test.created_at.datetime.strftime('%H:%M:%S')
-            status = 'PASS' if test.test_result.is_passed() else 'FAIL'
-            
+            test_date = test.created_at.datetime.strftime("%Y-%m-%d")
+            test_time = test.created_at.datetime.strftime("%H:%M:%S")
+            status = "PASS" if test.test_result.is_passed() else "FAIL"
+
             row_data = [str(test.test_id), serial_number, test_date, test_time, status]
-            
+
             # Add force values for each temperature/position combination
             for temp in temperatures:
                 # measurements_dict now uses float keys, so use temp directly
                 temp_measurements = measurements_dict.get(temp, {})
-                
+
                 for pos in positions:
                     # measurements_dict now uses float keys, so use pos directly
                     if pos in temp_measurements:
                         position_data = temp_measurements[pos]
-                        force_value = self._extract_force_value(position_data, str(int(temp)), str(int(pos)))
+                        force_value = self._extract_force_value(
+                            position_data, str(int(temp)), str(int(pos))
+                        )
                         if force_value is not None and isinstance(force_value, (int, float)):
                             row_data.append(f"{force_value:.3f}")
                         else:
@@ -160,13 +162,17 @@ class RepositoryService:
                         row_data.append("")  # Empty cell for missing measurements
 
             # Write to CSV file
-            with open(filepath, "a" if not is_new_file else "w", newline="", encoding="utf-8") as csvfile:
-                writer = csv.writer(csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                
+            with open(
+                filepath, "a" if not is_new_file else "w", newline="", encoding="utf-8"
+            ) as csvfile:
+                writer = csv.writer(
+                    csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+                )
+
                 # Write header only for new files
                 if is_new_file:
                     writer.writerow(headers)
-                
+
                 # Write data row
                 writer.writerow(row_data)
 
@@ -224,10 +230,10 @@ class RepositoryService:
     def _convert_micrometers_to_millimeters(self, value_um: float) -> float:
         """
         Convert micrometers to millimeters for CSV display
-        
+
         Args:
             value_um: Value in micrometers (μm)
-            
+
         Returns:
             Value in millimeters (mm)
         """

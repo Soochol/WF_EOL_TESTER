@@ -12,12 +12,14 @@ Key Features:
 - Mock mode support for testing
 """
 
+# Standard library imports
 from enum import Enum
 from typing import Any, Dict, Optional, Type
 
 
 class ServiceLifetime(Enum):
     """Service lifetime enumeration for dependency injection"""
+
     SINGLETON = "singleton"
     TRANSIENT = "transient"
     SCOPED = "scoped"
@@ -61,6 +63,7 @@ class ComponentConfig:
     def _setup_default_configurations(self) -> None:
         """Setup default service configurations based on mode."""
         # Import interfaces
+        # Local folder imports
         from ..interfaces.application_interface import ICLIApplication
         from ..interfaces.execution_interface import ITestExecutor
         from ..interfaces.formatter_interface import IFormatter
@@ -91,6 +94,7 @@ class ComponentConfig:
     def _setup_production_config(self) -> None:
         """Setup production configuration with full implementations."""
         # Import interfaces
+        # Local folder imports
         from ..interfaces.validation_interface import IInputValidator
 
         # Import concrete implementations

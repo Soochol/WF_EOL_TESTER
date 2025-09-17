@@ -5,8 +5,10 @@ Handles Digital I/O configuration and servo brake release for robot operations.
 Manages connection verification and output channel control.
 """
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.hardware_exceptions import HardwareConnectionException
 

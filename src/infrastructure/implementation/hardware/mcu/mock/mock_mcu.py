@@ -5,19 +5,22 @@ Mock implementation for testing and development without real hardware.
 Simulates LMA MCU behavior for testing purposes.
 """
 
-import random
+# Standard library imports
 from datetime import datetime
+import random
 from typing import Any, Dict, List, Optional
 
+# Third-party imports
 import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.mcu import MCUService
+from domain.enums.mcu_enums import MCUStatus, TestMode
 from domain.exceptions import (
     HardwareConnectionError,
     HardwareOperationError,
 )
-from domain.enums.mcu_enums import MCUStatus, TestMode
 
 
 class MockMCU(MCUService):
@@ -77,14 +80,13 @@ class MockMCU(MCUService):
         self._temperature_task: Optional[asyncio.Task[None]] = None
         self._heating_enabled = False
         self._cooling_enabled = False
-        
+
         # Verification stability - disable drift during temperature verification
         self._verification_mode = False
-        
+
         # Timing data storage for heating/cooling tests
         self._heating_timing_history: List[Dict[str, Any]] = []
         self._cooling_timing_history: List[Dict[str, Any]] = []
-
 
     async def connect(self) -> None:
         """
@@ -181,11 +183,13 @@ class MockMCU(MCUService):
                 self._heating_enabled = False
                 self._cooling_enabled = False
                 self._mcu_status = MCUStatus.RUNNING
-            
+
             # Enable verification mode for stable temperature readings
             self._verification_mode = True
 
-            logger.info(f"Mock MCU target temperature set to {target_temp}°C (verification_mode enabled)")
+            logger.info(
+                f"Mock MCU target temperature set to {target_temp}°C (verification_mode enabled)"
+            )
 
         except Exception as e:
             logger.error(f"Failed to set Mock MCU temperature: {e}")
@@ -252,7 +256,9 @@ class MockMCU(MCUService):
                 noise = random.uniform(-0.1, 0.1)
                 measured_temp: float = self._current_temperature + noise
 
-            logger.debug(f"Mock MCU temperature: {measured_temp:.1f}°C (verification_mode: {self._verification_mode})")
+            logger.debug(
+                f"Mock MCU temperature: {measured_temp:.1f}°C (verification_mode: {self._verification_mode})"
+            )
             return measured_temp
 
         except Exception as e:
@@ -550,10 +556,10 @@ class MockMCU(MCUService):
             self._heating_enabled = True
             self._cooling_enabled = False
             self._mcu_status = MCUStatus.HEATING
-            
+
             # Enable verification mode for stable temperature readings
             self._verification_mode = True
-            
+
             # Generate mock timing data for heating transition
             mock_heating_data = {
                 "transition": f"{standby_temp}°C → {operating_temp}°C",
@@ -598,32 +604,38 @@ class MockMCU(MCUService):
             self._heating_enabled = False
             self._cooling_enabled = True
             self._mcu_status = MCUStatus.RUNNING
-            
+
             # In mock mode, immediately set temperature to standby temperature (38.0°C)
             # This should match the calculated_standby_temp from the hardware facade
             standby_temp = 38.0  # Default standby temperature for cooling verification
             self._current_temperature = standby_temp
             self._target_temperature = standby_temp
-            
+
             # Enable verification mode for stable temperature readings
             self._verification_mode = True
-            
+
             # Generate mock timing data for cooling transition
             # Assuming cooling from current temperature to standby temperature
-            from_temp = self._current_temperature if self._current_temperature > standby_temp else 95.0  # Mock from temperature
+            from_temp = (
+                self._current_temperature if self._current_temperature > standby_temp else 95.0
+            )  # Mock from temperature
             mock_cooling_data = {
                 "transition": f"{from_temp}°C → {standby_temp}°C",
                 "from_temperature": from_temp,
                 "to_temperature": standby_temp,
                 "ack_duration_ms": random.uniform(70, 110),  # Mock ACK time
-                "total_duration_ms": random.uniform(1800, 2500),  # Mock total time (cooling usually takes longer)
+                "total_duration_ms": random.uniform(
+                    1800, 2500
+                ),  # Mock total time (cooling usually takes longer)
                 "timestamp": datetime.now().isoformat(),
                 "attempt_number": 1,
                 "total_attempts": 1,
             }
             self._cooling_timing_history.append(mock_cooling_data)
 
-            logger.info(f"Mock MCU standby cooling started - temperature set to {standby_temp}°C (verification_mode enabled)")
+            logger.info(
+                f"Mock MCU standby cooling started - temperature set to {standby_temp}°C (verification_mode enabled)"
+            )
             logger.debug(f"Mock cooling timing data added: {mock_cooling_data}")
 
         except Exception as e:
@@ -708,7 +720,7 @@ class MockMCU(MCUService):
 
     async def set_cooling_temperature(self, target_temp: float) -> None:
         raise NotImplementedError
-    
+
     def disable_verification_mode(self) -> None:
         """Disable verification mode to allow normal temperature simulation"""
         self._verification_mode = False
@@ -722,7 +734,9 @@ class MockMCU(MCUService):
 
     def get_all_timing_data(self) -> Dict[str, Any]:
         """Get all heating/cooling timing data"""
-        logger.debug(f"Mock MCU returning timing data: {len(self._heating_timing_history)} heating, {len(self._cooling_timing_history)} cooling")
+        logger.debug(
+            f"Mock MCU returning timing data: {len(self._heating_timing_history)} heating, {len(self._cooling_timing_history)} cooling"
+        )
         return {
             "heating_transitions": self._heating_timing_history.copy(),
             "cooling_transitions": self._cooling_timing_history.copy(),

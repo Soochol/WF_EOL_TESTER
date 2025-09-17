@@ -6,8 +6,10 @@ This module defines all icon constants used in the Rich UI system to provide
 consistent visual indicators and improve user experience.
 """
 
+# Standard library imports
 from typing import Dict
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 
 

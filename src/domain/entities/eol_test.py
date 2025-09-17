@@ -4,8 +4,10 @@ EOL Test Entity
 Represents an End-of-Line test execution with its configuration and state.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional, Set
 
+# Local application imports
 from domain.entities.dut import DUT
 from domain.entities.test_result import TestResult
 from domain.enums.test_status import TestStatus

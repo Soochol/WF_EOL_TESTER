@@ -4,12 +4,15 @@ Mock Robot Service
 Mock implementation for testing and development without real hardware.
 """
 
-import asyncio
+# Standard library imports
 import random
 from typing import Any, Dict
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.robot import (
     RobotService,
 )
@@ -129,7 +132,9 @@ class MockRobot(RobotService):
             )
 
         # Same as get_position but with different method name for compatibility
-        logger.debug(f"Mock robot current position requested for axis {axis}: {self._current_position}μm")
+        logger.debug(
+            f"Mock robot current position requested for axis {axis}: {self._current_position}μm"
+        )
         return self._current_position
 
     async def move_absolute(
@@ -221,15 +226,15 @@ class MockRobot(RobotService):
 
         try:
             logger.info(f"Moving mock robot axis {axis_id} by relative distance: {distance}μm")
-            
+
             self._motion_status = MotionStatus.MOVING
             target_position = self._current_position + distance
-            
+
             # Start motion simulation in background (non-blocking)
             asyncio.create_task(self._simulate_motion(target_position, velocity))
-            
+
             logger.info(f"Mock robot axis {axis_id} relative motion started")
-            
+
         except Exception as e:
             logger.error(f"Failed to start relative move on axis {axis_id}: {e}")
             self._motion_status = MotionStatus.ERROR
@@ -313,7 +318,7 @@ class MockRobot(RobotService):
             # Immediate stop - no deceleration
             self._motion_status = MotionStatus.IDLE
             self._axis_velocity = 0.0
-            
+
             # Disable servo for safety during emergency stop
             self._servo_enabled = False
             logger.info(f"Servo disabled for safety during emergency stop on axis {axis}")
@@ -527,7 +532,7 @@ class MockRobot(RobotService):
     async def _simulate_motion(self, target_position: float, velocity: float) -> None:
         """
         Simulate motion in background for realistic motion timing
-        
+
         Args:
             target_position: Target position to move to
             velocity: Motion velocity
@@ -536,10 +541,10 @@ class MockRobot(RobotService):
             # Calculate motion time
             distance = abs(target_position - self._current_position)
             motion_time = distance / velocity if velocity > 0 else 0.1
-            
+
             # Ensure minimum motion time for testing
             motion_time = max(motion_time, 2.0)  # At least 2 seconds for testing
-            
+
             logger.info(f"Mock motion simulation: {motion_time:.1f}s to reach {target_position}μm")
 
             # Simulate motion with steps
@@ -550,8 +555,10 @@ class MockRobot(RobotService):
                 await asyncio.sleep(0.1)
                 # Linear interpolation
                 progress = (i + 1) / steps
-                self._current_position = start_position + (target_position - start_position) * progress
-                
+                self._current_position = (
+                    start_position + (target_position - start_position) * progress
+                )
+
                 # Break if motion was stopped
                 if self._motion_status != MotionStatus.MOVING:
                     break
@@ -572,27 +579,27 @@ class MockRobot(RobotService):
         """
         try:
             logger.info("Mock homing simulation: 3.0s to reach home position")
-            
+
             # Simulate homing time (typically longer than regular moves)
             start_position = self._current_position
             steps = 30  # 3 seconds at 0.1s intervals
-            
+
             for i in range(steps):
                 await asyncio.sleep(0.1)
                 # Linear interpolation to home (position 0)
                 progress = (i + 1) / steps
                 self._current_position = start_position * (1 - progress)
-                
+
                 # Break if motion was stopped
                 if self._motion_status != MotionStatus.MOVING:
                     break
-            
+
             # Ensure exact home position
             self._current_position = 0.0
             self._motion_status = MotionStatus.IDLE
-            
+
             logger.info("Mock robot homing completed at position 0.0μm")
-            
+
         except Exception as e:
             logger.error(f"Homing simulation failed: {e}")
             self._motion_status = MotionStatus.ERROR

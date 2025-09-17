@@ -5,9 +5,10 @@ Industrial-themed main application window with header, side menu,
 content area, and status bar integration.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
@@ -20,7 +21,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.components.content_area import ContentAreaWidget
 from ui.gui.components.header import HeaderWidget

@@ -4,6 +4,7 @@ Robot Domain Exceptions
 All robot-related domain exceptions following Clean Architecture principles.
 """
 
+# Standard library imports
 from typing import Optional
 
 
@@ -26,9 +27,7 @@ class RobotError(Exception):
     def __str__(self) -> str:
         base_msg = self.message
         if self.details:
-            base_msg = (
-                f"{base_msg}. Details: {self.details}"
-            )
+            base_msg = f"{base_msg}. Details: {self.details}"
 
         hardware_info = f"Robot ({self.robot_type})"
         if self.hardware_id:
@@ -199,24 +198,18 @@ def create_axl_connection_error(
     error_code: int, function_name: str, error_message: str
 ) -> AXLConnectionError:
     """Create a standardized AXL connection error"""
-    return AXLConnectionError(
-        error_message, error_code, function_name
-    )
+    return AXLConnectionError(error_message, error_code, function_name)
 
 
 def create_axl_motion_error(
     error_code: int, function_name: str, error_message: str
 ) -> AXLMotionError:
     """Create a standardized AXL motion error"""
-    return AXLMotionError(
-        error_message, error_code, function_name
-    )
+    return AXLMotionError(error_message, error_code, function_name)
 
 
 def create_axl_configuration_error(
     error_code: int, function_name: str, error_message: str
 ) -> AXLConfigurationError:
     """Create a standardized AXL configuration error"""
-    return AXLConfigurationError(
-        error_message, error_code, function_name
-    )
+    return AXLConfigurationError(error_message, error_code, function_name)

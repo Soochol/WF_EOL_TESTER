@@ -4,12 +4,15 @@ Provides comprehensive command registration and discovery system with
 metadata management, middleware support, and plugin-style loading.
 """
 
+# Standard library imports
 import importlib
 import inspect
 from typing import Any, Dict, List, Optional, Set, Type
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandMetadata,
     ICommand,

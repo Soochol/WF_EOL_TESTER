@@ -4,8 +4,10 @@ Device Under Test (DUT) Entity
 Represents a device being tested in the EOL testing system.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Local application imports
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )

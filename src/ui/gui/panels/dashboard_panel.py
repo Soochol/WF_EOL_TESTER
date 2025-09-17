@@ -4,11 +4,11 @@ Dashboard Panel for WF EOL Tester GUI
 System overview panel showing recent tests, system information, and operational status.
 """
 
-import asyncio
+# Standard library imports
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QPalette
 from PySide6.QtWidgets import (
@@ -27,7 +27,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import asyncio
+from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import (
     ConnectionStatus,

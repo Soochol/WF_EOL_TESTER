@@ -4,10 +4,13 @@ Test Command
 Handles EOL test execution commands.
 """
 
-from typing import Dict, List, Optional, cast
+# Standard library imports
+from typing import cast, Dict, List, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.use_cases.eol_force_test import (
     EOLForceTestInput,
     EOLForceTestUseCase,
@@ -133,6 +136,7 @@ class TestCommand(Command):
         """Run quick test with minimal input"""
         try:
             # Generate quick test DUT info
+            # Standard library imports
             import time
 
             timestamp = int(time.time())

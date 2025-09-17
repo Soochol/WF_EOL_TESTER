@@ -71,7 +71,9 @@ class TestExecutionConstants:
 
     # Logging messages - Repeated Test Cycles
     LOG_REPEATED_TEST_START = "🔄 Starting repeated test execution: {} repetitions for DUT {}"
-    LOG_REPEATED_TEST_COMPLETED = "📊 Repeated test completed: {}/{} cycles passed (total {:.1f}s) - DUT {}"
+    LOG_REPEATED_TEST_COMPLETED = (
+        "📊 Repeated test completed: {}/{} cycles passed (total {:.1f}s) - DUT {}"
+    )
     LOG_CYCLE_START = "Cycle {}/{} starting"
     LOG_CYCLE_START_WITH_TIME = "Cycle {}/{} starting - estimated completion time: {}"
     LOG_CYCLE_START_WITH_REMAINING = "Cycle {}/{} starting - estimated remaining time: {:.1f}s"

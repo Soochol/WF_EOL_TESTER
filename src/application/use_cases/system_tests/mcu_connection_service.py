@@ -5,10 +5,11 @@ Handles MCU connection setup, boot completion waiting, and cleanup.
 Manages the hardware connection lifecycle for MCU testing.
 """
 
+# Third-party imports
 import asyncio
-
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 
 

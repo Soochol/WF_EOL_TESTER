@@ -5,10 +5,13 @@ Service implementation for Ajinextek Digital I/O cards.
 Provides digital input/output control through AXL library.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.digital_io import (
     DigitalIOService,
 )
@@ -51,6 +54,7 @@ class AjinextekDIO(DigitalIOService):
         self._is_connected = False
 
         # AXL library interface (싱글톤 인스턴스 사용)
+        # Local application imports
         from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import AXLWrapper
 
         self._axl_lib = AXLWrapper.get_instance()

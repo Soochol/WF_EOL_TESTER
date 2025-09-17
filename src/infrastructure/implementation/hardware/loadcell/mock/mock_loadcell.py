@@ -4,12 +4,15 @@ Mock LoadCell Service
 Mock implementation for testing and development without real hardware.
 """
 
+# Standard library imports
 import random
 from typing import Any, Dict, List, Optional
 
+# Third-party imports
 import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.loadcell import (
     LoadCellService,
 )
@@ -69,7 +72,7 @@ class MockLoadCell(LoadCellService):
         Raises:
             HardwareConnectionError: If connection fails
         """
-        
+
         # Mock operational defaults
         self._base_force = 10.0
         self._noise_level = 0.1
@@ -79,9 +82,7 @@ class MockLoadCell(LoadCellService):
         self._zero_tolerance = 0.01
         self._mock_values = []
 
-        logger.info(
-            f"Connecting to mock LoadCell on {self._port} at {self._baudrate} baud..."
-        )
+        logger.info(f"Connecting to mock LoadCell on {self._port} at {self._baudrate} baud...")
 
         # 연결 지연 시뮬레이션
         await asyncio.sleep(self._connection_delay)
@@ -91,21 +92,15 @@ class MockLoadCell(LoadCellService):
 
         if success:
             self._is_connected = True
-            logger.info(
-                "Mock LoadCell connected successfully"
-            )
+            logger.info("Mock LoadCell connected successfully")
         else:
-            logger.warning(
-                "Mock LoadCell connection failed"
-            )
+            logger.warning("Mock LoadCell connection failed")
             raise HardwareConnectionException(
                 "Mock LoadCell connection failed",
                 hardware_type="loadcell",
                 connection_status="connection_failed",
                 operation="connect",
-                details={
-                    "error": "Simulated connection failure"
-                },
+                details={"error": "Simulated connection failure"},
             )
 
     async def disconnect(self) -> None:
@@ -144,33 +139,25 @@ class MockLoadCell(LoadCellService):
             ConnectionError: 연결되지 않은 경우
         """
         if not self._is_connected:
-            raise ConnectionError(
-                "Mock LoadCell is not connected"
-            )
+            raise ConnectionError("Mock LoadCell is not connected")
 
         # 짧은 측정 지연
         await asyncio.sleep(0.05)
 
-        if self._mock_values and self._value_index < len(
-            self._mock_values
-        ):
+        if self._mock_values and self._value_index < len(self._mock_values):
             # 사전 정의된 값 사용
             force = self._mock_values[self._value_index]
-            self._value_index = (
-                self._value_index + 1
-            ) % len(self._mock_values)
+            self._value_index = (self._value_index + 1) % len(self._mock_values)
         else:
             # 현실적인 힘 시뮬레이션: 위치 기반 + 온도 영향
             # 기본 힘: 위치에 따른 선형/비선형 변화
             position_factor = random.uniform(0.8, 1.2)  # 위치별 변동
             temperature_factor = 1.0 + (random.uniform(35, 65) - 50) * 0.002  # 온도 영향 (±2%)
-            
+
             base_force_adjusted = self._base_force * position_factor * temperature_factor
-            
+
             # 현실적인 노이즈 (측정 불확실성)
-            noise = random.uniform(
-                -self._noise_level, self._noise_level
-            )
+            noise = random.uniform(-self._noise_level, self._noise_level)
             force = base_force_adjusted + noise
 
         # 영점 오프셋 적용
@@ -178,6 +165,73 @@ class MockLoadCell(LoadCellService):
 
         logger.debug(f"Mock LoadCell reading: {force:.3f}N")
         return ForceValue(force, MeasurementUnit.NEWTON)
+
+    async def read_peak_force(
+        self, duration_ms: int = 1000, sampling_interval_ms: int = 200
+    ) -> ForceValue:
+        """
+        Read peak force measurement over a specified duration using continuous sampling (Mock implementation)
+
+        Args:
+            duration_ms: Total sampling duration in milliseconds (default: 1000ms)
+            sampling_interval_ms: Interval between samples in milliseconds (default: 200ms)
+
+        Returns:
+            ForceValue object containing the peak (maximum absolute) force measured
+
+        Raises:
+            ConnectionError: If not connected
+        """
+        if not self._is_connected:
+            raise ConnectionError("Mock LoadCell is not connected")
+
+        # Validate parameters
+        if duration_ms <= 0:
+            raise ValueError(f"Invalid duration: {duration_ms}ms. Must be positive.")
+
+        try:
+            logger.info(
+                f"Starting mock peak force measurement - Duration: {duration_ms}ms, Interval: {sampling_interval_ms}ms"
+            )
+
+            # Calculate number of samples
+            max_samples = max(1, duration_ms // sampling_interval_ms)
+            samples = []
+            start_time = asyncio.get_event_loop().time()
+            target_end_time = start_time + (duration_ms / 1000.0)
+
+            sample_count = 0
+            while asyncio.get_event_loop().time() < target_end_time and sample_count < max_samples:
+                # Read force measurement
+                force_value = await self.read_force()
+                samples.append(force_value)
+                sample_count += 1
+
+                logger.debug(f"Mock sample {sample_count}: {force_value.value:.3f}N")
+
+                # Wait for next sample if not the last one
+                if sample_count < max_samples and asyncio.get_event_loop().time() < target_end_time:
+                    wait_time = sampling_interval_ms / 1000.0
+                    await asyncio.sleep(wait_time)
+
+            if not samples:
+                raise ValueError("No valid force samples collected during peak measurement")
+
+            # Find peak value (maximum absolute force)
+            peak_force = max(samples, key=lambda f: abs(f.value))
+
+            actual_duration = (asyncio.get_event_loop().time() - start_time) * 1000
+            logger.info(
+                f"Mock peak force measurement completed - "
+                f"Samples: {len(samples)}, Duration: {actual_duration:.0f}ms, "
+                f"Peak: {peak_force.value:.3f}N"
+            )
+
+            return peak_force
+
+        except Exception as e:
+            logger.error(f"Mock peak force measurement failed: {e}")
+            raise
 
     async def zero_calibration(self) -> None:
         """
@@ -192,9 +246,7 @@ class MockLoadCell(LoadCellService):
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="zero_calibration",
-                details={
-                    "error": "LoadCell is not connected"
-                },
+                details={"error": "LoadCell is not connected"},
             )
 
         try:
@@ -204,32 +256,18 @@ class MockLoadCell(LoadCellService):
             await asyncio.sleep(0.5)
 
             # 현재 읽기값을 영점으로 설정
-            if (
-                self._mock_values
-                and self._value_index
-                < len(self._mock_values)
-            ):
-                self._zero_offset = self._mock_values[
-                    self._value_index
-                ]
+            if self._mock_values and self._value_index < len(self._mock_values):
+                self._zero_offset = self._mock_values[self._value_index]
             else:
                 # Zero offset should be small - representing sensor bias, not full base force
-                noise = random.uniform(
-                    -self._noise_level, self._noise_level
-                )
+                noise = random.uniform(-self._noise_level, self._noise_level)
                 self._zero_offset = noise  # Small bias offset only
 
-            logger.info(
-                f"Mock LoadCell zeroed (offset: {self._zero_offset:.3f}N)"
-            )
+            logger.info(f"Mock LoadCell zeroed (offset: {self._zero_offset:.3f}N)")
 
         except Exception as e:
-            logger.error(
-                f"Mock LoadCell zero calibration failed: {e}"
-            )
-            raise HardwareOperationError(
-                "mock_loadcell", "zero_calibration", str(e)
-            ) from e
+            logger.error(f"Mock LoadCell zero calibration failed: {e}")
+            raise HardwareOperationError("mock_loadcell", "zero_calibration", str(e)) from e
 
     async def read_raw_value(self) -> float:
         """
@@ -244,9 +282,7 @@ class MockLoadCell(LoadCellService):
                 hardware_type="mock_loadcell",
                 connection_status="not_connected",
                 operation="read_raw_value",
-                details={
-                    "error": "LoadCell is not connected"
-                },
+                details={"error": "LoadCell is not connected"},
             )
 
         # 짧은 측정 지연
@@ -254,26 +290,21 @@ class MockLoadCell(LoadCellService):
 
         # 원시 값은 실제 힘값에 임의의 스케일 팩터를 적용
         force_value = await self.read_force()
-        raw_value = (
-            force_value.value * 1000.0
-            + random.uniform(-10, 10)
-        )  # 시뮬레이션
+        raw_value = force_value.value * 1000.0 + random.uniform(-10, 10)  # 시뮬레이션
 
-        logger.debug(
-            f"Mock LoadCell raw reading: {raw_value:.1f}"
-        )
+        logger.debug(f"Mock LoadCell raw reading: {raw_value:.1f}")
         return raw_value
 
     async def hold(self) -> bool:
         """
         Hold the current force measurement (Mock implementation)
-        
+
         Returns:
             True if hold operation was successful, False otherwise
         """
         if not self._is_connected:
             return False
-            
+
         logger.debug("Mock LoadCell: Hold operation")
         await asyncio.sleep(0.01)  # Simulate operation delay
         return True
@@ -281,13 +312,13 @@ class MockLoadCell(LoadCellService):
     async def hold_release(self) -> bool:
         """
         Release the held force measurement (Mock implementation)
-        
+
         Returns:
             True if release operation was successful, False otherwise
         """
         if not self._is_connected:
             return False
-            
+
         logger.debug("Mock LoadCell: Hold release operation")
         await asyncio.sleep(0.01)  # Simulate operation delay
         return True
@@ -320,9 +351,7 @@ class MockLoadCell(LoadCellService):
 
         return status
 
-    async def read_multiple_samples(
-        self, count: int, interval_ms: int = 100
-    ) -> List[float]:
+    async def read_multiple_samples(self, count: int, interval_ms: int = 100) -> List[float]:
         """
         여러 샘플 연속 측정
 
@@ -334,16 +363,12 @@ class MockLoadCell(LoadCellService):
             힘 값 리스트
         """
         if not self._is_connected:
-            raise ConnectionError(
-                "Mock LoadCell is not connected"
-            )
+            raise ConnectionError("Mock LoadCell is not connected")
 
         samples = []
         interval_sec = interval_ms / 1000.0
 
-        logger.info(
-            f"Reading {count} mock samples with {interval_ms}ms interval"
-        )
+        logger.info(f"Reading {count} mock samples with {interval_ms}ms interval")
 
         for i in range(count):
             if i > 0:
@@ -352,14 +377,10 @@ class MockLoadCell(LoadCellService):
             force_value = await self.read_force()
             force = force_value.value
             samples.append(force)
-            logger.debug(
-                f"Mock sample {i+1}/{count}: {force:.3f}N"
-            )
+            logger.debug(f"Mock sample {i+1}/{count}: {force:.3f}N")
 
         avg = sum(samples) / len(samples)
-        logger.info(
-            f"Completed {count} mock samples, avg: {avg:.3f}N"
-        )
+        logger.info(f"Completed {count} mock samples, avg: {avg:.3f}N")
         return samples
 
     def set_mock_values(self, values: List[float]) -> None:
@@ -371,9 +392,7 @@ class MockLoadCell(LoadCellService):
         """
         self._mock_values = values
         self._value_index = 0
-        logger.info(
-            f"Mock values updated: {len(values)} values"
-        )
+        logger.info(f"Mock values updated: {len(values)} values")
 
     def set_base_force(self, force: float) -> None:
         """

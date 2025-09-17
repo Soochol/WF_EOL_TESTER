@@ -4,11 +4,14 @@ Provides comprehensive logging for command execution including performance
 metrics, audit trails, and debugging information.
 """
 
+# Standard library imports
 import time
 from typing import Dict, List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,
@@ -243,6 +246,7 @@ class LoggingMiddleware(BaseMiddleware):
         Returns:
             Unique execution identifier
         """
+        # Standard library imports
         import hashlib
 
         # Create unique ID based on command, user, and timestamp

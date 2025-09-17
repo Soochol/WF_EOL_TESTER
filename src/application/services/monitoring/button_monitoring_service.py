@@ -5,15 +5,20 @@ Service for monitoring operator start buttons and triggering callbacks
 when both buttons are pressed simultaneously.
 """
 
-import asyncio
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Union
+# Standard library imports
+from typing import Any, Awaitable, Callable, Dict, List, Optional, TYPE_CHECKING, Union
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.digital_io import DigitalIOService
 from domain.value_objects.hardware_config import HardwareConfig
 
+
 if TYPE_CHECKING:
+    # Local application imports
     from application.use_cases.eol_force_test.main_use_case import EOLForceTestUseCase
 
 
@@ -386,6 +391,7 @@ class DIOMonitoringService:
             pressed_channel: Channel number of the button that was pressed
             current_raw_states: Current raw states of all channels (list, index = channel number)
         """
+        # Standard library imports
         import time
 
         logger.info(f"🎯 DIO_BUTTON: Processing button press edge on channel {pressed_channel}")
@@ -562,6 +568,7 @@ class DIOMonitoringService:
             logger.info("✅ CALLBACK_EXEC: Button press callback executed successfully")
         except Exception as e:
             logger.error(f"❌ CALLBACK_EXEC: Error executing button press callback: {e}")
+            # Standard library imports
             import traceback
 
             logger.debug(
@@ -726,6 +733,7 @@ class DIOMonitoringService:
                 )
             except Exception as e:
                 logger.error(f"❌ EMERGENCY_CALLBACK: Error executing emergency stop callback: {e}")
+                # Standard library imports
                 import traceback
 
                 logger.debug(

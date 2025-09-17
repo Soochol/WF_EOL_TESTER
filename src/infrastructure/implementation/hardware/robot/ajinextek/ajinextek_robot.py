@@ -5,13 +5,16 @@ Integrated service for AJINEXTEK robot hardware control.
 Implements the RobotService interface using AXL library.
 """
 
-import asyncio
-import time
+# Standard library imports
 from pathlib import Path
+import time
 from typing import Any, Dict
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 # 절대 import 사용 (권장)
 # src가 Python path에 있을 때 최적의 방법
 from application.interfaces.hardware.robot import (
@@ -75,6 +78,7 @@ class AjinextekRobot(RobotService):
         self._error_message = None
 
         # Initialize AXL wrapper (싱글톤 인스턴스 사용)
+        # Local application imports
         from infrastructure.implementation.hardware.robot.ajinextek.axl_wrapper import (
             AXLWrapper,
         )

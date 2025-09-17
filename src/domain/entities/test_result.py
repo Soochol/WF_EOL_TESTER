@@ -4,8 +4,10 @@ Test Result Entity
 Represents the outcome and results of an EOL test execution.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 from domain.exceptions.validation_exceptions import (
     ValidationException,

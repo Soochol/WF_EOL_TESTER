@@ -14,12 +14,13 @@ Key Features:
 """
 
 # Standard library imports
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 # Third-party imports
 from loguru import logger
 from rich.console import Console
 
+# Local application imports
 # Local imports - Application layer
 from application.use_cases.eol_force_test.main_use_case import (
     EOLForceTestInput,
@@ -30,13 +31,15 @@ from application.use_cases.eol_force_test.main_use_case import (
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
 
-
+# Local folder imports
 # Local imports - UI modules
 from ..interfaces.execution_interface import ITestExecutor
 from ..rich_formatter import RichFormatter
 
+
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
+    # Local folder imports
     from ..enhanced_cli_integration import EnhancedInputIntegrator
 
 
@@ -107,7 +110,7 @@ class TestExecutor(ITestExecutor):
 
         # Store DUT info for use in result display
         self._current_dut_info = dut_info
-        
+
         await self._execute_test_with_progress(command)
 
     async def _get_dut_info(self) -> Optional[Dict[str, str]]:
@@ -191,7 +194,10 @@ class TestExecutor(ITestExecutor):
 
         # Create test results table (single result) with DUT info
         results_table = self._formatter.create_test_results_table(
-            [result], title="Detailed Test Results", show_details=True, dut_info=getattr(self, '_current_dut_info', None)
+            [result],
+            title="Detailed Test Results",
+            show_details=True,
+            dut_info=getattr(self, "_current_dut_info", None),
         )
         self._formatter.print_table(results_table)
 

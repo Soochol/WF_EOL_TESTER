@@ -4,11 +4,11 @@ MCU Test Panel for WF EOL Tester GUI
 Panel for executing simple MCU communication tests with real-time monitoring.
 """
 
-import asyncio
+# Standard library imports
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from loguru import logger
+# Third-party imports
 from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -31,7 +31,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import asyncio
+from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from application.use_cases.system_tests import (
     SimpleMCUTestInput,

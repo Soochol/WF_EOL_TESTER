@@ -4,11 +4,14 @@ Provides a base class for middleware implementations with common functionality
 and default behavior patterns.
 """
 
+# Standard library imports
 from abc import ABC
 from typing import List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,

@@ -4,6 +4,7 @@ Digital I/O Interface
 Interface for digital input and output operations.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
@@ -164,7 +165,7 @@ class DigitalIOService(ABC):
     async def connect(self) -> None:
         """
         Connect to the digital I/O device
-        
+
         All connection parameters are configured via dependency injection
         in the hardware container.
         """

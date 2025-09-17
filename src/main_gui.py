@@ -6,15 +6,19 @@ Complete PySide6 GUI application for the EOL Tester system.
 Integrates with existing business logic via ApplicationContainer.
 """
 
-import asyncio
-import sys
+# Standard library imports
 from pathlib import Path
+import sys
 from typing import Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
+
 
 # PySide6 imports with explicit module imports
 try:
+    # Third-party imports
     from PySide6.QtCore import QTimer  # pylint: disable=no-name-in-module
     from PySide6.QtGui import QIcon  # pylint: disable=no-name-in-module
     from PySide6.QtWidgets import QApplication  # pylint: disable=no-name-in-module
@@ -25,6 +29,7 @@ except ImportError as e:
 
 # Module imports now work directly since main_gui.py is in the src/ directory
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager

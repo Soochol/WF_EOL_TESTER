@@ -9,13 +9,17 @@ This formatter handles both EOLTestResult objects and dictionary-based results
 with flexible formatting options for different display contexts.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional, Union
 
+# Third-party imports
 from rich.table import Table
 from rich.text import Text
 
+# Local application imports
 from domain.value_objects.eol_test_result import EOLTestResult
 
+# Local folder imports
 from .base_formatter import BaseFormatter
 
 
@@ -183,7 +187,9 @@ class TableFormatter(BaseFormatter):
             width=self.layout.MEASUREMENTS_COLUMN_WIDTH,
         )
 
-    def _format_eol_result_row(self, result: EOLTestResult, show_details: bool, dut_info: Optional[Dict[str, str]] = None) -> List[Any]:
+    def _format_eol_result_row(
+        self, result: EOLTestResult, show_details: bool, dut_info: Optional[Dict[str, str]] = None
+    ) -> List[Any]:
         """Format EOLTestResult into table row data with consistent styling.
 
         Transforms an EOLTestResult object into properly formatted table row data
@@ -202,7 +208,7 @@ class TableFormatter(BaseFormatter):
         status_color = self._get_result_status_color(result)
 
         # Get DUT ID from provided DUT info or default to N/A
-        dut_id = dut_info.get('id', 'N/A') if dut_info else 'N/A'
+        dut_id = dut_info.get("id", "N/A") if dut_info else "N/A"
 
         # Build core row data with essential information
         row_data = self._build_core_row_data(
@@ -331,7 +337,9 @@ class TableFormatter(BaseFormatter):
             self._truncate_text(dut_id),
         ]
 
-    def _build_eol_detail_data(self, result: EOLTestResult, dut_info: Optional[Dict[str, str]] = None) -> List[str]:
+    def _build_eol_detail_data(
+        self, result: EOLTestResult, dut_info: Optional[Dict[str, str]] = None
+    ) -> List[str]:
         """Build detail data specific to EOLTestResult objects.
 
         Args:
@@ -342,8 +350,8 @@ class TableFormatter(BaseFormatter):
             List of formatted detail data elements
         """
         # Get model from provided DUT info or default to N/A
-        model = dut_info.get('model', 'N/A') if dut_info else 'N/A'
-        
+        model = dut_info.get("model", "N/A") if dut_info else "N/A"
+
         return [
             model,
             result.format_duration(),

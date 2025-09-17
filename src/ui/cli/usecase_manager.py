@@ -5,19 +5,24 @@ Provides dynamic discovery and execution of available UseCases with Rich UI inte
 Designed to be extensible as new UseCases are added to the system.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 
+# Third-party imports
 from loguru import logger
 from rich.console import Console
 
+# Local application imports
 from application.use_cases.system_tests import (
     SimpleMCUTestInput,
     SimpleMCUTestUseCase,
 )
 
+# Local folder imports
 # from .enhanced_input_manager import EnhancedInputManager  # Removed
 from .rich_formatter import RichFormatter
+
 
 # from .rich_utils import RichUIManager  # Removed
 

@@ -14,18 +14,21 @@ Key Features:
 """
 
 # Standard library imports
-from typing import TYPE_CHECKING, Optional
+from typing import Optional, TYPE_CHECKING
 
 # Third-party imports
 from loguru import logger
 from rich.console import Console
 
+# Local folder imports
 # Local imports
 from ..interfaces.menu_interface import IMenuSystem
 from ..rich_formatter import RichFormatter
 
+
 # TYPE_CHECKING imports
 if TYPE_CHECKING:
+    # Local folder imports
     from ..enhanced_cli_integration import EnhancedMenuSystem
     from ..execution.test_executor import TestExecutor
     from ..session.session_manager import SessionManager
@@ -39,7 +42,11 @@ class MenuSystem(IMenuSystem):
     """
 
     def __init__(
-        self, console: Console, formatter: RichFormatter, enhanced_menu: "EnhancedMenuSystem", emergency_stop_service=None
+        self,
+        console: Console,
+        formatter: RichFormatter,
+        enhanced_menu: "EnhancedMenuSystem",
+        emergency_stop_service=None,
     ):
         """Initialize menu system.
 
@@ -172,9 +179,9 @@ class MenuSystem(IMenuSystem):
         except KeyboardInterrupt:
             logger.info("EOL Force Test interrupted by user (Ctrl+C)")
             self._formatter.print_message(
-                "Test interrupted by user. Returning to main menu...", 
-                message_type="warning", 
-                title="Test Interrupted"
+                "Test interrupted by user. Returning to main menu...",
+                message_type="warning",
+                title="Test Interrupted",
             )
         except Exception as e:
             self._formatter.print_message(f"Test execution error: {str(e)}", message_type="error")
@@ -199,6 +206,7 @@ class MenuSystem(IMenuSystem):
             pass
 
             # Create Simple MCU Test UseCase instance
+            # Local application imports
             from application.use_cases.system_tests import SimpleMCUTestUseCase
 
             # Try to get hardware services from the test executor's use case
@@ -244,7 +252,9 @@ class MenuSystem(IMenuSystem):
                 return
 
             # Create Simple MCU Test UseCase instance with emergency stop service
-            simple_mcu_usecase = SimpleMCUTestUseCase(hardware_services, configuration_service, self._emergency_stop_service)
+            simple_mcu_usecase = SimpleMCUTestUseCase(
+                hardware_services, configuration_service, self._emergency_stop_service
+            )
 
             # Execute Simple MCU Test through usecase manager
             result = await self._usecase_manager.execute_usecase(
@@ -264,9 +274,9 @@ class MenuSystem(IMenuSystem):
         except KeyboardInterrupt:
             logger.info("Simple MCU Test interrupted by user (Ctrl+C)")
             self._formatter.print_message(
-                "Test interrupted by user. Returning to main menu...", 
-                message_type="warning", 
-                title="Test Interrupted"
+                "Test interrupted by user. Returning to main menu...",
+                message_type="warning",
+                title="Test Interrupted",
             )
         except Exception as e:
             self._formatter.print_message(
@@ -337,6 +347,7 @@ class MenuSystem(IMenuSystem):
             pass
 
             # Create Heating/Cooling Time Test UseCase instance
+            # Local application imports
             from application.use_cases.heating_cooling_time_test import (
                 HeatingCoolingTimeTestUseCase,
             )
@@ -384,6 +395,7 @@ class MenuSystem(IMenuSystem):
                 return
 
             # Create controller for user interaction
+            # Local application imports
             from ui.cli.controllers.test.heating_cooling_test_controller import (
                 HeatingCoolingTestController,
             )
@@ -407,9 +419,9 @@ class MenuSystem(IMenuSystem):
         except KeyboardInterrupt:
             logger.info("Heating/Cooling Time Test interrupted by user (Ctrl+C)")
             self._formatter.print_message(
-                "Test interrupted by user. Returning to main menu...", 
-                message_type="warning", 
-                title="Test Interrupted"
+                "Test interrupted by user. Returning to main menu...",
+                message_type="warning",
+                title="Test Interrupted",
             )
         except Exception as e:
             logger.error(f"Heating/Cooling Time Test execution error: {e}")
@@ -458,9 +470,9 @@ class MenuSystem(IMenuSystem):
         except KeyboardInterrupt:
             logger.info("Robot Home operation interrupted by user (Ctrl+C)")
             self._formatter.print_message(
-                "Operation interrupted by user. Returning to main menu...", 
-                message_type="warning", 
-                title="Operation Interrupted"
+                "Operation interrupted by user. Returning to main menu...",
+                message_type="warning",
+                title="Operation Interrupted",
             )
         except Exception as e:
             self._formatter.print_message(

@@ -6,6 +6,7 @@ Panel for executing end-of-line force tests with real-time progress monitoring.
 
 # Standard library imports
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 # Third-party imports
@@ -30,10 +31,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 import asyncio
-from pathlib import Path
-
-import yaml
 from loguru import logger
+import yaml
 
 # Local application imports
 from application.containers.application_container import ApplicationContainer
@@ -169,7 +168,7 @@ class EOLTestWorker(QObject):
         log_level = record.get("level", {}).get("name", "")
         if log_level != "INFO":
             return False
-        
+
         # Capture logs from test execution components
         relevant_modules = [
             "application.use_cases.eol_force_test",
@@ -397,7 +396,7 @@ class EOLTestPanel(QWidget):
         control_layout.addWidget(self.reset_button)
         control_layout.addStretch()
 
-        # Set Control Group size policy to match Results Group  
+        # Set Control Group size policy to match Results Group
         control_group.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred  # 가로: 확장  # 세로: 선호
         )
@@ -664,6 +663,7 @@ class EOLTestPanel(QWidget):
 
             # Get application config to check if serial number popup is required
             try:
+                # Local application imports
                 from domain.value_objects.application_config import ApplicationConfig
 
                 config_path = Path("configuration/application.yaml")

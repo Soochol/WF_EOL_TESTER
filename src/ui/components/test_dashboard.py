@@ -3,11 +3,13 @@ EOL Test Results Dashboard Component
 Magic MCP Generated - Modern UI Component with Design System Integration
 """
 
+# Standard library imports
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+# Local application imports
 from domain.entities.test_result import TestResult
 from domain.enums.test_status import TestStatus
 

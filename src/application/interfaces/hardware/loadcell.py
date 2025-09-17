@@ -4,9 +4,11 @@ Load Cell Interface
 Interface for load cell operations and force measurement.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+# Local application imports
 from domain.value_objects.measurements import ForceValue
 
 
@@ -67,6 +69,25 @@ class LoadCellService(ABC):
         ...
 
     @abstractmethod
+    async def read_peak_force(
+        self, duration_ms: int = 1000, sampling_interval_ms: int = 200
+    ) -> ForceValue:
+        """
+        Read peak force measurement over a specified duration using continuous sampling
+
+        Args:
+            duration_ms: Total sampling duration in milliseconds (default: 1000ms)
+            sampling_interval_ms: Interval between samples in milliseconds (default: 200ms)
+
+        Returns:
+            ForceValue object containing the peak (maximum absolute) force measured
+
+        Raises:
+            HardwareOperationError: If measurement fails
+        """
+        ...
+
+    @abstractmethod
     async def read_raw_value(self) -> float:
         """
         Read raw ADC value from load cell
@@ -80,7 +101,7 @@ class LoadCellService(ABC):
     async def hold(self) -> bool:
         """
         Hold the current force measurement
-        
+
         Returns:
             True if hold operation was successful, False otherwise
         """
@@ -90,7 +111,7 @@ class LoadCellService(ABC):
     async def hold_release(self) -> bool:
         """
         Release the held force measurement
-        
+
         Returns:
             True if release operation was successful, False otherwise
         """

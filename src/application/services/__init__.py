@@ -8,6 +8,7 @@ Reorganized services following domain-driven design principles:
 - monitoring: Safety and monitoring services
 """
 
+# Local folder imports
 # Core services
 from .core import (
     ConfigurationService,
@@ -31,6 +32,7 @@ from .monitoring import (
 from .test import (
     TestResultEvaluator,
 )
+
 
 __all__ = [
     # Core services

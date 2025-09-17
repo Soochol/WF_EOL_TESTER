@@ -4,6 +4,7 @@ Test Status Enumeration
 Defines the possible states of test execution in the EOL testing system.
 """
 
+# Standard library imports
 from enum import Enum
 
 

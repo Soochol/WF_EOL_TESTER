@@ -5,12 +5,16 @@ Provides individual digital output control with Rich UI formatting.
 Allows users to read current output states and toggle individual channels.
 """
 
+# Standard library imports
 from typing import Dict, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.digital_io import DigitalIOService
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
 

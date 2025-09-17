@@ -5,6 +5,7 @@ Exception classes for serial communication errors.
 Provides structured error handling for different types of serial communication failures.
 """
 
+# Standard library imports
 from typing import Optional
 
 
@@ -27,9 +28,7 @@ class SerialError(Exception):
     def __str__(self) -> str:
         base_msg = self.message
         if self.details:
-            base_msg = (
-                f"{base_msg}. Details: {self.details}"
-            )
+            base_msg = f"{base_msg}. Details: {self.details}"
 
         if self.port and self.baudrate:
             base_msg = f"{base_msg} (Port: {self.port} @ {self.baudrate} baud)"

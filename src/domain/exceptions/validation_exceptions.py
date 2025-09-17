@@ -4,8 +4,10 @@ Validation Exceptions
 Contains exceptions related to domain object validation and constraints.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Local application imports
 from domain.exceptions.domain_exceptions import (
     DomainException,
 )
@@ -56,7 +58,9 @@ class InvalidRangeException(ValidationException):
             max_value: Maximum acceptable value
             details: Additional context
         """
-        message = f"{field_name} value {value} is outside acceptable range [{min_value}, {max_value}]"
+        message = (
+            f"{field_name} value {value} is outside acceptable range [{min_value}, {max_value}]"
+        )
         details = details or {}
         details.update(
             {
@@ -65,9 +69,7 @@ class InvalidRangeException(ValidationException):
                 "actual_value": value,
             }
         )
-        super().__init__(
-            field_name, value, message, details
-        )
+        super().__init__(field_name, value, message, details)
         self.min_value = min_value
         self.max_value = max_value
 
@@ -99,6 +101,4 @@ class InvalidFormatException(ValidationException):
                 "actual_value": str(value),
             }
         )
-        super().__init__(
-            field_name, value, message, details
-        )
+        super().__init__(field_name, value, message, details)

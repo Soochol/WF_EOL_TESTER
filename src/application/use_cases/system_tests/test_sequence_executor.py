@@ -5,10 +5,14 @@ Executes predefined MCU command sequences and records timing and success metrics
 Handles individual test step execution with error handling and timing.
 """
 
+# Standard library imports
 import time
 from typing import Any, Dict, List
+
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from domain.enums.mcu_enums import TestMode
 
@@ -16,7 +20,7 @@ from domain.enums.mcu_enums import TestMode
 class TestSequenceExecutor:
     """
     Test sequence executor for simple MCU test
-    
+
     Manages execution of predefined MCU command sequences with timing
     and error handling for each step.
     """
@@ -24,7 +28,7 @@ class TestSequenceExecutor:
     def __init__(self, hardware_services: HardwareServiceFacade):
         """
         Initialize test sequence executor
-        
+
         Args:
             hardware_services: Hardware service facade
         """
@@ -33,12 +37,12 @@ class TestSequenceExecutor:
     def get_test_sequence(self) -> List[Dict[str, Any]]:
         """
         Get the predefined test sequence for MCU communication
-        
+
         Returns:
             List of test step dictionaries with commands and descriptions
         """
         mcu_service = self._hardware_services.mcu_service
-        
+
         return [
             {
                 "name": "set_test_mode",
@@ -70,7 +74,7 @@ class TestSequenceExecutor:
     async def execute_test_sequence(self) -> List[Dict[str, Any]]:
         """
         Execute the complete test sequence
-        
+
         Returns:
             List of test step results with timing and success metrics
         """
@@ -78,38 +82,35 @@ class TestSequenceExecutor:
         test_results = []
 
         logger.info(f"Starting MCU command sequence - {len(test_sequence)} steps")
-        
+
         for i, test_step in enumerate(test_sequence, 1):
             result = await self._execute_single_step(test_step, i, len(test_sequence))
             test_results.append(result)
-            
+
             # Log progress
             if i < len(test_sequence):
                 logger.info(f"Moving to next command... (step {i}/{len(test_sequence)})")
             else:
                 logger.info(f"Last command completed (step {i}/{len(test_sequence)})")
-        
+
         # Log summary
         successful_steps = len([r for r in test_results if r["success"]])
         total_steps = len(test_results)
         logger.info(f"Test sequence completed - Success: {successful_steps}/{total_steps}")
-        
+
         return test_results
 
     async def _execute_single_step(
-        self, 
-        test_step: Dict[str, Any], 
-        step_number: int, 
-        total_steps: int
+        self, test_step: Dict[str, Any], step_number: int, total_steps: int
     ) -> Dict[str, Any]:
         """
         Execute a single test step with timing and error handling
-        
+
         Args:
             test_step: Test step dictionary containing command and metadata
             step_number: Current step number (1-indexed)
             total_steps: Total number of steps
-            
+
         Returns:
             Dictionary containing step execution results
         """
@@ -128,7 +129,7 @@ class TestSequenceExecutor:
                 "response_time_ms": step_duration,
                 "error": None,
             }
-            
+
             logger.info(f"✅ Step {step_number} completed successfully ({step_duration:.1f}ms)")
             return result
 
@@ -143,6 +144,6 @@ class TestSequenceExecutor:
                 "response_time_ms": step_duration,
                 "error": str(step_error),
             }
-            
+
             logger.error(f"❌ Step {step_number} failed: {step_error}")
             return result

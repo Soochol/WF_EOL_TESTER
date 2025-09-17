@@ -9,17 +9,21 @@ This approach provides better separation of concerns, improved maintainability,
 and focused responsibilities while preserving all existing functionality.
 """
 
+# Standard library imports
 from typing import Any, Dict, List, Optional, Union
 
+# Third-party imports
 from rich.console import Console
 from rich.layout import Layout
 from rich.progress import Progress
 from rich.status import Status
 from rich.table import Table
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 from domain.value_objects.eol_test_result import EOLTestResult
 
+# Local folder imports
 from .interfaces.formatter_interface import IFormatter
 from .presentation.formatters import (
     BaseFormatter,
@@ -60,8 +64,8 @@ class RichFormatter(IFormatter):
         """
         # Initialize console - shared across all formatters with Windows-compatible settings
         self._console = console or Console(
-            force_terminal=True, 
-            legacy_windows=False, 
+            force_terminal=True,
+            legacy_windows=False,
             color_system="auto",  # Auto-detect color support
             width=95,  # Match panel width for consistency
             safe_box=True,  # Use ASCII box drawing for better compatibility
@@ -151,7 +155,9 @@ class RichFormatter(IFormatter):
 
         Delegates to TableFormatter for specialized table creation and formatting.
         """
-        return self._table_formatter.create_test_results_table(results, title, show_details, dut_info)
+        return self._table_formatter.create_test_results_table(
+            results, title, show_details, dut_info
+        )
 
     # Progress methods (delegated to ProgressFormatter)
     def create_progress_display(

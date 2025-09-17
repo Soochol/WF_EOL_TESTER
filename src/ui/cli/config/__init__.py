@@ -8,7 +8,9 @@ Components:
 - ConfigurationMode: Enumeration for different configuration modes
 """
 
+# Local folder imports
 from .component_config import ComponentConfig, ConfigurationMode
+
 
 __all__ = [
     "ComponentConfig",

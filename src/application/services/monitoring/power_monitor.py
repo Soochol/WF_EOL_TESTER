@@ -5,13 +5,16 @@ Service for monitoring power consumption during test operations.
 Provides real-time power measurement and analysis capabilities.
 """
 
-import asyncio
+# Standard library imports
 import statistics
 import time
 from typing import Any, Dict, List, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.power import PowerService
 
 
@@ -44,7 +47,7 @@ class PowerMonitor:
             interval: Sampling interval in seconds (default: 0.5s)
         """
         logger.debug(f"🔋 PowerMonitor.start_monitoring() called with interval={interval}s")
-        
+
         if self._is_monitoring:
             logger.warning("Power monitoring is already active")
             return
@@ -53,18 +56,22 @@ class PowerMonitor:
         if not self._power_service:
             logger.error("❌ Power service is None - cannot start monitoring")
             raise RuntimeError("Power service is not initialized")
-        
-        logger.debug(f"Power service object: {self._power_service} (type: {type(self._power_service)})")
-        
+
+        logger.debug(
+            f"Power service object: {self._power_service} (type: {type(self._power_service)})"
+        )
+
         try:
             # Test power service connection
             is_connected = await self._power_service.is_connected()
-            logger.info(f"Power service connection status: {'✅ CONNECTED' if is_connected else '❌ DISCONNECTED'}")
-            
+            logger.info(
+                f"Power service connection status: {'✅ CONNECTED' if is_connected else '❌ DISCONNECTED'}"
+            )
+
             if not is_connected:
                 logger.error("❌ Power service is not connected - cannot start monitoring")
                 raise RuntimeError("Power service is not connected")
-                
+
         except Exception as e:
             logger.error(f"❌ Failed to check power service connection: {e}")
             raise RuntimeError(f"Power service connection check failed: {e}") from e
@@ -90,7 +97,7 @@ class PowerMonitor:
             Dictionary containing power analysis results
         """
         logger.info("🔋 PowerMonitor.stop_monitoring() called")
-        
+
         if not self._is_monitoring:
             logger.warning("⚠️  Power monitoring is not active")
             return {}
@@ -111,7 +118,9 @@ class PowerMonitor:
 
         analysis_result = self._analyze_power_data()
         logger.info(f"✅ Power monitoring completed: {len(self._power_data)} samples collected")
-        logger.info(f"📊 Analysis result summary: {analysis_result.get('sample_count', 0)} samples, {analysis_result.get('average_power_watts', 0):.4f}W avg")
+        logger.info(
+            f"📊 Analysis result summary: {analysis_result.get('sample_count', 0)} samples, {analysis_result.get('average_power_watts', 0):.4f}W avg"
+        )
 
         return analysis_result
 
@@ -126,12 +135,12 @@ class PowerMonitor:
         max_failures = 3
 
         logger.info(f"🔋 Power monitoring loop started with {interval}s interval")
-        
+
         try:
             while self._is_monitoring:
                 try:
                     logger.debug(f"📊 Taking power measurement sample #{len(self._power_data)}...")
-                    
+
                     # Get all measurements at once using MEAS:ALL? command
                     measurements = await self._power_service.get_all_measurements()
                     voltage = measurements["voltage"]
@@ -140,16 +149,27 @@ class PowerMonitor:
                     timestamp = time.perf_counter() - self._start_time
 
                     # Log detailed measurement info for debugging
-                    if len(self._power_data) % 5 == 0:  # Log every 5th measurement (reduced from 10)
-                        logger.debug(f"📊 Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s")
+                    if (
+                        len(self._power_data) % 5 == 0
+                    ):  # Log every 5th measurement (reduced from 10)
+                        logger.debug(
+                            f"📊 Power monitoring sample #{len(self._power_data)}: {voltage:.4f}V, {current:.4f}A, {power:.4f}W at {timestamp:.2f}s"
+                        )
                         # Force immediate output flush
+                        # Standard library imports
                         import sys
+
                         sys.stdout.flush()
                         sys.stderr.flush()
 
                     # Store data point
                     self._power_data.append(
-                        {"timestamp": timestamp, "voltage": voltage, "current": current, "power": power}
+                        {
+                            "timestamp": timestamp,
+                            "voltage": voltage,
+                            "current": current,
+                            "power": power,
+                        }
                     )
 
                     failures = 0  # Reset failure count on success
@@ -169,14 +189,16 @@ class PowerMonitor:
                     chunk_sleep = min(sleep_chunk, remaining_sleep)
                     await asyncio.sleep(chunk_sleep)
                     remaining_sleep -= chunk_sleep
-        
+
         except asyncio.CancelledError:
             logger.info("🔋 Power monitoring loop cancelled")
             raise
         except Exception as e:
             logger.error(f"❌ Power monitoring loop error: {e}")
-        
-        logger.info(f"🔋 Power monitoring loop ended. Total samples collected: {len(self._power_data)}")
+
+        logger.info(
+            f"🔋 Power monitoring loop ended. Total samples collected: {len(self._power_data)}"
+        )
 
     def _analyze_power_data(self) -> Dict[str, Any]:
         """

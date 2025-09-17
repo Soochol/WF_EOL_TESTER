@@ -4,6 +4,7 @@ Container Configuration Interface
 Interface for configuration loading specifically for dependency injection containers.
 """
 
+# Standard library imports
 from typing import Any, Dict, Protocol
 
 
@@ -13,7 +14,7 @@ class ContainerConfigurationLoader(Protocol):
     def load_all_configurations(self) -> Dict[str, Any]:
         """
         Load all configuration files and return combined configuration dictionary.
-        
+
         Returns:
             Dictionary containing all loaded configurations for container initialization
         """
@@ -22,7 +23,7 @@ class ContainerConfigurationLoader(Protocol):
     def ensure_configurations_exist(self) -> None:
         """
         Ensure configuration files exist, create from defaults if missing.
-        
+
         Raises:
             Exception: If configuration files cannot be created or accessed
         """

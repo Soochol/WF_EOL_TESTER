@@ -5,11 +5,14 @@ Integrated service for ODA power supply hardware control.
 Combines adapter and controller functionality into a single service.
 """
 
-import asyncio
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.interfaces.hardware.power import (
     PowerService,
 )

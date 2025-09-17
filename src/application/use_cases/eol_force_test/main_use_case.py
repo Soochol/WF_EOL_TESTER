@@ -6,9 +6,10 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 # Standard library imports
-import asyncio
 from typing import Any, Dict, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
 # Local application imports
@@ -174,7 +175,9 @@ class EOLForceTestUseCase(BaseUseCase):
             test_id=context.test_id, error_message=error_message, duration=execution_duration
         )
 
-    async def execute_single(self, command: EOLForceTestInput, session_timestamp: Optional[str] = None) -> EOLTestResult:
+    async def execute_single(
+        self, command: EOLForceTestInput, session_timestamp: Optional[str] = None
+    ) -> EOLTestResult:
         """
         Execute EOL test using component-based architecture
 
@@ -210,7 +213,10 @@ class EOLForceTestUseCase(BaseUseCase):
             # Phase 1: Initialize test setup
             await self._config_loader.load_and_validate_configurations()
             test_entity = await self._test_factory.create_test_entity(
-                command.dut_info, command.operator_id, self._config_loader.test_config, session_timestamp
+                command.dut_info,
+                command.operator_id,
+                self._config_loader.test_config,
+                session_timestamp,
             )
 
             # Phase 2: Execute test
@@ -292,7 +298,9 @@ class EOLForceTestUseCase(BaseUseCase):
                     raise
                 except Exception as cleanup_error:
                     # If standard cleanup fails, ensure power is still turned off for safety
-                    logger.warning("Standard cleanup failed: {}, attempting emergency power off", cleanup_error)
+                    logger.warning(
+                        "Standard cleanup failed: {}, attempting emergency power off", cleanup_error
+                    )
                     await self._emergency_power_off()
 
     def _calculate_execution_duration(self, start_time: float) -> TestDuration:
@@ -414,7 +422,7 @@ class EOLForceTestUseCase(BaseUseCase):
     async def _emergency_power_off(self) -> None:
         """
         Emergency power off when standard cleanup fails
-        
+
         Attempts to disable power output regardless of configuration state
         for safety purposes. This is a last resort when normal teardown fails.
         """
@@ -444,9 +452,7 @@ class EOLForceTestUseCase(BaseUseCase):
             EOLTestResult containing aggregated results from all repetitions
         """
         logger.info(
-            TestExecutionConstants.LOG_REPEATED_TEST_START,
-            command.dut_info.dut_id,
-            repeat_count
+            TestExecutionConstants.LOG_REPEATED_TEST_START, command.dut_info.dut_id, repeat_count
         )
 
         overall_start_time = asyncio.get_event_loop().time()
@@ -459,17 +465,17 @@ class EOLForceTestUseCase(BaseUseCase):
 
         for cycle in range(1, repeat_count + 1):
             cycle_start_time = asyncio.get_event_loop().time()
-            
+
             # Create prominent test cycle header with background color (Heating/Cooling style)
             cycle_header = TestExecutionConstants.CYCLE_HEADER_FORMAT.format(cycle, repeat_count)
             separator = TestExecutionConstants.CYCLE_HEADER_SEPARATOR
             color_start = TestExecutionConstants.CYCLE_HEADER_COLOR_START
             color_end = TestExecutionConstants.CYCLE_HEADER_COLOR_END
-            
+
             logger.info(f"{color_start}{separator}{color_end}")
             logger.info(f"{color_start}{cycle_header:^50}{color_end}")
             logger.info(f"{color_start}{separator}{color_end}")
-            
+
             # Log additional timing information for cycles after the first
             if cycle > 1:
                 # Calculate average time and estimate remaining time
@@ -478,7 +484,9 @@ class EOLForceTestUseCase(BaseUseCase):
                 estimated_remaining_time = avg_cycle_time * remaining_cycles
                 logger.info(
                     TestExecutionConstants.LOG_CYCLE_START_WITH_REMAINING,
-                    cycle, repeat_count, estimated_remaining_time
+                    cycle,
+                    repeat_count,
+                    estimated_remaining_time,
                 )
 
             # Create unique DUT info for this cycle
@@ -497,14 +505,18 @@ class EOLForceTestUseCase(BaseUseCase):
                 # Generate session timestamp for first cycle, reuse for subsequent cycles
                 if session_timestamp is None:
                     # Generate session timestamp from current time for this test session
+                    # Standard library imports
                     from datetime import datetime
+
                     session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    logger.debug(f"Generated session timestamp for repeat_count={repeat_count}: {session_timestamp}")
-                
+                    logger.debug(
+                        f"Generated session timestamp for repeat_count={repeat_count}: {session_timestamp}"
+                    )
+
                 # Execute single test cycle with session timestamp
                 result = await self.execute_single(cycle_command, session_timestamp)
                 all_results.append(result)
-                
+
                 # Calculate cycle duration
                 cycle_end_time = asyncio.get_event_loop().time()
                 cycle_duration = cycle_end_time - cycle_start_time
@@ -514,13 +526,21 @@ class EOLForceTestUseCase(BaseUseCase):
                     successful_tests += 1
                     logger.info(
                         TestExecutionConstants.LOG_CYCLE_COMPLETED_PASS,
-                        cycle, repeat_count, cycle_duration, successful_tests, cycle
+                        cycle,
+                        repeat_count,
+                        cycle_duration,
+                        successful_tests,
+                        cycle,
                     )
                 else:
                     failed_tests += 1
                     logger.warning(
                         TestExecutionConstants.LOG_CYCLE_COMPLETED_FAIL,
-                        cycle, repeat_count, cycle_duration, successful_tests, cycle
+                        cycle,
+                        repeat_count,
+                        cycle_duration,
+                        successful_tests,
+                        cycle,
                     )
 
             except Exception as cycle_error:
@@ -529,10 +549,13 @@ class EOLForceTestUseCase(BaseUseCase):
                 cycle_end_time = asyncio.get_event_loop().time()
                 cycle_duration = cycle_end_time - cycle_start_time
                 cycle_times.append(cycle_duration)
-                
+
                 logger.error(
                     TestExecutionConstants.LOG_CYCLE_ERROR,
-                    cycle, repeat_count, cycle_dut_info.dut_id, str(cycle_error)
+                    cycle,
+                    repeat_count,
+                    cycle_dut_info.dut_id,
+                    str(cycle_error),
                 )
                 # Continue with next cycle even if one fails
 
@@ -583,6 +606,9 @@ class EOLForceTestUseCase(BaseUseCase):
 
         logger.info(
             TestExecutionConstants.LOG_REPEATED_TEST_COMPLETED,
-            successful_tests, repeat_count, overall_duration_seconds, command.dut_info.dut_id
+            successful_tests,
+            repeat_count,
+            overall_duration_seconds,
+            command.dut_info.dut_id,
         )
         return summary_result

@@ -13,12 +13,14 @@ Interfaces:
 - IFormatter: UI formatting contract
 """
 
+# Local folder imports
 from .application_interface import ICLIApplication
 from .execution_interface import ITestExecutor
 from .formatter_interface import IFormatter
 from .menu_interface import IMenuSystem
 from .session_interface import ISessionManager
 from .validation_interface import IInputValidator
+
 
 __all__ = [
     "ICLIApplication",

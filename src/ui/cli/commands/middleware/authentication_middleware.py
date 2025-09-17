@@ -4,10 +4,13 @@ Provides user authentication and authorization for command execution.
 Integrates with session management and user permission systems.
 """
 
+# Standard library imports
 from typing import List, Optional, Set, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,

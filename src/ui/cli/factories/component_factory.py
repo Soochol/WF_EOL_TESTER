@@ -12,13 +12,18 @@ Key Features:
 - Configuration-driven assembly
 """
 
+# Standard library imports
 from typing import Any, Optional, Type, TypeVar
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 
+# Local folder imports
 from ..config.component_config import ComponentConfig, ConfigurationMode
+
 
 # Type variable for generic factory methods
 T = TypeVar("T")
@@ -189,8 +194,10 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             CLI application instance with dependencies injected
         """
+        # Third-party imports
         from rich.console import Console
 
+        # Local folder imports
         from ..core.dependency_injected_cli_application import (
             DependencyInjectedCLIApplication,
         )
@@ -201,16 +208,19 @@ class CLIComponentFactory(ComponentFactory):
         console = Console(force_terminal=True, legacy_windows=False, color_system="truecolor")
 
         # Create formatter
+        # Local folder imports
         from ..rich_formatter import RichFormatter
 
         formatter = RichFormatter(console)
 
         # Create validator
+        # Local folder imports
         from ..validation.input_validator import InputValidator
 
         validator = InputValidator()
 
         # Create enhanced CLI integrator
+        # Local folder imports
         from ..enhanced_cli_integration import (
             create_enhanced_cli_integrator,
             create_enhanced_menu_system,
@@ -222,6 +232,7 @@ class CLIComponentFactory(ComponentFactory):
         enhanced_menu = create_enhanced_menu_system(enhanced_integrator)
 
         # Create components with proper dependencies
+        # Local folder imports
         from ..execution.test_executor import TestExecutor
         from ..menu.menu_system import MenuSystem
         from ..session.session_manager import SessionManager
@@ -264,6 +275,7 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             Session manager instance
         """
+        # Local folder imports
         from ..interfaces import ISessionManager
 
         return self.create(ISessionManager)  # type: ignore[type-abstract]
@@ -274,6 +286,7 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             Menu system instance
         """
+        # Local folder imports
         from ..interfaces import IMenuSystem
 
         return self.create(IMenuSystem)  # type: ignore[type-abstract]
@@ -284,6 +297,7 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             Test executor instance
         """
+        # Local folder imports
         from ..interfaces import ITestExecutor
 
         return self.create(ITestExecutor)  # type: ignore[type-abstract]
@@ -294,6 +308,7 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             Input validator instance
         """
+        # Local folder imports
         from ..interfaces import IInputValidator
 
         return self.create(IInputValidator)  # type: ignore[type-abstract]
@@ -304,6 +319,7 @@ class CLIComponentFactory(ComponentFactory):
         Returns:
             Formatter instance
         """
+        # Local folder imports
         from ..interfaces import IFormatter
 
         return self.create(IFormatter)  # type: ignore[type-abstract]

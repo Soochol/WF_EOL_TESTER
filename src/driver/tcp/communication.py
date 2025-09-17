@@ -5,11 +5,14 @@ Generic TCP/IP communication driver for network-based devices.
 Supports command/response protocols commonly used in test equipment.
 """
 
+# Standard library imports
 from typing import Any, cast
 
+# Third-party imports
 import asyncio
 from loguru import logger
 
+# Local application imports
 from driver.tcp.constants import (
     COMMAND_BUFFER_SIZE,
     CONNECT_TIMEOUT,

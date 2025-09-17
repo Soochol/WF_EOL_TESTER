@@ -8,15 +8,19 @@ This interface enables dependency injection and flexible implementation
 substitution for different formatting strategies.
 """
 
+# Standard library imports
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
+# Third-party imports
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+
 # TYPE_CHECKING imports to avoid circular dependencies
 if TYPE_CHECKING:
+    # Local application imports
     from domain.value_objects.eol_test_result import EOLTestResult
 
 
@@ -135,9 +139,7 @@ class IFormatter(ABC):
         ...
 
     @abstractmethod
-    def create_progress_display(
-        self, description: str, show_spinner: bool = True
-    ) -> Any:
+    def create_progress_display(self, description: str, show_spinner: bool = True) -> Any:
         """Create a progress display context manager.
 
         Args:

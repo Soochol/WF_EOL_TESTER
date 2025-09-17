@@ -5,10 +5,13 @@ Handles test result evaluation and determination of pass/fail status.
 Extracted from EOLForceTestUseCase for better separation of concerns.
 """
 
+# Standard library imports
 from typing import Any, Optional
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from application.services.test.test_result_evaluator import TestResultEvaluator
 from domain.entities.eol_test import EOLTest
 from domain.entities.test_result import TestResult
@@ -19,6 +22,7 @@ from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.time_values import Timestamp
 
+# Local folder imports
 from .constants import TestExecutionConstants
 from .measurement_converter import MeasurementConverter
 from .test_state_manager import TestStateManager

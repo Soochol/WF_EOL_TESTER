@@ -4,48 +4,52 @@ Constants for AJINEXTEK AXL Library.
 These constants are defined based on the AXL library header files.
 """
 
-import platform
+# Standard library imports
 from pathlib import Path
+import platform
+
 
 # Library paths
 BASE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent.parent
-AXL_LIBRARY_DIR = BASE_DIR / 'src' / 'driver' / 'ajinextek' / 'AXL(Library)' / 'Library'
+AXL_LIBRARY_DIR = BASE_DIR / "src" / "driver" / "ajinextek" / "AXL(Library)" / "Library"
 
 
 # Select DLL based on system architecture with enhanced path verification
 def get_dll_path() -> Path:
     """Get appropriate DLL path based on system architecture with verification."""
     # Determine architecture
-    is_64bit = platform.machine().endswith('64') or platform.architecture()[0] == '64bit'
+    is_64bit = platform.machine().endswith("64") or platform.architecture()[0] == "64bit"
 
     # Select appropriate DLL path
     if is_64bit:
-        dll_path = AXL_LIBRARY_DIR / '64Bit' / 'AXL.dll'
-        fallback_path = AXL_LIBRARY_DIR / '32Bit' / 'AXL.dll'
-        arch_type = '64-bit'
-        fallback_arch = '32-bit'
+        dll_path = AXL_LIBRARY_DIR / "64Bit" / "AXL.dll"
+        fallback_path = AXL_LIBRARY_DIR / "32Bit" / "AXL.dll"
+        arch_type = "64-bit"
+        fallback_arch = "32-bit"
     else:
-        dll_path = AXL_LIBRARY_DIR / '32Bit' / 'AXL.dll'
-        fallback_path = AXL_LIBRARY_DIR / '64Bit' / 'AXL.dll'
-        arch_type = '32-bit'
-        fallback_arch = '64-bit'
+        dll_path = AXL_LIBRARY_DIR / "32Bit" / "AXL.dll"
+        fallback_path = AXL_LIBRARY_DIR / "64Bit" / "AXL.dll"
+        arch_type = "32-bit"
+        fallback_arch = "64-bit"
 
     # Verify primary path
     if dll_path.exists():
-        print(f'[OK] Using {arch_type} AXL DLL: {dll_path}')
+        print(f"[OK] Using {arch_type} AXL DLL: {dll_path}")
         return dll_path
 
     # Try fallback path if primary doesn't exist
     if fallback_path.exists():
-        print(f'[WARNING] {arch_type} DLL not found, using {fallback_arch} fallback: {fallback_path}')
-        print('  Warning: Architecture mismatch may cause loading issues')
+        print(
+            f"[WARNING] {arch_type} DLL not found, using {fallback_arch} fallback: {fallback_path}"
+        )
+        print("  Warning: Architecture mismatch may cause loading issues")
         return fallback_path
 
     # Neither path exists - return primary for error reporting
-    print(f'[ERROR] No AXL DLL found in either {arch_type} or {fallback_arch} directories')
-    print(f'  Primary path: {dll_path}')
-    print(f'  Fallback path: {fallback_path}')
-    print(f'  Library directory: {AXL_LIBRARY_DIR}')
+    print(f"[ERROR] No AXL DLL found in either {arch_type} or {fallback_arch} directories")
+    print(f"  Primary path: {dll_path}")
+    print(f"  Fallback path: {fallback_path}")
+    print(f"  Library directory: {AXL_LIBRARY_DIR}")
 
     return dll_path
 
@@ -124,37 +128,39 @@ MAX_BOARD_COUNT = 8
 def verify_dll_installation() -> dict:
     """Verify AXL DLL installation and provide diagnostic information."""
     info = {
-        'library_dir_exists': AXL_LIBRARY_DIR.exists(),
-        'dll_path': str(DLL_PATH),
-        'dll_exists': DLL_PATH.exists(),
-        'architecture': platform.machine(),
-        'python_arch': platform.architecture()[0],
-        'available_dlls': [],
-        'missing_components': [],
+        "library_dir_exists": AXL_LIBRARY_DIR.exists(),
+        "dll_path": str(DLL_PATH),
+        "dll_exists": DLL_PATH.exists(),
+        "architecture": platform.machine(),
+        "python_arch": platform.architecture()[0],
+        "available_dlls": [],
+        "missing_components": [],
     }
 
     if AXL_LIBRARY_DIR.exists():
         # Check for available DLLs
-        for bit_dir in ['32Bit', '64Bit']:
-            dll_file = AXL_LIBRARY_DIR / bit_dir / 'AXL.dll'
+        for bit_dir in ["32Bit", "64Bit"]:
+            dll_file = AXL_LIBRARY_DIR / bit_dir / "AXL.dll"
             if dll_file.exists():
-                info['available_dlls'].append({
-                    'path': str(dll_file),
-                    'architecture': bit_dir,
-                    'size': dll_file.stat().st_size,
-                })
+                info["available_dlls"].append(
+                    {
+                        "path": str(dll_file),
+                        "architecture": bit_dir,
+                        "size": dll_file.stat().st_size,
+                    }
+                )
             else:
-                info['missing_components'].append(f'{bit_dir}/AXL.dll')
+                info["missing_components"].append(f"{bit_dir}/AXL.dll")
 
         # Check for other important files
-        lib_files = ['AXL.lib', 'EzBasicAxl.dll', 'EzBasicAxl.lib']
-        for bit_dir in ['32Bit', '64Bit']:
+        lib_files = ["AXL.lib", "EzBasicAxl.dll", "EzBasicAxl.lib"]
+        for bit_dir in ["32Bit", "64Bit"]:
             for lib_file in lib_files:
                 lib_path = AXL_LIBRARY_DIR / bit_dir / lib_file
                 if not lib_path.exists():
-                    info['missing_components'].append(f'{bit_dir}/{lib_file}')
+                    info["missing_components"].append(f"{bit_dir}/{lib_file}")
     else:
-        info['missing_components'].append('Entire AJINEXTEK library directory')
+        info["missing_components"].append("Entire AJINEXTEK library directory")
 
     return info
 
@@ -163,22 +169,22 @@ def print_dll_diagnostic_info():
     """Print detailed diagnostic information about DLL installation."""
     info = verify_dll_installation()
 
-    print('\n=== AJINEXTEK AXL DLL Diagnostic Information ===')
+    print("\n=== AJINEXTEK AXL DLL Diagnostic Information ===")
     print(f'System Architecture: {info["architecture"]}')
     print(f'Python Architecture: {info["python_arch"]}')
-    print(f'Library Directory: {AXL_LIBRARY_DIR}')
+    print(f"Library Directory: {AXL_LIBRARY_DIR}")
     print(f'Library Directory Exists: {"✓" if info["library_dir_exists"] else "❌"}')
     print(f'Selected DLL Path: {info["dll_path"]}')
     print(f'Selected DLL Exists: {"✓" if info["dll_exists"] else "❌"}')
 
-    if info['available_dlls']:
-        print('\nAvailable DLLs:')
-        for dll in info['available_dlls']:
+    if info["available_dlls"]:
+        print("\nAvailable DLLs:")
+        for dll in info["available_dlls"]:
             print(f'  ✓ {dll["architecture"]}: {dll["path"]} ({dll["size"]:,} bytes)')
 
-    if info['missing_components']:
-        print('\nMissing Components:')
-        for component in info['missing_components']:
-            print(f'  ❌ {component}')
+    if info["missing_components"]:
+        print("\nMissing Components:")
+        for component in info["missing_components"]:
+            print(f"  ❌ {component}")
 
-    print('\n' + '='*50)
+    print("\n" + "=" * 50)

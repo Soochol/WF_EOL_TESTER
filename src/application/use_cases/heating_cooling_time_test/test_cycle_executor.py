@@ -5,13 +5,18 @@ Executes heating and cooling test cycles and manages power monitoring.
 Handles the core test execution logic for temperature transitions.
 """
 
-import asyncio
+# Standard library imports
 from typing import Any, Dict, List, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
+# Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.power_monitor import PowerMonitor
+
+# Local folder imports
 from .csv_logger import HeatingCoolingCSVLogger
 
 
@@ -39,7 +44,9 @@ class TestCycleExecutor:
         # CSV logger for test data
         self._csv_logger: Optional[HeatingCoolingCSVLogger] = None
 
-    async def execute_test_cycles(self, hc_config, repeat_count: int, test_id: Optional[str] = None) -> Dict[str, Any]:
+    async def execute_test_cycles(
+        self, hc_config, repeat_count: int, test_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Execute all heating/cooling test cycles
 
@@ -61,7 +68,7 @@ class TestCycleExecutor:
         # Clear partial results from previous runs
         self._partial_heating_results.clear()
         self._partial_cooling_results.clear()
-        
+
         # Initialize CSV logger if test_id provided
         if test_id:
             self._csv_logger = HeatingCoolingCSVLogger(test_id, repeat_count)
@@ -84,11 +91,11 @@ class TestCycleExecutor:
             timing_data = self._get_timing_data()
 
             logger.info(f"✅ All {repeat_count} test cycles completed successfully")
-            
+
             # Write summary to CSV if logger is enabled
             if self._csv_logger:
                 self._csv_logger.write_summary(completed_cycles=repeat_count)
-            
+
             return {
                 "success": True,
                 "timing_data": timing_data,
@@ -99,7 +106,9 @@ class TestCycleExecutor:
 
         except Exception as e:
             execution_error = e
-            logger.error(f"❌ Test cycles failed after {len(self._partial_cooling_results)} completed cycles: {e}")
+            logger.error(
+                f"❌ Test cycles failed after {len(self._partial_cooling_results)} completed cycles: {e}"
+            )
 
             # Ensure power monitoring is stopped on error
             if hc_config.power_monitoring_enabled and self._power_monitor.is_monitoring():
@@ -107,7 +116,9 @@ class TestCycleExecutor:
                     full_cycle_power_data = await self._power_monitor.stop_monitoring()
                     logger.info("Power monitoring stopped and partial data collected")
                 except Exception as stop_error:
-                    logger.error(f"Failed to stop power monitoring during error cleanup: {stop_error}")
+                    logger.error(
+                        f"Failed to stop power monitoring during error cleanup: {stop_error}"
+                    )
                     full_cycle_power_data = {"error": str(stop_error), "sample_count": 0}
 
             # Return partial results instead of raising exception
@@ -117,7 +128,9 @@ class TestCycleExecutor:
             }
 
             completed_cycles = len(self._partial_cooling_results)
-            logger.warning(f"Returning partial results: {completed_cycles} completed cycles out of {repeat_count}")
+            logger.warning(
+                f"Returning partial results: {completed_cycles} completed cycles out of {repeat_count}"
+            )
 
             # Write partial summary to CSV if logger is enabled
             if self._csv_logger:
@@ -176,7 +189,9 @@ class TestCycleExecutor:
             cycle_header = f"🔄 Test Cycle {i+1}/{repeat_count}"
             separator = "═" * 50
             logger.info(f"\033[44;97;1m{separator}\033[0m")  # Blue background, white text, bold
-            logger.info(f"\033[44;97;1m{cycle_header:^50}\033[0m")  # Centered text with blue background
+            logger.info(
+                f"\033[44;97;1m{cycle_header:^50}\033[0m"
+            )  # Centered text with blue background
             logger.info(f"\033[44;97;1m{separator}\033[0m")
 
             try:
@@ -194,7 +209,7 @@ class TestCycleExecutor:
                 await asyncio.sleep(hc_config.heating_wait_time)
 
                 # Collect heating timing data for this cycle
-                self._collect_cycle_timing_data(cycle_number=i+1, phase="heating")
+                self._collect_cycle_timing_data(cycle_number=i + 1, phase="heating")
 
                 # Cooling phase (activation → standby)
                 logger.info(
@@ -207,7 +222,7 @@ class TestCycleExecutor:
                 await asyncio.sleep(hc_config.cooling_wait_time)
 
                 # Collect cooling timing data for this cycle
-                self._collect_cycle_timing_data(cycle_number=i+1, phase="cooling")
+                self._collect_cycle_timing_data(cycle_number=i + 1, phase="cooling")
 
                 logger.info(f"✅ Cycle {i+1}/{repeat_count} completed successfully")
 
@@ -247,7 +262,7 @@ class TestCycleExecutor:
     def _collect_cycle_timing_data(self, cycle_number: int, phase: str) -> None:
         """
         Collect timing data for a specific cycle and phase
-        
+
         Args:
             cycle_number: Current cycle number (1-based)
             phase: "heating" or "cooling"
@@ -255,31 +270,37 @@ class TestCycleExecutor:
         try:
             mcu_service = self._hardware_services.mcu_service
             timing_data = mcu_service.get_all_timing_data()
-            
+
             if phase == "heating":
                 heating_transitions = timing_data.get("heating_transitions", [])
                 # Get the latest heating transition data
                 if heating_transitions and len(heating_transitions) >= cycle_number:
                     latest_heating = heating_transitions[cycle_number - 1]  # 0-based index
                     self._partial_heating_results.append(latest_heating)
-                    logger.debug(f"Collected heating data for cycle {cycle_number}: {latest_heating}")
-                    
+                    logger.debug(
+                        f"Collected heating data for cycle {cycle_number}: {latest_heating}"
+                    )
+
             elif phase == "cooling":
                 cooling_transitions = timing_data.get("cooling_transitions", [])
                 # Get the latest cooling transition data
                 if cooling_transitions and len(cooling_transitions) >= cycle_number:
                     latest_cooling = cooling_transitions[cycle_number - 1]  # 0-based index
                     self._partial_cooling_results.append(latest_cooling)
-                    logger.debug(f"Collected cooling data for cycle {cycle_number}: {latest_cooling}")
-                    
+                    logger.debug(
+                        f"Collected cooling data for cycle {cycle_number}: {latest_cooling}"
+                    )
+
                     # Write cycle data to CSV when both heating and cooling are complete
                     if self._csv_logger and len(self._partial_heating_results) >= cycle_number:
                         heating_data = self._partial_heating_results[cycle_number - 1]
                         cooling_data = latest_cooling
                         self._csv_logger.write_cycle_data(cycle_number, heating_data, cooling_data)
-                    
+
         except Exception as timing_error:
-            logger.warning(f"Failed to collect {phase} timing data for cycle {cycle_number}: {timing_error}")
+            logger.warning(
+                f"Failed to collect {phase} timing data for cycle {cycle_number}: {timing_error}"
+            )
 
     def _get_timing_data(self) -> Dict[str, List[Dict[str, Any]]]:
         """
@@ -295,7 +316,7 @@ class TestCycleExecutor:
                 "heating_results": self._partial_heating_results,
                 "cooling_results": self._partial_cooling_results,
             }
-        
+
         # Fallback to original method
         mcu_service = self._hardware_services.mcu_service
         timing_data = mcu_service.get_all_timing_data()
@@ -308,7 +329,7 @@ class TestCycleExecutor:
     def _get_partial_results(self) -> Dict[str, Any]:
         """
         Get partial results collected so far
-        
+
         Returns:
             Dictionary containing partial timing and power data
         """
@@ -318,6 +339,8 @@ class TestCycleExecutor:
                 "cooling_results": self._partial_cooling_results.copy(),
             },
             "power_data": {},  # Power data will be collected separately
-            "completed_cycles": len(self._partial_cooling_results),  # Cooling is last phase of each cycle
+            "completed_cycles": len(
+                self._partial_cooling_results
+            ),  # Cooling is last phase of each cycle
             "partial": True,
         }

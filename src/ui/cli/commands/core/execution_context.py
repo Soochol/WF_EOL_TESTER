@@ -4,12 +4,15 @@ Provides concrete implementation of command execution context with
 dependency injection integration and session management.
 """
 
+# Standard library imports
 from typing import Any, Dict, Optional
 
+# Third-party imports
 from loguru import logger
 
-from ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
+# Local application imports
 from application.containers.application_container import ApplicationContainer
+from ui.cli.commands.interfaces.command_interface import ICommandExecutionContext
 
 
 class CommandExecutionContext(ICommandExecutionContext):

@@ -14,13 +14,16 @@ Key Features:
 - Graceful fallback when prompt_toolkit is unavailable
 """
 
-import asyncio
+# Standard library imports
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 from rich.console import Console
 
+# Local folder imports
 # from .enhanced_input_manager import create_enhanced_input_manager  # Removed
 from .rich_formatter import RichFormatter
 
@@ -77,9 +80,9 @@ class EnhancedInputIntegrator:
                 "b": "Back to Main Menu",
             },
             "usecase_menu": {
-                "1": "Simple MCU Test", 
+                "1": "Simple MCU Test",
                 "2": "Heating/Cooling Time Test",
-                "b": "Back to Main Menu"
+                "b": "Back to Main Menu",
             },
         }
 
@@ -131,23 +134,25 @@ class EnhancedInputIntegrator:
             return None
 
         # Validate required defaults are present
-        required_fields = ['dut_id', 'model', 'operator_id']
+        required_fields = ["dut_id", "model", "operator_id"]
         for field in required_fields:
             if not defaults.get(field):
                 self.console.print(f"[red]Error: Missing required default value for {field}[/red]")
                 return None
 
         # Use defaults automatically
-        dut_id = defaults['dut_id']
-        model = defaults['model']
-        operator = defaults['operator_id']
+        dut_id = defaults["dut_id"]
+        model = defaults["model"]
+        operator = defaults["operator_id"]
 
         # Only prompt for Serial Number
         serial = input(f"Serial Number [{dut_id}]: ").strip()
         if not serial:
             serial = dut_id  # Default to DUT ID
 
-        self.console.print(f"[dim]Using: DUT ID={dut_id}, Model={model}, Operator={operator}, Serial={serial}[/dim]")
+        self.console.print(
+            f"[dim]Using: DUT ID={dut_id}, Model={model}, Operator={operator}, Serial={serial}[/dim]"
+        )
 
         return {"id": dut_id, "model": model, "serial": serial, "operator": operator}
 
@@ -259,6 +264,7 @@ class EnhancedMenuSystem:
 
     async def show_main_menu_enhanced(self) -> Optional[str]:
         """Show enhanced main menu with auto-completion and help"""
+        # Third-party imports
         from rich.panel import Panel
         from rich.text import Text
 
@@ -307,6 +313,7 @@ class EnhancedMenuSystem:
 
     async def show_hardware_menu_enhanced(self) -> Optional[str]:
         """Show enhanced hardware control menu"""
+        # Third-party imports
         from rich.panel import Panel
         from rich.text import Text
 
@@ -338,6 +345,7 @@ class EnhancedMenuSystem:
 
     async def show_usecase_menu_enhanced(self) -> Optional[str]:
         """Show enhanced UseCase selection menu"""
+        # Third-party imports
         from rich.panel import Panel
         from rich.text import Text
 

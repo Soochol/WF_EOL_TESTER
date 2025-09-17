@@ -4,10 +4,13 @@ Slash Command Parser
 Parser for handling slash command input and routing to appropriate command handlers.
 """
 
+# Standard library imports
 from typing import Dict, List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.base import Command, CommandResult
 
 

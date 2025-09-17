@@ -4,11 +4,14 @@ Advanced command parser with middleware pipeline support, enhanced parsing
 capabilities, and comprehensive error handling.
 """
 
+# Standard library imports
 import time
 from typing import Dict, List, Optional, Tuple
 
+# Third-party imports
 from loguru import logger
 
+# Local application imports
 from ui.cli.commands.interfaces.command_interface import (
     CommandResult,
     ICommand,

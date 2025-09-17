@@ -8,14 +8,18 @@ This class encapsulates common theme integration, basic panel creation, and
 utility methods that form the foundation for all specialized formatter classes.
 """
 
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+# Local application imports
 from domain.enums.test_status import TestStatus
 
+# Local folder imports
 from ..themes import ColorScheme, IconSet, LayoutConstants
 
 
@@ -206,6 +210,7 @@ class BaseFormatter:
         Returns:
             Formatted timestamp string using standard display format
         """
+        # Standard library imports
         from datetime import datetime
 
         return datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -226,6 +231,7 @@ class BaseFormatter:
             return "N/A"
 
         try:
+            # Standard library imports
             from datetime import datetime
 
             # Handle ISO format with timezone (convert Z to +00:00 for Python compatibility)

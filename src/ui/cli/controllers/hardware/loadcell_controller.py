@@ -5,12 +5,17 @@ Provides LoadCell-specific control operations including force measurement,
 and calibration for BS205 force sensors.
 """
 
-import asyncio
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
+import asyncio
+
+# Local application imports
 from application.interfaces.hardware.loadcell import LoadCellService
 from domain.value_objects.hardware_config import LoadCellConfig
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
 
@@ -229,4 +234,3 @@ class LoadCellController(HardwareController):
             "Failed to release hold",
             show_time=0.3,
         )
-

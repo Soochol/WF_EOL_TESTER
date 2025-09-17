@@ -5,22 +5,24 @@ Input object for robot homing operation.
 Contains operator identification for the homing operation.
 """
 
+# Standard library imports
 from typing import Any, Dict
 
+# Local application imports
 from application.use_cases.common.command_result_patterns import BaseUseCaseInput
 
 
 class RobotHomeInput(BaseUseCaseInput):
     """
     Input for Robot Homing Operation
-    
+
     Simple input containing operator identification for robot homing.
     """
 
     def __init__(self, operator_id: str = "system"):
         """
         Initialize robot home input
-        
+
         Args:
             operator_id: ID of the operator executing the operation
         """
@@ -29,7 +31,7 @@ class RobotHomeInput(BaseUseCaseInput):
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert input to dictionary representation
-        
+
         Returns:
             Dictionary containing input data
         """

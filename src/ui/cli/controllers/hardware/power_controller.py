@@ -5,11 +5,14 @@ Provides Power-specific control operations including voltage/current control,
 output management, and safety features for ODA power supplies.
 """
 
+# Standard library imports
 from typing import Optional
 
+# Local application imports
 from application.interfaces.hardware.power import PowerService
 from domain.value_objects.hardware_config import PowerConfig
 
+# Local folder imports
 from ...rich_formatter import RichFormatter
 from ..base.hardware_controller import HardwareController, simple_interactive_menu
 

@@ -152,7 +152,9 @@ class TestId(BaseId):
         super()._validate_string_format(value)
 
         # Test ID format patterns
-        serial_pattern_with_seq = r"^[A-Za-z0-9]+_\d{8}_\d{6}_\d{3}$"  # SerialNumber_YYYYMMDD_HHMMSS_XXX
+        serial_pattern_with_seq = (
+            r"^[A-Za-z0-9]+_\d{8}_\d{6}_\d{3}$"  # SerialNumber_YYYYMMDD_HHMMSS_XXX
+        )
         serial_pattern_no_seq = r"^[A-Za-z0-9]+_\d{8}_\d{6}$"  # SerialNumber_YYYYMMDD_HHMMSS
         test_pattern = r"^TEST_\d{8}_\d{6}_\d{3}$"  # TEST_YYYYMMDD_HHMMSS_XXX
         uuid_pattern = (
@@ -242,14 +244,14 @@ class TestId(BaseId):
     ) -> "TestId":
         """
         Generate a test ID using serial number and datetime format WITHOUT sequence number
-        
+
         Args:
             serial_number: DUT serial number
             timestamp: Test timestamp (defaults to now)
-            
+
         Returns:
             TestId in format: SerialNumber_YYYYMMDD_HHMMSS (no sequence suffix)
-            
+
         Raises:
             ValidationException: If serial number is invalid
         """
