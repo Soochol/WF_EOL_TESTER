@@ -63,7 +63,7 @@ class TestConfiguration:
     # POSITIONING SETTINGS
     # ========================================================================
     initial_position: float = 1000.0  # Starting position (μm)
-    max_stroke: float = 220000.0  # Maximum stroke length (μm)
+    operating_position: float = 220000.0  # Maximum stroke length (μm)
 
     # ========================================================================
     # TEST PARAMETERS
@@ -125,6 +125,7 @@ class TestConfiguration:
     max_velocity: float = 100000.0  # Maximum allowed velocity (μm/s)
     max_acceleration: float = 100000.0  # Maximum allowed acceleration (μm/s²)
     max_deceleration: float = 100000.0  # Maximum allowed deceleration (μm/s²)
+    max_stroke: float = 180000.0  # Maximum allowed stroke (μm)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization
@@ -212,20 +213,20 @@ class TestConfiguration:
                 f"Activation temperature must be less than or equal to upper temperature ({self.upper_temperature}°C)",
             )
 
-        if self.standby_temperature >= self.activation_temperature:
+        if self.standby_temperature > self.activation_temperature:
             raise ValidationException(
                 "standby_temperature",
                 self.standby_temperature,
-                f"Standby temperature must be less than activation temperature ({self.activation_temperature}°C)",
+                f"Standby temperature must be less than or equal to activation temperature ({self.activation_temperature}°C)",
             )
 
     def _validate_positioning_settings(self) -> None:
         """Validate positioning configuration parameters"""
-        if self.max_stroke <= 0:
+        if self.operating_position <= 0:
             raise ValidationException(
-                "max_stroke",
-                self.max_stroke,
-                "Max stroke must be positive",
+                "operating_position",
+                self.operating_position,
+                "Operating position must be positive",
             )
 
         if self.initial_position < 0:
@@ -235,11 +236,11 @@ class TestConfiguration:
                 "Initial position cannot be negative",
             )
 
-        if self.initial_position >= self.max_stroke:
+        if self.initial_position > self.operating_position:
             raise ValidationException(
                 "initial_position",
                 self.initial_position,
-                f"Initial position must be less than max stroke ({self.max_stroke}μm)",
+                f"Initial position must be less than or equal to operating position ({self.operating_position}μm)",
             )
 
     def _validate_test_parameters(self) -> None:
@@ -272,13 +273,13 @@ class TestConfiguration:
                 "All stroke positions must be non-negative",
             )
 
-        # Validate stroke positions are within max_stroke
-        invalid_positions = [pos for pos in self.stroke_positions if pos > self.max_stroke]
+        # Validate stroke positions are within operating position
+        invalid_positions = [pos for pos in self.stroke_positions if pos > self.operating_position]
         if invalid_positions:
             raise ValidationException(
                 "stroke_positions",
                 invalid_positions,
-                f"All stroke positions must be within max stroke ({self.max_stroke}μm)",
+                f"All stroke positions must be within operating position ({self.operating_position}μm)",
             )
 
         # Validate temperature test points are reasonable
@@ -291,18 +292,32 @@ class TestConfiguration:
 
     def _validate_safety_limits(self) -> None:
         """Validate safety limit parameters"""
-        if self.max_voltage <= self.voltage:
+        if self.max_voltage < self.voltage:
             raise ValidationException(
                 "max_voltage",
                 self.max_voltage,
-                f"Max voltage must be greater than operating voltage ({self.voltage})",
+                f"Max voltage must be greater than or equal to operating voltage ({self.voltage})",
             )
 
-        if self.max_current <= self.current:
+        if self.max_current < self.current:
             raise ValidationException(
                 "max_current",
                 self.max_current,
-                f"Max current must be greater than operating current ({self.current})",
+                f"Max current must be greater than or equal to operating current ({self.current})",
+            )
+
+        if self.max_stroke < self.operating_position:
+            raise ValidationException(
+                "max_stroke",
+                self.max_stroke,
+                f"Max stroke must be greater than or equal to operating position ({self.operating_position})",
+            )
+
+        if self.max_stroke < self.initial_position:
+            raise ValidationException(
+                "max_stroke",
+                self.max_stroke,
+                f"Max stroke must be greater than or equal to initial position ({self.initial_position})",
             )
 
     def _validate_motion_parameters(self) -> None:
@@ -333,21 +348,21 @@ class TestConfiguration:
             raise ValidationException(
                 "max_velocity",
                 self.max_velocity,
-                f"Max velocity must be greater than operating velocity ({self.velocity})",
+                f"Max velocity must be greater than or equal to operating velocity ({self.velocity})",
             )
 
-        if self.max_acceleration <= self.acceleration:
+        if self.max_acceleration < self.acceleration:
             raise ValidationException(
                 "max_acceleration",
                 self.max_acceleration,
-                f"Max acceleration must be greater than operating acceleration ({self.acceleration})",
+                f"Max acceleration must be greater than or equal to operating acceleration ({self.acceleration})",
             )
 
-        if self.max_deceleration <= self.deceleration:
+        if self.max_deceleration < self.deceleration:
             raise ValidationException(
                 "max_deceleration",
                 self.max_deceleration,
-                f"Max deceleration must be greater than operating deceleration ({self.deceleration})",
+                f"Max deceleration must be greater than or equal to operating deceleration ({self.deceleration})",
             )
 
     def _validate_timing_settings(self) -> None:
@@ -587,6 +602,16 @@ class TestConfiguration:
                 f"Deceleration {self.deceleration}μm/s² exceeds safety limit {self.max_deceleration}μm/s²"
             )
 
+        if self.operating_position > self.max_stroke:
+            violations.append(
+                f"Operating position {self.operating_position}μm exceeds safety limit {self.max_stroke}μm"
+            )
+
+        if self.initial_position > self.max_stroke:
+            violations.append(
+                f"Initial position {self.initial_position}μm exceeds safety limit {self.max_stroke}μm"
+            )
+
         return violations
 
     def to_dict(self) -> Dict[str, Any]:
@@ -602,7 +627,7 @@ class TestConfiguration:
             "standby_temperature": self.standby_temperature,  # Missing field added!
             "fan_speed": self.fan_speed,
             # Positioning settings
-            "max_stroke": self.max_stroke,
+            "operating_position": self.operating_position,
             "initial_position": self.initial_position,
             # Test parameters
             "pass_criteria": self.pass_criteria.to_dict(),
@@ -637,6 +662,7 @@ class TestConfiguration:
             "max_velocity": self.max_velocity,
             "max_acceleration": self.max_acceleration,
             "max_deceleration": self.max_deceleration,
+            "max_stroke": self.max_stroke,
         }
 
     @classmethod
@@ -674,7 +700,7 @@ class TestConfiguration:
                 "activation_temperature": self.activation_temperature,
                 "standby_temperature": self.standby_temperature,
                 "fan_speed": self.fan_speed,
-                "max_stroke": self.max_stroke,
+                "operating_position": self.operating_position,
                 "initial_position": self.initial_position,
             },
             # Motion control section
@@ -706,6 +732,7 @@ class TestConfiguration:
                 "max_velocity": self.max_velocity,
                 "max_acceleration": self.max_acceleration,
                 "max_deceleration": self.max_deceleration,
+                "max_stroke": self.max_stroke,
             },
             # Execution section
             "execution": {
@@ -755,7 +782,7 @@ class TestConfiguration:
                     "activation_temperature": hardware.get("activation_temperature", 60.0),
                     "standby_temperature": hardware.get("standby_temperature", 40.0),
                     "fan_speed": hardware.get("fan_speed", 10),
-                    "max_stroke": hardware.get("max_stroke", 240000.0),
+                    "operating_position": hardware.get("operating_position", 240000.0),
                     "initial_position": hardware.get("initial_position", 10000.0),
                 }
             )
@@ -861,6 +888,7 @@ class TestConfiguration:
                     "max_velocity": safety.get("max_velocity", 60000.0),
                     "max_acceleration": safety.get("max_acceleration", 60000.0),
                     "max_deceleration": safety.get("max_deceleration", 60000.0),
+                    "max_stroke": safety.get("max_stroke", 180000.0),
                 }
             )
 
@@ -926,5 +954,5 @@ class TestConfiguration:
         return (
             f"TestConfiguration(voltage={self.voltage}, current={self.current}, "
             f"temperatures={len(self.temperature_list)}, positions={len(self.stroke_positions)}, "
-            f"max_stroke={self.max_stroke}, pass_criteria={self.pass_criteria!r})"
+            f"operating_position={self.operating_position}, pass_criteria={self.pass_criteria!r})"
         )
