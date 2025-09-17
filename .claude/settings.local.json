@@ -29,7 +29,9 @@
       "Bash(./WF_EOL_Tester_CLI_v2.exe --help)",
       "Bash(7z:*)",
       "Bash(dir:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

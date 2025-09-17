@@ -6,9 +6,6 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 # Standard library imports
-# Standard library imports
-# Standard library imports
-# Third-party imports
 import asyncio
 from typing import Any, Dict, Optional
 
@@ -177,12 +174,13 @@ class EOLForceTestUseCase(BaseUseCase):
             test_id=context.test_id, error_message=error_message, duration=execution_duration
         )
 
-    async def execute_single(self, command: EOLForceTestInput) -> EOLTestResult:
+    async def execute_single(self, command: EOLForceTestInput, session_timestamp: Optional[str] = None) -> EOLTestResult:
         """
         Execute EOL test using component-based architecture
 
         Args:
             command: Test execution command containing DUT info and operator ID
+            session_timestamp: Optional session timestamp for CSV file grouping
 
         Returns:
             EOLTestResult containing test outcome, measurements, and execution details
@@ -212,7 +210,7 @@ class EOLForceTestUseCase(BaseUseCase):
             # Phase 1: Initialize test setup
             await self._config_loader.load_and_validate_configurations()
             test_entity = await self._test_factory.create_test_entity(
-                command.dut_info, command.operator_id, self._config_loader.test_config
+                command.dut_info, command.operator_id, self._config_loader.test_config, session_timestamp
             )
 
             # Phase 2: Execute test
@@ -457,6 +455,7 @@ class EOLForceTestUseCase(BaseUseCase):
         successful_tests = 0
         failed_tests = 0
         cycle_times = []  # Track timing for each cycle
+        session_timestamp = None  # Track session timestamp for CSV grouping
 
         for cycle in range(1, repeat_count + 1):
             cycle_start_time = asyncio.get_event_loop().time()
@@ -495,8 +494,15 @@ class EOLForceTestUseCase(BaseUseCase):
             )
 
             try:
-                # Execute single test cycle
-                result = await self.execute_single(cycle_command)
+                # Generate session timestamp for first cycle, reuse for subsequent cycles
+                if session_timestamp is None:
+                    # Generate session timestamp from current time for this test session
+                    from datetime import datetime
+                    session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    logger.debug(f"Generated session timestamp for repeat_count={repeat_count}: {session_timestamp}")
+                
+                # Execute single test cycle with session timestamp
+                result = await self.execute_single(cycle_command, session_timestamp)
                 all_results.append(result)
                 
                 # Calculate cycle duration

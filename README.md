@@ -246,7 +246,7 @@ python src/main_cli.py --config config_default.json
 ## 📚 추가 문서
 
 - `src_old_backup/`: 이전 버전 코드 (참고용)
-- `Logs/`: 모든 로그 및 결과 파일
+- `logs/`: 모든 로그 및 결과 파일
   - `application/`: 애플리케이션 로그
   - `test_results/`: 테스트 결과 JSON 파일
   - `measurements/`: 측정 데이터 CSV 파일

@@ -287,7 +287,7 @@ class HeatingCoolingTestController:
         """Save test results to JSON file"""
         try:
             # Create results directory
-            results_dir = Path("Logs/test_results/heating_cooling")
+            results_dir = Path("logs/Heating Cooling Test/power_measurements")
             results_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate filename with timestamp
@@ -350,7 +350,7 @@ This test measures the time taken for MCU temperature transitions:
 [bold]Results:[/bold]
 • Detailed timing measurements for each cycle
 • Average performance statistics
-• Results saved to Logs/test_results/heating_cooling/ directory
+• Results saved to logs/Heating Cooling Test/power_measurements/ directory
 """
 
         self.console.print(help_text)
