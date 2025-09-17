@@ -36,8 +36,8 @@ class ServicesConfigPaths:
 
     # Repository paths
     repository_results_path: str = "Logs/test_results/json"
-    repository_raw_data_path: str = "Logs/measurements/raw_data"
-    repository_summary_path: str = "Logs/measurements"
+    repository_raw_data_path: str = "Logs/EOL Force Test/raw_data"
+    repository_summary_path: str = "Logs/EOL Force Test"
     repository_summary_filename: str = "test_summary.csv"
     repository_auto_save: bool = True
 
@@ -146,10 +146,10 @@ class ApplicationConfig:
                     "results_path", "Logs/test_results/json"
                 ),
                 repository_raw_data_path=services_data.get("repository", {}).get(
-                    "raw_data_path", "Logs/measurements/raw_data"
+                    "raw_data_path", "Logs/EOL Force Test/raw_data"
                 ),
                 repository_summary_path=services_data.get("repository", {}).get(
-                    "summary_path", "Logs/measurements"
+                    "summary_path", "Logs/EOL Force Test"
                 ),
                 repository_summary_filename=services_data.get("repository", {}).get(
                     "summary_filename", "test_summary.csv"

@@ -125,8 +125,8 @@ if not exist "Logs" (
     mkdir Logs\test_results
     mkdir Logs\test_results\json
     mkdir Logs\test_results\heating_cooling
-    mkdir Logs\measurements
-    mkdir Logs\measurements\raw_data
+    mkdir "Logs\EOL Force Test"
+    mkdir "Logs\EOL Force Test\raw_data"
 )
 
 REM Test run (optional)
