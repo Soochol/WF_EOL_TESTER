@@ -489,7 +489,7 @@ class HardwareServiceFacade:
             # Robot movements and cooling sequence after temperature verification
             self._robot_state = RobotState.MOVING
             await self._robot.move_absolute(
-                position=test_config.max_stroke,
+                position=test_config.operating_position,
                 axis_id=hardware_config.robot.axis_id,
                 velocity=test_config.velocity,
                 acceleration=test_config.acceleration,
@@ -497,7 +497,7 @@ class HardwareServiceFacade:
             )
             await asyncio.sleep(test_config.robot_move_stabilization)
             self._robot_state = RobotState.MAX_STROKE
-            logger.info(f"Robot moved to max stroke position: {test_config.max_stroke}μm")
+            logger.info(f"Robot moved to operating position: {test_config.operating_position}μm")
 
             # Delay for stabilization
             await asyncio.sleep(test_config.robot_standby_stabilization)

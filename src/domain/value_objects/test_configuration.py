@@ -116,8 +116,8 @@ class TestConfiguration:
     # ========================================================================
     # SAFETY LIMITS
     # ========================================================================
-    max_voltage: float = 30.0  # Maximum allowed voltage (V)
-    max_current: float = 30.0  # Maximum allowed current (A)
+    max_voltage: float = 50.0  # Maximum allowed voltage (V)
+    max_current: float = 48.0  # Maximum allowed current (A)
     max_velocity: float = 100000.0  # Maximum allowed velocity (μm/s)
     max_acceleration: float = 100000.0  # Maximum allowed acceleration (μm/s²)
     max_deceleration: float = 100000.0  # Maximum allowed deceleration (μm/s²)
