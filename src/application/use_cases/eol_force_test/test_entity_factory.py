@@ -31,6 +31,7 @@ class TestEntityFactory:
         dut_info: DUTCommandInfo,
         operator_id: str,
         test_config: Optional[TestConfiguration] = None,
+        session_timestamp: Optional[str] = None,
     ) -> EOLTest:
         """
         Create and initialize test entity from command data
@@ -39,6 +40,7 @@ class TestEntityFactory:
             dut_info: DUT command information
             operator_id: Operator identifier
             test_config: Test configuration (optional)
+            session_timestamp: Session timestamp for grouping repeated tests
 
         Returns:
             EOLTest: Initialized test entity ready for execution
@@ -60,6 +62,7 @@ class TestEntityFactory:
             dut=dut,
             operator_id=OperatorId(operator_id),
             test_configuration=test_config.to_dict() if test_config else None,
+            session_timestamp=session_timestamp,
         )
 
         return test_entity

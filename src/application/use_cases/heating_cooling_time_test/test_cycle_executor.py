@@ -6,12 +6,13 @@ Handles the core test execution logic for temperature transitions.
 """
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.power_monitor import PowerMonitor
+from .csv_logger import HeatingCoolingCSVLogger
 
 
 class TestCycleExecutor:
@@ -35,14 +36,17 @@ class TestCycleExecutor:
         # Track partial results during execution
         self._partial_heating_results: List[Dict[str, Any]] = []
         self._partial_cooling_results: List[Dict[str, Any]] = []
+        # CSV logger for test data
+        self._csv_logger: Optional[HeatingCoolingCSVLogger] = None
 
-    async def execute_test_cycles(self, hc_config, repeat_count: int) -> Dict[str, Any]:
+    async def execute_test_cycles(self, hc_config, repeat_count: int, test_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Execute all heating/cooling test cycles
 
         Args:
             hc_config: Heating/cooling configuration
             repeat_count: Number of cycles to perform
+            test_id: Optional test identifier for CSV logging
 
         Returns:
             Dictionary containing cycle results, power data, and execution status
@@ -57,6 +61,11 @@ class TestCycleExecutor:
         # Clear partial results from previous runs
         self._partial_heating_results.clear()
         self._partial_cooling_results.clear()
+        
+        # Initialize CSV logger if test_id provided
+        if test_id:
+            self._csv_logger = HeatingCoolingCSVLogger(test_id, repeat_count)
+            logger.info(f"CSV logging enabled: {self._csv_logger.get_file_path()}")
 
         # Start power monitoring BEFORE heating/cooling operations begin
         await self._start_power_monitoring(hc_config)
@@ -75,6 +84,11 @@ class TestCycleExecutor:
             timing_data = self._get_timing_data()
 
             logger.info(f"✅ All {repeat_count} test cycles completed successfully")
+            
+            # Write summary to CSV if logger is enabled
+            if self._csv_logger:
+                self._csv_logger.write_summary(completed_cycles=repeat_count)
+            
             return {
                 "success": True,
                 "timing_data": timing_data,
@@ -104,6 +118,10 @@ class TestCycleExecutor:
 
             completed_cycles = len(self._partial_cooling_results)
             logger.warning(f"Returning partial results: {completed_cycles} completed cycles out of {repeat_count}")
+
+            # Write partial summary to CSV if logger is enabled
+            if self._csv_logger:
+                self._csv_logger.write_summary(completed_cycles=completed_cycles)
 
             return {
                 "success": False,
@@ -253,6 +271,12 @@ class TestCycleExecutor:
                     latest_cooling = cooling_transitions[cycle_number - 1]  # 0-based index
                     self._partial_cooling_results.append(latest_cooling)
                     logger.debug(f"Collected cooling data for cycle {cycle_number}: {latest_cooling}")
+                    
+                    # Write cycle data to CSV when both heating and cooling are complete
+                    if self._csv_logger and len(self._partial_heating_results) >= cycle_number:
+                        heating_data = self._partial_heating_results[cycle_number - 1]
+                        cooling_data = latest_cooling
+                        self._csv_logger.write_cycle_data(cycle_number, heating_data, cooling_data)
                     
         except Exception as timing_error:
             logger.warning(f"Failed to collect {phase} timing data for cycle {cycle_number}: {timing_error}")

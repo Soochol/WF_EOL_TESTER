@@ -37,6 +37,7 @@ class EOLTest:
         test_configuration: Optional[Dict[str, Any]] = None,
         pass_criteria: Optional[Dict[str, Any]] = None,
         created_at: Optional[Timestamp] = None,
+        session_timestamp: Optional[str] = None,
     ):
         """
         Initialize EOL test
@@ -48,6 +49,7 @@ class EOLTest:
             test_configuration: Test configuration parameters
             pass_criteria: Criteria that determine pass/fail
             created_at: When test was created (defaults to now)
+            session_timestamp: Test session timestamp for grouping repeated tests
 
         Raises:
             ValidationException: If required fields are invalid
@@ -60,6 +62,7 @@ class EOLTest:
         self._test_configuration = test_configuration or {}
         self._pass_criteria = pass_criteria or {}
         self._created_at = created_at or Timestamp.now()
+        self._session_timestamp = session_timestamp
 
         # Test execution state
         self._status = TestStatus.NOT_STARTED
@@ -127,6 +130,11 @@ class EOLTest:
     def created_at(self) -> Timestamp:
         """Get creation timestamp"""
         return self._created_at
+
+    @property
+    def session_timestamp(self) -> Optional[str]:
+        """Get session timestamp for CSV file grouping"""
+        return self._session_timestamp
 
     @property
     def status(self) -> TestStatus:

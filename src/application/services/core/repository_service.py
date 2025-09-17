@@ -72,7 +72,7 @@ class RepositoryService:
 
     async def _save_measurement_raw_data(self, test: EOLTest) -> None:
         """
-        Save measurement raw data as CSV file
+        Save measurement raw data as pivot table CSV file
 
         Args:
             test: EOL test containing measurement data
@@ -82,9 +82,23 @@ class RepositoryService:
             raw_data_dir = self._raw_data_dir
             raw_data_dir.mkdir(parents=True, exist_ok=True)
 
-            # Generate daily filename (date-based accumulation only)
-            date_str = test.created_at.datetime.strftime("%Y%m%d")
-            filename = f"raw_measurements_{date_str}.csv"
+            # Generate test-session-based filename (each test session creates new file)
+            # Priority 1: Use session_timestamp if available (for repeat_count tests)
+            if test.session_timestamp:
+                date_time_str = test.session_timestamp
+            else:
+                # Priority 2: Extract timestamp from test_id (format: DEFAULT001_20250918_012300)
+                test_id_str = str(test.test_id)
+                test_id_parts = test_id_str.split('_')
+                
+                if len(test_id_parts) >= 3:
+                    # Use test ID timestamp for filename (test session based)
+                    date_time_str = f"{test_id_parts[-2]}_{test_id_parts[-1]}"
+                else:
+                    # Fallback: use test creation time
+                    date_time_str = test.created_at.datetime.strftime("%Y%m%d_%H%M%S")
+            
+            filename = f"raw_measurements_{date_time_str}.csv"
             filepath = raw_data_dir / filename
 
             # Extract measurement data
@@ -99,93 +113,62 @@ class RepositoryService:
 
             logger.debug(f"Extracting force data for test {test.test_id}")
 
-            # Determine write mode: append if file exists, create new if not
-            is_new_file = not filepath.exists()
-            write_mode = "w" if is_new_file else "a"
-
             # Extract clean serial number
             full_serial = str(test.dut.serial_number or "Unknown").strip()
             serial_number = self._extract_serial_number(full_serial)
 
-            # Write CSV file
-            with open(filepath, write_mode, newline="", encoding="utf-8") as csvfile:
-                # Add blank line separator if appending to existing file
-                if not is_new_file:
-                    csvfile.write("\n\n")
-                # Write test information header
-                csvfile.write("# Test Information\n")
-                csvfile.write(f"Test ID: {test.test_id}\n")
-                csvfile.write(f"DUT Serial: {serial_number}\n")
-                csvfile.write(
-                    f"Test Date: {test.created_at.datetime.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                )
-                csvfile.write(f"Status: {'PASS' if test.test_result.is_passed() else 'FAIL'}\n")
-                csvfile.write("\n")
-                csvfile.write(
-                    "# Raw Measurement Data (Temperature[degC] vs Distance[mm] -> Force[kgf])\n"
-                )
+            # Get all unique temperatures and positions
+            temperatures = sorted([float(temp) for temp in measurements_dict.keys()])
+            all_positions = set()
+            for temp_data in measurements_dict.values():
+                all_positions.update(temp_data.keys())
+            positions = sorted([float(pos) for pos in all_positions])
 
-                # Get all unique positions (distances) across all temperatures
-                all_positions = set()
-                for temp_data in measurements_dict.values():
-                    all_positions.update(temp_data.keys())
-                sorted_positions = sorted(all_positions, key=float)
+            # Generate dynamic headers
+            headers = ["Test_ID", "Serial", "Date", "Time", "Status"]
+            for temp in temperatures:
+                for pos in positions:
+                    # Convert position from micrometers to millimeters for header
+                    pos_mm = self._convert_micrometers_to_millimeters(pos)
+                    headers.append(f"T{int(temp)}_P{int(pos_mm)}")
 
-                # Write CSV header with enhanced writer settings
-                writer = csv.writer(
-                    csvfile,
-                    delimiter=",",
-                    quotechar='"',
-                    quoting=csv.QUOTE_MINIMAL,
-                    lineterminator="\n",
-                    escapechar=None,
-                )
-                # Convert positions from micrometers to millimeters for CSV header display
-                header = ["Temperature"] + [
-                    str(self._convert_micrometers_to_millimeters(float(pos))) 
-                    for pos in sorted_positions
-                ]
-                writer.writerow(header)
-
-                # Write measurement data
-                for temp in sorted(measurements_dict.keys(), key=float):
-                    row = [str(temp)]  # Ensure temperature is string for consistency
-                    temp_measurements = measurements_dict[temp]
-
-                    for pos in sorted_positions:
-                        if pos in temp_measurements:
-                            position_data = temp_measurements[pos]
-                            # Extract force value using multiple strategies
-                            force_value = self._extract_force_value(position_data, temp, str(pos))
-
-                            # Add force value to row with proper formatting
-                            if force_value is not None and isinstance(force_value, (int, float)):
-                                row.append(f"{force_value:.3f}")
-                            else:
-                                row.append("")
+            # Check if file exists and if headers match
+            is_new_file = not filepath.exists()
+            
+            # Prepare row data
+            test_date = test.created_at.datetime.strftime('%Y-%m-%d')
+            test_time = test.created_at.datetime.strftime('%H:%M:%S')
+            status = 'PASS' if test.test_result.is_passed() else 'FAIL'
+            
+            row_data = [str(test.test_id), serial_number, test_date, test_time, status]
+            
+            # Add force values for each temperature/position combination
+            for temp in temperatures:
+                # measurements_dict now uses float keys, so use temp directly
+                temp_measurements = measurements_dict.get(temp, {})
+                
+                for pos in positions:
+                    # measurements_dict now uses float keys, so use pos directly
+                    if pos in temp_measurements:
+                        position_data = temp_measurements[pos]
+                        force_value = self._extract_force_value(position_data, str(int(temp)), str(int(pos)))
+                        if force_value is not None and isinstance(force_value, (int, float)):
+                            row_data.append(f"{force_value:.3f}")
                         else:
-                            logger.debug(f"Position {pos} not found in temperature {temp}")
-                            row.append("")  # Empty cell for missing measurements
+                            row_data.append("")
+                    else:
+                        row_data.append("")  # Empty cell for missing measurements
 
-                    # Validate and sanitize the row data
-                    sanitized_row = []
-                    for field in row:
-                        if field is None:
-                            sanitized_field = ""
-                        else:
-                            sanitized_field = str(field).strip()
-                            # Remove problematic characters
-                            sanitized_field = (
-                                sanitized_field.replace("\n", " ")
-                                .replace("\r", " ")
-                                .replace("\t", " ")
-                                .replace('"', "'")
-                            )
-                            # Collapse multiple spaces
-                            sanitized_field = " ".join(sanitized_field.split())
-                        sanitized_row.append(sanitized_field)
-
-                    writer.writerow(sanitized_row)
+            # Write to CSV file
+            with open(filepath, "a" if not is_new_file else "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                
+                # Write header only for new files
+                if is_new_file:
+                    writer.writerow(headers)
+                
+                # Write data row
+                writer.writerow(row_data)
 
             action = "created" if is_new_file else "appended to"
             logger.info(f"Measurement raw data for {serial_number} {action} daily file: {filepath}")

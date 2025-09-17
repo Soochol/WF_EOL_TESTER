@@ -60,8 +60,8 @@ class Timestamp:
 
     @property
     def datetime(self) -> datetime:
-        """Get datetime representation (UTC)"""
-        return datetime.fromtimestamp(self._timestamp, tz=timezone.utc)
+        """Get datetime representation (local timezone)"""
+        return datetime.fromtimestamp(self._timestamp)
 
     @classmethod
     def now(cls) -> "Timestamp":

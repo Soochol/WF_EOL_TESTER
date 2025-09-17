@@ -6,7 +6,8 @@ Simulates LMA MCU behavior for testing purposes.
 """
 
 import random
-from typing import Any, Dict, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import asyncio
 from loguru import logger
@@ -79,6 +80,10 @@ class MockMCU(MCUService):
         
         # Verification stability - disable drift during temperature verification
         self._verification_mode = False
+        
+        # Timing data storage for heating/cooling tests
+        self._heating_timing_history: List[Dict[str, Any]] = []
+        self._cooling_timing_history: List[Dict[str, Any]] = []
 
 
     async def connect(self) -> None:
@@ -548,11 +553,25 @@ class MockMCU(MCUService):
             
             # Enable verification mode for stable temperature readings
             self._verification_mode = True
+            
+            # Generate mock timing data for heating transition
+            mock_heating_data = {
+                "transition": f"{standby_temp}°C → {operating_temp}°C",
+                "from_temperature": standby_temp,
+                "to_temperature": operating_temp,
+                "ack_duration_ms": random.uniform(80, 120),  # Mock ACK time
+                "total_duration_ms": random.uniform(1200, 1800),  # Mock total time
+                "timestamp": datetime.now().isoformat(),
+                "attempt_number": 1,
+                "total_attempts": 1,
+            }
+            self._heating_timing_history.append(mock_heating_data)
 
             logger.info(
                 f"Mock MCU standby heating started - op:{operating_temp}°C, "
                 f"standby:{standby_temp}°C, hold:{hold_time_ms}ms (verification_mode enabled)"
             )
+            logger.debug(f"Mock heating timing data added: {mock_heating_data}")
 
         except asyncio.TimeoutError:
             # Re-raise timeout error to trigger retry logic
@@ -588,8 +607,24 @@ class MockMCU(MCUService):
             
             # Enable verification mode for stable temperature readings
             self._verification_mode = True
+            
+            # Generate mock timing data for cooling transition
+            # Assuming cooling from current temperature to standby temperature
+            from_temp = self._current_temperature if self._current_temperature > standby_temp else 95.0  # Mock from temperature
+            mock_cooling_data = {
+                "transition": f"{from_temp}°C → {standby_temp}°C",
+                "from_temperature": from_temp,
+                "to_temperature": standby_temp,
+                "ack_duration_ms": random.uniform(70, 110),  # Mock ACK time
+                "total_duration_ms": random.uniform(1800, 2500),  # Mock total time (cooling usually takes longer)
+                "timestamp": datetime.now().isoformat(),
+                "attempt_number": 1,
+                "total_attempts": 1,
+            }
+            self._cooling_timing_history.append(mock_cooling_data)
 
             logger.info(f"Mock MCU standby cooling started - temperature set to {standby_temp}°C (verification_mode enabled)")
+            logger.debug(f"Mock cooling timing data added: {mock_cooling_data}")
 
         except Exception as e:
             logger.error(f"Failed to start Mock MCU standby cooling: {e}")
@@ -680,17 +715,17 @@ class MockMCU(MCUService):
         logger.debug("Mock MCU verification mode disabled - normal temperature simulation resumed")
 
     def clear_timing_history(self) -> None:
-        """Clear timing history for new test sessions (mock implementation)"""
+        """Clear timing history for new test sessions"""
+        self._heating_timing_history.clear()
+        self._cooling_timing_history.clear()
         logger.debug("Mock MCU timing history cleared")
-        # Mock implementation - no actual timing data to clear
 
     def get_all_timing_data(self) -> Dict[str, Any]:
-        """Get all heating/cooling timing data (mock implementation)"""
-        logger.debug("Mock MCU returning mock timing data")
-        # Return mock timing data for testing
+        """Get all heating/cooling timing data"""
+        logger.debug(f"Mock MCU returning timing data: {len(self._heating_timing_history)} heating, {len(self._cooling_timing_history)} cooling")
         return {
-            "heating_transitions": [],
-            "cooling_transitions": [],
-            "total_heating_count": 0,
-            "total_cooling_count": 0
+            "heating_transitions": self._heating_timing_history.copy(),
+            "cooling_transitions": self._cooling_timing_history.copy(),
+            "total_heating_count": len(self._heating_timing_history),
+            "total_cooling_count": len(self._cooling_timing_history),
         }

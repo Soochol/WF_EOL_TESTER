@@ -118,15 +118,17 @@ if exist "configuration\hardware_model.yaml" (
 echo.
 
 REM Create logs directory structure
-if not exist "Logs" (
-    echo [SETUP] Creating Logs directory structure...
-    mkdir Logs
-    mkdir Logs\application
-    mkdir Logs\test_results
-    mkdir Logs\test_results\json
-    mkdir Logs\test_results\heating_cooling
-    mkdir "Logs\EOL Force Test"
-    mkdir "Logs\EOL Force Test\raw_data"
+if not exist "logs" (
+    echo [SETUP] Creating logs directory structure...
+    mkdir logs
+    mkdir logs\application
+    mkdir logs\test_results
+    mkdir logs\test_results\json
+    mkdir "logs\Heating Cooling Test"
+    mkdir "logs\Heating Cooling Test\cycle_data"
+    mkdir "logs\Heating Cooling Test\power_measurements"
+    mkdir "logs\EOL Force Test"
+    mkdir "logs\EOL Force Test\raw_data"
 )
 
 REM Test run (optional)
@@ -194,7 +196,7 @@ echo.
 echo Files created:
 echo - uv environment in '.venv' directory
 echo - All Python dependencies installed via uv
-echo - Logs directory created
+echo - logs directory created
 echo.
 echo If you encounter any issues:
 echo - Check the configuration files in the 'configuration' directory
