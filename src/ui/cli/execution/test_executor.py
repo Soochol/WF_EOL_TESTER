@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 # Third-party imports
 from loguru import logger
 from rich.console import Console
+from rich.table import Table
 
 # Local application imports
 # Local imports - Application layer
@@ -30,6 +31,7 @@ from application.use_cases.eol_force_test.main_use_case import (
 # Local imports - Domain layer
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
+from domain.value_objects.measurements import TestMeasurements
 
 # Local folder imports
 # Local imports - UI modules
@@ -205,10 +207,12 @@ class TestExecutor(ITestExecutor):
         if result.test_summary:
             # Handle both dict and TestMeasurements types
             try:
-                if isinstance(result.test_summary, dict):
+                if isinstance(result.test_summary, TestMeasurements):
+                    self._display_measurements_table(result.test_summary)
+                elif isinstance(result.test_summary, dict):
                     self._display_test_summary(result.test_summary)
                 else:
-                    # Convert TestMeasurements to dict representation
+                    # Convert to dict representation
                     summary_dict: Dict[str, Any] = {"summary": str(result.test_summary)}
                     self._display_test_summary(summary_dict)
             except Exception:
@@ -301,3 +305,31 @@ class TestExecutor(ITestExecutor):
         if "Memory" in error_type_name or "Resource" in error_type_name:
             return "RESOURCE"  # Resource exhaustion and memory issues
         return "UNKNOWN"  # Unrecognized error types
+
+    def _display_measurements_table(self, measurements: TestMeasurements) -> None:
+        """Display TestMeasurements in a formatted table showing temperature vs max force.
+
+        Args:
+            measurements: TestMeasurements object containing all test data
+        """
+        # Create table with temperature and max force columns
+        table = Table(title="📊 Test Measurements Summary")
+        table.add_column("Temperature", style="cyan", justify="center")
+        table.add_column("Force (N)", style="yellow", justify="center")
+
+        # Extract data for each temperature
+        temperatures = sorted(measurements.get_temperatures())
+
+        for temp in temperatures:
+            temp_measurements = measurements.get_temperature_measurements(temp)
+            if temp_measurements:
+                # Get maximum force value for this temperature
+                forces = temp_measurements.get_all_forces()
+                if forces:
+                    max_force = max(forces)
+                    table.add_row(f"{temp:.1f}°C", f"{max_force:.2f}")
+
+        # Display the table
+        self._console.print()
+        self._console.print(table)
+        self._console.print()
