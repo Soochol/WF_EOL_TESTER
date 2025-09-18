@@ -291,21 +291,14 @@ class HeatingCoolingTestController:
     async def _save_results_to_file(self, result: HeatingCoolingTimeTestResult) -> None:
         """Save test results to JSON file"""
         try:
-            self.formatter.print_message("Starting to save test results to file...", message_type="info")
-            self.formatter.print_message(f"Test success status: {result.is_success}", message_type="info")
-            self.formatter.print_message(f"Test ID: {result.test_id}", message_type="info")
-
             # Create results directory
             results_dir = Path("logs/Heating Cooling Test/power_measurements")
-            self.formatter.print_message(f"Creating directory: {results_dir.absolute()}", message_type="info")
             results_dir.mkdir(parents=True, exist_ok=True)
-            self.formatter.print_message(f"Directory created successfully: {results_dir.exists()}", message_type="info")
 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"heating_cooling_test_{timestamp}_{result.test_id}.json"
             file_path = results_dir / filename
-            self.formatter.print_message(f"Generated file path: {file_path.absolute()}", message_type="info")
 
             # Prepare data for JSON
             json_data = {
@@ -322,11 +315,9 @@ class HeatingCoolingTestController:
             }
 
             # Save to file
-            self.formatter.print_message("Writing JSON data to file...", message_type="info")
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(json_data, f, indent=2, ensure_ascii=False)
 
-            self.formatter.print_message(f"File written successfully. Size: {file_path.stat().st_size} bytes", message_type="info")
             self.formatter.print_message(f"Results saved to: {file_path}", message_type="success")
 
         except Exception as e:
