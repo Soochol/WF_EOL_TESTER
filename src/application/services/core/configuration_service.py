@@ -459,34 +459,6 @@ metadata:
             return []
         return await self._configuration.list_available_profiles()
 
-    async def load_heating_cooling_config(self) -> "HeatingCoolingConfiguration":
-        """
-        Load heating/cooling time test configuration
-
-        Returns:
-            HeatingCoolingConfiguration object
-
-        Raises:
-            RepositoryAccessError: If loading fails
-        """
-        if not self._configuration:
-            raise RepositoryAccessError(
-                operation="load_heating_cooling_config",
-                reason="Configuration repository not available",
-            )
-
-        try:
-            config_data = await self._configuration.load_heating_cooling_config()
-            logger.debug("Heating/cooling configuration loaded successfully")
-            return config_data
-
-        except Exception as e:
-            logger.error(f"Failed to load heating/cooling configuration: {e}")
-            raise RepositoryAccessError(
-                operation="load_heating_cooling_config",
-                reason=str(e),
-                file_path="heating_cooling_time_test.yaml",
-            ) from e
 
     async def get_active_profile_name(self) -> str:
         """
@@ -667,7 +639,7 @@ metadata:
         """
         try:
             # Check if heating/cooling config exists, if not this will create it
-            await self._configuration.load_heating_cooling_config()
+            await self.load_heating_cooling_config()
             logger.debug("Heating/cooling configuration initialized successfully")
 
         except Exception as e:
