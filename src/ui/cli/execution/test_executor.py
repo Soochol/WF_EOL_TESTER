@@ -207,17 +207,11 @@ class TestExecutor(ITestExecutor):
         if result.test_summary:
             # Handle both dict and TestMeasurements types
             try:
-                logger.debug(f"Test summary type: {type(result.test_summary)}")
-                logger.debug(f"Test summary content: {result.test_summary}")
-
                 if isinstance(result.test_summary, TestMeasurements):
-                    logger.debug("Displaying TestMeasurements table")
                     self._display_measurements_table(result.test_summary)
                 elif isinstance(result.test_summary, dict):
-                    logger.debug("Displaying dict summary")
                     self._display_test_summary(result.test_summary)
                 else:
-                    logger.debug("Converting to dict representation")
                     # Convert to dict representation
                     summary_dict: Dict[str, Any] = {"summary": str(result.test_summary)}
                     self._display_test_summary(summary_dict)
@@ -330,11 +324,13 @@ class TestExecutor(ITestExecutor):
         for temp in temperatures:
             temp_measurements = measurements.get_temperature_measurements(temp)
             if temp_measurements:
-                # Get maximum force value for this temperature
-                forces = temp_measurements.get_all_forces()
-                if forces:
-                    max_force = max(forces)
+                try:
+                    # Get maximum force value for this temperature
+                    min_force, max_force = temp_measurements.get_force_range()
                     table.add_row(f"{temp:.1f}°C", f"{max_force:.2f}")
+                except ValueError:
+                    # Skip if no measurements available for this temperature
+                    continue
 
         # Display the table
         self._console.print()
