@@ -82,20 +82,31 @@ class HeatingCoolingCSVLogger:
             # Use timestamp from data if available, otherwise current time
             timestamp = heating_data.get("timestamp", datetime.now().isoformat())
 
-            # Convert milliseconds to seconds with 2 decimal places
+            # Convert milliseconds to seconds with 3 decimal places
             heating_time_s = heating_time_ms / 1000.0
             cooling_time_s = cooling_time_ms / 1000.0
+
+            # Format timestamp to YYYY-MM-DD HH:MM:SS.fff format
+            if isinstance(timestamp, str):
+                try:
+                    # Parse ISO format timestamp
+                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    formatted_timestamp = dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # Remove last 3 digits for milliseconds
+                except ValueError:
+                    formatted_timestamp = timestamp[:23]  # Fallback to first 23 chars
+            else:
+                formatted_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
             # Prepare row data
             row_data = {
                 "Cycle": cycle_number,
-                "Heating_Time_s": f"{heating_time_s:.2f}",
+                "Heating_Time_s": f"{heating_time_s:.3f}",
                 "Heating_From_Temp": f"{heating_from_temp:.1f}",
                 "Heating_To_Temp": f"{heating_to_temp:.1f}",
-                "Cooling_Time_s": f"{cooling_time_s:.2f}",
+                "Cooling_Time_s": f"{cooling_time_s:.3f}",
                 "Cooling_From_Temp": f"{cooling_from_temp:.1f}",
                 "Cooling_To_Temp": f"{cooling_to_temp:.1f}",
-                "Timestamp": timestamp,
+                "Timestamp": formatted_timestamp,
             }
 
             # Store for summary calculations
@@ -168,9 +179,9 @@ class HeatingCoolingCSVLogger:
                 max_heating_s = max(heating_times) / 1000.0
                 summary_data.extend(
                     [
-                        ["Average_Heating_Time_s", f"{avg_heating_s:.2f}"],
-                        ["Min_Heating_Time_s", f"{min_heating_s:.2f}"],
-                        ["Max_Heating_Time_s", f"{max_heating_s:.2f}"],
+                        ["Average_Heating_Time_s", f"{avg_heating_s:.3f}"],
+                        ["Min_Heating_Time_s", f"{min_heating_s:.3f}"],
+                        ["Max_Heating_Time_s", f"{max_heating_s:.3f}"],
                     ]
                 )
 
@@ -181,9 +192,9 @@ class HeatingCoolingCSVLogger:
                 max_cooling_s = max(cooling_times) / 1000.0
                 summary_data.extend(
                     [
-                        ["Average_Cooling_Time_s", f"{avg_cooling_s:.2f}"],
-                        ["Min_Cooling_Time_s", f"{min_cooling_s:.2f}"],
-                        ["Max_Cooling_Time_s", f"{max_cooling_s:.2f}"],
+                        ["Average_Cooling_Time_s", f"{avg_cooling_s:.3f}"],
+                        ["Min_Cooling_Time_s", f"{min_cooling_s:.3f}"],
+                        ["Max_Cooling_Time_s", f"{max_cooling_s:.3f}"],
                     ]
                 )
 
