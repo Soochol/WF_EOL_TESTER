@@ -16,6 +16,7 @@ import yaml
 
 # Local application imports
 from domain.value_objects.hardware_config import HardwareConfig
+from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
 from domain.value_objects.test_configuration import TestConfiguration
 
 
@@ -173,6 +174,54 @@ class YamlConfiguration:
             data = yaml.safe_load(f)
 
         return TestConfiguration.from_structured_dict(data)
+
+    async def load_heating_cooling_config(self) -> "HeatingCoolingConfiguration":
+        """Load heating/cooling time test configuration"""
+        config_file = self.config_dir / "heating_cooling_time_test.yaml"
+
+        if not config_file.exists():
+            # Create default heating/cooling configuration when file is missing
+            # Standard library imports
+            from datetime import datetime
+
+            # Create default HeatingCoolingConfiguration with all default values
+            default_heating_cooling_config = HeatingCoolingConfiguration()
+
+            # Convert to dictionary format for YAML serialization
+            config_data = default_heating_cooling_config.to_dict()
+
+            # Add metadata
+            config_data["metadata"] = {
+                "created_at": datetime.now().isoformat(),
+                "created_by": "YamlConfiguration (auto-generated)",
+                "version": "1.0.0",
+                "description": "Heating/Cooling Time Test configuration with power monitoring",
+                "notes": (
+                    "This configuration file contains parameters for heating/cooling time tests.\n\n"
+                    "Key parameters:\n"
+                    "- Wait times control delays between heating/cooling phases\n"
+                    "- Power monitoring tracks energy consumption during test cycles\n"
+                    "- Temperature parameters define test operating ranges\n"
+                    "- Statistics options control data analysis and display\n\n"
+                    "Modify these values to customize test behavior according to your\n"
+                    "hardware specifications and testing requirements."
+                ),
+            }
+
+            # Save the default configuration for future use with formatting
+            yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
+            formatted_content = self._format_yaml_with_spacing(yaml_content)
+
+            with open(config_file, "w", encoding="utf-8") as f:
+                f.write(formatted_content)
+
+            logger.info(f"Created default heating/cooling configuration: {config_file}")
+            return default_heating_cooling_config
+
+        with open(config_file, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        return HeatingCoolingConfiguration.from_dict(data)
 
     async def load_hardware_config(self) -> HardwareConfig:
         """Load unified hardware configuration

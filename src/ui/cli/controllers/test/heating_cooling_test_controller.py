@@ -5,7 +5,6 @@ CLI controller for managing heating/cooling time measurement tests.
 """
 
 # Standard library imports
-from datetime import datetime
 import json
 from pathlib import Path
 from typing import Dict, Optional
@@ -360,162 +359,29 @@ This test measures the time taken for MCU temperature transitions:
 
         self.console.print(help_text)
 
-    def _ensure_heating_cooling_config_initialized(self) -> None:
-        """
-        Ensure heating_cooling_time_test.yaml configuration file exists
-        Creates default configuration if file is missing
-        """
-        config_file = Path("configuration/heating_cooling_time_test.yaml")
-
-        try:
-            if not config_file.exists():
-                # Create configuration directory if it doesn't exist
-                config_file.parent.mkdir(exist_ok=True)
-
-                # Create default configuration data
-                default_config = {
-                    "repeat_count": 1,
-                    "heating_wait_time": 2.0,
-                    "cooling_wait_time": 2.0,
-                    "stabilization_wait_time": 1.0,
-                    "power_monitoring_interval": 0.5,
-                    "power_monitoring_enabled": True,
-                    "activation_temperature": 52.0,
-                    "standby_temperature": 38.0,
-                    "voltage": 38.0,
-                    "current": 25.0,
-                    "fan_speed": 10,
-                    "upper_temperature": 80.0,
-                    "poweron_stabilization": 0.5,
-                    "mcu_boot_complete_stabilization": 2.0,
-                    "mcu_command_stabilization": 0.1,
-                    "mcu_temperature_stabilization": 0.1,
-                    "calculate_statistics": True,
-                    "show_detailed_results": True,
-                    "metadata": {
-                        "created_at": datetime.now().isoformat(),
-                        "created_by": "HeatingCoolingTestController (auto-generated)",
-                        "version": "1.0.0",
-                        "description": "Heating/Cooling Time Test configuration with power monitoring",
-                        "notes": (
-                            "This configuration file contains parameters for heating/cooling time tests.\n\n"
-                            "Key parameters:\n"
-                            "- Wait times control delays between heating/cooling phases\n"
-                            "- Power monitoring tracks energy consumption during test cycles\n"
-                            "- Temperature parameters define test operating ranges\n"
-                            "- Statistics options control data analysis and display\n\n"
-                            "Modify these values to customize test behavior according to your\n"
-                            "hardware specifications and testing requirements."
-                        ),
-                    },
-                }
-
-                # Create formatted YAML content with comments
-                yaml_content = "# Heating/Cooling Time Test Configuration\n"
-                yaml_content += (
-                    "# Configuration parameters for heating/cooling time test including\n"
-                )
-                yaml_content += (
-                    "# wait times, power monitoring settings, and test execution parameters.\n\n"
-                )
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# TEST EXECUTION PARAMETERS\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"repeat_count: {default_config['repeat_count']}  # Number of heating/cooling cycles to perform\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# WAIT TIME PARAMETERS (in seconds)\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"heating_wait_time: {default_config['heating_wait_time']}  # Wait time after heating completes\n"
-                yaml_content += f"cooling_wait_time: {default_config['cooling_wait_time']}  # Wait time after cooling completes\n"
-                yaml_content += f"stabilization_wait_time: {default_config['stabilization_wait_time']}  # Wait time for temperature stabilization\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# POWER MONITORING PARAMETERS\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"power_monitoring_interval: {default_config['power_monitoring_interval']}  # Power measurement interval (seconds)\n"
-                yaml_content += f"power_monitoring_enabled: {str(default_config['power_monitoring_enabled']).lower()}  # Enable/disable power monitoring\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# TEMPERATURE PARAMETERS (°C)\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"activation_temperature: {default_config['activation_temperature']}  # Temperature activation threshold\n"
-                yaml_content += f"standby_temperature: {default_config['standby_temperature']}     # Standby temperature setting\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# POWER SUPPLY PARAMETERS\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"voltage: {default_config['voltage']}  # Operating voltage (V)\n"
-                yaml_content += f"current: {default_config['current']}  # Operating current (A)\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# MCU PARAMETERS\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += (
-                    f"fan_speed: {default_config['fan_speed']}           # Fan speed level (1-10)\n"
-                )
-                yaml_content += f"upper_temperature: {default_config['upper_temperature']} # Maximum temperature limit (°C)\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# STABILIZATION TIME PARAMETERS (in seconds)\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"poweron_stabilization: {default_config['poweron_stabilization']}  # Power-on stabilization time\n"
-                yaml_content += f"mcu_boot_complete_stabilization: {default_config['mcu_boot_complete_stabilization']}  # MCU boot complete stabilization time\n"
-                yaml_content += f"mcu_command_stabilization: {default_config['mcu_command_stabilization']}  # MCU command stabilization time\n"
-                yaml_content += f"mcu_temperature_stabilization: {default_config['mcu_temperature_stabilization']}  # MCU temperature stabilization time\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# STATISTICS PARAMETERS\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += f"calculate_statistics: {str(default_config['calculate_statistics']).lower()}    # Calculate power consumption statistics\n"
-                yaml_content += f"show_detailed_results: {str(default_config['show_detailed_results']).lower()}   # Show detailed cycle-by-cycle results\n\n"
-
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "# METADATA\n"
-                yaml_content += "# " + "=" * 72 + "\n"
-                yaml_content += "metadata:\n"
-                yaml_content += f"  created_at: '{default_config['metadata']['created_at']}'\n"
-                yaml_content += f"  created_by: '{default_config['metadata']['created_by']}'\n"
-                yaml_content += f"  version: '{default_config['metadata']['version']}'\n"
-                yaml_content += f"  description: '{default_config['metadata']['description']}'\n"
-                yaml_content += "  notes: |\n"
-                for line in default_config["metadata"]["notes"].split("\n"):
-                    yaml_content += f"    {line}\n"
-
-                # Save the configuration file
-                with open(config_file, "w", encoding="utf-8") as f:
-                    f.write(yaml_content)
-
-                self.formatter.print_message(
-                    f"Created default heating/cooling configuration: {config_file}",
-                    message_type="info",
-                )
-
-        except Exception as e:
-            self.formatter.print_message(
-                f"Failed to create heating/cooling configuration: {e}", message_type="warning"
-            )
-
     def get_cycle_count_from_config(self) -> int:
         """Get cycle count from configuration file"""
-        # Ensure configuration file exists before trying to read it
-        self._ensure_heating_cooling_config_initialized()
-
         config_file = Path("configuration/heating_cooling_time_test.yaml")
 
         try:
-            self.formatter.print_message(
-                f"Loading cycle count from {config_file}", message_type="info"
-            )
+            if config_file.exists():
+                self.formatter.print_message(
+                    f"Loading cycle count from {config_file}", message_type="info"
+                )
 
-            with open(config_file, "r", encoding="utf-8") as f:
-                yaml_data = yaml.safe_load(f)
+                with open(config_file, "r", encoding="utf-8") as f:
+                    yaml_data = yaml.safe_load(f)
 
-            repeat_count = yaml_data.get("repeat_count", 1)
-            self.formatter.print_message(
-                f"Configuration: {repeat_count} cycles", message_type="info"
-            )
-            return repeat_count
+                repeat_count = yaml_data.get("repeat_count", 1)
+                self.formatter.print_message(
+                    f"Configuration: {repeat_count} cycles", message_type="info"
+                )
+                return repeat_count
+            else:
+                self.formatter.print_message(
+                    "Configuration file not found, using default: 1 cycle", message_type="warning"
+                )
+                return 1
 
         except Exception as e:
             self.formatter.print_message(

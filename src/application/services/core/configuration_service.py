@@ -459,6 +459,35 @@ metadata:
             return []
         return await self._configuration.list_available_profiles()
 
+    async def load_heating_cooling_config(self) -> "HeatingCoolingConfiguration":
+        """
+        Load heating/cooling time test configuration
+
+        Returns:
+            HeatingCoolingConfiguration object
+
+        Raises:
+            RepositoryAccessError: If loading fails
+        """
+        if not self._configuration:
+            raise RepositoryAccessError(
+                operation="load_heating_cooling_config",
+                reason="Configuration repository not available",
+            )
+
+        try:
+            config_data = await self._configuration.load_heating_cooling_config()
+            logger.debug("Heating/cooling configuration loaded successfully")
+            return config_data
+
+        except Exception as e:
+            logger.error(f"Failed to load heating/cooling configuration: {e}")
+            raise RepositoryAccessError(
+                operation="load_heating_cooling_config",
+                reason=str(e),
+                file_path="heating_cooling_time_test.yaml",
+            ) from e
+
     async def get_active_profile_name(self) -> str:
         """
         Get the profile name that should be used, following business priority rules
@@ -626,6 +655,23 @@ metadata:
 
         except Exception as e:
             logger.warning(f"Failed to initialize profile system: {e}")
+
+    async def _ensure_heating_cooling_config_initialized(self) -> None:
+        """
+        Ensure the heating/cooling configuration file is properly initialized
+
+        This method ensures that:
+        1. heating_cooling_time_test.yaml configuration file exists
+        2. Default configuration is created if missing
+        3. Configuration system is ready for use
+        """
+        try:
+            # Check if heating/cooling config exists, if not this will create it
+            await self._configuration.load_heating_cooling_config()
+            logger.debug("Heating/cooling configuration initialized successfully")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize heating/cooling configuration: {e}")
 
     def _is_valid_profile_name(self, profile_name: str) -> bool:
         """

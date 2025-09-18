@@ -104,6 +104,15 @@ async def main() -> None:
             logger.warning(f"⚠️ Profile system initialization warning: {e}")
             logger.info("💡 Application will continue with basic profile support")
 
+        # Ensure heating/cooling configuration is initialized at startup
+        try:
+            logger.info("Initializing heating/cooling configuration at startup...")
+            await configuration_service._ensure_heating_cooling_config_initialized()
+            logger.info("✅ Heating/cooling configuration initialized successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ Heating/cooling configuration initialization warning: {e}")
+            logger.info("💡 Application will continue with default heating/cooling support")
+
         # Get Emergency Stop Service from container
         emergency_stop_service = container.emergency_stop_service()
         logger.info("Emergency Stop Service injected from container")
