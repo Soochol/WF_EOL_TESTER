@@ -599,7 +599,7 @@ class HardwareServiceFacade:
                             f"Test matrix: {total_temps}×{total_positions}×{repeat_count} = {total_measurements} measurements"
                         )
 
-                    # 1. Set MCU temperature (온도 상승)
+                    # 1. Set MCU temperature (temperature rise)
                     await self._mcu.set_operating_temperature(temperature)
                     await asyncio.sleep(test_config.mcu_command_stabilization)
 
@@ -610,7 +610,7 @@ class HardwareServiceFacade:
                     if repeat_idx == 0:
                         measurements_dict[temperature] = {}
 
-                    # 2. Measure at each position (로봇 이동 + 포스 측정)
+                    # 2. Measure at each position (robot movement + force measurement)
                     for pos_idx, position in enumerate(test_config.stroke_positions):
                         if repeat_count == 1:
                             logger.info(
@@ -650,7 +650,7 @@ class HardwareServiceFacade:
                             f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N"
                         )
 
-                    # 3. Return robot to initial position (로봇 복귀)
+                    # 3. Return robot to initial position (robot return)
                     logger.debug("Returning robot to initial position...")
                     if self._robot_state != RobotState.INITIAL_POSITION:
                         self._robot_state = RobotState.MOVING
@@ -669,7 +669,7 @@ class HardwareServiceFacade:
                     else:
                         logger.debug("Robot already at initial position, skipping movement")
 
-                    # 4. Start standby cooling (온도 하강)
+                    # 4. Start standby cooling (temperature fall)
                     logger.debug("Starting standby cooling...")
                     await self._mcu.start_standby_cooling()
                     await asyncio.sleep(test_config.mcu_command_stabilization)
