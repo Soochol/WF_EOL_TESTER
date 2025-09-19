@@ -462,7 +462,7 @@ class RepositoryService:
             # Don't raise exception as this is supplementary to main save operation
 
     async def save_cycle_measurements(
-        self, measurements: TestMeasurements, cycle_num: int, total_cycles: int
+        self, measurements: TestMeasurements, cycle_num: int, total_cycles: int, serial_number: str = "CYCLE_DATA"
     ) -> None:
         """
         Save measurements for a specific cycle immediately to a single file
@@ -471,6 +471,7 @@ class RepositoryService:
             measurements: Test measurements for this cycle
             cycle_num: Current cycle number (1-based)
             total_cycles: Total number of cycles
+            serial_number: DUT serial number from user input
 
         Note:
             This appends cycle data to a single CSV file to preserve
@@ -521,7 +522,7 @@ class RepositoryService:
             row = [
                 cycle_num,  # Cycle number
                 test_id,    # Test_ID
-                "CYCLE_DATA",  # Serial (placeholder)
+                serial_number,  # Serial number from user input
                 date_str,   # Date
                 time_str,   # Time
                 "PASS"      # Status (assuming pass for now)

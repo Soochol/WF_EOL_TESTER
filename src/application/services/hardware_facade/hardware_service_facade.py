@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 # Third-party imports
 import asyncio
 from loguru import logger
+from rich.console import Console
+from rich.panel import Panel
 
 # Local application imports
 from application.interfaces.hardware.digital_io import DigitalIOService
@@ -26,6 +28,7 @@ from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.power import PowerService
 from application.interfaces.hardware.robot import RobotService
 from domain.enums.robot_state import RobotState
+from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
@@ -403,6 +406,17 @@ class HardwareServiceFacade:
             logger.info(f"⏳ Power stabilization delay: {test_config.poweron_stabilization}s...")
             await asyncio.sleep(test_config.poweron_stabilization)
 
+            # Display power switch instruction to user
+            console = Console()
+            power_panel = Panel(
+                "TURN ON POWER SWITCH",
+                title="⚡ User Action Required",
+                title_align="left",
+                style="bold yellow",
+                border_style="yellow"
+            )
+            console.print(power_panel)
+
             # Wait for MCU boot complete signal (directly using MCU service)
             logger.info("Waiting for MCU boot complete signal...")
             await asyncio.wait_for(
@@ -556,6 +570,7 @@ class HardwareServiceFacade:
         self,
         test_config: TestConfiguration,
         hardware_config: HardwareConfig,
+        dut_info: DUTCommandInfo,
     ) -> TestMeasurements:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         self._log_phase_separator("PERFORMING FORCE TEST SEQUENCE")
@@ -681,9 +696,9 @@ class HardwareServiceFacade:
                     logger.debug("Standby temperature verification completed")
 
                 # Save cycle data immediately if repository service is available
-                if repeat_count > 1 and self._repository_service:
+                if self._repository_service:
                     await self._save_cycle_measurements(
-                        measurements_dict, repeat_idx + 1, repeat_count
+                        measurements_dict, repeat_idx + 1, repeat_count, dut_info.serial_number
                     )
 
                 # Add delay between repetitions (except for last repetition)
@@ -892,7 +907,7 @@ class HardwareServiceFacade:
         logger.debug("Robot homing state reset")
 
     async def _save_cycle_measurements(
-        self, measurements_dict: Dict, cycle_num: int, total_cycles: int
+        self, measurements_dict: Dict, cycle_num: int, total_cycles: int, serial_number: str
     ) -> None:
         """
         Save measurements for a completed cycle immediately
@@ -901,6 +916,7 @@ class HardwareServiceFacade:
             measurements_dict: Current accumulated measurements dictionary
             cycle_num: Current cycle number (1-based)
             total_cycles: Total number of cycles
+            serial_number: DUT serial number from user input
         """
         # Type guard: ensure repository service is available
         if self._repository_service is None:
@@ -927,7 +943,7 @@ class HardwareServiceFacade:
 
                 # Save to repository with cycle identifier
                 await self._repository_service.save_cycle_measurements(
-                    cycle_test_measurements, cycle_num, total_cycles
+                    cycle_test_measurements, cycle_num, total_cycles, serial_number
                 )
 
                 logger.info(f"✅ Cycle {cycle_num}/{total_cycles} measurements saved to repository")

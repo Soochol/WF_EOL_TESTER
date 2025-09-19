@@ -223,7 +223,7 @@ class EOLForceTestUseCase(BaseUseCase):
 
             # Phase 3: Execute hardware test phases
             measurements = await self._hardware_executor.execute_hardware_test_phases(
-                self._config_loader.test_config, self._config_loader.hardware_config
+                self._config_loader.test_config, self._config_loader.hardware_config, command.dut_info
             )
 
             # Phase 4: Evaluate results and create success result

@@ -11,6 +11,7 @@ from loguru import logger
 # Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from domain.exceptions.test_exceptions import TestExecutionException
+from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
@@ -67,6 +68,7 @@ class HardwareTestExecutor:
         self,
         test_config: TestConfiguration,
         hardware_config: HardwareConfig,
+        dut_info: DUTCommandInfo,
     ) -> TestMeasurements:
         """
         Execute all hardware test phases and collect measurements
@@ -74,6 +76,7 @@ class HardwareTestExecutor:
         Args:
             test_config: Test configuration for hardware operations
             hardware_config: Hardware configuration for connections
+            dut_info: DUT command information including serial number
 
         Returns:
             TestMeasurements: Collected measurements from hardware tests
@@ -100,7 +103,7 @@ class HardwareTestExecutor:
 
             # Execute test measurements
             measurements = await self._hardware_services.perform_force_test_sequence(
-                test_config, hardware_config
+                test_config, hardware_config, dut_info
             )
             logger.info(
                 TestExecutionConstants.LOG_HARDWARE_TEST_COMPLETED.format(len(measurements))
