@@ -80,42 +80,56 @@ class MenuButton(QPushButton):
     def update_style(self) -> None:
         """Update button styling based on state"""
         if self.is_active:
-            # Active state - highlighted
+            # Active state - elegant blue gradient
             self.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: #3498DB;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #667EEA, stop: 1 #764BA2);
                     color: white;
-                    border: 2px solid #2980B9;
-                    border-left: 4px solid #2980B9;
+                    border: none;
+                    border-left: 4px solid #5A67D8;
+                    border-radius: 10px;
                     text-align: left;
-                    padding-left: 20px;
-                    font-weight: bold;
+                    padding: 14px 22px;
+                    font-weight: 600;
+                    font-size: 13px;
                 }
                 QPushButton:hover {
-                    background-color: #5DADE2;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #7C3AED, stop: 1 #8B5CF6);
+                }
+                QPushButton:pressed {
                 }
             """
             )
         else:
-            # Inactive state
+            # Inactive state - sophisticated neutral
             self.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: #ECF0F1;
-                    color: #2C3E50;
-                    border: 2px solid #BDC3C7;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+                    color: #475569;
+                    border: 1px solid #E2E8F0;
                     border-left: 4px solid transparent;
+                    border-radius: 10px;
                     text-align: left;
-                    padding-left: 20px;
+                    padding: 14px 22px;
+                    font-weight: 500;
+                    font-size: 13px;
                 }
                 QPushButton:hover {
-                    background-color: #D5DBDB;
-                    border-left: 4px solid #3498DB;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #F1F5F9, stop: 1 #E2E8F0);
+                    border-left: 4px solid #667EEA;
+                    color: #334155;
                 }
                 QPushButton:focus {
-                    border: 2px solid #3498DB;
+                    border: 2px solid #667EEA;
                     outline: none;
+                }
+                QPushButton:pressed {
                 }
             """
             )
@@ -144,8 +158,8 @@ class ExpandableMenuButton(MenuButton):
         self.is_expanded = False
         self.original_text = text
 
-        # Update text to show collapse indicator
-        self.setText(f"▶ {self.original_text}")
+        # Update text to show collapse indicator with better icon
+        self.setText(f"› {self.original_text}")
 
     def toggle_expanded(self) -> None:
         """Toggle expanded state"""
@@ -161,19 +175,77 @@ class ExpandableMenuButton(MenuButton):
         if expanded != self.is_expanded:
             self.is_expanded = expanded
 
-            # Update text and icon
+            # Update text and icon with better icons
             if expanded:
-                self.setText(f"▼ {self.original_text}")
+                self.setText(f"⌄ {self.original_text}")
             else:
-                self.setText(f"▶ {self.original_text}")
+                self.setText(f"› {self.original_text}")
 
             self.expanded_changed.emit(expanded)
+
+    def update_style(self) -> None:
+        """Update styling for expandable button - unified design"""
+        if self.is_active:
+            # Active expandable state - same elegant design as main buttons
+            self.setStyleSheet(
+                """
+                QPushButton {
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #667EEA, stop: 1 #764BA2);
+                    color: white;
+                    border: none;
+                    border-left: 4px solid #5A67D8;
+                    border-radius: 10px;
+                    text-align: left;
+                    padding: 14px 22px;
+                    font-weight: 600;
+                    font-size: 13px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #7C3AED, stop: 1 #8B5CF6);
+                }
+                QPushButton:pressed {
+                }
+            """
+            )
+        else:
+            # Inactive expandable state - consistent with main buttons
+            self.setStyleSheet(
+                """
+                QPushButton {
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+                    color: #475569;
+                    border: 1px solid #E2E8F0;
+                    border-left: 4px solid transparent;
+                    border-radius: 10px;
+                    text-align: left;
+                    padding: 14px 22px;
+                    font-weight: 500;
+                    font-size: 13px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #F1F5F9, stop: 1 #E2E8F0);
+                    border-left: 4px solid #667EEA;
+                    color: #334155;
+                }
+                QPushButton:focus {
+                    border: 2px solid #667EEA;
+                    outline: none;
+                }
+                QPushButton:pressed {
+                }
+            """
+            )
 
     def mousePressEvent(self, event):
         """Override mouse press to handle expand/collapse"""
         # Toggle expansion instead of normal button behavior
         self.toggle_expanded()
         # Don't call super() to avoid normal button click behavior
+        event.accept()
 
 
 class SubMenuButton(MenuButton):
@@ -200,46 +272,60 @@ class SubMenuButton(MenuButton):
         self.update_sub_menu_style()
 
     def update_sub_menu_style(self) -> None:
-        """Update styling specific to sub-menu buttons"""
+        """Update styling specific to sub-menu buttons - unified but indented"""
         if self.is_active:
-            # Active sub-menu state
+            # Active sub-menu state - same elegant design with slight indentation
             self.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: #2ECC71;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #667EEA, stop: 1 #764BA2);
                     color: white;
-                    border: 2px solid #27AE60;
-                    border-left: 4px solid #27AE60;
+                    border: none;
+                    border-left: 4px solid #5A67D8;
+                    border-radius: 8px;
                     text-align: left;
-                    padding-left: 40px;
-                    font-weight: bold;
-                    font-size: 10px;
+                    padding: 12px 18px 12px 35px;
+                    font-weight: 600;
+                    font-size: 12px;
+                    margin: 2px 8px 2px 16px;
                 }
                 QPushButton:hover {
-                    background-color: #58D68D;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #7C3AED, stop: 1 #8B5CF6);
+                }
+                QPushButton:pressed {
                 }
             """
             )
         else:
-            # Inactive sub-menu state
+            # Inactive sub-menu state - consistent design with indentation
             self.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: #F8F9FA;
-                    color: #495057;
-                    border: 1px solid #DEE2E6;
-                    border-left: 4px solid transparent;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+                    color: #64748B;
+                    border: 1px solid #E2E8F0;
+                    border-left: 3px solid transparent;
+                    border-radius: 8px;
                     text-align: left;
-                    padding-left: 40px;
-                    font-size: 10px;
+                    padding: 12px 18px 12px 35px;
+                    font-weight: 500;
+                    font-size: 12px;
+                    margin: 2px 8px 2px 16px;
                 }
                 QPushButton:hover {
-                    background-color: #E9ECEF;
-                    border-left: 4px solid #2ECC71;
+                    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                               stop: 0 #F1F5F9, stop: 1 #E2E8F0);
+                    border-left: 3px solid #667EEA;
+                    color: #475569;
                 }
                 QPushButton:focus {
-                    border: 2px solid #2ECC71;
+                    border: 2px solid #667EEA;
                     outline: none;
+                }
+                QPushButton:pressed {
                 }
             """
             )
@@ -292,12 +378,6 @@ class SideMenuWidget(QWidget):
                         "id": "eol_test",
                         "text": "EOL Force Test",
                         "description": "Execute end-of-line force testing",
-                        "type": "sub",
-                    },
-                    {
-                        "id": "mcu_test",
-                        "text": "Simple MCU Test",
-                        "description": "Perform basic MCU communication test",
                         "type": "sub",
                     },
                     {
@@ -397,26 +477,36 @@ class SideMenuWidget(QWidget):
         self.exit_button.setAccessibleName("Exit Application")
         self.exit_button.setAccessibleDescription("Close the WF EOL Tester application")
 
-        # Exit button styling
+        # Exit button styling - consistent with unified design but red accent
         self.exit_button.setStyleSheet(
             """
             QPushButton {
-                background-color: #E74C3C;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #EF4444, stop: 1 #DC2626);
                 color: white;
-                border: 2px solid #C0392B;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 12px;
+                border: none;
+                border-left: 4px solid #B91C1C;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 13px;
+                padding: 14px 22px;
             }
             QPushButton:hover {
-                background-color: #CD212A;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #F87171, stop: 1 #EF4444);
             }
             QPushButton:pressed {
-                background-color: #A93226;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #DC2626, stop: 1 #B91C1C);
             }
             QPushButton:focus {
-                outline: 3px solid #F39C12;
-                outline-offset: 2px;
+                outline: none;
+            }
+            QPushButton:disabled {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #9CA3AF, stop: 1 #6B7280);
+                color: #D1D5DB;
+                border-left: 4px solid #6B7280;
             }
         """
         )
@@ -429,11 +519,16 @@ class SideMenuWidget(QWidget):
         self.header_label.setStyleSheet(
             """
             QLabel {
-                color: #2C3E50;
-                background-color: #BDC3C7;
-                padding: 8px;
-                border-radius: 4px;
+                color: #475569;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+                padding: 14px 20px;
+                border-radius: 10px;
                 margin-bottom: 8px;
+                border: 1px solid #E2E8F0;
+                font-weight: 600;
+                font-size: 11px;
+                letter-spacing: 1.5px;
             }
         """
         )
@@ -485,7 +580,7 @@ class SideMenuWidget(QWidget):
         for panel_id, button in self.menu_buttons.items():
             if panel_id not in self.expandable_buttons:
                 button.clicked.connect(
-                    lambda checked=False, pid=panel_id: self.on_menu_clicked(pid)
+                    lambda _=False, pid=panel_id: self.on_menu_clicked(pid)
                 )
 
         # Exit button signal

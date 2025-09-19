@@ -26,7 +26,6 @@ from ui.gui.panels.dashboard_panel import DashboardPanel
 from ui.gui.panels.eol_test_panel import EOLTestPanel
 from ui.gui.panels.hardware_panel import HardwarePanel
 from ui.gui.panels.heating_cooling_test_panel import HeatingCoolingTestPanel
-from ui.gui.panels.mcu_test_panel import MCUTestPanel
 from ui.gui.services.gui_state_manager import GUIStateManager
 
 
@@ -172,13 +171,6 @@ class ContentAreaWidget(QWidget):
                 "eol_test", eol_test_panel, "EOL Force Test", "End-of-Line Force Testing"
             )
 
-            # Create MCU test panel
-            mcu_test_panel = MCUTestPanel(
-                container=self.container, state_manager=self.state_manager, parent=self
-            )
-            self.add_panel(
-                "mcu_test", mcu_test_panel, "Simple MCU Test", "Basic MCU Communication Test"
-            )
 
             # Create heating cooling test panel
             heating_cooling_test_panel = HeatingCoolingTestPanel(
@@ -441,3 +433,27 @@ class ContentAreaWidget(QWidget):
 
         logger.info(f"Removed panel: {panel_id}")
         return True
+
+    def cleanup_all_panels(self) -> None:
+        """
+        Cleanup all panels before application shutdown
+        """
+        try:
+            for panel_id, panel_widget in self.panels.items():
+                # Stop any running tests in EOL test panels
+                if hasattr(panel_widget, 'stop_test'):
+                    try:
+                        panel_widget.stop_test()
+                    except Exception as e:
+                        logger.warning(f"Failed to stop test in panel {panel_id}: {e}")
+
+                # Call cleanup methods if available
+                if hasattr(panel_widget, 'cleanup'):
+                    try:
+                        panel_widget.cleanup()
+                    except Exception as e:
+                        logger.warning(f"Failed to cleanup panel {panel_id}: {e}")
+
+            logger.info("All panels cleaned up")
+        except Exception as e:
+            logger.error(f"Error during panel cleanup: {e}")

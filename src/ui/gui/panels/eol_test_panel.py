@@ -5,6 +5,9 @@ Panel for executing end-of-line force tests with real-time progress monitoring.
 """
 
 # Standard library imports
+import asyncio
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -14,8 +17,6 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
-    QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -49,9 +50,22 @@ class SerialNumberDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Serial Number Input")
         self.setModal(True)
-        self.setFixedSize(350, 150)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setFixedSize(520, 320)
+
+        # Ultra-modern dialog styling with shadows and glassmorphism
+        self.setStyleSheet(
+            """
+            QDialog {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 0.5 #F8FAFC, stop: 1 #EFF6FF);
+                border: 1px solid rgba(255, 255, 255, 0.8);
+                border-radius: 16px;
+            }
+        """
+        )
 
         # Center on parent
         if parent:
@@ -61,32 +75,213 @@ class SerialNumberDialog(QDialog):
         self.serial_number = ""
 
     def setup_ui(self):
-        """Setup dialog UI"""
+        """Setup modern dialog UI"""
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(24)
 
-        # Form layout
-        form_layout = QFormLayout()
+        # Header section with icon and title
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(16)
 
-        # Serial number input
-        self.serial_input = QLineEdit()
-        self.serial_input.setPlaceholderText("Enter serial number...")
-        self.serial_input.setMinimumHeight(32)
-        self.serial_input.textChanged.connect(self.validate_input)
-
-        form_layout.addRow("Serial Number:", self.serial_input)
-        layout.addLayout(form_layout)
-
-        # Button box
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        # Icon (using Unicode character for now)
+        icon_label = QLabel("🏷️")
+        icon_label.setFont(QFont("Arial", 24))
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label.setFixedSize(48, 48)
+        icon_label.setStyleSheet(
+            """
+            QLabel {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #667EEA, stop: 1 #764BA2);
+                border-radius: 24px;
+                color: white;
+            }
+        """
         )
-        self.button_box.accepted.connect(self.accept_dialog)
-        self.button_box.rejected.connect(self.reject)
+        header_layout.addWidget(icon_label)
+
+        # Title and subtitle
+        title_container = QWidget()
+        title_layout = QVBoxLayout(title_container)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(4)
+
+        title_label = QLabel("Serial Number Input")
+        title_label.setFont(QFont("Inter", 18, QFont.Weight.Bold))
+        title_label.setStyleSheet(
+            """
+            QLabel {
+                color: #0F172A;
+                margin: 0;
+                padding: 0;
+            }
+        """
+        )
+
+        subtitle_label = QLabel("Please enter the device serial number to continue")
+        subtitle_label.setFont(QFont("Inter", 11))
+        subtitle_label.setStyleSheet(
+            """
+            QLabel {
+                color: #64748B;
+                margin: 0;
+                padding: 0;
+            }
+        """
+        )
+
+        title_layout.addWidget(title_label)
+        title_layout.addWidget(subtitle_label)
+        header_layout.addWidget(title_container)
+        header_layout.addStretch()
+
+        layout.addWidget(header_widget)
+
+        # Input section with modern styling
+        input_container = QWidget()
+        input_layout = QVBoxLayout(input_container)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(8)
+
+        # Serial number label with modern typography
+        label = QLabel("Serial Number")
+        label.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        label.setStyleSheet(
+            """
+            QLabel {
+                color: #374151;
+                padding-bottom: 4px;
+            }
+        """
+        )
+        input_layout.addWidget(label)
+
+        # Modern input field with enhanced styling
+        self.serial_input = QLineEdit()
+        self.serial_input.setPlaceholderText("Enter device serial number...")
+        self.serial_input.setMinimumHeight(48)
+        self.serial_input.setFont(QFont("Inter", 12))
+        self.serial_input.setStyleSheet(
+            """
+            QLineEdit {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #FAFBFC);
+                border: 2px solid #E5E7EB;
+                border-radius: 12px;
+                padding: 12px 16px;
+                font-size: 12px;
+                color: #111827;
+                selection-background-color: #667EEA;
+            }
+            QLineEdit:focus {
+                border: 2px solid #667EEA;
+                background: #FFFFFF;
+                outline: none;
+            }
+            QLineEdit:hover {
+                border: 2px solid #D1D5DB;
+                background: #FFFFFF;
+            }
+            QLineEdit::placeholder {
+                color: #9CA3AF;
+            }
+        """
+        )
+        self.serial_input.textChanged.connect(self.validate_input)
+        input_layout.addWidget(self.serial_input)
+
+        layout.addWidget(input_container)
+
+        # Spacer to push buttons down
+        layout.addStretch()
+
+        # Modern button container
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(12)
+
+        # Cancel button with refined styling
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setMinimumHeight(44)
+        cancel_button.setMinimumWidth(100)
+        cancel_button.setFont(QFont("Inter", 11, QFont.Weight.Medium))
+        cancel_button.setStyleSheet(
+            """
+            QPushButton {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F9FAFB);
+                color: #6B7280;
+                border: 2px solid #E5E7EB;
+                border-radius: 12px;
+                padding: 12px 20px;
+                font-weight: 500;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #F3F4F6, stop: 1 #E5E7EB);
+                border: 2px solid #D1D5DB;
+                color: #374151;
+            }
+            QPushButton:pressed {
+                background: #E5E7EB;
+                border: 2px solid #9CA3AF;
+            }
+        """
+        )
+
+        # OK button with premium gradient
+        ok_button = QPushButton("Continue")
+        ok_button.setMinimumHeight(44)
+        ok_button.setMinimumWidth(120)
+        ok_button.setFont(QFont("Inter", 11, QFont.Weight.DemiBold))
+        ok_button.setStyleSheet(
+            """
+            QPushButton {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #667EEA, stop: 0.5 #764BA2, stop: 1 #F093FB);
+                color: white;
+                border: none;
+                border-radius: 12px;
+                padding: 12px 24px;
+                font-weight: 600;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #5B5ACF, stop: 0.5 #6B46C1, stop: 1 #EC4899);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #4F46E5, stop: 0.5 #7C3AED, stop: 1 #BE185D);
+            }
+            QPushButton:disabled {
+                background: #9CA3AF;
+                color: #E5E7EB;
+            }
+        """
+        )
+
+        button_layout.addStretch()
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(ok_button)
+
+        # Connect buttons
+        cancel_button.clicked.connect(self.reject)
+        ok_button.clicked.connect(self.accept_dialog)
+
+        # Store references
+        self.ok_button = ok_button
+        self.cancel_button = cancel_button
 
         # Initially disable OK button
-        self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+        ok_button.setEnabled(False)
 
-        layout.addWidget(self.button_box)
+        layout.addWidget(button_container)
 
         # Focus on input
         self.serial_input.setFocus()
@@ -94,7 +289,7 @@ class SerialNumberDialog(QDialog):
     def validate_input(self):
         """Validate serial number input"""
         text = self.serial_input.text().strip()
-        self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(len(text) > 0)
+        self.ok_button.setEnabled(len(text) > 0)
 
     def accept_dialog(self):
         """Accept dialog and save serial number"""
@@ -133,7 +328,6 @@ class EOLTestWorker(QObject):
     def stop_test(self) -> None:
         """Request test stop"""
         self._should_stop = True
-        self._remove_gui_log_handler()
 
     def _add_gui_log_handler(self) -> None:
         """Add loguru handler to capture logs for GUI display"""
@@ -141,7 +335,7 @@ class EOLTestWorker(QObject):
             self._log_handler_id = logger.add(
                 self._emit_log_message,
                 level="INFO",
-                format="{time:HH:mm:ss.SSS} | {level: <8} | {message}",
+                format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name} | {message}",
                 filter=self._should_capture_log,
                 catch=False,
             )
@@ -163,60 +357,74 @@ class EOLTestWorker(QObject):
             pass  # Ignore errors during GUI emission
 
     def _should_capture_log(self, record) -> bool:
-        """Filter logs to capture only INFO level test-related messages"""
-        # Only capture INFO level logs
-        log_level = record.get("level", {}).get("name", "")
-        if log_level != "INFO":
+        """Filter logs to capture all INFO level GUI messages (like CLI)"""
+        try:
+            # Only capture INFO level logs
+            log_level = record.record.get("level", {}).get("name", "")
+            if log_level != "INFO":
+                return False
+
+            # Capture all GUI logs (to match CLI output)
+            module_name = record.record.get("name", "")
+
+            # Show all GUI logs, similar to CLI behavior
+            return "GUI" in module_name
+        except Exception:
+            # If there's any error accessing record attributes, don't capture
             return False
-
-        # Capture logs from test execution components
-        relevant_modules = [
-            "application.use_cases.eol_force_test",
-            "application.services.hardware_facade",
-            "infrastructure.implementation.hardware",
-            "GUI",
-        ]
-        module_name = record.get("name", "")
-        message = record.get("message", "")
-
-        # Capture relevant modules or messages containing test info
-        is_relevant_module = any(module in module_name for module in relevant_modules)
-        is_test_message = any(
-            keyword in message.lower()
-            for keyword in ["test", "robot", "power", "measurement", "force", "loadcell", "dio"]
-        )
-
-        return is_relevant_module or is_test_message
 
     def run_test(self) -> None:
         """Execute EOL test"""
         try:
             self.test_started.emit()
-
-            # Add GUI log handler to capture test logs
-            self._add_gui_log_handler()
+            self.test_progress.emit(0, "Initializing test...")
 
             # Create event loop for async execution
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
             try:
+                self.test_progress.emit(10, "Starting EOL force test...")
+
+                # Simulate test progress during execution
+                # Start progress monitoring in a separate thread
+                def update_progress():
+                    progress_steps = [
+                        (20, "Initializing hardware..."),
+                        (30, "Connecting to loadcell..."),
+                        (40, "Setting up robot position..."),
+                        (50, "Starting force measurement..."),
+                        (60, "Applying test force..."),
+                        (70, "Recording measurements..."),
+                        (80, "Analyzing results..."),
+                    ]
+
+                    for progress, message in progress_steps:
+                        if self._should_stop:
+                            break
+                        time.sleep(0.5)  # Small delay between updates
+                        self.test_progress.emit(progress, message)
+
+                # Start progress thread
+                progress_thread = threading.Thread(target=update_progress, daemon=True)
+                progress_thread.start()
+
                 # Run test
                 result = loop.run_until_complete(self.use_case.execute(self.command))
 
+                self.test_progress.emit(90, "Finalizing test results...")
+
                 if not self._should_stop:
+                    self.test_progress.emit(100, "Test completed successfully")
                     self.test_completed.emit(result)
 
             finally:
                 loop.close()
-                # Remove GUI log handler
-                self._remove_gui_log_handler()
 
         except Exception as e:
             logger.error(f"EOL test execution failed: {e}")
+            self.test_progress.emit(0, "Test failed")
             self.test_failed.emit(str(e))
-            # Ensure log handler is removed even on error
-            self._remove_gui_log_handler()
 
 
 class EOLTestPanel(QWidget):
@@ -266,7 +474,6 @@ class EOLTestPanel(QWidget):
         # Control buttons
         self.start_test_button: Optional[QPushButton] = None
         self.stop_test_button: Optional[QPushButton] = None
-        self.reset_button: Optional[QPushButton] = None
 
         # Progress monitoring
         self.progress_bar: Optional[QProgressBar] = None
@@ -285,7 +492,25 @@ class EOLTestPanel(QWidget):
         # Initialize state
         self.reset_test_ui()
 
+        # Start capturing GUI logs immediately (commented out temporarily for debugging)
+        # self._add_gui_log_handler()
+
         logger.debug("EOL test panel initialized")
+
+    def __del__(self) -> None:
+        """Cleanup when panel is destroyed"""
+        try:
+            # Stop test thread if running
+            if hasattr(self, 'test_thread') and self.test_thread and self.test_thread.isRunning():
+                self.test_thread.quit()
+                self.test_thread.wait(3000)  # Wait up to 3 seconds for graceful shutdown
+
+            # Remove log handler
+            if hasattr(self, '_log_handler_id') and self._log_handler_id is not None:
+                logger.remove(self._log_handler_id)
+                self._log_handler_id = None
+        except Exception:
+            pass
 
     def setup_ui(self) -> None:
         """Setup UI components"""
@@ -297,42 +522,54 @@ class EOLTestPanel(QWidget):
         control_group.setStyleSheet(
             """
             QGroupBox {
-                font-weight: bold;
-                font-size: 12px;
-                border: 2px solid #E8E8E8;
-                border-radius: 8px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #334155;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                margin-top: 8px;
+                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
+                left: 16px;
                 padding: 0 8px 0 8px;
+                background: transparent;
             }
         """
         )
         control_layout = QVBoxLayout(control_group)
-        control_layout.setContentsMargins(16, 20, 16, 16)
-        control_layout.setSpacing(8)  # Increased spacing between buttons
+        control_layout.setContentsMargins(20, 24, 20, 20)
+        control_layout.setSpacing(16)  # Increased spacing for better readability
 
         self.start_test_button = QPushButton("Start EOL Test")
         self.start_test_button.setProperty("class", "success")
-        self.start_test_button.setFixedHeight(29)
+        self.start_test_button.setFixedSize(180, 44)
         self.start_test_button.setStyleSheet(
             """
             QPushButton {
-                background-color: #27AE60;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #10B981, stop: 1 #059669);
                 color: white;
                 border: none;
-                border-radius: 6px;
-                font-weight: bold;
+                border-left: 4px solid #047857;
+                border-radius: 10px;
+                font-weight: 600;
                 font-size: 13px;
+                padding: 12px 20px;
             }
             QPushButton:hover {
-                background-color: #229954;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #34D399, stop: 1 #10B981);
             }
             QPushButton:pressed {
-                background-color: #1E8449;
+            }
+            QPushButton:disabled {
+                background: #94A3B8;
+                color: #E2E8F0;
+                border-left: 4px solid #6B7280;
             }
         """
         )
@@ -340,60 +577,45 @@ class EOLTestPanel(QWidget):
 
         self.stop_test_button = QPushButton("Stop Test")
         self.stop_test_button.setProperty("class", "danger")
-        self.stop_test_button.setFixedHeight(29)
+        self.stop_test_button.setFixedSize(180, 44)
         self.stop_test_button.setStyleSheet(
             """
             QPushButton {
-                background-color: #E74C3C;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #EF4444, stop: 1 #DC2626);
                 color: white;
                 border: none;
-                border-radius: 6px;
-                font-weight: bold;
+                border-left: 4px solid #B91C1C;
+                border-radius: 10px;
+                font-weight: 600;
                 font-size: 13px;
+                padding: 12px 20px;
             }
             QPushButton:hover {
-                background-color: #CD4335;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #F87171, stop: 1 #EF4444);
             }
             QPushButton:pressed {
-                background-color: #B03A2E;
             }
             QPushButton:disabled {
-                background-color: #BDC3C7;
-                color: #7F8C8D;
+                background: #94A3B8;
+                color: #E2E8F0;
+                border-left: 4px solid #6B7280;
             }
         """
         )
         self.stop_test_button.setEnabled(False)
         self.stop_test_button.setAccessibleName("Stop Running Test")
 
-        self.reset_button = QPushButton("Reset")
-        self.reset_button.setProperty("class", "warning")
-        self.reset_button.setFixedHeight(29)
-        self.reset_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #F39C12;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #E67E22;
-            }
-            QPushButton:pressed {
-                background-color: #D35400;
-            }
-        """
-        )
-        self.reset_button.setAccessibleName("Reset Test State")
 
-        control_layout.addWidget(self.start_test_button)
-        control_layout.addSpacing(8)  # Add explicit spacing between buttons
-        control_layout.addWidget(self.stop_test_button)
-        control_layout.addSpacing(8)  # Add explicit spacing between buttons
-        control_layout.addWidget(self.reset_button)
+        # Add top stretch to center buttons vertically
+        control_layout.addStretch()
+
+        # Center buttons horizontally within the layout
+        control_layout.addWidget(self.start_test_button, 0, Qt.AlignmentFlag.AlignCenter)
+        control_layout.addWidget(self.stop_test_button, 0, Qt.AlignmentFlag.AlignCenter)
+
+        # Add bottom stretch to center buttons vertically
         control_layout.addStretch()
 
         # Set Control Group size policy to match Results Group
@@ -408,17 +630,21 @@ class EOLTestPanel(QWidget):
         progress_group.setStyleSheet(
             """
             QGroupBox {
-                font-weight: bold;
-                font-size: 12px;
-                border: 2px solid #E8E8E8;
-                border-radius: 8px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #334155;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                margin-top: 8px;
+                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
+                left: 16px;
                 padding: 0 8px 0 8px;
+                background: transparent;
             }
         """
         )
@@ -432,15 +658,17 @@ class EOLTestPanel(QWidget):
         )
 
         self.status_label = QLabel("Ready to start test")
-        self.status_label.setFont(QFont("Arial", 11, QFont.Weight.DemiBold))
+        self.status_label.setFont(QFont("Arial", 12, QFont.Weight.DemiBold))
         self.status_label.setStyleSheet(
             """
             QLabel {
-                color: #2C3E50;
-                padding: 8px;
-                background-color: #F8F9FA;
-                border: 1px solid #E9ECEF;
-                border-radius: 4px;
+                color: #475569;
+                padding: 12px 16px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #F8FAFC, stop: 1 #E2E8F0);
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                font-weight: 600;
             }
         """
         )
@@ -450,18 +678,29 @@ class EOLTestPanel(QWidget):
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
-        self.progress_bar.setMinimumHeight(32)
+        self.progress_bar.setMinimumHeight(40)
+        self.progress_bar.setFont(QFont("Arial", 11, QFont.Weight.DemiBold))
         self.progress_bar.setStyleSheet(
             """
             QProgressBar {
-                border: 2px solid #E8E8E8;
-                border-radius: 8px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #F8FAFC, stop: 1 #E2E8F0);
+                border: 2px solid #CBD5E1;
+                border-radius: 10px;
                 text-align: center;
-                font-weight: bold;
+                font-weight: 600;
+                font-size: 11px;
+                color: #374151;
+                padding: 2px;
             }
             QProgressBar::chunk {
-                background-color: #3498DB;
-                border-radius: 6px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #667EEA, stop: 1 #764BA2);
+                border-radius: 8px;
+                margin: 1px;
+            }
+            QProgressBar:hover {
+                border: 2px solid #94A3B8;
             }
         """
         )
@@ -474,17 +713,21 @@ class EOLTestPanel(QWidget):
         log_group.setStyleSheet(
             """
             QGroupBox {
-                font-weight: bold;
-                font-size: 12px;
-                border: 2px solid #E8E8E8;
-                border-radius: 8px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #334155;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                margin-top: 8px;
+                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
+                left: 16px;
                 padding: 0 8px 0 8px;
+                background: transparent;
             }
         """
         )
@@ -493,20 +736,42 @@ class EOLTestPanel(QWidget):
 
         self.test_log_text = QTextEdit()
         self.test_log_text.setReadOnly(True)
-        self.test_log_text.setMinimumHeight(150)  # 최소 높이만 설정
+        self.test_log_text.setMinimumHeight(180)  # 최소 높이만 설정
         self.test_log_text.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding  # 가로 확장  # 세로 확장
         )
-        self.test_log_text.setFont(QFont("Consolas", 9))
+        self.test_log_text.setFont(QFont("JetBrains Mono", 10))
         self.test_log_text.setStyleSheet(
             """
             QTextEdit {
-                background-color: #2C3E50;
-                color: #ECF0F1;
-                border: 2px solid #34495E;
-                border-radius: 8px;
-                padding: 12px;
-                selection-background-color: #3498DB;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #1E293B, stop: 1 #334155);
+                color: #F1F5F9;
+                border: 1px solid #475569;
+                border-radius: 10px;
+                padding: 16px;
+                font-family: 'JetBrains Mono', 'Consolas', monospace;
+                selection-background-color: #667EEA;
+                selection-color: white;
+                line-height: 1.4;
+            }
+            QScrollBar:vertical {
+                background: #475569;
+                width: 10px;
+                border-radius: 5px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical {
+                background: #64748B;
+                border-radius: 5px;
+                min-height: 20px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
         """
         )
@@ -518,17 +783,21 @@ class EOLTestPanel(QWidget):
         results_group.setStyleSheet(
             """
             QGroupBox {
-                font-weight: bold;
-                font-size: 12px;
-                border: 2px solid #E8E8E8;
-                border-radius: 8px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                color: #334155;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                margin-top: 8px;
+                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
+                left: 16px;
                 padding: 0 8px 0 8px;
+                background: transparent;
             }
         """
         )
@@ -544,15 +813,17 @@ class EOLTestPanel(QWidget):
         # results_group.setMaximumHeight(220)
 
         self.summary_label = QLabel("No test results available")
-        self.summary_label.setFont(QFont("Arial", 11, QFont.Weight.DemiBold))
+        self.summary_label.setFont(QFont("Arial", 12, QFont.Weight.DemiBold))
         self.summary_label.setStyleSheet(
             """
             QLabel {
-                color: #7F8C8D;
-                padding: 8px;
-                background-color: #F8F9FA;
-                border: 1px solid #E9ECEF;
-                border-radius: 4px;
+                color: #64748B;
+                padding: 12px 16px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #F8FAFC, stop: 1 #E2E8F0);
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                font-weight: 600;
             }
         """
         )
@@ -560,25 +831,57 @@ class EOLTestPanel(QWidget):
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(4)
         self.results_table.setHorizontalHeaderLabels(["Step", "Description", "Result", "Value"])
-        self.results_table.setMaximumHeight(200)  # 고정 최대 높이
+        self.results_table.setMaximumHeight(220)  # 고정 최대 높이
         self.results_table.setAlternatingRowColors(True)
         self.results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # Make table read-only
         self.results_table.setStyleSheet(
             """
             QTableWidget {
-                gridline-color: #E8E8E8;
-                background-color: white;
-                alternate-background-color: #F8F9FA;
-                selection-background-color: #3498DB;
-                border: 2px solid #E8E8E8;
-                border-radius: 8px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #FAFBFC);
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                gridline-color: #F1F5F9;
+                font-size: 11px;
+                selection-background-color: #667EEA;
+                selection-color: white;
+            }
+            QTableWidget::item {
+                padding: 8px 12px;
+                border: none;
+                border-bottom: 1px solid #F1F5F9;
+            }
+            QTableWidget::item:selected {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #EEF2FF, stop: 1 #E0E7FF);
+                color: #3730A3;
+            }
+            QTableWidget::item:alternate {
+                background: #F8FAFC;
             }
             QHeaderView::section {
-                background-color: #34495E;
-                color: white;
-                padding: 8px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #F8FAFC, stop: 1 #E2E8F0);
+                color: #475569;
+                padding: 12px;
                 border: none;
-                font-weight: bold;
+                border-bottom: 2px solid #CBD5E1;
+                font-weight: 600;
+                font-size: 11px;
+            }
+            QScrollBar:vertical {
+                background: #F1F5F9;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #CBD5E1;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
             }
         """
         )
@@ -644,8 +947,6 @@ class EOLTestPanel(QWidget):
         if self.stop_test_button:
             self.stop_test_button.clicked.connect(self.stop_test)
 
-        if self.reset_button:
-            self.reset_button.clicked.connect(self.reset_test)
 
         # State manager signals
         if self.state_manager:
@@ -655,6 +956,9 @@ class EOLTestPanel(QWidget):
     def start_test(self) -> None:
         """Start EOL test execution"""
         try:
+            # Clean up any previous test resources first
+            self._cleanup_test_resources()
+
             # Check if hardware is ready
             hardware_status = self.state_manager.hardware_status
             if hardware_status.overall_status.value != "connected":
@@ -757,25 +1061,6 @@ class EOLTestPanel(QWidget):
             logger.error(f"Failed to stop test: {e}")
             self.status_message.emit(f"Failed to stop test: {e}")
 
-    def reset_test(self) -> None:
-        """Reset test state"""
-        try:
-            # Stop any running test
-            if self.test_thread and self.test_thread.isRunning():
-                self.stop_test()
-
-            # Reset UI
-            self.reset_test_ui()
-
-            # Reset state manager
-            self.state_manager.reset_test_state()
-
-            self.status_message.emit("Test state reset")
-            logger.info("EOL test state reset")
-
-        except Exception as e:
-            logger.error(f"Failed to reset test: {e}")
-            self.status_message.emit(f"Failed to reset test: {e}")
 
     def update_ui_for_test_start(self) -> None:
         """Update UI when test starts"""
@@ -785,8 +1070,6 @@ class EOLTestPanel(QWidget):
         if self.stop_test_button:
             self.stop_test_button.setEnabled(True)
 
-        if self.reset_button:
-            self.reset_button.setEnabled(False)
 
         # Clear previous results
         if self.results_table:
@@ -804,8 +1087,29 @@ class EOLTestPanel(QWidget):
         if self.stop_test_button:
             self.stop_test_button.setEnabled(False)
 
-        if self.reset_button:
-            self.reset_button.setEnabled(True)
+        # Clean up thread and worker
+        self._cleanup_test_resources()
+
+    def _cleanup_test_resources(self) -> None:
+        """Clean up test thread and worker resources"""
+        try:
+            # Clean up thread
+            if self.test_thread and self.test_thread.isRunning():
+                self.test_thread.quit()
+                self.test_thread.wait(3000)  # Wait up to 3 seconds
+
+            # Clear references
+            if self.test_thread:
+                self.test_thread.deleteLater()
+                self.test_thread = None
+
+            if self.test_worker:
+                self.test_worker.deleteLater()
+                self.test_worker = None
+
+            logger.debug("Test resources cleaned up")
+        except Exception as e:
+            logger.warning(f"Error cleaning up test resources: {e}")
 
     def reset_test_ui(self) -> None:
         """Reset UI to initial state"""
@@ -816,8 +1120,6 @@ class EOLTestPanel(QWidget):
         if self.stop_test_button:
             self.stop_test_button.setEnabled(False)
 
-        if self.reset_button:
-            self.reset_button.setEnabled(True)
 
         # Reset progress
         if self.progress_bar:
@@ -927,7 +1229,7 @@ class EOLTestPanel(QWidget):
 
                     # Extract step information
                     step_name = step_result.get("name", f"Step {i+1}")
-                    description = step_result.get("description", "N/A")
+                    description = step_result.get("description", step_name)  # Use step_name as fallback
                     success = step_result.get("success", False)
                     value = step_result.get("value", step_result.get("response_time_ms", "N/A"))
 
@@ -941,10 +1243,11 @@ class EOLTestPanel(QWidget):
 
                     # Color code result column
                     result_item = self.results_table.item(i, 2)
-                    if success:
-                        result_item.setForeground(Qt.GlobalColor.darkGreen)
-                    else:
-                        result_item.setForeground(Qt.GlobalColor.darkRed)
+                    if result_item is not None:
+                        if success:
+                            result_item.setForeground(Qt.GlobalColor.darkGreen)
+                        else:
+                            result_item.setForeground(Qt.GlobalColor.darkRed)
 
             else:
                 # Add single summary row

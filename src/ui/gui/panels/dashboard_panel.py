@@ -59,39 +59,44 @@ class StatusCard(QFrame):
         self.title = title
         self.color = color
 
-        # Setup frame
-        self.setFrameStyle(QFrame.Shape.Box)
-        self.setMinimumSize(QSize(200, 100))
+        # Setup frame - modern card design
+        self.setFrameStyle(QFrame.Shape.NoFrame)
+        self.setMinimumSize(QSize(220, 120))
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         # Create layout
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(8)
 
         # Title label
         self.title_label = QLabel(title)
-        self.title_label.setFont(QFont("Arial", 10, QFont.Weight.DemiBold))
-        self.title_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+        self.title_label.setFont(QFont("Arial", 11, QFont.Weight.DemiBold))
+        self.title_label.setStyleSheet("color: #64748B; font-weight: 600; letter-spacing: 0.5px;")
 
         # Value label
         self.value_label = QLabel(value)
-        self.value_label.setFont(QFont("Arial", 18, QFont.Weight.Bold))
-        self.value_label.setStyleSheet("color: #2C3E50;")
+        self.value_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+        self.value_label.setStyleSheet("color: #1E293B; font-weight: 700;")
 
         # Add to layout
         layout.addWidget(self.title_label)
         layout.addWidget(self.value_label)
         layout.addStretch()
 
-        # Apply card styling
+        # Apply modern card styling
         self.setStyleSheet(
             f"""
             QFrame {{
-                background-color: white;
-                border: 2px solid #E8E8E8;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+                border: 1px solid #E2E8F0;
                 border-left: 4px solid {color};
-                border-radius: 8px;
+                border-radius: 12px;
+            }}
+            QFrame:hover {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FEFEFE, stop: 1 #F1F5F9);
             }}
         """
         )
@@ -113,14 +118,19 @@ class StatusCard(QFrame):
             color: New accent color
         """
         self.color = color
-        self.title_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+        self.title_label.setStyleSheet("color: #64748B; font-weight: 600; letter-spacing: 0.5px;")
         self.setStyleSheet(
             f"""
             QFrame {{
-                background-color: white;
-                border: 2px solid #E8E8E8;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+                border: 1px solid #E2E8F0;
                 border-left: 4px solid {color};
-                border-radius: 8px;
+                border-radius: 12px;
+            }}
+            QFrame:hover {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FEFEFE, stop: 1 #F1F5F9);
             }}
         """
         )
@@ -191,40 +201,149 @@ class DashboardPanel(QWidget):
 
         self.uptime_card = StatusCard("System Uptime", "00:00:00", "#3498DB")  # Blue
 
-        # Create system messages section
+        # Create system messages section with modern styling
         messages_group = QGroupBox("System Messages")
+        messages_group.setStyleSheet(
+            """
+            QGroupBox {
+                font-weight: 600;
+                font-size: 14px;
+                color: #334155;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                margin-top: 8px;
+                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 16px;
+                padding: 0 8px 0 8px;
+                background: transparent;
+            }
+        """
+        )
         messages_layout = QVBoxLayout(messages_group)
+        messages_layout.setContentsMargins(16, 20, 16, 16)
 
         self.system_messages_text = QTextEdit()
         self.system_messages_text.setReadOnly(True)
-        self.system_messages_text.setMaximumHeight(150)
-        self.system_messages_text.setFont(QFont("Consolas", 9))
+        self.system_messages_text.setMaximumHeight(180)
+        self.system_messages_text.setFont(QFont("JetBrains Mono", 10))
         self.system_messages_text.setStyleSheet(
             """
             QTextEdit {
-                background-color: #2C3E50;
-                color: #ECF0F1;
-                border: 1px solid #34495E;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #1E293B, stop: 1 #334155);
+                color: #F1F5F9;
+                border: 1px solid #475569;
+                border-radius: 8px;
+                padding: 12px;
+                font-family: 'JetBrains Mono', 'Consolas', monospace;
+                selection-background-color: #667EEA;
+                selection-color: white;
+            }
+            QScrollBar:vertical {
+                background: #475569;
+                width: 8px;
                 border-radius: 4px;
-                padding: 8px;
+            }
+            QScrollBar::handle:vertical {
+                background: #64748B;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
             }
         """
         )
 
         messages_layout.addWidget(self.system_messages_text)
 
-        # Create recent tests section
+        # Create recent tests section with modern styling
         tests_group = QGroupBox("Recent Test Results")
+        tests_group.setStyleSheet(
+            """
+            QGroupBox {
+                font-weight: 600;
+                font-size: 14px;
+                color: #334155;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                margin-top: 8px;
+                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #F8FAFC);
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 16px;
+                padding: 0 8px 0 8px;
+                background: transparent;
+            }
+        """
+        )
         tests_layout = QVBoxLayout(tests_group)
+        tests_layout.setContentsMargins(16, 20, 16, 16)
 
         self.recent_tests_table = QTableWidget()
         self.recent_tests_table.setColumnCount(4)
         self.recent_tests_table.setHorizontalHeaderLabels(
             ["Time", "Test Type", "Status", "Duration"]
         )
-        self.recent_tests_table.setMaximumHeight(200)
+        self.recent_tests_table.setMaximumHeight(220)
         self.recent_tests_table.setAlternatingRowColors(True)
         self.recent_tests_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.recent_tests_table.setStyleSheet(
+            """
+            QTableWidget {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #FFFFFF, stop: 1 #FAFBFC);
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                gridline-color: #F1F5F9;
+                font-size: 11px;
+            }
+            QTableWidget::item {
+                padding: 8px 12px;
+                border: none;
+                border-bottom: 1px solid #F1F5F9;
+            }
+            QTableWidget::item:selected {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                                           stop: 0 #EEF2FF, stop: 1 #E0E7FF);
+                color: #3730A3;
+            }
+            QTableWidget::item:alternate {
+                background: #F8FAFC;
+            }
+            QHeaderView::section {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                                           stop: 0 #F8FAFC, stop: 1 #E2E8F0);
+                color: #475569;
+                padding: 10px 12px;
+                border: none;
+                border-bottom: 2px solid #CBD5E1;
+                font-weight: 600;
+                font-size: 11px;
+            }
+            QScrollBar:vertical {
+                background: #F1F5F9;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #CBD5E1;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+        """
+        )
 
         # Set column widths
         self.recent_tests_table.setColumnWidth(0, 120)
@@ -251,25 +370,28 @@ class DashboardPanel(QWidget):
         content_widget = QWidget()
         scroll_area.setWidget(content_widget)
 
-        # Main layout for content
+        # Main layout for content - improved spacing
         main_layout = QVBoxLayout(content_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(16)
+        main_layout.setContentsMargins(24, 24, 24, 24)
+        main_layout.setSpacing(32)
 
-        # Status cards section
+        # Status cards section with modern styling
         cards_widget = QWidget()
         cards_layout = QGridLayout(cards_widget)
-        cards_layout.setSpacing(16)
+        cards_layout.setSpacing(24)
+        cards_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Add status cards in 1x2 grid
-        cards_layout.addWidget(self.test_status_card, 0, 0)
-        cards_layout.addWidget(self.uptime_card, 0, 1)
+        # Add status cards in 1x2 grid with None checks
+        if self.test_status_card:
+            cards_layout.addWidget(self.test_status_card, 0, 0)
+        if self.uptime_card:
+            cards_layout.addWidget(self.uptime_card, 0, 1)
 
         main_layout.addWidget(cards_widget)
 
-        # Content sections
+        # Content sections with improved spacing
         content_layout = QHBoxLayout()
-        content_layout.setSpacing(16)
+        content_layout.setSpacing(24)
 
         # Left column
         left_column = QVBoxLayout()
@@ -326,6 +448,8 @@ class DashboardPanel(QWidget):
             hardware_status: Hardware status object
         """
         # Hardware status display has been removed from dashboard
+        # hardware_status is intentionally unused
+        _ = hardware_status
         pass
 
     def on_test_status_changed(self, status: str) -> None:
@@ -362,6 +486,8 @@ class DashboardPanel(QWidget):
         """
         # Hardware status cards have been removed from dashboard
         # Hardware status is now available only through the Hardware panel
+        # hardware_status is intentionally unused
+        _ = hardware_status
         pass
 
     def update_test_status_display(self, status: str) -> None:
@@ -377,17 +503,17 @@ class DashboardPanel(QWidget):
         status_upper = status.upper()
         self.test_status_card.set_value(status_upper)
 
-        # Set color based on status
+        # Set color based on status - consistent with modern palette
         if status == "completed":
-            color = "#27AE60"  # Green
+            color = "#10B981"  # Modern green
         elif status in ["failed", "error"]:
-            color = "#E74C3C"  # Red
+            color = "#EF4444"  # Modern red
         elif status == "running":
-            color = "#3498DB"  # Blue
+            color = "#667EEA"  # Modern blue/purple
         elif status == "cancelled":
-            color = "#F39C12"  # Orange
+            color = "#F59E0B"  # Modern amber
         else:  # idle, ready
-            color = "#7F8C8D"  # Gray
+            color = "#94A3B8"  # Modern gray
 
         self.test_status_card.set_color(color)
 

@@ -406,6 +406,10 @@ class MainWindow(QMainWindow):
             if self.state_manager:
                 self.state_manager.reset_test_state()
 
+            # Cleanup all panels
+            if self.content_area_widget:
+                self.content_area_widget.cleanup_all_panels()
+
             logger.info("Main window closing")
             event.accept()
 
