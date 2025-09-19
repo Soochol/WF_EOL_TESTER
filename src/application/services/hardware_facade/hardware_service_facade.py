@@ -580,7 +580,7 @@ class HardwareServiceFacade:
 
                     logger.info(f"{color_start}{repetition_header}{color_end}")
 
-                # Temperature and position matrix iteration
+                # Temperature and position matrix iteration for each cycle
                 for temp_idx, temperature in enumerate(test_config.temperature_list):
                     # Log temperature progress
                     total_temps = len(test_config.temperature_list)
@@ -599,7 +599,7 @@ class HardwareServiceFacade:
                             f"Test matrix: {total_temps}×{total_positions}×{repeat_count} = {total_measurements} measurements"
                         )
 
-                    # Set MCU temperature
+                    # 1. Set MCU temperature (온도 상승)
                     await self._mcu.set_operating_temperature(temperature)
                     await asyncio.sleep(test_config.mcu_command_stabilization)
 
@@ -610,7 +610,7 @@ class HardwareServiceFacade:
                     if repeat_idx == 0:
                         measurements_dict[temperature] = {}
 
-                    # Measure at each position
+                    # 2. Measure at each position (로봇 이동 + 포스 측정)
                     for pos_idx, position in enumerate(test_config.stroke_positions):
                         if repeat_count == 1:
                             logger.info(
@@ -650,40 +650,35 @@ class HardwareServiceFacade:
                             f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N"
                         )
 
-                    # Prepare for standby transition after each temperature measurement
-                    if temp_idx < len(test_config.temperature_list) - 1:
-                        logger.debug("Preparing for standby transition...")
-
-                        # Move robot to initial position for standby transition (if not already there)
-                        if self._robot_state != RobotState.INITIAL_POSITION:
-                            self._robot_state = RobotState.MOVING
-                            await self._robot.move_absolute(
-                                position=test_config.initial_position,
-                                axis_id=hardware_config.robot.axis_id,
-                                velocity=test_config.velocity,
-                                acceleration=test_config.acceleration,
-                                deceleration=test_config.deceleration,
-                            )
-                            await asyncio.sleep(test_config.robot_move_stabilization)
-                            self._robot_state = RobotState.INITIAL_POSITION
-                            logger.debug(
-                                f"Robot returned to initial position: {test_config.initial_position}μm"
-                            )
-                        else:
-                            logger.debug("Robot already at initial position, skipping movement")
-
-                        # Start standby cooling for temperature transition
-                        logger.debug("Starting standby cooling...")
-                        await self._mcu.start_standby_cooling()
-                        await asyncio.sleep(test_config.mcu_command_stabilization)
-                        logger.debug("MCU standby cooling started")
-
-                        # Verify standby temperature reached
-                        logger.debug("Verifying standby temperature...")
-                        await self.verify_mcu_temperature(
-                            test_config.standby_temperature, test_config
+                    # 3. Return robot to initial position (로봇 복귀)
+                    logger.debug("Returning robot to initial position...")
+                    if self._robot_state != RobotState.INITIAL_POSITION:
+                        self._robot_state = RobotState.MOVING
+                        await self._robot.move_absolute(
+                            position=test_config.initial_position,
+                            axis_id=hardware_config.robot.axis_id,
+                            velocity=test_config.velocity,
+                            acceleration=test_config.acceleration,
+                            deceleration=test_config.deceleration,
                         )
-                        logger.debug("Standby temperature verification completed")
+                        await asyncio.sleep(test_config.robot_move_stabilization)
+                        self._robot_state = RobotState.INITIAL_POSITION
+                        logger.debug(
+                            f"Robot returned to initial position: {test_config.initial_position}μm"
+                        )
+                    else:
+                        logger.debug("Robot already at initial position, skipping movement")
+
+                    # 4. Start standby cooling (온도 하강)
+                    logger.debug("Starting standby cooling...")
+                    await self._mcu.start_standby_cooling()
+                    await asyncio.sleep(test_config.mcu_command_stabilization)
+                    logger.debug("MCU standby cooling started")
+
+                    # Verify standby temperature reached
+                    logger.debug("Verifying standby temperature...")
+                    await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
+                    logger.debug("Standby temperature verification completed")
 
                 # Save cycle data immediately if repository service is available
                 if repeat_count > 1 and self._repository_service:
