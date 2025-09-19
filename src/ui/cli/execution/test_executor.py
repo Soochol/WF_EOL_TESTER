@@ -14,7 +14,10 @@ Key Features:
 """
 
 # Standard library imports
-from typing import Any, Dict, Optional, TYPE_CHECKING
+import csv
+import glob
+from pathlib import Path
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 # Third-party imports
 from loguru import logger
@@ -308,7 +311,119 @@ class TestExecutor(ITestExecutor):
         return "UNKNOWN"  # Unrecognized error types
 
     def _display_measurements_table(self, measurements: TestMeasurements) -> None:
-        """Display TestMeasurements in a formatted table showing temperature vs max force.
+        """Display TestMeasurements in a formatted table showing cycle, temperature, and force data.
+
+        Args:
+            measurements: TestMeasurements object containing all test data
+        """
+        # Try to load cycle data from CSV files, fall back to current measurements if not available
+        cycle_data = self._load_cycle_data_from_csv()
+
+        if cycle_data:
+            # Display cycle-based table with separators
+            self._display_cycle_table(cycle_data)
+        else:
+            # Fall back to original table format
+            self._display_original_table(measurements)
+
+    def _load_cycle_data_from_csv(self) -> List[Dict[str, Any]]:
+        """Load cycle data from saved CSV files.
+
+        Returns:
+            List of cycle data dictionaries, empty if no files found
+        """
+        try:
+            # Look for cycle measurement files
+            csv_pattern = "logs/EOL Force Test/raw_data/cycle_measurements_*_total*cycles.csv"
+            csv_files = glob.glob(csv_pattern)
+
+            if not csv_files:
+                return []
+
+            # Use the most recent file
+            latest_file = max(csv_files, key=lambda f: Path(f).stat().st_mtime)
+
+            # Parse CSV data and group by cycle
+            cycle_dict = {}
+            with open(latest_file, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    try:
+                        cycle = int(row['Cycle'])
+
+                        if cycle not in cycle_dict:
+                            cycle_dict[cycle] = {
+                                'cycle': cycle,
+                                'force_38': 0.0,
+                                'force_52': 0.0,
+                                'force_66': 0.0
+                            }
+
+                        # Extract force values for each temperature
+                        if 'T38_P170' in row and row['T38_P170']:
+                            cycle_dict[cycle]['force_38'] = float(row['T38_P170'])
+                        if 'T52_P170' in row and row['T52_P170']:
+                            cycle_dict[cycle]['force_52'] = float(row['T52_P170'])
+                        if 'T66_P170' in row and row['T66_P170']:
+                            cycle_dict[cycle]['force_66'] = float(row['T66_P170'])
+
+                    except (ValueError, KeyError) as e:
+                        logger.debug(f"Skipping invalid row in cycle CSV: {e}")
+                        continue
+
+            # Convert to sorted list
+            cycle_data = [cycle_dict[cycle] for cycle in sorted(cycle_dict.keys())]
+            return cycle_data
+
+        except Exception as e:
+            logger.debug(f"Could not load cycle data from CSV: {e}")
+            return []
+
+    def _display_cycle_table(self, cycle_data: List[Dict[str, Any]]) -> None:
+        """Display table with cycle information and separators.
+
+        Args:
+            cycle_data: List of cycle data dictionaries
+        """
+        # Create table with cycle, temperature, and force columns
+        table = Table(title="📊 Test Measurements Summary")
+        table.add_column("Cycle", style="magenta", justify="center")
+        table.add_column("Temperature", style="cyan", justify="center")
+        table.add_column("Force (N)", style="yellow", justify="center")
+
+        current_cycle = None
+
+        for data in cycle_data:
+            cycle = data['cycle']
+
+            # Add separator when cycle changes
+            if current_cycle is not None and cycle != current_cycle:
+                table.add_section()  # This adds a separator line
+
+            current_cycle = cycle
+
+            # Add rows for each temperature in this cycle
+            temperatures = [
+                (38.0, data['force_38']),
+                (52.0, data['force_52']),
+                (66.0, data['force_66'])
+            ]
+
+            for temp, force in temperatures:
+                if force > 0:  # Only show if we have data
+                    table.add_row(
+                        str(cycle),
+                        f"{temp:.1f}°C",
+                        f"{force:.2f}"
+                    )
+
+        # Display the table
+        self._console.print()
+        self._console.print(table)
+        self._console.print()
+
+    def _display_original_table(self, measurements: TestMeasurements) -> None:
+        """Display original table format as fallback.
 
         Args:
             measurements: TestMeasurements object containing all test data
@@ -326,7 +441,7 @@ class TestExecutor(ITestExecutor):
             if temp_measurements:
                 try:
                     # Get maximum force value for this temperature
-                    min_force, max_force = temp_measurements.get_force_range()
+                    _, max_force = temp_measurements.get_force_range()
                     table.add_row(f"{temp:.1f}°C", f"{max_force:.2f}")
                 except ValueError:
                     # Skip if no measurements available for this temperature

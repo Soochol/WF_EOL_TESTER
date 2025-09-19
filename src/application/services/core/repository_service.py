@@ -19,6 +19,7 @@ from application.interfaces.repository.test_result_repository import (
 )
 from domain.entities.eol_test import EOLTest
 from domain.exceptions import RepositoryAccessError
+from domain.value_objects.measurements import TestMeasurements
 
 
 class RepositoryService:
@@ -41,6 +42,7 @@ class RepositoryService:
         self._raw_data_dir = Path(raw_data_dir)
         self._summary_dir = Path(summary_dir)
         self._summary_filename = summary_filename
+        self._cycle_session_timestamp = None  # For cycle-by-cycle saving
 
     @property
     def test_repository(self) -> TestResultRepository:
@@ -63,7 +65,7 @@ class RepositoryService:
             logger.debug("Test result saved successfully")
 
             # Generate additional data files
-            await self._save_measurement_raw_data(test)
+            # Note: Raw measurement data is now saved via cycle-by-cycle saving
             await self._update_test_summary(test)
 
         except Exception as e:
@@ -458,6 +460,176 @@ class RepositoryService:
                 f"Test data: ID={test.test_id}, DUT={test.dut.serial_number}, Operator={test.operator_id}"
             )
             # Don't raise exception as this is supplementary to main save operation
+
+    async def save_cycle_measurements(
+        self, measurements: TestMeasurements, cycle_num: int, total_cycles: int
+    ) -> None:
+        """
+        Save measurements for a specific cycle immediately to a single file
+
+        Args:
+            measurements: Test measurements for this cycle
+            cycle_num: Current cycle number (1-based)
+            total_cycles: Total number of cycles
+
+        Note:
+            This appends cycle data to a single CSV file to preserve
+            partial results even if later cycles fail.
+        """
+        try:
+            # Use existing raw_data directory (no separate cycles folder)
+            cycle_data_dir = self._raw_data_dir
+            cycle_data_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate timestamp for the test session (only once)
+            from datetime import datetime
+            if cycle_num == 1:
+                # Create new file with timestamp for first cycle
+                self._cycle_session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            # Use same filename for all cycles in this test session
+            cycle_filename = f"cycle_measurements_{self._cycle_session_timestamp}_total{total_cycles}cycles.csv"
+            cycle_file = cycle_data_dir / cycle_filename
+
+            # Check if file exists (append mode vs create mode)
+            file_exists = cycle_file.exists()
+
+            # Prepare cycle data in pivot table format (same as main CSV)
+            cycle_data = []
+            if not file_exists:
+                # Create dynamic header based on temperature/position combinations
+                header = ["Cycle", "Test_ID", "Serial", "Date", "Time", "Status"]
+
+                # Add temperature-position columns (T38_P170, T52_P170, etc.)
+                temp_pos_columns = []
+                for temp in measurements.get_temperatures():
+                    for pos in measurements.get_positions_for_temperature(temp):
+                        temp_pos_columns.append(f"T{int(temp)}_P{int(pos/1000)}")  # T38_P170 format
+
+                header.extend(sorted(temp_pos_columns))
+                cycle_data.append(header)
+
+            # Create pivot row for this cycle
+            timestamp = datetime.now()
+            date_str = timestamp.strftime("%Y-%m-%d")
+            time_str = timestamp.strftime("%H:%M:%S")
+
+            # Generate Test_ID for this cycle
+            test_id = f"CYCLE_{cycle_num}_OF_{total_cycles}_{timestamp.strftime('%Y%m%d_%H%M%S')}"
+
+            # Start building the row
+            row = [
+                cycle_num,  # Cycle number
+                test_id,    # Test_ID
+                "CYCLE_DATA",  # Serial (placeholder)
+                date_str,   # Date
+                time_str,   # Time
+                "PASS"      # Status (assuming pass for now)
+            ]
+
+            # Add force values in temperature-position order
+            temp_pos_values = {}
+            for temp in measurements.get_temperatures():
+                for pos in measurements.get_positions_for_temperature(temp):
+                    reading = measurements.get_reading(temp, pos)
+                    if reading:
+                        key = f"T{int(temp)}_P{int(pos/1000)}"
+                        temp_pos_values[key] = reading.force
+
+            # Add values in sorted order to match header (round to 2 decimal places)
+            for key in sorted(temp_pos_values.keys()):
+                force_value = temp_pos_values[key]
+                row.append(round(force_value, 2))
+
+            cycle_data.append(row)
+
+            # Append cycle data to CSV (create or append)
+            mode = "a" if file_exists else "w"
+            with open(cycle_file, mode, newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(cycle_data)
+
+            logger.info(
+                f"Cycle {cycle_num}/{total_cycles} measurements appended to: {cycle_filename}"
+            )
+
+            # Also update test summary with cycle information
+            await self._update_cycle_summary(cycle_num, total_cycles, test_id, timestamp)
+
+        except Exception as e:
+            logger.error(f"Failed to save cycle {cycle_num} measurements: {e}")
+            # Don't raise exception - cycle saving is supplementary
+
+    async def _update_cycle_summary(
+        self, cycle_num: int, total_cycles: int, test_id: str, timestamp
+    ) -> None:
+        """
+        Update test summary with individual cycle information
+
+        Args:
+            cycle_num: Current cycle number
+            total_cycles: Total number of cycles
+            test_id: Test ID for this cycle
+            timestamp: Timestamp object for this cycle
+        """
+        try:
+            # Create directory if it doesn't exist
+            test_results_dir = self._summary_dir
+            test_results_dir.mkdir(parents=True, exist_ok=True)
+
+            summary_file = test_results_dir / self._summary_filename
+
+            # Read existing data
+            existing_rows = self._read_existing_csv_rows(summary_file)
+
+            # Prepare header with cycle information
+            header = [
+                "Test_ID",
+                "Serial_Number",
+                "Test_Date",
+                "Test_Time",
+                "Status",
+                "Duration_sec",
+                "Operator_ID",
+                "Cycle",
+                "Total_Cycles"
+            ]
+
+            # If no existing data, start with header
+            if not existing_rows:
+                existing_rows = [header]
+            elif len(existing_rows) > 0 and len(existing_rows[0]) < len(header):
+                # Update existing header if it doesn't have cycle columns
+                existing_rows[0] = header
+
+            # Create cycle summary row
+            date_str = timestamp.strftime("%Y-%m-%d")
+            time_str = timestamp.strftime("%H:%M:%S")
+
+            cycle_row = [
+                test_id,           # Test_ID
+                "CYCLE_DATA",      # Serial_Number
+                date_str,          # Test_Date
+                time_str,          # Test_Time
+                "PASS",            # Status
+                0.0,               # Duration_sec (individual cycle duration not tracked yet)
+                "system",          # Operator_ID
+                cycle_num,         # Cycle
+                total_cycles       # Total_Cycles
+            ]
+
+            # Validate and add the row
+            validated_row = self._validate_csv_data(cycle_row, len(header))
+            existing_rows.append(validated_row)
+
+            # Write updated data
+            self._write_csv_data(summary_file, existing_rows)
+
+            logger.debug(f"Cycle {cycle_num}/{total_cycles} summary updated in test_summary.csv")
+
+        except Exception as e:
+            logger.error(f"Failed to update cycle summary: {e}")
+            # Don't raise exception - summary update is supplementary
 
     def get_all_repositories(self) -> dict:
         """Get all repositories as a dictionary (for debugging/testing)"""

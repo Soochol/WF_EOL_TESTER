@@ -89,6 +89,10 @@ class EOLForceTestUseCase(BaseUseCase):
         self._hardware_services = hardware_services
         self._exception_handler = exception_handler
 
+        # Inject repository service into hardware facade for cycle-by-cycle saving
+        if hasattr(hardware_services, '_repository_service'):
+            hardware_services._repository_service = repository_service
+
         # Initialize focused components
         self._config_loader = TestConfigurationLoader(
             configuration_service, configuration_validator
@@ -123,28 +127,12 @@ class EOLForceTestUseCase(BaseUseCase):
 
         eol_input = input_data
 
-        # Load configuration to check repeat_count
-        await self._config_loader.load_and_validate_configurations()
-        test_config = self._config_loader.test_config
-
-        if test_config is None:
-            raise TestExecutionException(
-                message="Test configuration could not be loaded",
-                details={"dut_info": str(eol_input.dut_info)},
-            )
-
-        repeat_count = test_config.repeat_count
-
-        if repeat_count == 1:
-            # Single execution - use original logic
-            return await self.execute_single(eol_input)
-        else:
-            # Multiple executions - handle repetition
-            return await self._execute_repeated(eol_input, repeat_count)
+        # Execute single test - repeat_count is now handled within the force test sequence
+        return await self.execute_single(eol_input)
 
     async def execute(self, input_data: EOLForceTestInput) -> EOLTestResult:
         """
-        Execute EOL test with support for repetition (public interface)
+        Execute EOL test (public interface)
 
         This method delegates to BaseUseCase.execute for consistent behavior.
         """
@@ -438,177 +426,3 @@ class EOLForceTestUseCase(BaseUseCase):
             # Even emergency power off failed - log critical error but don't raise
             logger.critical("Emergency power off failed: {}", emergency_error)
 
-    async def _execute_repeated(
-        self, command: EOLForceTestInput, repeat_count: int
-    ) -> EOLTestResult:
-        """
-        Execute repeated test cycles and aggregate results
-
-        Args:
-            command: Original test execution command
-            repeat_count: Number of test repetitions to perform
-
-        Returns:
-            EOLTestResult containing aggregated results from all repetitions
-        """
-        logger.info(
-            TestExecutionConstants.LOG_REPEATED_TEST_START, command.dut_info.dut_id, repeat_count
-        )
-
-        overall_start_time = asyncio.get_event_loop().time()
-
-        all_results = []
-        successful_tests = 0
-        failed_tests = 0
-        cycle_times = []  # Track timing for each cycle
-        session_timestamp = None  # Track session timestamp for CSV grouping
-
-        for cycle in range(1, repeat_count + 1):
-            cycle_start_time = asyncio.get_event_loop().time()
-
-            # Create prominent test cycle header with background color (Heating/Cooling style)
-            cycle_header = TestExecutionConstants.CYCLE_HEADER_FORMAT.format(cycle, repeat_count)
-            separator = TestExecutionConstants.CYCLE_HEADER_SEPARATOR
-            color_start = TestExecutionConstants.CYCLE_HEADER_COLOR_START
-            color_end = TestExecutionConstants.CYCLE_HEADER_COLOR_END
-
-            logger.info(f"{color_start}{separator}{color_end}")
-            logger.info(f"{color_start}{cycle_header:^50}{color_end}")
-            logger.info(f"{color_start}{separator}{color_end}")
-
-            # Log additional timing information for cycles after the first
-            if cycle > 1:
-                # Calculate average time and estimate remaining time
-                avg_cycle_time = sum(cycle_times) / len(cycle_times)
-                remaining_cycles = repeat_count - cycle + 1
-                estimated_remaining_time = avg_cycle_time * remaining_cycles
-                logger.info(
-                    TestExecutionConstants.LOG_CYCLE_START_WITH_REMAINING,
-                    cycle,
-                    repeat_count,
-                    estimated_remaining_time,
-                )
-
-            # Create unique DUT info for this cycle
-            cycle_dut_info = DUTCommandInfo(
-                dut_id=f"{command.dut_info.dut_id}_cycle_{cycle:03d}",
-                model_number=command.dut_info.model_number,
-                serial_number=command.dut_info.serial_number,  # Use original serial number as entered by user
-                manufacturer=command.dut_info.manufacturer,
-            )
-
-            cycle_command = EOLForceTestInput(
-                dut_info=cycle_dut_info, operator_id=command.operator_id
-            )
-
-            try:
-                # Generate session timestamp for first cycle, reuse for subsequent cycles
-                if session_timestamp is None:
-                    # Generate session timestamp from current time for this test session
-                    # Standard library imports
-                    from datetime import datetime
-
-                    session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    logger.debug(
-                        f"Generated session timestamp for repeat_count={repeat_count}: {session_timestamp}"
-                    )
-
-                # Execute single test cycle with session timestamp
-                result = await self.execute_single(cycle_command, session_timestamp)
-                all_results.append(result)
-
-                # Calculate cycle duration
-                cycle_end_time = asyncio.get_event_loop().time()
-                cycle_duration = cycle_end_time - cycle_start_time
-                cycle_times.append(cycle_duration)
-
-                if result.is_passed:
-                    successful_tests += 1
-                    logger.info(
-                        TestExecutionConstants.LOG_CYCLE_COMPLETED_PASS,
-                        cycle,
-                        repeat_count,
-                        cycle_duration,
-                        successful_tests,
-                        cycle,
-                    )
-                else:
-                    failed_tests += 1
-                    logger.warning(
-                        TestExecutionConstants.LOG_CYCLE_COMPLETED_FAIL,
-                        cycle,
-                        repeat_count,
-                        cycle_duration,
-                        successful_tests,
-                        cycle,
-                    )
-
-            except Exception as cycle_error:
-                failed_tests += 1
-                # Calculate cycle duration even for failed cycles
-                cycle_end_time = asyncio.get_event_loop().time()
-                cycle_duration = cycle_end_time - cycle_start_time
-                cycle_times.append(cycle_duration)
-
-                logger.error(
-                    TestExecutionConstants.LOG_CYCLE_ERROR,
-                    cycle,
-                    repeat_count,
-                    cycle_dut_info.dut_id,
-                    str(cycle_error),
-                )
-                # Continue with next cycle even if one fails
-
-            # Add delay between cycles for hardware stabilization (except for last cycle)
-            if cycle < repeat_count:
-                stabilization_delay = 2.0  # 2 seconds between cycles
-                logger.info(TestExecutionConstants.LOG_CYCLE_DELAY, stabilization_delay)
-                await asyncio.sleep(stabilization_delay)
-
-        # Create aggregated result
-        overall_duration = self._calculate_execution_duration(overall_start_time)
-        overall_duration_seconds = overall_duration.seconds
-        overall_passed = successful_tests > 0  # At least one test must pass
-
-        # Use the first successful result as template, or first result if none successful
-        template_result = None
-        for result in all_results:
-            if result.is_passed:
-                template_result = result
-                break
-        if template_result is None and all_results:
-            template_result = all_results[0]
-
-        if template_result is None:
-            # No results at all - create a failure result
-            return EOLTestResult(
-                test_id=TestId.generate(),
-                test_status=TestStatus.ERROR,
-                is_passed=False,
-                execution_duration=overall_duration,
-                error_message=f"All {repeat_count} test cycles failed to execute",
-            )
-
-        # Create summary result
-        summary_result = EOLTestResult(
-            test_id=TestId.generate(),
-            test_status=TestStatus.COMPLETED if overall_passed else TestStatus.FAILED,
-            is_passed=overall_passed,
-            test_summary=template_result.test_summary,  # Use template measurements
-            execution_duration=overall_duration,
-            error_message=(
-                f"Repeated test summary: {successful_tests}/{repeat_count} cycles passed, {failed_tests}/{repeat_count} cycles failed"
-                if failed_tests > 0
-                else None
-            ),
-            completed_at=template_result.completed_at,
-        )
-
-        logger.info(
-            TestExecutionConstants.LOG_REPEATED_TEST_COMPLETED,
-            successful_tests,
-            repeat_count,
-            overall_duration_seconds,
-            command.dut_info.dut_id,
-        )
-        return summary_result

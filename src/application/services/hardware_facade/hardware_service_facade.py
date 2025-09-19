@@ -8,7 +8,12 @@ Previously 786 lines, now significantly reduced by delegating to specialized ser
 # Standard library imports
 # Standard library imports
 # Standard library imports
+# Standard library imports
 from typing import cast, Dict, Optional, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from application.services.core.repository_service import RepositoryService
 
 # Third-party imports
 import asyncio
@@ -69,6 +74,9 @@ class HardwareServiceFacade:
         loadcell_service: LoadCellService,
         power_service: PowerService,
         digital_io_service: DigitalIOService,
+        repository_service: Optional[
+            "RepositoryService"
+        ] = None,  # Optional for cycle-by-cycle saving
     ):
         # Store services for property access (backward compatibility)
         if TYPE_CHECKING:
@@ -83,6 +91,9 @@ class HardwareServiceFacade:
             self._loadcell = loadcell_service
             self._power = power_service
             self._digital_io = digital_io_service
+
+        # Repository service for cycle-by-cycle saving (optional)
+        self._repository_service: Optional["RepositoryService"] = repository_service
 
         # Robot homing state management (from initialization service)
         self._robot_homed = False
@@ -550,98 +561,169 @@ class HardwareServiceFacade:
         self._log_phase_separator("PERFORMING FORCE TEST SEQUENCE")
         logger.info("Starting force test sequence...")
 
+        # Get repeat count from configuration
+        repeat_count = test_config.repeat_count
+        if repeat_count > 1:
+            logger.info(f"Force test sequence will be repeated {repeat_count} times")
+
         # Collect measurements in dictionary format
         measurements_dict = {}
 
         try:
-            # Temperature and position matrix iteration
-            for temp_idx, temperature in enumerate(test_config.temperature_list):
-                # Log temperature progress
-                total_temps = len(test_config.temperature_list)
-                total_positions = len(test_config.stroke_positions)
-                total_measurements = total_temps * total_positions
+            # Repeat the entire force test sequence
+            for repeat_idx in range(repeat_count):
+                if repeat_count > 1:
+                    # Create compact repetition header with background color
+                    repetition_header = f"===== Force Test Sequence Repetition {repeat_idx + 1}/{repeat_count} ====="
+                    color_start = "\033[48;5;33m\033[97m"  # Blue background, white text
+                    color_end = "\033[0m"
 
-                logger.info(
-                    f"Setting temperature to {temperature}°C ({temp_idx + 1}/{total_temps})"
-                )
-                logger.info(
-                    f"Test matrix: {total_temps}×{total_positions} = {total_measurements} measurements"
-                )
+                    logger.info(f"{color_start}{repetition_header}{color_end}")
 
-                # Set MCU temperature
-                await self._mcu.set_operating_temperature(temperature)
-                await asyncio.sleep(test_config.mcu_command_stabilization)
+                # Temperature and position matrix iteration
+                for temp_idx, temperature in enumerate(test_config.temperature_list):
+                    # Log temperature progress
+                    total_temps = len(test_config.temperature_list)
+                    total_positions = len(test_config.stroke_positions)
+                    total_measurements = total_temps * total_positions * repeat_count
 
-                # Verify temperature reached
-                await self.verify_mcu_temperature(temperature, test_config)
-
-                # Initialize position measurements for this temperature
-                measurements_dict[temperature] = {}
-
-                # Measure at each position
-                for pos_idx, position in enumerate(test_config.stroke_positions):
                     logger.info(
-                        f"Measuring at position {position}μm ({pos_idx+1}/{len(test_config.stroke_positions)})"
+                        f"Setting temperature to {temperature}°C ({temp_idx + 1}/{total_temps})"
                     )
+                    if repeat_count == 1:
+                        logger.info(
+                            f"Test matrix: {total_temps}×{total_positions} = {total_measurements} measurements"
+                        )
+                    else:
+                        logger.info(
+                            f"Test matrix: {total_temps}×{total_positions}×{repeat_count} = {total_measurements} measurements"
+                        )
 
-                    # Move robot to measurement position
-                    self._robot_state = RobotState.MOVING
-                    await self._robot.move_absolute(
-                        position=position,
-                        axis_id=hardware_config.robot.axis_id,
-                        velocity=test_config.velocity,
-                        acceleration=test_config.acceleration,
-                        deceleration=test_config.deceleration,
-                    )
-                    await asyncio.sleep(test_config.robot_move_stabilization)
-                    self._robot_state = RobotState.MEASUREMENT_POSITION
+                    # Set MCU temperature
+                    await self._mcu.set_operating_temperature(temperature)
+                    await asyncio.sleep(test_config.mcu_command_stabilization)
 
-                    # Take peak force measurement
-                    force = await self._loadcell.read_peak_force()
+                    # Verify temperature reached
+                    await self.verify_mcu_temperature(temperature, test_config)
 
-                    # Store measurement in dictionary format
-                    measurements_dict[temperature][position] = {"force": force.value}
+                    # Initialize position measurements for this temperature (first time only)
+                    if repeat_idx == 0:
+                        measurements_dict[temperature] = {}
 
-                    logger.debug(
-                        f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N"
-                    )
+                    # Measure at each position
+                    for pos_idx, position in enumerate(test_config.stroke_positions):
+                        if repeat_count == 1:
+                            logger.info(
+                                f"Measuring at position {position}μm ({pos_idx+1}/{len(test_config.stroke_positions)})"
+                            )
+                        else:
+                            logger.info(
+                                f"Measuring at position {position}μm (rep {repeat_idx+1}/{repeat_count}, pos {pos_idx+1}/{len(test_config.stroke_positions)})"
+                            )
 
-                # Prepare for standby transition after each temperature measurement
-                if temp_idx < len(test_config.temperature_list):
-                    logger.debug("Preparing for standby transition...")
-
-                    # Move robot to initial position for standby transition (if not already there)
-                    if self._robot_state != RobotState.INITIAL_POSITION:
+                        # Move robot to measurement position
                         self._robot_state = RobotState.MOVING
                         await self._robot.move_absolute(
-                            position=test_config.initial_position,
+                            position=position,
                             axis_id=hardware_config.robot.axis_id,
                             velocity=test_config.velocity,
                             acceleration=test_config.acceleration,
                             deceleration=test_config.deceleration,
                         )
                         await asyncio.sleep(test_config.robot_move_stabilization)
-                        self._robot_state = RobotState.INITIAL_POSITION
+                        self._robot_state = RobotState.MEASUREMENT_POSITION
+
+                        # Take peak force measurement
+                        force = await self._loadcell.read_peak_force()
+
+                        # Store measurement in dictionary format with repeat index
+                        if repeat_count == 1:
+                            # Single measurement - store as before
+                            measurements_dict[temperature][position] = {"force": force.value}
+                        else:
+                            # Multiple measurements - store as list with repeat index
+                            if position not in measurements_dict[temperature]:
+                                measurements_dict[temperature][position] = {"force": []}
+                            measurements_dict[temperature][position]["force"].append(force.value)
+
                         logger.debug(
-                            f"Robot returned to initial position: {test_config.initial_position}μm"
+                            f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N"
                         )
-                    else:
-                        logger.debug("Robot already at initial position, skipping movement")
 
-                    # Start standby cooling for temperature transition
-                    logger.debug("Starting standby cooling...")
-                    await self._mcu.start_standby_cooling()
-                    await asyncio.sleep(test_config.mcu_command_stabilization)
-                    logger.debug("MCU standby cooling started")
+                    # Prepare for standby transition after each temperature measurement
+                    if temp_idx < len(test_config.temperature_list) - 1:
+                        logger.debug("Preparing for standby transition...")
 
-                    # Verify standby temperature reached
-                    logger.debug("Verifying standby temperature...")
-                    await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
-                    logger.debug("Standby temperature verification completed")
+                        # Move robot to initial position for standby transition (if not already there)
+                        if self._robot_state != RobotState.INITIAL_POSITION:
+                            self._robot_state = RobotState.MOVING
+                            await self._robot.move_absolute(
+                                position=test_config.initial_position,
+                                axis_id=hardware_config.robot.axis_id,
+                                velocity=test_config.velocity,
+                                acceleration=test_config.acceleration,
+                                deceleration=test_config.deceleration,
+                            )
+                            await asyncio.sleep(test_config.robot_move_stabilization)
+                            self._robot_state = RobotState.INITIAL_POSITION
+                            logger.debug(
+                                f"Robot returned to initial position: {test_config.initial_position}μm"
+                            )
+                        else:
+                            logger.debug("Robot already at initial position, skipping movement")
+
+                        # Start standby cooling for temperature transition
+                        logger.debug("Starting standby cooling...")
+                        await self._mcu.start_standby_cooling()
+                        await asyncio.sleep(test_config.mcu_command_stabilization)
+                        logger.debug("MCU standby cooling started")
+
+                        # Verify standby temperature reached
+                        logger.debug("Verifying standby temperature...")
+                        await self.verify_mcu_temperature(
+                            test_config.standby_temperature, test_config
+                        )
+                        logger.debug("Standby temperature verification completed")
+
+                # Save cycle data immediately if repository service is available
+                if repeat_count > 1 and self._repository_service:
+                    await self._save_cycle_measurements(
+                        measurements_dict, repeat_idx + 1, repeat_count
+                    )
+
+                # Add delay between repetitions (except for last repetition)
+                if repeat_count > 1 and repeat_idx < repeat_count - 1:
+                    stabilization_delay = 1.0  # 1 second between repetitions
+                    logger.info(f"Stabilization delay between repetitions: {stabilization_delay}s")
+                    await asyncio.sleep(stabilization_delay)
 
             logger.info("Force test sequence completed successfully")
-            # Create TestMeasurements object from collected dictionary
-            return TestMeasurements.from_legacy_dict(measurements_dict)
+
+            # Process measurements for repeat_count > 1: convert lists to averages
+            if repeat_count > 1:
+                processed_dict = {}
+                for temp, positions in measurements_dict.items():
+                    processed_dict[temp] = {}
+                    for pos, measurements in positions.items():
+                        force_data = measurements["force"]
+                        if isinstance(force_data, list):
+                            # Calculate average for repeated measurements
+                            avg_force = sum(force_data) / len(force_data)
+                            processed_dict[temp][pos] = {"force": avg_force}
+
+                            # Log detailed repeat information
+                            logger.info(
+                                f"Position {pos}μm @ {temp}°C: {len(force_data)} measurements = {force_data}, average = {avg_force:.3f}N"
+                            )
+                        else:
+                            # Single measurement, keep as is
+                            processed_dict[temp][pos] = {"force": force_data}
+
+                # Create TestMeasurements object from processed dictionary
+                return TestMeasurements.from_legacy_dict(processed_dict)
+            else:
+                # Single measurement, use original dictionary
+                return TestMeasurements.from_legacy_dict(measurements_dict)
 
         except Exception as e:
             logger.debug(f"Force test sequence failed with config: {test_config.to_dict()}")
@@ -655,6 +737,7 @@ class HardwareServiceFacade:
                 details={
                     "temperature_count": len(test_config.temperature_list),
                     "position_count": len(test_config.stroke_positions),
+                    "repeat_count": repeat_count,
                 },
             ) from e
 
@@ -812,3 +895,50 @@ class HardwareServiceFacade:
         """Reset robot homing state (useful for testing or re-initialization)"""
         self._robot_homed = False
         logger.debug("Robot homing state reset")
+
+    async def _save_cycle_measurements(
+        self, measurements_dict: Dict, cycle_num: int, total_cycles: int
+    ) -> None:
+        """
+        Save measurements for a completed cycle immediately
+
+        Args:
+            measurements_dict: Current accumulated measurements dictionary
+            cycle_num: Current cycle number (1-based)
+            total_cycles: Total number of cycles
+        """
+        # Type guard: ensure repository service is available
+        if self._repository_service is None:
+            logger.warning(
+                f"⚠️  Cycle {cycle_num}/{total_cycles} data not saved - Repository service not available"
+            )
+            return
+
+        try:
+            # Create a copy of current measurements for this cycle
+            cycle_measurements = {}
+            for temp, positions in measurements_dict.items():
+                cycle_measurements[temp] = {}
+                for pos, measurements in positions.items():
+                    force_data = measurements["force"]
+                    if isinstance(force_data, list) and len(force_data) >= cycle_num:
+                        # Get only the measurement for this cycle
+                        cycle_force = force_data[cycle_num - 1]
+                        cycle_measurements[temp][pos] = {"force": cycle_force}
+
+            if cycle_measurements:
+                # Convert to TestMeasurements object
+                cycle_test_measurements = TestMeasurements.from_legacy_dict(cycle_measurements)
+
+                # Save to repository with cycle identifier
+                await self._repository_service.save_cycle_measurements(
+                    cycle_test_measurements, cycle_num, total_cycles
+                )
+
+                logger.info(f"✅ Cycle {cycle_num}/{total_cycles} measurements saved to repository")
+
+        except Exception as save_error:
+            # Don't fail the test if cycle save fails, just log it
+            logger.warning(
+                f"Failed to save cycle {cycle_num}/{total_cycles} measurements: {save_error}"
+            )
