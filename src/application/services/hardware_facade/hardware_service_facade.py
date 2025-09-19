@@ -590,7 +590,7 @@ class HardwareServiceFacade:
                 if repeat_count > 1:
                     # Create compact repetition header with background color
                     repetition_header = f"===== Force Test Sequence Repetition {repeat_idx + 1}/{repeat_count} ====="
-                    color_start = "\033[48;5;33m\033[97m"  # Blue background, white text
+                    color_start = "\033[48;5;0m\033[93m"  # Black background, bright yellow text
                     color_end = "\033[0m"
 
                     logger.info(f"{color_start}{repetition_header}{color_end}")
