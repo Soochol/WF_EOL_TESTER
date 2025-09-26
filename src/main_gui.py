@@ -18,9 +18,10 @@ from loguru import logger
 
 # PySide6 imports with detailed error diagnostics
 def check_pyside6_installation():
-    """Check PySide6 installation and provide detailed diagnostics on Windows"""
+    """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
     import platform
     import subprocess
+    import os
 
     def run_command(cmd):
         """Run command and return output"""
@@ -30,11 +31,37 @@ def check_pyside6_installation():
         except Exception:
             return False, ""
 
+    def is_uv_environment():
+        """Check if running in UV environment"""
+        # Check for UV environment indicators
+        uv_indicators = [
+            os.environ.get('UV_PROJECT_NAME'),
+            os.environ.get('VIRTUAL_ENV') and '.venv' in os.environ.get('VIRTUAL_ENV', ''),
+            os.path.exists('pyproject.toml') and os.path.exists('.venv')
+        ]
+        return any(uv_indicators)
+
+    def check_uv_installation():
+        """Check if UV is installed and available"""
+        success, _ = run_command("uv --version")
+        return success
+
     print("🔍 Diagnosing PySide6 installation issue...")
     print(f"📋 System Info:")
     print(f"   Platform: {platform.system()} {platform.release()}")
     print(f"   Architecture: {platform.architecture()[0]}")
     print(f"   Python: {platform.python_version()}")
+
+    # Check UV environment
+    is_uv_env = is_uv_environment()
+    uv_available = check_uv_installation()
+
+    if is_uv_env:
+        print(f"   Environment: 🚀 UV Virtual Environment")
+        if not uv_available:
+            print(f"   ⚠️  UV command not found!")
+    else:
+        print(f"   Environment: 🐍 Standard Python Environment")
 
     if platform.system() == "Windows":
         print(f"\n🪟 Windows-specific diagnostics:")
@@ -64,34 +91,84 @@ def check_pyside6_installation():
 
     # Check Python package installation
     print(f"\n📦 Python package diagnostics:")
-    try:
-        import pip
-        success, output = run_command("pip show pyside6")
+
+    if is_uv_env and uv_available:
+        # UV environment diagnostics
+        print("   Using UV package manager...")
+
+        # Check UV cache status
+        success, cache_info = run_command("uv cache info")
         if success:
-            print("   ✅ PySide6 package is installed")
-            for line in output.split('\n'):
-                if line.startswith('Version:'):
-                    print(f"      {line}")
+            print("   📊 UV Cache Status: Available")
         else:
-            print("   ❌ PySide6 package not found")
-    except ImportError:
-        print("   ⚠️  pip not available for diagnostics")
+            print("   ⚠️  UV Cache Status: Issues detected")
+
+        # Check PySide6 installation via UV
+        success, output = run_command("uv show pyside6")
+        if success:
+            print("   ✅ PySide6 package found in UV environment")
+            for line in output.split('\n'):
+                if line.strip().startswith('version:'):
+                    print(f"      Version: {line.split(':', 1)[1].strip()}")
+        else:
+            print("   ❌ PySide6 package not found in UV environment")
+            # Check if it might be in pyproject.toml but not installed
+            success, _ = run_command("uv show --quiet pyside6")
+            if not success:
+                print("   💡 PySide6 may need to be added to dependencies")
+
+    else:
+        # Standard pip environment diagnostics
+        try:
+            import pip
+            success, output = run_command("pip show pyside6")
+            if success:
+                print("   ✅ PySide6 package is installed")
+                for line in output.split('\n'):
+                    if line.startswith('Version:'):
+                        print(f"      {line}")
+            else:
+                print("   ❌ PySide6 package not found")
+        except ImportError:
+            print("   ⚠️  pip not available for diagnostics")
 
     # Suggested solutions
     print(f"\n🔧 Suggested solutions (try in order):")
-    print("   1. Install/reinstall Visual C++ Redistributable (Windows only)")
-    print("      📥 https://aka.ms/vs/17/release/vc_redist.x64.exe")
-    print("   2. Reinstall PySide6:")
-    print("      📝 pip uninstall PySide6")
-    print("      📝 pip install PySide6")
-    print("   3. Try alternative installation:")
-    print("      📝 pip install PySide6 --force-reinstall --no-cache-dir")
-    print("   4. Use conda instead:")
-    print("      📝 conda install pyside6 -c conda-forge")
 
     if platform.system() == "Windows":
-        print("   5. Check for conflicting Qt installations")
-        print("   6. Run as administrator if permission issues")
+        print("   1. Install/reinstall Visual C++ Redistributable (Windows only)")
+        print("      📥 https://aka.ms/vs/17/release/vc_redist.x64.exe")
+
+    if is_uv_env and uv_available:
+        # UV-specific solutions
+        print("   📦 UV Environment Solutions:")
+        print("   2. Clean UV cache and reinstall PySide6:")
+        print("      📝 uv cache clean")
+        print("      📝 uv remove pyside6")
+        print("      📝 uv add pyside6")
+        print("   3. Force sync UV environment:")
+        print("      📝 uv sync --reinstall")
+        print("   4. Reset UV virtual environment:")
+        print("      📝 Remove .venv directory")
+        print("      📝 uv sync")
+        print("   5. Alternative: Use specific PySide6 version:")
+        print("      📝 uv add pyside6==6.9.1")
+    else:
+        # Standard pip solutions
+        print("   📦 Standard Python Environment Solutions:")
+        print("   2. Reinstall PySide6:")
+        print("      📝 pip uninstall PySide6")
+        print("      📝 pip install PySide6")
+        print("   3. Try alternative installation:")
+        print("      📝 pip install PySide6 --force-reinstall --no-cache-dir")
+        print("   4. Use conda instead:")
+        print("      📝 conda install pyside6 -c conda-forge")
+
+    if platform.system() == "Windows":
+        print("   🔍 Additional Windows Checks:")
+        print("   • Check for conflicting Qt installations")
+        print("   • Run as administrator if permission issues")
+        print("   • Ensure 64-bit Python on 64-bit Windows")
 
     print(f"\n💬 If issues persist, please check the DEPLOYMENT.md file for detailed instructions.")
 

@@ -61,11 +61,25 @@ class SystemChecker:
         return all_passed
 
     def check_system_info(self) -> bool:
-        """Check basic system information"""
+        """Check basic system information including UV environment detection"""
         print(f"🖥️  Platform: {platform.system()} {platform.release()}")
         print(f"🏗️  Architecture: {platform.machine()}")
         print(f"🐍 Python: {platform.python_version()}")
         print(f"📁 Working Directory: {Path.cwd()}")
+
+        # Check UV environment
+        is_uv_env = self._is_uv_environment()
+        uv_available = self._check_uv_available()
+
+        if is_uv_env:
+            print(f"🚀 Environment: UV Virtual Environment")
+            if uv_available:
+                print(f"   ✅ UV command available")
+            else:
+                print(f"   ❌ UV command not found!")
+                self.issues_found.append("UV environment detected but UV command not available")
+        else:
+            print(f"🐍 Environment: Standard Python Environment")
 
         # Check if we're on a supported platform
         if platform.system() not in ["Windows", "Linux", "Darwin"]:
@@ -74,6 +88,21 @@ class SystemChecker:
             return False
 
         return True
+
+    def _is_uv_environment(self) -> bool:
+        """Check if running in UV environment"""
+        import os
+        uv_indicators = [
+            os.environ.get('UV_PROJECT_NAME'),
+            os.environ.get('VIRTUAL_ENV') and '.venv' in os.environ.get('VIRTUAL_ENV', ''),
+            Path('pyproject.toml').exists() and Path('.venv').exists()
+        ]
+        return any(uv_indicators)
+
+    def _check_uv_available(self) -> bool:
+        """Check if UV command is available"""
+        success, _ = self.run_command("uv --version")
+        return success
 
     def check_python(self) -> bool:
         """Check Python installation and version"""
@@ -99,7 +128,11 @@ class SystemChecker:
         return True
 
     def check_pyside6(self) -> bool:
-        """Check PySide6 installation and dependencies"""
+        """Check PySide6 installation and dependencies with UV support"""
+        is_uv_env = self._is_uv_environment()
+        uv_available = self._check_uv_available()
+
+        # First check if PySide6 can be imported
         try:
             import PySide6
             print(f"✅ PySide6 {PySide6.__version__} installed")
@@ -121,17 +154,67 @@ class SystemChecker:
             print(f"❌ PySide6 import failed: {e}")
             self.issues_found.append(f"PySide6 import error: {e}")
 
-            # Platform-specific diagnostics
-            if platform.system() == "Windows":
+            # Environment-specific diagnostics
+            if is_uv_env and uv_available:
+                self._diagnose_uv_pyside6_issues()
+            elif platform.system() == "Windows":
                 self._check_windows_pyside6_deps()
 
             return False
+
+        # Additional UV environment checks
+        if is_uv_env and uv_available:
+            self._check_uv_pyside6_status()
 
         # Windows-specific checks
         if platform.system() == "Windows":
             return self._check_windows_pyside6_deps()
 
         return True
+
+    def _diagnose_uv_pyside6_issues(self) -> None:
+        """Diagnose PySide6 issues in UV environment"""
+        print("\n🚀 UV Environment PySide6 Diagnostics:")
+
+        # Check if PySide6 is in pyproject.toml dependencies
+        pyproject_path = Path("pyproject.toml")
+        if pyproject_path.exists():
+            try:
+                with open(pyproject_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if 'pyside6' in content.lower():
+                        print("   ✅ PySide6 found in pyproject.toml dependencies")
+                    else:
+                        print("   ❌ PySide6 not found in pyproject.toml dependencies")
+                        self.recommendations.append("Add PySide6 to dependencies: uv add pyside6")
+            except Exception as e:
+                print(f"   ⚠️  Could not read pyproject.toml: {e}")
+
+        # Check UV show command
+        success, output = self.run_command("uv show pyside6")
+        if success:
+            print("   ✅ PySide6 package recognized by UV")
+        else:
+            print("   ❌ PySide6 package not found in UV environment")
+            self.recommendations.append("Install PySide6 with UV: uv add pyside6")
+
+        # Check UV cache status
+        success, _ = self.run_command("uv cache info")
+        if success:
+            print("   ✅ UV cache accessible")
+        else:
+            print("   ⚠️  UV cache issues detected")
+            self.recommendations.append("Clean UV cache: uv cache clean")
+
+    def _check_uv_pyside6_status(self) -> None:
+        """Check PySide6 status in working UV environment"""
+        print("\n🔍 UV Environment PySide6 Status:")
+
+        # Check current UV environment sync status
+        success, _ = self.run_command("uv sync --dry-run")
+        if not success:
+            print("   ⚠️  UV environment may need synchronization")
+            self.recommendations.append("Synchronize UV environment: uv sync")
 
     def _check_windows_pyside6_deps(self) -> bool:
         """Check Windows-specific PySide6 dependencies"""

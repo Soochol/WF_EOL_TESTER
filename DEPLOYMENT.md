@@ -23,6 +23,15 @@ uv sync
 uv run src/main_gui.py
 ```
 
+### UV Package Manager (Recommended)
+This project uses **UV** for fast, reliable dependency management. UV provides better performance and more consistent environments than pip.
+
+**Why UV?**
+- 🚀 **10-100x faster** than pip
+- 🔒 **Reproducible builds** with lock files
+- 🎯 **Better dependency resolution**
+- 🛡️ **Isolated environments** prevent conflicts
+
 ## 🚨 Common Error: PySide6 DLL Load Failed
 
 ### Error Message
@@ -62,8 +71,30 @@ print(f"System: {platform.machine()}")
 - 🔗 Download: https://www.python.org/downloads/windows/
 - Select "Windows installer (64-bit)"
 
-#### 3. **Corrupted PySide6 Installation**
-**Problem**: Incomplete or damaged PySide6 installation.
+#### 3. **UV Environment Issues** ⭐ UV Users
+**Problem**: PySide6 installation corruption in UV virtual environment.
+
+**UV-Specific Solutions**:
+```bash
+# Method 1: Clean reinstall in UV environment
+uv remove pyside6
+uv cache clean
+uv add pyside6
+
+# Method 2: Reset UV environment completely
+# (Warning: This removes all packages)
+rm -rf .venv
+uv sync
+
+# Method 3: Force synchronization
+uv sync --reinstall
+
+# Method 4: Use specific PySide6 version
+uv add pyside6==6.9.1
+```
+
+#### 4. **Corrupted PySide6 Installation (pip)**
+**Problem**: Incomplete or damaged PySide6 installation in standard Python environment.
 
 **Solution - Complete Reinstall**:
 ```bash
@@ -80,16 +111,30 @@ pip install PySide6 --force-reinstall --no-cache-dir
 conda install pyside6 -c conda-forge
 ```
 
-#### 4. **Conflicting Qt Installations**
+#### 5. **Conflicting Qt Installations**
 **Problem**: Multiple Qt versions (PyQt5, PyQt6, PySide2, PySide6) causing DLL conflicts.
 
-**Check installed Qt packages**:
+**Check installed Qt packages (UV)**:
 ```bash
+# UV environment
+uv show | grep -i qt
+uv show | grep -i pyside
+
+# Standard environment
 pip list | grep -i qt
 pip list | grep -i pyside
 ```
 
-**Solution**:
+**UV Solution**:
+```bash
+# Remove conflicting packages in UV environment
+uv remove pyqt5 pyqt6 pyside2 2>/dev/null || true
+
+# Reinstall only PySide6
+uv add pyside6
+```
+
+**Standard pip Solution**:
 ```bash
 # Remove conflicting packages
 pip uninstall PyQt5 PyQt6 PySide2
@@ -281,12 +326,45 @@ pytest
 
 ## 🆘 Support and Troubleshooting
 
+## 🚀 UV Environment Troubleshooting
+
+### Quick UV Fixes (Try First)
+```bash
+# 1. Quick PySide6 reinstall
+uv remove pyside6 && uv add pyside6
+
+# 2. Clean cache and sync
+uv cache clean && uv sync
+
+# 3. Force reinstall everything
+uv sync --reinstall
+
+# 4. Nuclear option: Reset environment
+rm -rf .venv && uv sync
+```
+
+### UV Environment Diagnostics
+```bash
+# Check UV status
+uv --version
+uv sync --dry-run
+
+# Check PySide6 in UV
+uv show pyside6
+uv tree | grep pyside
+
+# Check UV cache
+uv cache info
+uv cache dir
+```
+
 ### Common Solutions Summary
-1. **Install VC++ Redistributable** (most common fix)
-2. **Use 64-bit Python** on 64-bit systems
-3. **Clean reinstall PySide6**
-4. **Remove conflicting Qt packages**
-5. **Run as Administrator** if permission issues
+1. **Install VC++ Redistributable** (most common fix for Windows)
+2. **Use UV environment reset** (`rm -rf .venv && uv sync`)
+3. **Clean UV cache** (`uv cache clean`)
+4. **Use 64-bit Python** on 64-bit systems
+5. **Remove conflicting Qt packages** in UV environment
+6. **Run as Administrator** if permission issues
 
 ### Getting Help
 - Check the diagnostic output from the application
