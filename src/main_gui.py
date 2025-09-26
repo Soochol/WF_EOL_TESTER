@@ -105,17 +105,33 @@ def check_pyside6_installation():
 
         # Check PySide6 installation via UV
         success, output = run_command("uv show pyside6")
+
+        # Check pyproject.toml for PySide6 dependency
+        pyside6_in_deps = False
+        try:
+            with open('pyproject.toml', 'r', encoding='utf-8') as f:
+                content = f.read().lower()
+                pyside6_in_deps = 'pyside6' in content
+        except FileNotFoundError:
+            pass
+
         if success:
             print("   ✅ PySide6 package found in UV environment")
             for line in output.split('\n'):
                 if line.strip().startswith('version:'):
                     print(f"      Version: {line.split(':', 1)[1].strip()}")
         else:
-            print("   ❌ PySide6 package not found in UV environment")
-            # Check if it might be in pyproject.toml but not installed
-            success, _ = run_command("uv show --quiet pyside6")
-            if not success:
-                print("   💡 PySide6 may need to be added to dependencies")
+            if pyside6_in_deps:
+                print("   ⚠️  PySide6 defined in pyproject.toml but not installed in UV environment")
+                print("   💡 Environment needs synchronization")
+
+                # Check sync status
+                sync_success, _ = run_command("uv sync --dry-run")
+                if not sync_success:
+                    print("   📋 UV sync required to install missing dependencies")
+            else:
+                print("   ❌ PySide6 not found in UV environment or pyproject.toml")
+                print("   💡 PySide6 needs to be added to dependencies")
 
     else:
         # Standard pip environment diagnostics
@@ -140,18 +156,39 @@ def check_pyside6_installation():
         print("      📥 https://aka.ms/vs/17/release/vc_redist.x64.exe")
 
     if is_uv_env and uv_available:
-        # UV-specific solutions
+        # UV-specific solutions with context-aware recommendations
         print("   📦 UV Environment Solutions:")
-        print("   2. Clean UV cache and reinstall PySide6:")
-        print("      📝 uv cache clean")
-        print("      📝 uv remove pyside6")
-        print("      📝 uv add pyside6")
-        print("   3. Force sync UV environment:")
-        print("      📝 uv sync --reinstall")
-        print("   4. Reset UV virtual environment:")
+
+        # Check if PySide6 is in dependencies to provide better first step
+        pyside6_in_deps = False
+        try:
+            with open('pyproject.toml', 'r', encoding='utf-8') as f:
+                content = f.read().lower()
+                pyside6_in_deps = 'pyside6' in content
+        except FileNotFoundError:
+            pass
+
+        if pyside6_in_deps:
+            # PySide6 is defined but not working - sync first
+            print("   🎯 First try (recommended for your situation):")
+            print("      📝 uv sync")
+            print("   2. If sync fails, clean cache and sync:")
+            print("      📝 uv cache clean")
+            print("      📝 uv sync")
+            print("   3. Force complete reinstall:")
+            print("      📝 uv sync --reinstall")
+        else:
+            # PySide6 not in dependencies - add it first
+            print("   🎯 First try (recommended for your situation):")
+            print("      📝 uv add pyside6")
+            print("   2. If add fails, clean cache first:")
+            print("      📝 uv cache clean")
+            print("      📝 uv add pyside6")
+
+        print("   4. Reset UV virtual environment (nuclear option):")
         print("      📝 Remove .venv directory")
         print("      📝 uv sync")
-        print("   5. Alternative: Use specific PySide6 version:")
+        print("   5. Use specific PySide6 version:")
         print("      📝 uv add pyside6==6.9.1")
     else:
         # Standard pip solutions
