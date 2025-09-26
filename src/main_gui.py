@@ -16,15 +16,94 @@ import asyncio
 from loguru import logger
 
 
-# PySide6 imports with explicit module imports
+# PySide6 imports with detailed error diagnostics
+def check_pyside6_installation():
+    """Check PySide6 installation and provide detailed diagnostics on Windows"""
+    import platform
+    import subprocess
+
+    def run_command(cmd):
+        """Run command and return output"""
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+            return result.returncode == 0, result.stdout.strip()
+        except Exception:
+            return False, ""
+
+    print("🔍 Diagnosing PySide6 installation issue...")
+    print(f"📋 System Info:")
+    print(f"   Platform: {platform.system()} {platform.release()}")
+    print(f"   Architecture: {platform.architecture()[0]}")
+    print(f"   Python: {platform.python_version()}")
+
+    if platform.system() == "Windows":
+        print(f"\n🪟 Windows-specific diagnostics:")
+
+        # Check VC++ redistributables
+        print("   Checking Visual C++ Redistributables...")
+        vc_paths = [
+            r"C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+            r"C:\Program Files (x86)\Microsoft Visual Studio\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+            r"C:\Windows\System32\msvcp140.dll",
+            r"C:\Windows\System32\vcruntime140.dll"
+        ]
+
+        found_vc = False
+        for path in vc_paths:
+            success, _ = run_command(f'if exist "{path}" echo found')
+            if success:
+                found_vc = True
+                break
+
+        if not found_vc:
+            print("   ⚠️  Visual C++ Redistributables not found!")
+            print("   💡 Solution: Download and install Microsoft Visual C++ Redistributable")
+            print("      📥 Download: https://aka.ms/vs/17/release/vc_redist.x64.exe")
+        else:
+            print("   ✅ Visual C++ Redistributables found")
+
+    # Check Python package installation
+    print(f"\n📦 Python package diagnostics:")
+    try:
+        import pip
+        success, output = run_command("pip show pyside6")
+        if success:
+            print("   ✅ PySide6 package is installed")
+            for line in output.split('\n'):
+                if line.startswith('Version:'):
+                    print(f"      {line}")
+        else:
+            print("   ❌ PySide6 package not found")
+    except ImportError:
+        print("   ⚠️  pip not available for diagnostics")
+
+    # Suggested solutions
+    print(f"\n🔧 Suggested solutions (try in order):")
+    print("   1. Install/reinstall Visual C++ Redistributable (Windows only)")
+    print("      📥 https://aka.ms/vs/17/release/vc_redist.x64.exe")
+    print("   2. Reinstall PySide6:")
+    print("      📝 pip uninstall PySide6")
+    print("      📝 pip install PySide6")
+    print("   3. Try alternative installation:")
+    print("      📝 pip install PySide6 --force-reinstall --no-cache-dir")
+    print("   4. Use conda instead:")
+    print("      📝 conda install pyside6 -c conda-forge")
+
+    if platform.system() == "Windows":
+        print("   5. Check for conflicting Qt installations")
+        print("   6. Run as administrator if permission issues")
+
+    print(f"\n💬 If issues persist, please check the DEPLOYMENT.md file for detailed instructions.")
+
+
 try:
     # Third-party imports
     from PySide6.QtCore import QTimer  # pylint: disable=no-name-in-module
     from PySide6.QtGui import QIcon  # pylint: disable=no-name-in-module
     from PySide6.QtWidgets import QApplication  # pylint: disable=no-name-in-module
 except ImportError as e:
-    print(f"PySide6 import error: {e}")
-    print("Please ensure PySide6 is installed: pip install PySide6")
+    print(f"❌ PySide6 import error: {e}")
+    check_pyside6_installation()
     sys.exit(1)
 
 # Module imports now work directly since main_gui.py is in the src/ directory
