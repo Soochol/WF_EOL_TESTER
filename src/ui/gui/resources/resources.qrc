@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCC>
+    <qresource prefix="/icons">
+        <!-- Navigation Icons -->
+        <file>icons/dashboard.png</file>
+        <file>icons/test_control.png</file>
+        <file>icons/results.png</file>
+        <file>icons/hardware.png</file>
+        <file>icons/settings.png</file>
+        <file>icons/logs.png</file>
+
+        <!-- Status Icons -->
+        <file>icons/status_ready.png</file>
+        <file>icons/status_running.png</file>
+        <file>icons/status_success.png</file>
+        <file>icons/status_warning.png</file>
+        <file>icons/status_error.png</file>
+        <file>icons/status_info.png</file>
+        <file>icons/status_loading.png</file>
+
+        <!-- Action Icons -->
+        <file>icons/play.png</file>
+        <file>icons/pause.png</file>
+        <file>icons/stop.png</file>
+        <file>icons/refresh.png</file>
+        <file>icons/save.png</file>
+        <file>icons/export.png</file>
+        <file>icons/import.png</file>
+
+        <!-- Hardware Icons -->
+        <file>icons/robot.png</file>
+        <file>icons/loadcell.png</file>
+        <file>icons/power.png</file>
+        <file>icons/mcu.png</file>
+        <file>icons/connection.png</file>
+        <file>icons/disconnect.png</file>
+
+        <!-- Light Theme Icons -->
+        <file>icons/light/dashboard.png</file>
+        <file>icons/light/test_control.png</file>
+        <file>icons/light/results.png</file>
+        <file>icons/light/hardware.png</file>
+        <file>icons/light/settings.png</file>
+        <file>icons/light/logs.png</file>
+        <file>icons/light/status_ready.png</file>
+        <file>icons/light/status_running.png</file>
+        <file>icons/light/status_success.png</file>
+        <file>icons/light/status_warning.png</file>
+        <file>icons/light/status_error.png</file>
+        <file>icons/light/status_info.png</file>
+        <file>icons/light/status_loading.png</file>
+        <file>icons/light/play.png</file>
+        <file>icons/light/pause.png</file>
+        <file>icons/light/stop.png</file>
+        <file>icons/light/refresh.png</file>
+        <file>icons/light/save.png</file>
+        <file>icons/light/export.png</file>
+        <file>icons/light/import.png</file>
+        <file>icons/light/robot.png</file>
+        <file>icons/light/loadcell.png</file>
+        <file>icons/light/power.png</file>
+        <file>icons/light/mcu.png</file>
+        <file>icons/light/connection.png</file>
+        <file>icons/light/disconnect.png</file>
+
+        <!-- Dark Theme Icons -->
+        <file>icons/dark/dashboard.png</file>
+        <file>icons/dark/test_control.png</file>
+        <file>icons/dark/results.png</file>
+        <file>icons/dark/hardware.png</file>
+        <file>icons/dark/settings.png</file>
+        <file>icons/dark/logs.png</file>
+        <file>icons/dark/status_ready.png</file>
+        <file>icons/dark/status_running.png</file>
+        <file>icons/dark/status_success.png</file>
+        <file>icons/dark/status_warning.png</file>
+        <file>icons/dark/status_error.png</file>
+        <file>icons/dark/status_info.png</file>
+        <file>icons/dark/status_loading.png</file>
+        <file>icons/dark/play.png</file>
+        <file>icons/dark/pause.png</file>
+        <file>icons/dark/stop.png</file>
+        <file>icons/dark/refresh.png</file>
+        <file>icons/dark/save.png</file>
+        <file>icons/dark/export.png</file>
+        <file>icons/dark/import.png</file>
+        <file>icons/dark/robot.png</file>
+        <file>icons/dark/loadcell.png</file>
+        <file>icons/dark/power.png</file>
+        <file>icons/dark/mcu.png</file>
+        <file>icons/dark/connection.png</file>
+        <file>icons/dark/disconnect.png</file>
+    </qresource>
+</RCC>

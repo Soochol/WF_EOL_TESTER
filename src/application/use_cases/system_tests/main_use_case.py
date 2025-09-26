@@ -6,7 +6,7 @@ Coordinates MCU connection, test sequence execution, and result processing.
 """
 
 # Standard library imports
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 # Third-party imports
 from loguru import logger
@@ -15,6 +15,9 @@ from loguru import logger
 from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.emergency_stop_service import EmergencyStopService
+
+if TYPE_CHECKING:
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
@@ -38,6 +41,7 @@ class SimpleMCUTestUseCase(BaseUseCase):
         hardware_services: HardwareServiceFacade,
         configuration_service: ConfigurationService,
         emergency_stop_service: Optional[EmergencyStopService] = None,
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
     ):
         """
         Initialize Simple MCU Test Use Case
@@ -52,6 +56,7 @@ class SimpleMCUTestUseCase(BaseUseCase):
         self._configuration_service = configuration_service
         self._mcu_connection = MCUConnectionService(hardware_services)
         self._test_executor = TestSequenceExecutor(hardware_services)
+        self._industrial_system_manager = industrial_system_manager
 
     async def _execute_implementation(
         self, input_data: SimpleMCUTestInput, context
@@ -73,6 +78,11 @@ class SimpleMCUTestUseCase(BaseUseCase):
             logger.info("Loading hardware configuration...")
             hardware_config = await self._configuration_service.load_hardware_config()
 
+            # Set system status to running
+            if self._industrial_system_manager:
+                from application.services.industrial.tower_lamp_service import SystemStatus
+                await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
+
             # Connect and initialize MCU
             await self._mcu_connection.connect_and_initialize(hardware_config)
 
@@ -87,6 +97,10 @@ class SimpleMCUTestUseCase(BaseUseCase):
             total_steps = len(test_results)
             is_passed = successful_steps == total_steps
 
+            # Set system status based on test result
+            if self._industrial_system_manager:
+                await self._industrial_system_manager.handle_test_completion(test_success=is_passed)
+
             logger.info(f"Simple MCU Test completed - Success: {successful_steps}/{total_steps}")
 
             return SimpleMCUTestResult(
@@ -97,6 +111,10 @@ class SimpleMCUTestUseCase(BaseUseCase):
             )
 
         except Exception as e:
+            # Set system status to error
+            if self._industrial_system_manager:
+                await self._industrial_system_manager.handle_test_completion(test_success=False, test_error=True)
+
             # Cleanup on error
             await self._mcu_connection.cleanup_on_error()
             raise e

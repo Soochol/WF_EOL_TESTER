@@ -6,7 +6,7 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 # Standard library imports
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 # Third-party imports
 import asyncio
@@ -22,6 +22,9 @@ from application.services.monitoring.emergency_stop_service import (
     EmergencyStopService,
 )
 from application.services.test.test_result_evaluator import TestResultEvaluator
+
+if TYPE_CHECKING:
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
 from domain.exceptions.test_exceptions import TestExecutionException
@@ -81,6 +84,7 @@ class EOLForceTestUseCase(BaseUseCase):
         repository_service: RepositoryService,
         exception_handler: ExceptionHandler,
         emergency_stop_service: Optional[EmergencyStopService] = None,
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
     ):
         # Initialize BaseUseCase
         super().__init__("EOL Force Test", emergency_stop_service)
@@ -88,9 +92,10 @@ class EOLForceTestUseCase(BaseUseCase):
         # Core service dependencies (unchanged)
         self._hardware_services = hardware_services
         self._exception_handler = exception_handler
+        self._industrial_system_manager = industrial_system_manager
 
         # Inject repository service into hardware facade for cycle-by-cycle saving
-        if hasattr(hardware_services, '_repository_service'):
+        if hasattr(hardware_services, "_repository_service"):
             hardware_services._repository_service = repository_service
 
         # Initialize focused components
@@ -221,9 +226,17 @@ class EOLForceTestUseCase(BaseUseCase):
             # Start test execution (transition from PREPARING to RUNNING)
             test_entity.start_execution()
 
+            # Update industrial status indication
+            if self._industrial_system_manager:
+                # Import here to avoid circular imports
+                from application.services.industrial.tower_lamp_service import SystemStatus
+                await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
+
             # Phase 3: Execute hardware test phases
             measurements = await self._hardware_executor.execute_hardware_test_phases(
-                self._config_loader.test_config, self._config_loader.hardware_config, command.dut_info
+                self._config_loader.test_config,
+                self._config_loader.hardware_config,
+                command.dut_info,
             )
 
             # Phase 4: Evaluate results and create success result
@@ -243,6 +256,12 @@ class EOLForceTestUseCase(BaseUseCase):
                 test_entity.test_id,
                 result_status,
             )
+
+            # Update industrial status indication based on test result
+            if self._industrial_system_manager:
+                await self._industrial_system_manager.handle_test_completion(
+                    test_success=is_test_passed, test_error=False
+                )
 
             return self._create_success_result(
                 test_entity,
@@ -363,6 +382,12 @@ class EOLForceTestUseCase(BaseUseCase):
 
         logger.error("EOL test execution failed: {}", error_context.get("user_message", str(error)))
 
+        # Update industrial status indication for error
+        if self._industrial_system_manager:
+            await self._industrial_system_manager.handle_test_completion(
+                test_success=False, test_error=True
+            )
+
         # Try to save failure state if test entity exists
         if test_entity is not None:
             try:
@@ -425,4 +450,3 @@ class EOLForceTestUseCase(BaseUseCase):
         except Exception as emergency_error:
             # Even emergency power off failed - log critical error but don't raise
             logger.critical("Emergency power off failed: {}", emergency_error)
-

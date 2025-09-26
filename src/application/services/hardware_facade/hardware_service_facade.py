@@ -15,6 +15,9 @@ from typing import cast, Dict, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from application.services.core.repository_service import RepositoryService
 
+# Standard library imports
+import time
+
 # Third-party imports
 import asyncio
 from loguru import logger
@@ -80,6 +83,7 @@ class HardwareServiceFacade:
         repository_service: Optional[
             "RepositoryService"
         ] = None,  # Optional for cycle-by-cycle saving
+        gui_state_manager = None,  # Optional for GUI cycle updates
     ):
         # Store services for property access (backward compatibility)
         if TYPE_CHECKING:
@@ -97,6 +101,9 @@ class HardwareServiceFacade:
 
         # Repository service for cycle-by-cycle saving (optional)
         self._repository_service: Optional["RepositoryService"] = repository_service
+
+        # GUI State Manager for cycle updates (optional)
+        self._gui_state_manager = gui_state_manager
 
         # Robot homing state management (from initialization service)
         self._robot_homed = False
@@ -413,7 +420,7 @@ class HardwareServiceFacade:
                 title="⚡ User Action Required",
                 title_align="left",
                 style="bold yellow",
-                border_style="yellow"
+                border_style="yellow",
             )
             console.print(power_panel)
 
@@ -584,6 +591,9 @@ class HardwareServiceFacade:
         # Collect measurements in dictionary format
         measurements_dict = {}
 
+        # Data structure for timing measurements (heating/cooling times per cycle and temperature)
+        timing_data = {}
+
         try:
             # Repeat the entire force test sequence
             for repeat_idx in range(repeat_count):
@@ -614,9 +624,12 @@ class HardwareServiceFacade:
                             f"Test matrix: {total_temps}×{total_positions}×{repeat_count} = {total_measurements} measurements"
                         )
 
-                    # 1. Set MCU temperature (temperature rise)
+                    # 1. Set MCU temperature (temperature rise) - measure heating time
+                    heating_start_time = time.time()
                     await self._mcu.set_operating_temperature(temperature)
                     await asyncio.sleep(test_config.mcu_command_stabilization)
+                    heating_end_time = time.time()
+                    heating_time_s = heating_end_time - heating_start_time
 
                     # Verify temperature reached
                     await self.verify_mcu_temperature(temperature, test_config)
@@ -624,6 +637,15 @@ class HardwareServiceFacade:
                     # Initialize position measurements for this temperature (first time only)
                     if repeat_idx == 0:
                         measurements_dict[temperature] = {}
+
+                    # Initialize timing data for this cycle-temperature combination
+                    cycle_key = f"cycle_{repeat_idx + 1}_temp_{int(temperature)}"
+                    timing_data[cycle_key] = {
+                        "cycle": repeat_idx + 1,
+                        "temperature": temperature,
+                        "heating_time_s": heating_time_s,
+                        "cooling_time_s": 0.0,  # Will be updated after cooling
+                    }
 
                     # 2. Measure at each position (robot movement + force measurement)
                     for pos_idx, position in enumerate(test_config.stroke_positions):
@@ -684,21 +706,63 @@ class HardwareServiceFacade:
                     else:
                         logger.debug("Robot already at initial position, skipping movement")
 
-                    # 4. Start standby cooling (temperature fall)
+                    # 4. Start standby cooling (temperature fall) - measure cooling time
                     logger.debug("Starting standby cooling...")
+                    cooling_start_time = time.time()
                     await self._mcu.start_standby_cooling()
                     await asyncio.sleep(test_config.mcu_command_stabilization)
+                    cooling_end_time = time.time()
+                    cooling_time_s = cooling_end_time - cooling_start_time
                     logger.debug("MCU standby cooling started")
+
+                    # Update timing data with cooling time for current cycle-temperature
+                    cycle_key = f"cycle_{repeat_idx + 1}_temp_{int(temperature)}"
+                    if cycle_key in timing_data:
+                        timing_data[cycle_key]["cooling_time_s"] = cooling_time_s
 
                     # Verify standby temperature reached
                     logger.debug("Verifying standby temperature...")
                     await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
                     logger.debug("Standby temperature verification completed")
 
+                    # Send cycle result to GUI if available
+                    if self._gui_state_manager:
+                        # Calculate average force for this temperature
+                        temp_measurements = measurements_dict[temperature]
+                        total_force = sum(pos_data["force"] for pos_data in temp_measurements.values() if isinstance(pos_data["force"], (int, float)))
+                        if repeat_count > 1:
+                            # For multiple repetitions, get the latest force values
+                            total_force = sum(pos_data["force"][-1] if isinstance(pos_data["force"], list) else pos_data["force"]
+                                            for pos_data in temp_measurements.values())
+                        avg_force = total_force / len(temp_measurements) if temp_measurements else 0.0
+
+                        # Get average stroke position
+                        avg_stroke = sum(test_config.stroke_positions) / len(test_config.stroke_positions)
+
+                        # Get timing data for this cycle
+                        cycle_key = f"cycle_{repeat_idx + 1}_temp_{int(temperature)}"
+                        heating_time = int(timing_data.get(cycle_key, {}).get("heating_time_s", 0))
+                        cooling_time = int(timing_data.get(cycle_key, {}).get("cooling_time_s", 0))
+
+                        self._gui_state_manager.add_cycle_result(
+                            cycle=repeat_idx + 1,
+                            total_cycles=repeat_count,
+                            temperature=temperature,
+                            stroke=avg_stroke,
+                            force=avg_force,
+                            heating_time=heating_time,
+                            cooling_time=cooling_time,
+                            status="PASS"  # Assuming pass for now, can be enhanced with failure detection
+                        )
+
                 # Save cycle data immediately if repository service is available
                 if self._repository_service:
                     await self._save_cycle_measurements(
-                        measurements_dict, repeat_idx + 1, repeat_count, dut_info.serial_number
+                        measurements_dict,
+                        repeat_idx + 1,
+                        repeat_count,
+                        dut_info.serial_number,
+                        timing_data,
                     )
 
                 # Add delay between repetitions (except for last repetition)
@@ -729,11 +793,11 @@ class HardwareServiceFacade:
                             # Single measurement, keep as is
                             processed_dict[temp][pos] = {"force": force_data}
 
-                # Create TestMeasurements object from processed dictionary
-                return TestMeasurements.from_legacy_dict(processed_dict)
+                # Create TestMeasurements object from processed dictionary with timing data
+                return TestMeasurements.from_legacy_dict(processed_dict, timing_data)
             else:
-                # Single measurement, use original dictionary
-                return TestMeasurements.from_legacy_dict(measurements_dict)
+                # Single measurement, use original dictionary with timing data
+                return TestMeasurements.from_legacy_dict(measurements_dict, timing_data)
 
         except Exception as e:
             logger.debug(f"Force test sequence failed with config: {test_config.to_dict()}")
@@ -907,7 +971,12 @@ class HardwareServiceFacade:
         logger.debug("Robot homing state reset")
 
     async def _save_cycle_measurements(
-        self, measurements_dict: Dict, cycle_num: int, total_cycles: int, serial_number: str
+        self,
+        measurements_dict: Dict,
+        cycle_num: int,
+        total_cycles: int,
+        serial_number: str,
+        timing_data: Optional[Dict] = None,
     ) -> None:
         """
         Save measurements for a completed cycle immediately
@@ -938,12 +1007,14 @@ class HardwareServiceFacade:
                         cycle_measurements[temp][pos] = {"force": cycle_force}
 
             if cycle_measurements:
-                # Convert to TestMeasurements object
-                cycle_test_measurements = TestMeasurements.from_legacy_dict(cycle_measurements)
+                # Convert to TestMeasurements object with timing data
+                cycle_test_measurements = TestMeasurements.from_legacy_dict(
+                    cycle_measurements, timing_data
+                )
 
                 # Save to repository with cycle identifier
                 await self._repository_service.save_cycle_measurements(
-                    cycle_test_measurements, cycle_num, total_cycles, serial_number
+                    cycle_test_measurements, cycle_num, total_cycles, serial_number, timing_data
                 )
 
                 logger.info(f"✅ Cycle {cycle_num}/{total_cycles} measurements saved to repository")

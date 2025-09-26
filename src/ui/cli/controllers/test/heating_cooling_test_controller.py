@@ -21,6 +21,7 @@ from application.use_cases.heating_cooling_time_test import (
     HeatingCoolingTimeTestResult,
     HeatingCoolingTimeTestUseCase,
 )
+from domain.value_objects.dut_command_info import DUTCommandInfo
 from ui.cli.rich_formatter import RichFormatter
 
 
@@ -60,8 +61,16 @@ class HeatingCoolingTestController:
 
             await asyncio.sleep(0.1)
 
+            # Create DUT command info for CLI
+            dut_info = DUTCommandInfo(
+                dut_id="CLI_DUT",
+                model_number="CLI_MODEL",
+                serial_number="CLI_SERIAL",
+                manufacturer="CLI_MANUFACTURER"
+            )
+
             # Create and execute command
-            command = HeatingCoolingTimeTestInput(operator_id="cli_user", repeat_count=repeat_count)
+            command = HeatingCoolingTimeTestInput(dut_info=dut_info, operator_id="cli_user", repeat_count=repeat_count)
 
             # Execute test without spinner to avoid log interference
             result = await self.use_case.execute(command)

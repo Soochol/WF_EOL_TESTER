@@ -1,55 +1,392 @@
 """
-Main Window for WF EOL Tester GUI
+Main Window
 
-Industrial-themed main application window with header, side menu,
-content area, and status bar integration.
+Main application window with sidebar navigation and content area.
 """
 
-# Standard library imports
-from typing import Any, Dict, Optional
+from typing import Optional
 
-# Third-party imports
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
     QMainWindow,
-    QMessageBox,
-    QSplitter,
-    QStatusBar,
-    QVBoxLayout,
     QWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QStackedWidget,
+    QStatusBar,
+    QLabel,
+    QFrame,
+    QMessageBox,
 )
-from loguru import logger
 
-# Local application imports
 from application.containers.application_container import ApplicationContainer
-from ui.gui.components.content_area import ContentAreaWidget
-from ui.gui.components.header import HeaderWidget
-from ui.gui.components.side_menu import SideMenuWidget
-from ui.gui.components.status_bar import StatusBarWidget
-from ui.gui.services.gui_state_manager import (
-    ConnectionStatus,
-    GUIStateManager,
-    TestStatus,
-)
-from ui.gui.utils.styling import ThemeManager
+from ui.gui.services.gui_state_manager import GUIStateManager
+from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
+from ui.gui.widgets.content.dashboard_widget import DashboardWidget
+from ui.gui.widgets.content.test_control_widget import TestControlWidget
+from ui.gui.widgets.content.results_widget import ResultsWidget
+from ui.gui.widgets.content.hardware_widget import HardwareWidget
+from ui.gui.widgets.content.logs_widget import LogsWidget
+
+
+class TestExecutorThread(QThread):
+    """
+    Thread for executing tests in background without blocking GUI.
+    """
+
+    # Signals for communicating with GUI
+    test_started = Signal(str)  # test_name
+    test_progress = Signal(int, int, str)  # current_cycle, total_cycles, status
+    test_result = Signal(object)  # test result data
+    test_completed = Signal(bool, str)  # success, message
+    test_error = Signal(str)  # error message
+    log_message = Signal(str, str, str)  # level, component, message
+
+    def __init__(self, container, test_sequence: str, serial_number: str, parent=None):
+        super().__init__(parent)
+        self.container = container
+        self.test_sequence = test_sequence
+        self.serial_number = serial_number
+        self.should_stop = False
+
+    def stop_test(self):
+        """Request test to stop"""
+        self.should_stop = True
+
+    def run(self):
+        """Run the selected test in background thread"""
+        import asyncio
+        from loguru import logger
+
+        try:
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Run the test
+            result = loop.run_until_complete(self._execute_test())
+
+            if result:
+                self.test_completed.emit(True, "Test completed successfully")
+            else:
+                self.test_completed.emit(False, "Test failed")
+
+        except KeyboardInterrupt:
+            # Emergency Stop으로 인한 중단 - 정상적인 상황
+            logger.info("Test cancelled by Emergency Stop")
+            self.test_completed.emit(False, "Test cancelled by Emergency Stop")
+        except Exception as e:
+            logger.error(f"Test execution failed: {e}")
+            self.test_error.emit(str(e))
+        finally:
+            try:
+                loop.close()
+            except:
+                pass
+
+    async def _execute_test(self):
+        """Execute the selected test asynchronously"""
+        from loguru import logger
+        from domain.value_objects.dut_command_info import DUTCommandInfo
+
+        try:
+            # Create DUT command info
+            dut_info = DUTCommandInfo(
+                dut_id=f"DUT_{self.serial_number}",
+                model_number="WF_EOL_MODEL",
+                serial_number=self.serial_number,
+                manufacturer="Withforce"
+            )
+
+            self.log_message.emit("INFO", "TEST", f"Starting {self.test_sequence} for SN: {self.serial_number}")
+            self.test_started.emit(self.test_sequence)
+
+            # Select and execute the appropriate UseCase
+            if self.test_sequence == "EOL Force Test":
+                result = await self._execute_eol_force_test(dut_info)
+            elif self.test_sequence == "Heating Cooling Time Test":
+                result = await self._execute_heating_cooling_test(dut_info)
+            elif self.test_sequence == "Simple MCU Test":
+                result = await self._execute_simple_mcu_test(dut_info)
+            elif self.test_sequence == "Custom Test Sequence":
+                result = await self._execute_custom_test(dut_info)
+            else:
+                raise ValueError(f"Unknown test sequence: {self.test_sequence}")
+
+            # Emit the result for GUI processing
+            self.test_result.emit(result)
+            self.log_message.emit("INFO", "TEST", f"Test {self.test_sequence} completed")
+            return result
+
+        except Exception as e:
+            self.log_message.emit("ERROR", "TEST", f"Test execution failed: {str(e)}")
+            raise
+
+    async def _execute_eol_force_test(self, dut_info):
+        """Execute EOL Force Test with Task-based cancellation"""
+        from application.use_cases.eol_force_test.main_use_case import EOLForceTestInput
+        import asyncio
+
+        # Check for stop signal before starting
+        if self.should_stop:
+            self.log_message.emit("WARNING", "EOL_TEST", "EOL Force Test cancelled before start")
+            return None
+
+        # Create test input
+        test_input = EOLForceTestInput(dut_info=dut_info, operator_id="GUI_USER")
+
+        # Get use case from container
+        eol_test_use_case = self.container.eol_force_test_use_case()
+
+        self.log_message.emit("INFO", "EOL_TEST", "Executing EOL Force Test...")
+
+        # Create Task for UseCase execution
+        task = asyncio.create_task(eol_test_use_case.execute(test_input))
+
+        # Monitor task execution and check for cancellation every 100ms
+        while not task.done():
+            if self.should_stop:
+                self.log_message.emit("WARNING", "EOL_TEST", "EOL Force Test cancelled - stopping UseCase")
+                task.cancel()  # Cancel the UseCase Task
+                try:
+                    await task  # Wait for CancelledError processing
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    self.log_message.emit("INFO", "EOL_TEST", "EOL Force Test cancelled successfully")
+                except Exception as e:
+                    self.log_message.emit("WARNING", "EOL_TEST", f"Exception during cancellation: {e}")
+                return None
+
+            # Check every 100ms for responsive cancellation
+            await asyncio.sleep(0.1)
+
+        # Get result from completed task - ensure all exceptions are handled
+        try:
+            result = await task
+            self.log_message.emit("INFO", "EOL_TEST", f"EOL Force Test result: {result.test_status.value}")
+            return result
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            self.log_message.emit("INFO", "EOL_TEST", "EOL Force Test was cancelled")
+            return None
+        except Exception as e:
+            self.log_message.emit("ERROR", "EOL_TEST", f"EOL Force Test failed with exception: {e}")
+            return None
+
+    async def _execute_heating_cooling_test(self, dut_info):
+        """Execute Heating Cooling Time Test with Task-based cancellation"""
+        from application.use_cases.heating_cooling_time_test.main_use_case import HeatingCoolingTimeTestInput
+        import asyncio
+
+        # Check for stop signal before starting
+        if self.should_stop:
+            self.log_message.emit("WARNING", "HEATING_COOLING", "Heating Cooling Test cancelled before start")
+            return None
+
+        # Create test input
+        test_input = HeatingCoolingTimeTestInput(dut_info=dut_info, operator_id="GUI_USER")
+
+        # Get use case from container
+        heating_cooling_use_case = self.container.heating_cooling_time_test_use_case()
+
+        self.log_message.emit("INFO", "HEATING_COOLING", "Executing Heating Cooling Time Test...")
+
+        # Create Task for UseCase execution
+        task = asyncio.create_task(heating_cooling_use_case.execute(test_input))
+
+        # Monitor task execution and check for cancellation every 100ms
+        while not task.done():
+            if self.should_stop:
+                self.log_message.emit("WARNING", "HEATING_COOLING", "Heating Cooling Test cancelled - stopping UseCase")
+                task.cancel()  # Cancel the UseCase Task
+                try:
+                    await task  # Wait for CancelledError processing
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    self.log_message.emit("INFO", "HEATING_COOLING", "Heating Cooling Test cancelled successfully")
+                except Exception as e:
+                    self.log_message.emit("WARNING", "HEATING_COOLING", f"Exception during cancellation: {e}")
+                return None
+
+            # Check every 100ms for responsive cancellation
+            await asyncio.sleep(0.1)
+
+        # Get result from completed task - ensure all exceptions are handled
+        try:
+            result = await task
+            self.log_message.emit("INFO", "HEATING_COOLING", f"Heating Cooling Test result: {result.test_status.value}")
+            return result
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            self.log_message.emit("INFO", "HEATING_COOLING", "Heating Cooling Test was cancelled")
+            return None
+        except Exception as e:
+            self.log_message.emit("ERROR", "HEATING_COOLING", f"Heating Cooling Test failed with exception: {e}")
+            return None
+
+    async def _execute_simple_mcu_test(self, _dut_info):  # pylint: disable=unused-argument
+        """Execute Simple MCU Test (placeholder implementation)"""
+        import asyncio
+        from domain.value_objects.eol_test_result import EOLTestResult
+        from domain.value_objects.identifiers import TestId
+        from domain.value_objects.time_values import TestDuration
+
+        # Check for stop signal before starting
+        if self.should_stop:
+            self.log_message.emit("WARNING", "MCU_TEST", "Simple MCU Test cancelled before start")
+            return None
+
+        self.log_message.emit("INFO", "MCU_TEST", "Executing Simple MCU Test (placeholder)...")
+
+        # Simulate test duration with cancellation checking
+        for _ in range(20):  # 2 seconds = 20 * 0.1s
+            if self.should_stop:
+                self.log_message.emit("WARNING", "MCU_TEST", "Simple MCU Test cancelled during execution")
+                return None
+            await asyncio.sleep(0.1)
+
+        # Create a placeholder result
+        result = EOLTestResult.create_success(
+            test_id=TestId.generate(),
+            is_passed=True,
+            duration=TestDuration.from_seconds(2.0),
+            notes="Placeholder MCU test - not yet implemented"
+        )
+
+        self.log_message.emit("INFO", "MCU_TEST", f"Simple MCU Test result: {result.test_status.value}")
+        return result
+
+    async def _execute_custom_test(self, _dut_info):  # pylint: disable=unused-argument
+        """Execute Custom Test Sequence"""
+        import asyncio
+
+        # Check for stop signal before starting
+        if self.should_stop:
+            self.log_message.emit("WARNING", "CUSTOM_TEST", "Custom test cancelled before start")
+            return None
+
+        self.log_message.emit("INFO", "CUSTOM_TEST", "Custom test sequence not yet implemented")
+
+        # TODO: Implement custom test sequence
+        # For now, simulate test duration with cancellation checking
+        for _ in range(20):  # 2 seconds = 20 * 0.1s
+            if self.should_stop:
+                self.log_message.emit("WARNING", "CUSTOM_TEST", "Custom test cancelled during execution")
+                return None
+            await asyncio.sleep(0.1)
+
+        return {"status": "SUCCESS", "message": "Custom test completed (mock)"}
+
+
+class RobotHomeThread(QThread):
+    """
+    Thread for executing robot home operation in background without blocking GUI.
+    """
+
+    # Signals for communicating with GUI
+    started = Signal()
+    progress = Signal(str)  # progress message
+    completed = Signal(bool, str)  # success, message
+
+    def __init__(self, container):
+        super().__init__()
+        self.container = container
+
+    def run(self):
+        """Execute robot home operation in separate thread"""
+        from loguru import logger
+        import asyncio
+
+        self.started.emit()
+        logger.info("Robot home thread started")
+
+        try:
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Use START TEST pattern: create_task + monitoring loop
+            result = loop.run_until_complete(self._run_robot_home_task())
+
+            if result and result.is_success:
+                self.completed.emit(True, "Robot home completed successfully")
+            else:
+                error_msg = result.error_message if result else "Unknown error"
+                self.completed.emit(False, f"Robot home failed: {error_msg}")
+
+        except Exception as e:
+            logger.error(f"Robot home thread exception: {e}")
+            self.completed.emit(False, f"Robot home exception: {str(e)}")
+        finally:
+            try:
+                loop.close()
+            except:
+                pass
+
+    async def _run_robot_home_task(self):
+        """Run robot home task using START TEST pattern"""
+        import asyncio
+
+        # Create task for robot home operation (like START TEST)
+        task = asyncio.create_task(self._execute_robot_home())
+
+        # Monitor task execution (like START TEST pattern)
+        while not task.done():
+            await asyncio.sleep(0.1)
+
+        # Get result
+        return task.result()
+
+    async def _execute_robot_home(self):
+        """Execute the robot home operation asynchronously using task-based pattern like START TEST"""
+        from loguru import logger
+        import asyncio
+
+        self.progress.emit("Starting robot home operation...")
+        logger.info("Starting robot home operation...")
+
+        try:
+            # Get robot home use case from container
+            self.progress.emit("Getting robot home use case...")
+            robot_home_use_case = self.container.robot_home_use_case()
+
+            # Import required input class
+            self.progress.emit("Creating robot home input...")
+            from application.use_cases.robot_operations.input import RobotHomeInput
+
+            # Create input for robot home operation
+            home_input = RobotHomeInput()
+
+            # Execute robot home operation using Task-based pattern (like START TEST)
+            self.progress.emit("Executing robot home operation...")
+
+            # Create Task for UseCase execution (same pattern as TestExecutorThread)
+            task = asyncio.create_task(robot_home_use_case.execute(home_input))
+
+            # Monitor task execution (same pattern as START TEST)
+            while not task.done():
+                # Check every 100ms for task completion
+                await asyncio.sleep(0.1)
+
+            # Get result from completed task (same pattern as START TEST)
+            try:
+                result = await task
+                return result
+            except (asyncio.CancelledError, KeyboardInterrupt):
+                logger.info("Robot home operation was cancelled")
+                return None
+            except Exception as e:
+                logger.error(f"Robot home task exception: {e}")
+                raise
+
+        except Exception as e:
+            logger.error(f"Robot home operation exception: {e}")
+            raise
 
 
 class MainWindow(QMainWindow):
     """
-    Main application window for WF EOL Tester
+    Main application window.
 
-    Provides industrial-themed interface with:
-    - Header with title and status indicators
-    - Left side navigation menu
-    - Central content area with stackable panels
-    - Bottom status bar with hardware status
+    Contains sidebar navigation and stacked content area for different pages.
     """
-
-    # Custom signals
-    closing = Signal()
 
     def __init__(
         self,
@@ -57,413 +394,655 @@ class MainWindow(QMainWindow):
         state_manager: GUIStateManager,
         parent: Optional[QWidget] = None,
     ):
-        """
-        Initialize main window
-
-        Args:
-            container: Application dependency injection container
-            state_manager: GUI state management service
-            parent: Parent widget (optional)
-        """
         super().__init__(parent)
-
-        # Store dependencies
         self.container = container
         self.state_manager = state_manager
-        self.theme_manager = ThemeManager()
+        self.test_executor_thread = None  # For background test execution
+        self.robot_home_thread = None  # For background robot home execution
+        self.emergency_stop_active = False  # Track emergency stop state
 
-        # Initialize components
-        self.header_widget: Optional[HeaderWidget] = None
-        self.side_menu_widget: Optional[SideMenuWidget] = None
-        self.content_area_widget: Optional[ContentAreaWidget] = None
-        self.status_bar_widget: Optional[StatusBarWidget] = None
+        # Connect GUI State Manager to Hardware Facade for cycle updates
+        hardware_facade = self.container.hardware_service_facade()
+        if hasattr(hardware_facade, '_gui_state_manager'):
+            hardware_facade._gui_state_manager = state_manager
 
-        # Initialize UI
-        self.setup_window()
-        self.create_widgets()
-        self.setup_layout()
-        self.connect_signals()
-        self.setup_keyboard_shortcuts()
+        self.setup_ui()
+        self.setup_status_bar()
+        self.setup_update_timer()
+        # Start maximized for industrial use
+        self.showMaximized()
 
-        # Initialize state
-        self.load_window_settings()
-        self.state_manager.load_configuration()
-
-        logger.info("Main window initialized")
-
-    def setup_window(self) -> None:
-        """Setup main window properties"""
+    def setup_ui(self) -> None:
+        """Setup the main window UI"""
         # Window properties
-        self.setWindowTitle("WF EOL Tester")
-        self.setMinimumSize(QSize(1200, 800))
-        self.resize(QSize(1400, 900))
+        self.setWindowTitle("WF EOL Tester - Industrial GUI")
+        self.setMinimumSize(1200, 800)
+        self.resize(1400, 900)
 
-        # Window flags for industrial application
-        self.setWindowFlags(
-            Qt.WindowType.Window
-            | Qt.WindowType.WindowMinimizeButtonHint
-            | Qt.WindowType.WindowMaximizeButtonHint
-            | Qt.WindowType.WindowCloseButtonHint
-        )
-
-        # Center window on screen
-        self.center_on_screen()
-
-        logger.debug("Main window setup completed")
-
-    def center_on_screen(self) -> None:
-        """Center window on the primary screen"""
-        screen = QApplication.primaryScreen()
-        if screen:
-            screen_geometry = screen.availableGeometry()
-            window_geometry = self.geometry()
-            x = (screen_geometry.width() - window_geometry.width()) // 2
-            y = (screen_geometry.height() - window_geometry.height()) // 2
-            self.move(x, y)
-
-    def create_widgets(self) -> None:
-        """Create all child widgets"""
-        # Create header
-        self.header_widget = HeaderWidget(state_manager=self.state_manager, parent=self)
-
-        # Create side menu
-        self.side_menu_widget = SideMenuWidget(state_manager=self.state_manager, parent=self)
-
-        # Create content area
-        self.content_area_widget = ContentAreaWidget(
-            container=self.container, state_manager=self.state_manager, parent=self
-        )
-
-        # Create custom status bar
-        self.status_bar_widget = StatusBarWidget(state_manager=self.state_manager, parent=self)
-
-        logger.debug("All widgets created")
-
-    def setup_layout(self) -> None:
-        """Setup main window layout"""
-        # Create central widget
+        # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Main vertical layout
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        # Main layout
+        main_layout = QHBoxLayout(central_widget)
         main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Add header
-        if self.header_widget:
-            main_layout.addWidget(self.header_widget)
+        # Sidebar
+        self.sidebar = SidebarWidget()
+        self.sidebar.page_changed.connect(self.change_page)
+        main_layout.addWidget(self.sidebar)
 
-        # Create horizontal splitter for content
-        content_splitter = QSplitter(Qt.Orientation.Horizontal)
-        content_splitter.setChildrenCollapsible(False)
+        # Content area
+        self.content_stack = QStackedWidget()
+        main_layout.addWidget(self.content_stack)
 
-        # Add side menu to splitter
-        if self.side_menu_widget:
-            content_splitter.addWidget(self.side_menu_widget)
+        # Create and add content pages
+        self.create_content_pages()
 
-        # Add content area to splitter
-        if self.content_area_widget:
-            content_splitter.addWidget(self.content_area_widget)
+        # Set initial page
+        self.change_page("dashboard")
 
-        # Set splitter proportions (side menu: content = 1:4)
-        content_splitter.setSizes([250, 1000])
-        content_splitter.setStretchFactor(0, 0)  # Side menu fixed
-        content_splitter.setStretchFactor(1, 1)  # Content area stretches
+    def create_content_pages(self) -> None:
+        """Create and add content pages to stack"""
+        # Dashboard page
+        self.dashboard_page = DashboardWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.dashboard_page)
 
-        # Add splitter to main layout
-        main_layout.addWidget(content_splitter)
+        # Test Control page
+        self.test_control_page = TestControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        # Connect test control signals
+        self.test_control_page.test_started.connect(self._on_test_started)
+        self.test_control_page.test_stopped.connect(self._on_test_stopped)
+        self.test_control_page.test_paused.connect(self._on_test_paused)
+        self.test_control_page.robot_home_requested.connect(self._on_robot_home_requested)
+        self.test_control_page.emergency_stop_requested.connect(self._on_emergency_stop_requested)
 
-        # Set custom status bar
-        if self.status_bar_widget:
-            self.setStatusBar(self.status_bar_widget)
+        # Set initial test status
+        self.test_control_page.update_test_status("Ready", "status_ready", 0)
 
-        logger.debug("Main window layout setup completed")
+        self.content_stack.addWidget(self.test_control_page)
 
-    def connect_signals(self) -> None:
-        """Connect signals and slots"""
-        # State manager signals
-        if self.state_manager:
-            self.state_manager.panel_changed.connect(self.on_panel_changed)
-            self.state_manager.test_status_changed.connect(self.on_test_status_changed)
-            self.state_manager.hardware_status_changed.connect(self.on_hardware_status_changed)
-            self.state_manager.system_message_added.connect(self.on_system_message_added)
+        # Results page
+        self.results_page = ResultsWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.results_page)
 
-        # Component signals
-        if self.side_menu_widget:
-            self.side_menu_widget.panel_requested.connect(self.state_manager.navigate_to_panel)
-            self.side_menu_widget.exit_requested.connect(self.close)
+        # Hardware page
+        self.hardware_page = HardwareWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.hardware_page)
 
-        if self.content_area_widget:
-            self.content_area_widget.status_message.connect(self.show_status_message)
+        # Logs page
+        self.logs_page = LogsWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.logs_page)
 
-        logger.debug("Signals connected")
+        # Store pages for easy access
+        self.pages = {
+            "dashboard": self.dashboard_page,
+            "test_control": self.test_control_page,
+            "results": self.results_page,
+            "hardware": self.hardware_page,
+            "logs": self.logs_page,
+            "settings": QWidget(),  # Placeholder
+            "about": QWidget(),  # Placeholder
+        }
 
-    def setup_keyboard_shortcuts(self) -> None:
-        """Setup keyboard shortcuts"""
-        # Exit shortcut
-        exit_action = QAction(self)
-        exit_action.setShortcut(QKeySequence("Ctrl+Q"))
-        exit_action.triggered.connect(self.close)
-        self.addAction(exit_action)
+        # Add placeholder pages
+        self.content_stack.addWidget(self.pages["settings"])
+        self.content_stack.addWidget(self.pages["about"])
 
-        # Emergency stop shortcut
-        emergency_stop_action = QAction(self)
-        emergency_stop_action.setShortcut(QKeySequence("F1"))
-        emergency_stop_action.triggered.connect(self.emergency_stop)
-        self.addAction(emergency_stop_action)
+    def setup_status_bar(self) -> None:
+        """Setup status bar with system information"""
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
 
-        # Refresh shortcut
-        refresh_action = QAction(self)
-        refresh_action.setShortcut(QKeySequence("F5"))
-        refresh_action.triggered.connect(self.refresh_status)
-        self.addAction(refresh_action)
+        # Status indicators
+        self.system_status_label = QLabel("🟢 System Ready")
+        self.connection_status_label = QLabel("📡 5/5 Connected")
+        self.test_status_label = QLabel("⚡ Test: IDLE")
+        self.time_label = QLabel("🕐 --:--:--")
+        self.progress_label = QLabel("📊 0/0 Done")
 
-        logger.debug("Keyboard shortcuts setup completed")
+        # Add to status bar
+        self.status_bar.addWidget(self.system_status_label)
+        self.status_bar.addWidget(self._create_separator())
+        self.status_bar.addWidget(self.connection_status_label)
+        self.status_bar.addWidget(self._create_separator())
+        self.status_bar.addWidget(self.test_status_label)
+        self.status_bar.addWidget(self._create_separator())
+        self.status_bar.addWidget(self.time_label)
+        self.status_bar.addWidget(self._create_separator())
+        self.status_bar.addPermanentWidget(self.progress_label)
 
-    def load_window_settings(self) -> None:
-        """Load window settings from configuration"""
-        # This could be expanded to load window geometry from config
-        # For now, just ensure reasonable defaults
-        pass
+        # Style status bar
+        self.status_bar.setStyleSheet("""
+            QStatusBar {
+                background-color: #2d2d2d;
+                color: #cccccc;
+                border-top: 1px solid #404040;
+                padding: 2px;
+            }
+            QLabel {
+                padding: 2px 8px;
+                font-size: 14px;
+            }
+        """)
 
-    def save_window_settings(self) -> None:
-        """Save window settings to configuration"""
-        # This could be expanded to save window geometry to config
-        pass
+    def setup_update_timer(self) -> None:
+        """Setup timer for periodic UI updates"""
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_status_bar)
+        self.update_timer.start(1000)  # Update every second
 
-    # === EVENT HANDLERS ===
+    def _create_separator(self) -> QFrame:
+        """Create a status bar separator"""
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.VLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setStyleSheet("color: #404040;")
+        return separator
 
-    def on_panel_changed(self, panel_name: str) -> None:
-        """
-        Handle panel change
+    def change_page(self, page_id: str) -> None:
+        """Change to a different content page"""
+        if page_id in self.pages:
+            page_widget = self.pages[page_id]
+            self.content_stack.setCurrentWidget(page_widget)
+            self.sidebar.set_current_page(page_id)
 
-        Args:
-            panel_name: Name of the new active panel
-        """
-        self.show_status_message(f"Switched to {panel_name}")
-        logger.debug(f"Panel changed to: {panel_name}")
+            # Auto-select serial number when navigating to test control
+            if page_id == "test_control":
+                self.test_control_page.serial_edit.selectAll()
+                self.test_control_page.serial_edit.setFocus()
 
-    def on_test_status_changed(self, status: str) -> None:
-        """
-        Handle test status change
+    def update_status_bar(self) -> None:
+        """Update status bar information"""
+        from datetime import datetime
 
-        Args:
-            status: New test status
-        """
-        if self.header_widget:
-            self.header_widget.update_test_status(status)
+        # Update time
+        current_time = datetime.now().strftime("%H:%M:%S")
+        self.time_label.setText(f"🕐 {current_time}")
 
-        # Update window title with test status
-        base_title = "WF EOL Tester"
-        if status != "idle":
-            self.setWindowTitle(f"{base_title} - {status.title()}")
-        else:
-            self.setWindowTitle(base_title)
+        # TODO: Update other status information from state manager
+        # This will be implemented when state manager is connected to hardware
 
-        logger.debug(f"Test status changed to: {status}")
+    def closeEvent(self, event) -> None:
+        """Handle window close event"""
+        # TODO: Add cleanup logic if needed
+        event.accept()
 
-    def on_hardware_status_changed(self, hardware_status) -> None:
-        """
-        Handle hardware status change
+    # Test Control Signal Handlers
+    # ============================================================================
 
-        Args:
-            hardware_status: New hardware status object
-        """
-        if self.header_widget:
-            self.header_widget.update_hardware_status(hardware_status)
+    def _on_test_started(self) -> None:
+        """Handle test start request"""
+        from loguru import logger
 
-        # Log significant status changes
-        overall_status = hardware_status.overall_status
-        if overall_status == ConnectionStatus.ERROR:
-            self.show_status_message("Hardware connection error detected", 5000)
-        elif overall_status == ConnectionStatus.CONNECTED:
-            self.show_status_message("All hardware connected", 3000)
+        try:
+            # Check if test is already running
+            if self.test_executor_thread and self.test_executor_thread.isRunning():
+                self.test_control_page.update_test_status("Test already running. Please wait or stop first.", "⚠️")
+                return
 
-    def on_system_message_added(self, message: str) -> None:
-        """
-        Handle new system message
+            # Mutex check: Prevent test start if robot home is running
+            if hasattr(self, 'robot_home_thread') and self.robot_home_thread and self.robot_home_thread.isRunning():
+                logger.warning("Test start blocked - robot home is currently running")
+                self.test_control_page.update_test_status("Test unavailable during robot home", "status_warning")
+                self.state_manager.add_log_message("WARNING", "TEST", "Test start blocked - robot home currently running")
+                return
 
-        Args:
-            message: New system message
-        """
-        if self.status_bar_widget:
-            self.status_bar_widget.show_message(message, 2000)
+            # Get serial number and test sequence from test control widget
+            serial_number = self.test_control_page.serial_edit.text().strip()
+            test_sequence = self.test_control_page.sequence_combo.currentText()
 
-    # === PUBLIC METHODS ===
+            if not serial_number:
+                self.test_control_page.update_test_status("Please enter a serial number", "status_warning")
+                return
 
-    def show_status_message(self, message: str, timeout: int = 2000) -> None:
-        """
-        Show status message in status bar
+            logger.info(f"Starting {test_sequence} for serial number: {serial_number}")
 
-        Args:
-            message: Message to show
-            timeout: Timeout in milliseconds
-        """
-        if self.status_bar_widget:
-            self.status_bar_widget.show_message(message, timeout)
+            # Clear previous test results from Results table and chart
+            self.results_page.results_table.clear_results()
+            self.results_page.temp_force_chart.clear_data()
 
-    def show_error_message(self, title: str, message: str) -> None:
-        """
-        Show error message dialog
+            # Clear live logs when starting a new test
+            self.logs_page.log_viewer.clear_logs()
+            logger.info("Previous test results and live logs cleared. Starting new test...")
+            self.state_manager.add_log_message("INFO", "TEST", "Previous test results and logs cleared")
 
-        Args:
-            title: Dialog title
-            message: Error message
-        """
-        QMessageBox.critical(self, title, message)
+            # Update GUI state
+            self.state_manager.set_system_status("Testing")
+            self.state_manager.add_log_message("INFO", "TEST", f"Starting {test_sequence} for SN: {serial_number}")
 
-    def show_warning_message(self, title: str, message: str) -> None:
-        """
-        Show warning message dialog
+            # Update test control status
+            self.test_control_page.update_test_status(f"Running {test_sequence}...", "status_loading", 0)
 
-        Args:
-            title: Dialog title
-            message: Warning message
-        """
-        QMessageBox.warning(self, title, message)
+            # Update button states
+            self._set_test_running_state(True)
 
-    def show_info_message(self, title: str, message: str) -> None:
-        """
-        Show information message dialog
+            # Start test execution in background
+            self._start_test_execution(test_sequence, serial_number)
 
-        Args:
-            title: Dialog title
-            message: Information message
-        """
-        QMessageBox.information(self, title, message)
+        except Exception as e:
+            logger.error(f"Failed to start test: {e}")
+            self.test_control_page.update_test_status(f"Failed to start test: {str(e)}", "status_error")
+            self._set_test_running_state(False)
 
-    def emergency_stop(self) -> None:
+    def _on_test_stopped(self) -> None:
+        """Handle test stop request"""
+        from loguru import logger
+
+        logger.info("Test stop requested")
+        self.state_manager.add_log_message("INFO", "TEST", "Test stop requested by user")
+        self.state_manager.set_system_status("Stopping")
+
+        # Stop the test thread if it's running
+        if self.test_executor_thread and self.test_executor_thread.isRunning():
+            self.test_executor_thread.stop_test()
+            self.test_executor_thread.quit()
+            self.test_executor_thread.wait(5000)  # Wait up to 5 seconds
+            logger.info("Test thread stopped")
+
+        # Update test control status
+        self.test_control_page.update_test_status("Test Stopped", "⏹️", 0)
+
+        # Reset GUI state
+        self._set_test_running_state(False)
+        self.state_manager.set_system_status("Ready")
+
+    def _on_test_paused(self) -> None:
+        """Handle test pause request"""
+        from loguru import logger
+
+        logger.info("Test pause requested")
+        self.state_manager.add_log_message("INFO", "TEST", "Test pause requested by user")
+
+        # TODO: Implement test pause logic
+        # Update test control status
+        self.test_control_page.update_test_status("Test Paused", "⏸️")
+
+    def _on_robot_home_requested(self) -> None:
+        """Handle robot home request"""
+        from loguru import logger
+
+        logger.critical("🔥 DEBUG: _on_robot_home_requested method called!")
+        try:
+            # Mutex check: Prevent robot home if test is running
+            if self.test_executor_thread and self.test_executor_thread.isRunning():
+                logger.warning("Robot home blocked - test is currently running")
+                self.test_control_page.update_test_status("Robot home unavailable during test", "status_warning")
+                self.state_manager.add_log_message("WARNING", "ROBOT", "Robot home blocked - test currently running")
+                return
+
+            # Mutex check: Prevent multiple robot home operations
+            if hasattr(self, 'robot_home_thread') and self.robot_home_thread and self.robot_home_thread.isRunning():
+                logger.warning("Robot home already in progress")
+                self.test_control_page.update_test_status("Robot home already in progress", "status_warning")
+                self.state_manager.add_log_message("WARNING", "ROBOT", "Robot home already in progress")
+                return
+
+            logger.info("Robot home requested")
+            self.state_manager.add_log_message("INFO", "ROBOT", "Robot home requested by user")
+
+            # Update test control status to show homing in progress
+            self.test_control_page.update_test_status("Homing Robot...", "status_homing")
+
+            # Execute robot homing using QTimer for proper Qt-asyncio integration
+            logger.debug("🔥 DEBUG: About to call _execute_robot_home_async()")
+            try:
+                self._execute_robot_home_async()
+                logger.debug("🔥 DEBUG: _execute_robot_home_async() call completed")
+            except Exception as async_error:
+                logger.error(f"🔥 DEBUG: _execute_robot_home_async() failed: {async_error}")
+                self.test_control_page.update_test_status("Robot Home Setup Failed", "status_error")
+                raise
+
+        except Exception as e:
+            logger.error(f"Robot home failed: {e}")
+            self.test_control_page.update_test_status("Robot Home Failed", "status_error")
+
+    def _on_emergency_stop_requested(self) -> None:
         """Handle emergency stop request"""
+        from loguru import logger
+        from PySide6.QtCore import QTimer
+
+        logger.critical("EMERGENCY STOP REQUESTED")
+
+        # PRIORITY 1: Immediate UI updates (must happen first)
+        def immediate_ui_updates():
+            """Execute immediate UI updates with high priority"""
+            logger.info("Executing immediate UI updates for Emergency Stop")
+
+            # Update test control status immediately for user feedback
+            self.test_control_page.update_test_status("EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency")
+
+            # Set emergency stop flag and disable START TEST button
+            self.emergency_stop_active = True
+            logger.info("Emergency stop state activated - START TEST button disabled")
+            self.test_control_page.disable_start_button()
+            logger.info("START TEST button disabled successfully")
+
+        # Execute UI updates immediately
+        immediate_ui_updates()
+
+        # PRIORITY 2: Stop running test thread (after UI updates)
+        def stop_test_thread():
+            """Stop running test thread"""
+            if hasattr(self, 'test_executor_thread') and self.test_executor_thread and self.test_executor_thread.isRunning():
+                logger.info("Stopping running test thread...")
+                self.test_executor_thread.stop_test()
+                self.test_executor_thread.wait(1000)  # Wait up to 1 second
+                logger.info("Test thread stopped")
+
+            # PRIORITY 3: Execute hardware emergency stop (after thread stop)
+            self._execute_emergency_stop_async()
+
+        # Use QTimer.singleShot to ensure proper event loop handling
+        QTimer.singleShot(0, stop_test_thread)
+
+    def _execute_robot_home_async(self) -> None:
+        """Execute robot home operation using QThread (non-blocking)"""
+        from loguru import logger
+
+        # Check if robot home is already running
+        if self.robot_home_thread and self.robot_home_thread.isRunning():
+            logger.warning("Robot home already running")
+            return
+
+        logger.info("Starting robot home thread...")
+
+        # Create fresh container for robot home to avoid event loop conflicts
+        from application.containers.application_container import ApplicationContainer
+        fresh_container = ApplicationContainer.create()
+
+        # Create and configure robot home thread with fresh container
+        self.robot_home_thread = RobotHomeThread(fresh_container)
+
+        # Connect signals
+        self.robot_home_thread.started.connect(self._on_robot_home_started)
+        self.robot_home_thread.progress.connect(self._on_robot_home_progress)
+        self.robot_home_thread.completed.connect(self._on_robot_home_completed)
+
+        # Start the thread
+        self.robot_home_thread.start()
+
+    def _on_robot_home_started(self) -> None:
+        """Handle robot home thread started"""
+        from loguru import logger
+        logger.info("Robot home operation started in background thread")
+        self.test_control_page.update_test_status("Robot Homing...", "status_running")
+
+        # Mutual exclusion: Disable START TEST button during robot home
+        self.test_control_page.disable_start_button()
+
+    def _on_robot_home_progress(self, message: str) -> None:
+        """Handle robot home progress updates"""
+        from loguru import logger
+        logger.info(f"Robot home progress: {message}")
+        self.state_manager.add_log_message("INFO", "ROBOT", message)
+
+    def _on_robot_home_completed(self, success: bool, message: str) -> None:
+        """Handle robot home completion"""
+        from loguru import logger
+
+        if success:
+            logger.info(f"✅ {message}")
+            self.state_manager.add_log_message("INFO", "ROBOT", message)
+            self.test_control_page.update_test_status("Robot Home Completed", "status_success")
+
+            # Clear emergency stop state and re-enable START TEST button
+            self.emergency_stop_active = False
+            self.test_control_page.enable_start_button()
+            logger.info("Emergency stop cleared - START TEST button re-enabled after successful robot home")
+
+        else:
+            logger.error(f"❌ {message}")
+            self.state_manager.add_log_message("ERROR", "ROBOT", message)
+            self.test_control_page.update_test_status("Robot Home Failed", "status_error")
+
+            # Re-enable START TEST button even on failure (mutual exclusion complete)
+            # but respect emergency stop state
+            if not self.emergency_stop_active:
+                self.test_control_page.enable_start_button()
+
+        # Clean up thread
+        if self.robot_home_thread:
+            self.robot_home_thread.deleteLater()
+            self.robot_home_thread = None
+
+    def _execute_emergency_stop_async(self) -> None:
+        """Execute emergency stop asynchronously using QTimer"""
+        from loguru import logger
+        import asyncio
+        from PySide6.QtCore import QTimer
+
         try:
-            # Stop any running tests
-            if self.state_manager.test_status in [TestStatus.RUNNING, TestStatus.PREPARING]:
-                self.state_manager.set_test_status(TestStatus.CANCELLED, "Emergency stop activated")
-
-            # Notify content area
-            if self.content_area_widget:
-                self.content_area_widget.emergency_stop()
-
-            self.show_status_message("Emergency stop activated", 5000)
-            logger.warning("Emergency stop activated by user")
-
+            # Create a single-shot timer to execute the async function
+            timer = QTimer()
+            timer.setSingleShot(True)
+            timer.timeout.connect(lambda: asyncio.ensure_future(self._run_emergency_stop()))
+            timer.start(10)  # Start after 10ms
         except Exception as e:
-            logger.error(f"Emergency stop failed: {e}")
-            self.show_error_message(
-                "Emergency Stop Error", f"Failed to execute emergency stop: {e}"
+            logger.error(f"Failed to setup emergency stop async execution: {e}")
+            # Fallback to UI-only emergency stop
+            self.state_manager.add_log_message("ERROR", "EMERGENCY", f"Emergency stop setup failed: {str(e)}")
+            self.state_manager.set_system_status("EMERGENCY STOP - ERROR")
+
+    async def _run_emergency_stop(self) -> None:
+        """Actually run the emergency stop procedure"""
+        from loguru import logger
+
+        try:
+            await self.state_manager.execute_emergency_stop()
+            logger.info("Emergency stop completed successfully from GUI")
+        except Exception as e:
+            logger.error(f"Emergency stop execution failed: {e}")
+            self.state_manager.add_log_message("ERROR", "EMERGENCY", f"Emergency stop failed: {str(e)}")
+            self.state_manager.set_system_status("EMERGENCY STOP - ERROR")
+
+    def _start_test_execution(self, test_sequence: str, serial_number: str) -> None:
+        """Start test execution in background"""
+        from loguru import logger
+
+        try:
+            # Create fresh container for test execution to avoid event loop conflicts
+            from application.containers.application_container import ApplicationContainer
+            fresh_container = ApplicationContainer.create()
+
+            # Create and configure test executor thread with fresh container
+            self.test_executor_thread = TestExecutorThread(
+                container=fresh_container,
+                test_sequence=test_sequence,
+                serial_number=serial_number,
+                parent=self
             )
 
-    def refresh_status(self) -> None:
-        """Refresh all status information"""
-        try:
-            # Trigger hardware status update
-            if self.state_manager:
-                # Force immediate status update
-                QTimer.singleShot(100, lambda: self.state_manager._update_hardware_status())
+            # Connect thread signals
+            self._connect_test_thread_signals()
 
-            # Refresh content area
-            if self.content_area_widget:
-                self.content_area_widget.refresh_current_panel()
-
-            self.show_status_message("Status refreshed", 2000)
-            logger.info("Status refresh triggered by user")
+            # Start the test execution thread
+            self.test_executor_thread.start()
+            logger.info(f"Test execution thread started for {test_sequence}")
 
         except Exception as e:
-            logger.error(f"Status refresh failed: {e}")
-            self.show_error_message("Refresh Error", f"Failed to refresh status: {e}")
+            logger.error(f"Failed to start test execution thread: {e}")
+            self.state_manager.add_log_message("ERROR", "TEST", f"Failed to start test: {str(e)}")
+            self.test_control_page.update_test_status(f"Test start failed: {str(e)}", "status_error")
+            self._set_test_running_state(False)
 
-    # === WINDOW EVENTS ===
+    def _connect_test_thread_signals(self) -> None:
+        """Connect test thread signals to GUI handlers"""
+        if self.test_executor_thread:
+            self.test_executor_thread.test_started.connect(self._on_thread_test_started)
+            self.test_executor_thread.test_progress.connect(self._on_thread_test_progress)
+            self.test_executor_thread.test_result.connect(self._on_thread_test_result)
+            self.test_executor_thread.test_completed.connect(self._on_thread_test_completed)
+            self.test_executor_thread.test_error.connect(self._on_thread_test_error)
+            self.test_executor_thread.log_message.connect(self._on_thread_log_message)
 
-    def closeEvent(self, event: QCloseEvent) -> None:
-        """
-        Handle window close event
+    def _set_test_running_state(self, running: bool) -> None:
+        """Set GUI state for test running/stopped"""
+        # Update test control buttons
+        if hasattr(self.test_control_page, 'start_btn'):
+            # Only enable start button if not running AND not in emergency stop state
+            should_enable_start = not running and not self.emergency_stop_active
+            self.test_control_page.start_btn.setEnabled(should_enable_start)
+        if hasattr(self.test_control_page, 'stop_btn'):
+            self.test_control_page.stop_btn.setEnabled(running)
+        if hasattr(self.test_control_page, 'pause_btn'):
+            self.test_control_page.pause_btn.setEnabled(running)
 
-        Args:
-            event: Close event
-        """
-        # Check if test is running
-        if self.state_manager and self.state_manager.test_status == TestStatus.RUNNING:
-            reply = QMessageBox.question(
-                self,
-                "Test Running",
-                "A test is currently running. Are you sure you want to exit?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
+        # Mutual exclusion: Disable HOME button during test execution
+        if running:
+            self.test_control_page.disable_home_button()
+        else:
+            self.test_control_page.enable_home_button()
 
-            if reply != QMessageBox.StandardButton.Yes:
-                event.ignore()
-                return
+    # Test Thread Signal Handlers
+    # ============================================================================
 
-        # Save settings
+    def _on_thread_test_started(self, test_name: str) -> None:
+        """Handle test started from thread"""
+        from ui.gui.services.gui_state_manager import TestProgress
+
+        progress = TestProgress(
+            current_test=test_name,
+            progress_percent=0,
+            current_cycle=0,
+            total_cycles=10,  # Default, will be updated
+            status="Starting...",
+            elapsed_time="00:00:00",
+            estimated_remaining="--:--:--"
+        )
+        self.state_manager.update_test_progress(progress)
+
+    def _on_thread_test_progress(self, current_cycle: int, total_cycles: int, status: str) -> None:
+        """Handle test progress from thread"""
+        from ui.gui.services.gui_state_manager import TestProgress
+
+        progress_percent = int((current_cycle / total_cycles) * 100) if total_cycles > 0 else 0
+
+        # Update test control progress bar
+        self.test_control_page.update_test_progress(
+            progress_percent,
+            f"Progress: {current_cycle}/{total_cycles} cycles"
+        )
+
+        progress = TestProgress(
+            current_test=self.test_executor_thread.test_sequence if self.test_executor_thread else "Unknown",
+            progress_percent=progress_percent,
+            current_cycle=current_cycle,
+            total_cycles=total_cycles,
+            status=status,
+            elapsed_time="00:00:00",  # TODO: Calculate actual elapsed time
+            estimated_remaining="--:--:--"  # TODO: Calculate estimated remaining time
+        )
+        self.state_manager.update_test_progress(progress)
+
+    def _on_thread_test_result(self, result_data) -> None:
+        """Handle test result from thread"""
+        from loguru import logger
+        from ui.gui.services.gui_state_manager import TestResult
+        from datetime import datetime
+
+        logger.info(f"Received test result: {result_data}")
+
         try:
-            self.save_window_settings()
+            # Convert test result to GUI TestResult for display
+            if hasattr(result_data, 'test_status'):
+                # Check for EOL-specific attributes first
+                if hasattr(result_data, 'is_device_passed'):
+                    # This is an EOLTestResult from domain layer
+                    if result_data.is_device_passed:
+                        status_text = "PASS"
+                    elif result_data.is_device_failed:
+                        status_text = "FAIL"
+                    elif result_data.is_failed_execution:
+                        status_text = "ERROR"
+                    else:
+                        status_text = result_data.test_status.value
+                # For other result types (like HeatingCoolingTimeTestResult), use is_success or error_message
+                elif hasattr(result_data, 'is_success'):
+                    if result_data.is_success and not result_data.error_message:
+                        status_text = "PASS"
+                    else:
+                        status_text = "FAIL" if result_data.error_message else "PASS"
+                else:
+                    status_text = result_data.test_status.value
 
-            # Emit closing signal
-            self.closing.emit()
+                # Create GUI TestResult with summary data
+                gui_result = TestResult(
+                    cycle=1,  # Summary result
+                    temperature=25.0,  # Default/average values
+                    stroke=12.5,
+                    force=5.0,
+                    heating_time=45,
+                    cooling_time=120,
+                    status=status_text,
+                    timestamp=datetime.now()
+                )
 
-            # Stop any running operations
-            if self.state_manager:
-                self.state_manager.reset_test_state()
+                # Add to state manager (will trigger results table update)
+                self.state_manager.add_test_result(gui_result)
+                logger.info(f"Added test result to results table: {status_text}")
 
-            logger.info("Main window closing")
-            event.accept()
-
-        except Exception as e:
-            logger.error(f"Error during window close: {e}")
-            event.accept()  # Still close despite errors
-
-    def resizeEvent(self, event) -> None:
-        """Handle window resize event"""
-        super().resizeEvent(event)
-
-        # Update component layouts if needed
-        if self.content_area_widget:
-            self.content_area_widget.handle_resize()
-
-    def showEvent(self, event) -> None:
-        """Handle window show event"""
-        super().showEvent(event)
-
-        # Initialize components after window is shown
-        QTimer.singleShot(100, self._post_show_initialization)
-
-    def _post_show_initialization(self) -> None:
-        """Post-show initialization tasks"""
-        try:
-            # Initialize content area
-            if self.content_area_widget:
-                self.content_area_widget.initialize_panels()
-
-            # Navigate to default panel
-            if self.state_manager:
-                self.state_manager.navigate_to_panel("dashboard")
-
-            logger.info("Post-show initialization completed")
-
-        except Exception as e:
-            logger.error(f"Post-show initialization failed: {e}")
-            self.show_error_message("Initialization Error", f"Post-show initialization failed: {e}")
-
-    def set_theme(self, theme_name: str) -> None:
-        """
-        Set application theme
-
-        Args:
-            theme_name: Name of theme to apply
-        """
-        try:
-            if theme_name == "industrial":
-                self.theme_manager.apply_industrial_theme(self)
-            elif theme_name == "terminal":
-                self.theme_manager.apply_terminal_theme(self)
             else:
-                logger.warning(f"Unknown theme: {theme_name}")
-                return
-
-            self.show_status_message(f"Theme changed to {theme_name}", 2000)
-            logger.info(f"Theme changed to: {theme_name}")
+                logger.warning(f"Received unknown result format: {type(result_data)}")
 
         except Exception as e:
-            logger.error(f"Theme change failed: {e}")
-            self.show_error_message("Theme Error", f"Failed to change theme: {e}")
+            logger.error(f"Failed to process test result: {e}")
+            self.state_manager.add_log_message("ERROR", "GUI", f"Failed to process test result: {str(e)}")
+
+    def _on_thread_test_completed(self, success: bool, message: str) -> None:
+        """Handle test completion from thread"""
+        from loguru import logger
+
+        logger.info(f"Test completed: success={success}, message={message}")
+
+        # Add completion message to logs
+        log_level = "INFO" if success else "ERROR"
+        self.state_manager.add_log_message(log_level, "TEST", f"Test completed: {message}")
+
+        # Reset GUI state
+        self._set_test_running_state(False)
+        self.state_manager.set_system_status("Ready")
+
+        # Update test control status instead of showing popup
+        if success:
+            self.test_control_page.update_test_status("Test Completed Successfully", "status_success", 100)
+        else:
+            self.test_control_page.update_test_status("Test Failed", "status_error", 0)
+
+    def _on_thread_test_error(self, error_message: str) -> None:
+        """Handle test error from thread"""
+        from loguru import logger
+
+        logger.error(f"Test execution error: {error_message}")
+
+        # Update test control status
+        self.test_control_page.update_test_status(f"Test Error: {error_message}", "status_error", 0)
+
+        # Reset GUI state
+        self._set_test_running_state(False)
+        self.state_manager.set_system_status("Error")
+
+        # Show error message
+        QMessageBox.critical(self, "Test Execution Error", f"Test execution failed:\n\n{error_message}")
+
+    def _on_thread_log_message(self, level: str, component: str, message: str) -> None:
+        """Handle log message from thread"""
+        # Forward log message to state manager
+        self.state_manager.add_log_message(level, component, message)

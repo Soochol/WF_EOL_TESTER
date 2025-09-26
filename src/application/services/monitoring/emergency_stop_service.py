@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     # Local application imports
     from application.services.core.configuration_service import ConfigurationService
     from application.services.hardware_facade import HardwareServiceFacade
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
 
 
 class EmergencyStopService:
@@ -34,6 +35,7 @@ class EmergencyStopService:
         self,
         hardware_facade: "HardwareServiceFacade",
         configuration_service: "ConfigurationService",
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
     ):
         """
         Initialize Emergency Stop Service
@@ -41,9 +43,11 @@ class EmergencyStopService:
         Args:
             hardware_facade: Hardware service facade for accessing all hardware
             configuration_service: Configuration service for reading hardware settings
+            industrial_system_manager: Optional industrial system manager for status indication
         """
         self.hardware_facade = hardware_facade
         self.configuration_service = configuration_service
+        self.industrial_system_manager = industrial_system_manager
 
         # Emergency stop state tracking
         self._emergency_active = False
@@ -64,6 +68,10 @@ class EmergencyStopService:
         self._last_emergency_time = asyncio.get_event_loop().time()
 
         try:
+            # Immediate industrial status indication for emergency
+            if self.industrial_system_manager:
+                await self.industrial_system_manager.handle_emergency_stop()
+
             # Hardware emergency stop and cleanup
             await self._execute_hardware_emergency_stop()
             await self._handle_software_cleanup()

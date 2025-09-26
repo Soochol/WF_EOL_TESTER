@@ -25,6 +25,9 @@ from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.emergency_stop_service import EmergencyStopService
 from application.services.test.test_result_evaluator import TestResultEvaluator
 
+# Industrial Services
+from application.services.industrial.industrial_system_manager import IndustrialSystemManager
+
 # Use Cases
 from application.use_cases.eol_force_test import EOLForceTestUseCase
 from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
@@ -132,6 +135,17 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     # ============================================================================
+    # INDUSTRIAL SERVICES
+    # ============================================================================
+
+    industrial_system_manager = providers.Singleton(
+        IndustrialSystemManager,
+        hardware_service_facade=hardware_service_facade,
+        configuration_service=configuration_service,
+        gui_alert_callback=None,  # Will be set by GUI if available
+    )
+
+    # ============================================================================
     # USE CASES
     # ============================================================================
 
@@ -145,13 +159,15 @@ class ApplicationContainer(containers.DeclarativeContainer):
         repository_service=repository_service,
         exception_handler=exception_handler,
         emergency_stop_service=emergency_stop_service,
+        industrial_system_manager=industrial_system_manager,
     )
 
-    # Standard Use Cases (with minimal dependencies)
+    # Standard Use Cases (with industrial system integration)
     robot_home_use_case = providers.Factory(
         RobotHomeUseCase,
         hardware_services=hardware_service_facade,
         configuration_service=configuration_service,
+        industrial_system_manager=industrial_system_manager,
     )
 
     heating_cooling_time_test_use_case = providers.Factory(
@@ -159,6 +175,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         hardware_services=hardware_service_facade,
         configuration_service=configuration_service,
         emergency_stop_service=emergency_stop_service,
+        industrial_system_manager=industrial_system_manager,
     )
 
     simple_mcu_test_use_case = providers.Factory(
@@ -166,6 +183,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         hardware_services=hardware_service_facade,
         configuration_service=configuration_service,
         emergency_stop_service=emergency_stop_service,
+        industrial_system_manager=industrial_system_manager,
     )
 
     # ============================================================================

@@ -459,7 +459,6 @@ metadata:
             return []
         return await self._configuration.list_available_profiles()
 
-
     async def get_active_profile_name(self) -> str:
         """
         Get the profile name that should be used, following business priority rules

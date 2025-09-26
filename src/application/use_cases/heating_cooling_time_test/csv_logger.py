@@ -90,8 +90,10 @@ class HeatingCoolingCSVLogger:
             if isinstance(timestamp, str):
                 try:
                     # Parse ISO format timestamp
-                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                    formatted_timestamp = dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # Remove last 3 digits for milliseconds
+                    dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                    formatted_timestamp = dt.strftime("%Y-%m-%d %H:%M:%S.%f")[
+                        :-3
+                    ]  # Remove last 3 digits for milliseconds
                 except ValueError:
                     formatted_timestamp = timestamp[:23]  # Fallback to first 23 chars
             else:

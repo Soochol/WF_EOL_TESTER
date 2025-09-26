@@ -1,1 +1,5 @@
-"""GUI Services Package"""
+"""
+GUI Services Package
+
+Services for GUI state management and functionality.
+"""

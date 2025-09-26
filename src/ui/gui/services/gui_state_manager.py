@@ -1,442 +1,297 @@
 """
-GUI State Management Service
+GUI State Manager
 
-Manages application state, hardware status, and UI component synchronization.
+Manages GUI state and provides interface between GUI and business logic.
 """
 
 # Standard library imports
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 # Third-party imports
-from PySide6.QtCore import QObject, QTimer, Signal
-import asyncio
+from PySide6.QtCore import QObject, Signal
 from loguru import logger
 
 # Local application imports
-from application.services.core.configuration_service import ConfigurationService
-from application.services.hardware_facade import HardwareServiceFacade
+from application.services.hardware_facade.hardware_service_facade import (
+    HardwareServiceFacade,
+)
 
 
-class ConnectionStatus(Enum):
-    """Hardware connection status enumeration"""
+@dataclass
+class TestResult:
+    """Data class for test results"""
 
-    DISCONNECTED = "disconnected"
-    CONNECTING = "connecting"
-    CONNECTED = "connected"
-    ERROR = "error"
-
-
-class TestStatus(Enum):
-    """Test execution status enumeration"""
-
-    IDLE = "idle"
-    PREPARING = "preparing"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    cycle: int
+    temperature: float
+    stroke: float
+    force: float
+    heating_time: int
+    cooling_time: int
+    status: str
+    timestamp: datetime
 
 
 @dataclass
 class HardwareStatus:
-    """Hardware status data class"""
+    """Data class for hardware status"""
 
-    robot_status: ConnectionStatus = ConnectionStatus.DISCONNECTED
-    mcu_status: ConnectionStatus = ConnectionStatus.DISCONNECTED
-    loadcell_status: ConnectionStatus = ConnectionStatus.DISCONNECTED
-    power_status: ConnectionStatus = ConnectionStatus.DISCONNECTED
-    digital_io_status: ConnectionStatus = ConnectionStatus.DISCONNECTED
-    last_updated: datetime = field(default_factory=datetime.now)
+    loadcell_connected: bool = False
+    loadcell_value: float = 0.0
+    mcu_connected: bool = False
+    mcu_port: str = ""
+    power_connected: bool = False
+    power_voltage: float = 0.0
+    power_current: float = 0.0
+    robot_connected: bool = False
+    robot_homed: bool = False
+    robot_position: Dict[str, float] = None  # type: ignore
+    digital_io_connected: bool = False
+    digital_io_channels: int = 0
 
-    @property
-    def overall_status(self) -> ConnectionStatus:
-        """Get overall hardware status"""
-        statuses = [
-            self.robot_status,
-            self.mcu_status,
-            self.loadcell_status,
-            self.power_status,
-            self.digital_io_status,
-        ]
-
-        if any(status == ConnectionStatus.ERROR for status in statuses):
-            return ConnectionStatus.ERROR
-        elif any(status == ConnectionStatus.CONNECTING for status in statuses):
-            return ConnectionStatus.CONNECTING
-        elif all(status == ConnectionStatus.CONNECTED for status in statuses):
-            return ConnectionStatus.CONNECTED
-        else:
-            return ConnectionStatus.DISCONNECTED
+    def __post_init__(self):
+        if self.robot_position is None:
+            self.robot_position = {"x": 0.0, "y": 0.0, "z": 0.0}
 
 
 @dataclass
-class ApplicationState:
-    """Main application state data class"""
+class TestProgress:
+    """Data class for test progress"""
 
-    current_panel: str = "dashboard"
-    test_status: TestStatus = TestStatus.IDLE
-    hardware_status: HardwareStatus = field(default_factory=HardwareStatus)
-    test_progress: int = 0
-    test_message: str = ""
-    last_test_result: Optional[Dict[str, Any]] = None
-    system_messages: List[str] = field(default_factory=list)
-    configuration_loaded: bool = False
+    current_test: str = ""
+    progress_percent: int = 0
+    current_cycle: int = 0
+    total_cycles: int = 0
+    status: str = "Idle"
+    elapsed_time: str = "00:00:00"
+    estimated_remaining: str = "00:00:00"
 
 
 class GUIStateManager(QObject):
     """
     GUI State Manager
 
-    Central state management for the GUI application.
-    Handles hardware status monitoring, test state tracking,
-    and UI component synchronization.
+    Manages application state and provides signals for GUI updates.
     """
 
-    # State change signals
-    panel_changed = Signal(str)  # current_panel
-    test_status_changed = Signal(str)  # test_status
-    test_progress_changed = Signal(int, str)  # progress, message
-    hardware_status_changed = Signal(object)  # HardwareStatus
-    system_message_added = Signal(str)  # message
-    configuration_changed = Signal()
+    # Signals for GUI updates
+    hardware_status_updated = Signal(object)  # HardwareStatus
+    test_progress_updated = Signal(object)  # TestProgress
+    test_result_added = Signal(object)  # TestResult
+    cycle_result_added = Signal(object)  # TestResult for individual cycles
+    log_message_received = Signal(str, str, str)  # level, component, message
+    system_status_changed = Signal(str)  # status
+    temperature_updated = Signal(float)  # temperature
 
     def __init__(
-        self, hardware_facade: HardwareServiceFacade, configuration_service: ConfigurationService
+        self,
+        hardware_facade: HardwareServiceFacade,
+        configuration_service=None,  # ConfigurationService,
+        emergency_stop_service=None,  # EmergencyStopService
+        parent: Optional[QObject] = None,
     ):
-        """
-        Initialize GUI state manager
+        super().__init__(parent)
+        self.hardware_facade = hardware_facade
+        self.configuration_service = configuration_service
+        self.emergency_stop_service = emergency_stop_service
 
-        Args:
-            hardware_facade: Hardware service facade
-            configuration_service: Configuration service
-        """
-        super().__init__()
+        # State data
+        self.hardware_status = HardwareStatus()
+        self.test_progress = TestProgress()
+        self.test_results: List[TestResult] = []
+        self.log_messages: List[Dict[str, str]] = []
+        self.system_status = "Initializing"
+        self.current_temperature = 25.0
 
-        self._hardware_facade = hardware_facade
-        self._configuration_service = configuration_service
-        self._state = ApplicationState()
+        # Initialize
+        self._initialize_state()
 
-        # Status monitoring timer
-        self._status_timer = QTimer()
-        self._status_timer.timeout.connect(self._update_hardware_status)
-        self._status_timer.start(1000)  # Update every second
+        # Setup log capture
+        self._setup_log_capture()
 
-        # Message cleanup timer
-        self._message_timer = QTimer()
-        self._message_timer.timeout.connect(self._cleanup_old_messages)
-        self._message_timer.start(30000)  # Cleanup every 30 seconds
+    def _initialize_state(self) -> None:
+        """Initialize default state"""
+        # Mock initial hardware status
+        self.hardware_status.loadcell_connected = True
+        self.hardware_status.loadcell_value = 12.34
+        self.hardware_status.mcu_connected = True
+        self.hardware_status.mcu_port = "COM3"
+        self.hardware_status.power_connected = True
+        self.hardware_status.power_voltage = 24.0
+        self.hardware_status.power_current = 5.2
+        self.hardware_status.robot_connected = True
+        self.hardware_status.robot_homed = True
+        self.hardware_status.robot_position = {"x": 100.0, "y": 50.0, "z": 25.0}
+        self.hardware_status.digital_io_connected = True
+        self.hardware_status.digital_io_channels = 8
 
-        logger.info("GUI State Manager initialized")
+        # Set initial system status
+        self.system_status = "Ready"
 
-    @property
-    def current_state(self) -> ApplicationState:
-        """Get current application state"""
-        return self._state
+        # Emit initial state
+        self.hardware_status_updated.emit(self.hardware_status)
+        self.system_status_changed.emit(self.system_status)
+        self.temperature_updated.emit(self.current_temperature)
 
-    @property
-    def current_panel(self) -> str:
-        """Get current active panel"""
-        return self._state.current_panel
+        # Add some sample log messages for testing
+        self.add_log_message("INFO", "SYSTEM", "GUI State Manager initialized")
+        self.add_log_message("DEBUG", "GUI", "Sample data loaded")
 
-    @property
-    def test_status(self) -> TestStatus:
-        """Get current test status"""
-        return self._state.test_status
-
-    @property
-    def hardware_status(self) -> HardwareStatus:
+    def get_hardware_status(self) -> HardwareStatus:
         """Get current hardware status"""
-        return self._state.hardware_status
+        return self.hardware_status
 
-    def navigate_to_panel(self, panel_name: str) -> None:
-        """
-        Navigate to a specific panel
+    def get_test_progress(self) -> TestProgress:
+        """Get current test progress"""
+        return self.test_progress
 
-        Args:
-            panel_name: Name of the panel to navigate to
-        """
-        if panel_name != self._state.current_panel:
-            self._state.current_panel = panel_name
-            self.panel_changed.emit(panel_name)
-            self.add_system_message(f"Navigated to {panel_name}")
-            logger.info(f"Panel changed to: {panel_name}")
+    def get_test_results(self) -> List[TestResult]:
+        """Get all test results"""
+        return self.test_results
 
-    def set_test_status(self, status: TestStatus, message: str = "") -> None:
-        """
-        Update test status
+    def get_log_messages(self) -> List[Dict[str, str]]:
+        """Get all log messages"""
+        return self.log_messages
 
-        Args:
-            status: New test status
-            message: Optional status message
-        """
-        if status != self._state.test_status:
-            self._state.test_status = status
-            self._state.test_message = message
-            self.test_status_changed.emit(status.value)
+    def get_system_status(self) -> str:
+        """Get current system status"""
+        return self.system_status
 
-            # Log status changes
-            if message:
-                logger.info(f"Test status: {status.value} - {message}")
-                self.add_system_message(f"Test {status.value}: {message}")
-            else:
-                logger.info(f"Test status: {status.value}")
-                self.add_system_message(f"Test {status.value}")
+    def get_current_temperature(self) -> float:
+        """Get current temperature"""
+        return self.current_temperature
 
-    def update_test_progress(self, progress: int, message: str = "") -> None:
-        """
-        Update test progress
+    def update_hardware_status(self, status: HardwareStatus) -> None:
+        """Update hardware status"""
+        self.hardware_status = status
+        self.hardware_status_updated.emit(status)
 
-        Args:
-            progress: Progress percentage (0-100)
-            message: Optional progress message
-        """
-        progress = max(0, min(100, progress))  # Clamp to 0-100
+    def update_test_progress(self, progress: TestProgress) -> None:
+        """Update test progress"""
+        self.test_progress = progress
+        self.test_progress_updated.emit(progress)
 
-        if progress != self._state.test_progress or message != self._state.test_message:
-            self._state.test_progress = progress
-            self._state.test_message = message
-            self.test_progress_changed.emit(progress, message)
+    def add_test_result(self, result: TestResult) -> None:
+        """Add a test result"""
+        self.test_results.append(result)
+        self.test_result_added.emit(result)
 
-            if message:
-                logger.debug(f"Test progress: {progress}% - {message}")
+    def add_log_message(self, level: str, component: str, message: str) -> None:
+        """Add a log message"""
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            "level": level,
+            "component": component,
+            "message": message,
+        }
+        self.log_messages.append(log_entry)
+        self.log_message_received.emit(level, component, message)
 
-    def set_test_result(self, result: Dict[str, Any]) -> None:
-        """
-        Store test result
+    def set_system_status(self, status: str) -> None:
+        """Set system status"""
+        self.system_status = status
+        self.system_status_changed.emit(status)
 
-        Args:
-            result: Test result data
-        """
-        self._state.last_test_result = result
+    def update_temperature(self, temperature: float) -> None:
+        """Update current temperature"""
+        self.current_temperature = temperature
+        self.temperature_updated.emit(temperature)
 
-        # Update test status based on result
-        if result.get("is_passed", False):
-            self.set_test_status(TestStatus.COMPLETED, "Test passed successfully")
-        else:
-            self.set_test_status(TestStatus.FAILED, "Test failed")
+    def clear_test_results(self) -> None:
+        """Clear all test results"""
+        self.test_results.clear()
 
-        logger.info(f"Test result stored: {result.get('test_id', 'unknown')}")
+    def clear_log_messages(self) -> None:
+        """Clear all log messages"""
+        self.log_messages.clear()
 
-    def add_system_message(self, message: str) -> None:
-        """
-        Add system message
+    def _setup_log_capture(self) -> None:
+        """Setup log capture from loguru logger"""
 
-        Args:
-            message: Message to add
-        """
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        formatted_message = f"[{timestamp}] {message}"
+        def log_sink(message):
+            """Custom sink for capturing log messages"""
+            record = message.record
+            level = record["level"].name
 
-        self._state.system_messages.append(formatted_message)
+            # Extract component from extra or use module name
+            component = record.get("extra", {}).get("component", "SYSTEM")
 
-        # Keep only last 100 messages
-        if len(self._state.system_messages) > 100:
-            self._state.system_messages = self._state.system_messages[-100:]
-
-        self.system_message_added.emit(formatted_message)
-
-    def get_system_messages(self, count: int = 50) -> List[str]:
-        """
-        Get recent system messages
-
-        Args:
-            count: Number of recent messages to return
-
-        Returns:
-            List of recent system messages
-        """
-        return self._state.system_messages[-count:] if count > 0 else self._state.system_messages
-
-    def clear_system_messages(self) -> None:
-        """Clear all system messages"""
-        self._state.system_messages.clear()
-        self.add_system_message("System messages cleared")
-
-    def reset_test_state(self) -> None:
-        """Reset test-related state"""
-        self._state.test_status = TestStatus.IDLE
-        self._state.test_progress = 0
-        self._state.test_message = ""
-        self._state.last_test_result = None
-
-        self.test_status_changed.emit(TestStatus.IDLE.value)
-        self.test_progress_changed.emit(0, "")
-
-        self.add_system_message("Test state reset")
-        logger.info("Test state reset")
-
-    async def check_hardware_connections(self) -> HardwareStatus:
-        """
-        Check all hardware connections asynchronously
-
-        Returns:
-            Updated hardware status
-        """
-        try:
-            # Check each hardware component
-            status = HardwareStatus()
-
-            # Robot status
-            try:
-                if self._hardware_facade.robot_service:
-                    # Simple connection check - adjust based on actual service API
-                    status.robot_status = ConnectionStatus.CONNECTED
+            # If no component is set, try to extract from module name
+            if component == "SYSTEM" and "module" in record:
+                module_parts = record["module"].split(".")
+                if len(module_parts) > 1:
+                    component = module_parts[-2].upper()  # Get parent module name
                 else:
-                    status.robot_status = ConnectionStatus.DISCONNECTED
-            except Exception:
-                status.robot_status = ConnectionStatus.ERROR
+                    component = module_parts[0].upper()
 
-            # MCU status
-            try:
-                if self._hardware_facade.mcu_service:
-                    status.mcu_status = ConnectionStatus.CONNECTED
-                else:
-                    status.mcu_status = ConnectionStatus.DISCONNECTED
-            except Exception:
-                status.mcu_status = ConnectionStatus.ERROR
+            # Get the actual message
+            message_text = record["message"]
 
-            # Load cell status
-            try:
-                if self._hardware_facade.loadcell_service:
-                    status.loadcell_status = ConnectionStatus.CONNECTED
-                else:
-                    status.loadcell_status = ConnectionStatus.DISCONNECTED
-            except Exception:
-                status.loadcell_status = ConnectionStatus.ERROR
+            # Add to GUI state manager
+            self.add_log_message(level, component, message_text)
 
-            # Power supply status
-            try:
-                if self._hardware_facade.power_service:
-                    status.power_status = ConnectionStatus.CONNECTED
-                else:
-                    status.power_status = ConnectionStatus.DISCONNECTED
-            except Exception:
-                status.power_status = ConnectionStatus.ERROR
+        # Add the custom sink to loguru logger
+        logger.add(log_sink, level="DEBUG", format="{message}")
 
-            # Digital IO status
-            try:
-                if self._hardware_facade.digital_io_service:
-                    status.digital_io_status = ConnectionStatus.CONNECTED
-                else:
-                    status.digital_io_status = ConnectionStatus.DISCONNECTED
-            except Exception:
-                status.digital_io_status = ConnectionStatus.ERROR
-
-            status.last_updated = datetime.now()
-            return status
-
-        except Exception as e:
-            logger.error(f"Hardware status check failed: {e}")
-            return HardwareStatus()  # All disconnected
-
-    def _update_hardware_status(self) -> None:
-        """Update hardware status (called by timer)"""
-        # Use thread pool to run async operation
-        # Standard library imports
-        from concurrent.futures import ThreadPoolExecutor
-        import threading
-
-        def run_async_update():
-            try:
-                # Create new event loop for thread
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(self._async_hardware_status_update())
-                finally:
-                    loop.close()
-            except Exception as e:
-                logger.error(f"Hardware status update thread failed: {e}")
-
-        # Run in background thread
-        thread = threading.Thread(target=run_async_update, daemon=True)
-        thread.start()
-
-    async def _async_hardware_status_update(self) -> None:
-        """Async hardware status update"""
-        try:
-            new_status = await self.check_hardware_connections()
-
-            # Check if status changed
-            if (
-                new_status.robot_status != self._state.hardware_status.robot_status
-                or new_status.mcu_status != self._state.hardware_status.mcu_status
-                or new_status.loadcell_status != self._state.hardware_status.loadcell_status
-                or new_status.power_status != self._state.hardware_status.power_status
-                or new_status.digital_io_status != self._state.hardware_status.digital_io_status
-            ):
-
-                self._state.hardware_status = new_status
-                self.hardware_status_changed.emit(new_status)
-
-                # Log significant status changes
-                overall_status = new_status.overall_status
-                if overall_status != self._state.hardware_status.overall_status:
-                    logger.info(f"Hardware overall status: {overall_status.value}")
-
-        except Exception as e:
-            logger.error(f"Async hardware status update failed: {e}")
-
-    def _cleanup_old_messages(self) -> None:
-        """Clean up old system messages"""
-        # Keep only messages from last hour
-        current_time = datetime.now()
-        cutoff_time = (
-            current_time.replace(hour=current_time.hour - 1)
-            if current_time.hour > 0
-            else current_time.replace(hour=23, day=current_time.day - 1)
+    def add_cycle_result(
+        self,
+        cycle: int,
+        total_cycles: int,
+        temperature: float,
+        stroke: float,
+        force: float,
+        heating_time: int,
+        cooling_time: int,
+        status: str = "PASS",
+    ) -> None:
+        """Add individual cycle result to GUI"""
+        cycle_result = TestResult(
+            cycle=cycle,
+            temperature=temperature,
+            stroke=stroke,
+            force=force,
+            heating_time=heating_time,
+            cooling_time=cooling_time,
+            status=status,
+            timestamp=datetime.now(),
         )
+        self.test_results.append(cycle_result)
+        self.cycle_result_added.emit(cycle_result)
+        logger.info(f"Cycle {cycle}/{total_cycles} result added to GUI table")
 
-        # Simple cleanup - just limit to 100 messages
-        if len(self._state.system_messages) > 100:
-            self._state.system_messages = self._state.system_messages[-50:]
+    def get_connection_count(self) -> tuple[int, int]:
+        """Get connection count (connected, total)"""
+        connected = sum(
+            [
+                self.hardware_status.loadcell_connected,
+                self.hardware_status.mcu_connected,
+                self.hardware_status.power_connected,
+                self.hardware_status.robot_connected,
+                self.hardware_status.digital_io_connected,
+            ]
+        )
+        total = 5
+        return connected, total
 
-    def load_configuration(self) -> None:
-        """Load application configuration"""
+    async def execute_emergency_stop(self) -> None:
+        """Execute emergency stop procedure"""
         try:
-            # Use thread pool to run async operation
-            # Standard library imports
-            import threading
+            logger.critical("🚨 GUI Emergency Stop Request 🚨")
 
-            def run_async_config_load():
-                try:
-                    # Create new event loop for thread
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        loop.run_until_complete(self._async_load_configuration())
-                    finally:
-                        loop.close()
-                except Exception as e:
-                    logger.error(f"Configuration load thread failed: {e}")
-                    self.add_system_message(f"Configuration load failed: {e}")
+            if self.emergency_stop_service:
+                await self.emergency_stop_service.execute_emergency_stop()
+                logger.info("✅ Emergency stop completed successfully")
 
-            # Run in background thread
-            thread = threading.Thread(target=run_async_config_load, daemon=True)
-            thread.start()
+                # Update system state
+                self.set_system_status("EMERGENCY STOP")
+                self.add_log_message(
+                    "CRITICAL", "EMERGENCY", "Emergency stop executed successfully"
+                )
+            else:
+                logger.error("Emergency stop service not available")
+                self.add_log_message("ERROR", "EMERGENCY", "Emergency stop service not available")
 
         except Exception as e:
-            logger.error(f"Configuration load failed: {e}")
-            self.add_system_message(f"Configuration load failed: {e}")
-
-    async def _async_load_configuration(self) -> None:
-        """Async configuration loading"""
-        try:
-            # Load hardware configuration
-            hardware_config = await self._configuration_service.load_hardware_config()
-
-            # Load application configuration
-            app_config = await self._configuration_service.load_application_config()
-
-            self._state.configuration_loaded = True
-            self.configuration_changed.emit()
-            self.add_system_message("Configuration loaded successfully")
-
-            logger.info("Configuration loaded successfully")
-
-        except Exception as e:
-            logger.error(f"Async configuration load failed: {e}")
-            self.add_system_message(f"Configuration load failed: {e}")
+            logger.error(f"Emergency stop execution failed: {e}")
+            self.add_log_message("ERROR", "EMERGENCY", f"Emergency stop failed: {str(e)}")

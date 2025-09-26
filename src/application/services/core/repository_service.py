@@ -9,6 +9,7 @@ Uses Exception First principles for error handling.
 import csv
 from pathlib import Path
 import re
+from typing import Dict, Optional
 
 # Third-party imports
 from loguru import logger
@@ -462,7 +463,12 @@ class RepositoryService:
             # Don't raise exception as this is supplementary to main save operation
 
     async def save_cycle_measurements(
-        self, measurements: TestMeasurements, cycle_num: int, total_cycles: int, serial_number: str = "CYCLE_DATA"
+        self,
+        measurements: TestMeasurements,
+        cycle_num: int,
+        total_cycles: int,
+        serial_number: str = "CYCLE_DATA",
+        timing_data: Optional[Dict] = None,
     ) -> None:
         """
         Save measurements for a specific cycle immediately to a single file
@@ -483,13 +489,17 @@ class RepositoryService:
             cycle_data_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate timestamp for the test session (only once)
+            # Standard library imports
             from datetime import datetime
+
             if cycle_num == 1:
                 # Create new file with timestamp for first cycle
                 self._cycle_session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
             # Use same filename for all cycles in this test session
-            cycle_filename = f"cycle_measurements_{self._cycle_session_timestamp}_total{total_cycles}cycles.csv"
+            cycle_filename = (
+                f"cycle_measurements_{self._cycle_session_timestamp}_total{total_cycles}cycles.csv"
+            )
             cycle_file = cycle_data_dir / cycle_filename
 
             # Check if file exists (append mode vs create mode)
@@ -508,6 +518,10 @@ class RepositoryService:
                         temp_pos_columns.append(f"T{int(temp)}_P{int(pos/1000)}")  # T38_P170 format
 
                 header.extend(sorted(temp_pos_columns))
+
+                # Add timing columns
+                header.extend(["Heating_Time_s", "Cooling_Time_s"])
+
                 cycle_data.append(header)
 
             # Create pivot row for this cycle
@@ -521,11 +535,11 @@ class RepositoryService:
             # Start building the row
             row = [
                 cycle_num,  # Cycle number
-                test_id,    # Test_ID
+                test_id,  # Test_ID
                 serial_number,  # Serial number from user input
-                date_str,   # Date
-                time_str,   # Time
-                "PASS"      # Status (assuming pass for now)
+                date_str,  # Date
+                time_str,  # Time
+                "PASS",  # Status (assuming pass for now)
             ]
 
             # Add force values in temperature-position order
@@ -541,6 +555,36 @@ class RepositoryService:
             for key in sorted(temp_pos_values.keys()):
                 force_value = temp_pos_values[key]
                 row.append(round(force_value, 2))
+
+            # Add timing data (average heating/cooling times for this cycle)
+            if timing_data:
+                # Calculate average heating and cooling times for this cycle
+                cycle_heating_times = []
+                cycle_cooling_times = []
+
+                for key, timing in timing_data.items():
+                    if timing.get("cycle") == cycle_num:
+                        cycle_heating_times.append(timing.get("heating_time_s", 0.0))
+                        cycle_cooling_times.append(timing.get("cooling_time_s", 0.0))
+
+                # Use average times (or 0.0 if no data)
+                avg_heating_time = (
+                    sum(cycle_heating_times) / len(cycle_heating_times)
+                    if cycle_heating_times
+                    else 0.0
+                )
+                avg_cooling_time = (
+                    sum(cycle_cooling_times) / len(cycle_cooling_times)
+                    if cycle_cooling_times
+                    else 0.0
+                )
+
+                row.append(round(avg_heating_time, 2))  # 2 decimal places for timing
+                row.append(round(avg_cooling_time, 2))
+            else:
+                # No timing data available
+                row.append(0.0)
+                row.append(0.0)
 
             cycle_data.append(row)
 
@@ -593,7 +637,7 @@ class RepositoryService:
                 "Duration_sec",
                 "Operator_ID",
                 "Cycle",
-                "Total_Cycles"
+                "Total_Cycles",
             ]
 
             # If no existing data, start with header
@@ -608,15 +652,15 @@ class RepositoryService:
             time_str = timestamp.strftime("%H:%M:%S")
 
             cycle_row = [
-                test_id,           # Test_ID
-                "CYCLE_DATA",      # Serial_Number
-                date_str,          # Test_Date
-                time_str,          # Test_Time
-                "PASS",            # Status
-                0.0,               # Duration_sec (individual cycle duration not tracked yet)
-                "system",          # Operator_ID
-                cycle_num,         # Cycle
-                total_cycles       # Total_Cycles
+                test_id,  # Test_ID
+                "CYCLE_DATA",  # Serial_Number
+                date_str,  # Test_Date
+                time_str,  # Test_Time
+                "PASS",  # Status
+                0.0,  # Duration_sec (individual cycle duration not tracked yet)
+                "system",  # Operator_ID
+                cycle_num,  # Cycle
+                total_cycles,  # Total_Cycles
             ]
 
             # Validate and add the row

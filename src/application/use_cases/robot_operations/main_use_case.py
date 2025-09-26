@@ -6,6 +6,7 @@ Coordinates Digital I/O setup, robot connection, and homing execution.
 """
 
 # Third-party imports
+from typing import Optional, TYPE_CHECKING
 from loguru import logger
 
 # Local application imports
@@ -13,6 +14,9 @@ from application.services.core.configuration_service import ConfigurationService
 from application.services.hardware_facade import HardwareServiceFacade
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
+
+if TYPE_CHECKING:
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
 
 # Local folder imports
 from .digital_io_setup_service import DigitalIOSetupService
@@ -30,7 +34,10 @@ class RobotHomeUseCase(BaseUseCase):
     """
 
     def __init__(
-        self, hardware_services: HardwareServiceFacade, configuration_service: ConfigurationService
+        self,
+        hardware_services: HardwareServiceFacade,
+        configuration_service: ConfigurationService,
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
     ):
         """
         Initialize Robot Home Use Case
@@ -44,6 +51,7 @@ class RobotHomeUseCase(BaseUseCase):
         self._configuration_service = configuration_service
         self._digital_io_setup = DigitalIOSetupService(hardware_services)
         self._robot_connection = RobotConnectionService(hardware_services)
+        self._industrial_system_manager = industrial_system_manager
 
     async def _execute_implementation(self, input_data: RobotHomeInput, context) -> RobotHomeResult:
         """
@@ -60,6 +68,11 @@ class RobotHomeUseCase(BaseUseCase):
         hardware_config = await self._configuration_service.load_hardware_config()
 
         try:
+            # Set system status to running
+            if self._industrial_system_manager:
+                from application.services.industrial.tower_lamp_service import SystemStatus
+                await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
+
             # Setup Digital I/O for servo brake release
             await self._digital_io_setup.setup_servo_brake_release(hardware_config)
 
@@ -69,6 +82,10 @@ class RobotHomeUseCase(BaseUseCase):
             # Execute homing operation
             await self._robot_connection.execute_homing(axis_id)
 
+            # Set system status to idle on success
+            if self._industrial_system_manager:
+                await self._industrial_system_manager.handle_test_completion(test_success=True)
+
             return RobotHomeResult(
                 test_status=TestStatus.COMPLETED,
                 is_success=True,
@@ -76,6 +93,10 @@ class RobotHomeUseCase(BaseUseCase):
             )
 
         except Exception as e:
+            # Set system status to error
+            if self._industrial_system_manager:
+                await self._industrial_system_manager.handle_test_completion(test_success=False, test_error=True)
+
             # Cleanup on error for safety
             axis_id = hardware_config.robot.axis_id if hardware_config else None
             await self._robot_connection.cleanup_on_error(axis_id)

@@ -20,6 +20,7 @@ from domain.value_objects.hardware_config import HardwareConfig
 if TYPE_CHECKING:
     # Local application imports
     from application.use_cases.eol_force_test.main_use_case import EOLForceTestUseCase
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
 
 
 class DIOMonitoringService:
@@ -40,6 +41,7 @@ class DIOMonitoringService:
         emergency_stop_callback: Optional[
             Union[Callable[[], None], Callable[[], Awaitable[None]]]
         ] = None,
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
     ):
         """
         Initialize button monitoring service
@@ -50,12 +52,14 @@ class DIOMonitoringService:
             eol_use_case: EOL test use case to check execution state
             callback: Optional callback function to execute when buttons are pressed
             emergency_stop_callback: Optional callback function to execute when emergency stop is pressed
+            industrial_system_manager: Optional industrial system manager for safety alerts and status indication
         """
         self.digital_io = digital_io_service
         self.hardware_config = hardware_config
         self.eol_use_case = eol_use_case
         self.callback = callback
         self.emergency_stop_callback = emergency_stop_callback
+        self.industrial_system_manager = industrial_system_manager
 
         # Digital pin configurations from hardware config
         self.emergency_stop_pin = hardware_config.digital_io.emergency_stop_button
@@ -434,39 +438,63 @@ class DIOMonitoringService:
                 )
 
         if dual_press_detected:
-            # Check safety conditions
-            clamp_ch = self.clamp_sensor_pin.pin_number
-            chain_ch = self.chain_sensor_pin.pin_number
-            door_ch = self.door_sensor_pin.pin_number
+            # Check safety conditions using industrial system manager if available
+            if self.industrial_system_manager:
+                # Convert list to dict for industrial system manager
+                current_states_dict = dict(enumerate(current_raw_states))
+                safety_ok = await self.industrial_system_manager.handle_test_start_request(current_states_dict)
 
-            clamp_ok = current_raw_states[clamp_ch] if clamp_ch < len(current_raw_states) else False
-            chain_ok = current_raw_states[chain_ch] if chain_ch < len(current_raw_states) else False
-            door_ok = current_raw_states[door_ch] if door_ch < len(current_raw_states) else False
+                if safety_ok:
+                    logger.info(
+                        "✅ DIO_SAFETY: All safety sensors satisfied! Proceeding with callback execution..."
+                    )
 
-            logger.info(f"🔒 DIO_SAFETY: Safety sensor states - Clamp (ch{clamp_ch}): {clamp_ok}")
-            logger.info(f"🔒 DIO_SAFETY: Safety sensor states - Chain (ch{chain_ch}): {chain_ok}")
-            logger.info(f"🔒 DIO_SAFETY: Safety sensor states - Door (ch{door_ch}): {door_ok}")
+                    # Clear edge times after successful dual press
+                    self._left_button_edge_time = None
+                    self._right_button_edge_time = None
 
-            if clamp_ok and chain_ok and door_ok:
-                logger.info(
-                    "✅ DIO_SAFETY: All safety sensors satisfied! Proceeding with callback execution..."
-                )
+                    await self._handle_button_press()
+                else:
+                    logger.warning("❌ DIO_SAFETY: Dual button press BLOCKED due to safety conditions")
+                    # Safety alert is already handled by industrial system manager
 
-                # Clear edge times after successful dual press
-                self._left_button_edge_time = None
-                self._right_button_edge_time = None
-
-                await self._handle_button_press()
+                    # Clear edge times after blocked attempt
+                    self._left_button_edge_time = None
+                    self._right_button_edge_time = None
             else:
-                logger.warning(
-                    f"❌ DIO_SAFETY: Safety sensors not satisfied - "
-                    f"Clamp: {clamp_ok}, Chain: {chain_ok}, Door: {door_ok}"
-                )
-                logger.warning("❌ DIO_SAFETY: Dual button press BLOCKED due to safety conditions")
+                # Fallback to original safety check logic if no industrial system manager
+                clamp_ch = self.clamp_sensor_pin.pin_number
+                chain_ch = self.chain_sensor_pin.pin_number
+                door_ch = self.door_sensor_pin.pin_number
 
-                # Clear edge times after blocked attempt
-                self._left_button_edge_time = None
-                self._right_button_edge_time = None
+                clamp_ok = current_raw_states[clamp_ch] if clamp_ch < len(current_raw_states) else False
+                chain_ok = current_raw_states[chain_ch] if chain_ch < len(current_raw_states) else False
+                door_ok = current_raw_states[door_ch] if door_ch < len(current_raw_states) else False
+
+                logger.info(f"🔒 DIO_SAFETY: Safety sensor states - Clamp (ch{clamp_ch}): {clamp_ok}")
+                logger.info(f"🔒 DIO_SAFETY: Safety sensor states - Chain (ch{chain_ch}): {chain_ok}")
+                logger.info(f"🔒 DIO_SAFETY: Safety sensor states - Door (ch{door_ch}): {door_ok}")
+
+                if clamp_ok and chain_ok and door_ok:
+                    logger.info(
+                        "✅ DIO_SAFETY: All safety sensors satisfied! Proceeding with callback execution..."
+                    )
+
+                    # Clear edge times after successful dual press
+                    self._left_button_edge_time = None
+                    self._right_button_edge_time = None
+
+                    await self._handle_button_press()
+                else:
+                    logger.warning(
+                        f"❌ DIO_SAFETY: Safety sensors not satisfied - "
+                        f"Clamp: {clamp_ok}, Chain: {chain_ok}, Door: {door_ok}"
+                    )
+                    logger.warning("❌ DIO_SAFETY: Dual button press BLOCKED due to safety conditions")
+
+                    # Clear edge times after blocked attempt
+                    self._left_button_edge_time = None
+                    self._right_button_edge_time = None
         else:
             pin_name = self._channel_config[pressed_channel]["pin"].name
             logger.info(
@@ -699,6 +727,10 @@ class DIOMonitoringService:
 
         # Signal emergency stop event
         self.emergency_stop_event.set()
+
+        # Handle emergency stop via industrial system manager if available
+        if self.industrial_system_manager:
+            await self.industrial_system_manager.handle_emergency_stop()
 
         # Execute emergency stop callback if provided
         await self._execute_emergency_stop_callback()

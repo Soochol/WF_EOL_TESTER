@@ -34,6 +34,7 @@ from application.containers.application_container import ApplicationContainer
 from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.styling import ThemeManager
+from ui.gui.utils.ui_scaling import setup_ui_scaling
 
 
 class EOLTesterGUIApplication:
@@ -50,6 +51,29 @@ class EOLTesterGUIApplication:
         self.container: Optional[ApplicationContainer] = None
         self.state_manager: Optional[GUIStateManager] = None
         self.asyncio_timer: Optional[QTimer] = None
+
+    def setup_ui_scaling(self) -> None:
+        """Setup UI scaling before creating QApplication"""
+        try:
+            # Try to load configuration for UI scaling
+            # This must be done before QApplication is created
+            settings_manager = None
+            try:
+                # Create a minimal container to access configuration
+                ApplicationContainer.ensure_config_exists()
+                temp_container = ApplicationContainer.create()
+                settings_manager = temp_container.configuration_service()
+            except Exception as e:
+                logger.warning(f"Could not load configuration for UI scaling: {e}")
+                logger.info("Using default UI scaling settings")
+
+            # Setup UI scaling with or without settings manager
+            scale_factor = setup_ui_scaling(settings_manager)
+            logger.info(f"UI scaling applied with factor: {scale_factor}")
+
+        except Exception as e:
+            logger.error(f"Failed to setup UI scaling: {e}")
+            logger.info("Continuing with default scaling")
 
     def setup_application(self) -> None:
         """Setup QApplication with proper configuration"""
@@ -92,6 +116,7 @@ class EOLTesterGUIApplication:
         self.state_manager = GUIStateManager(
             hardware_facade=self.container.hardware_service_facade(),
             configuration_service=self.container.configuration_service(),
+            emergency_stop_service=self.container.emergency_stop_service(),
         )
         logger.info("GUI State Manager initialized")
 
@@ -116,6 +141,9 @@ class EOLTesterGUIApplication:
             Application exit code
         """
         try:
+            # Setup UI scaling first (before QApplication)
+            self.setup_ui_scaling()
+
             # Setup application components
             self.setup_application()
             self.setup_container()

@@ -539,6 +539,7 @@ class TestMeasurements:
     """
 
     _measurements: Dict[float, PositionMeasurements]
+    _timing_data: Optional[Dict[str, Dict[str, float]]] = None
 
     def __post_init__(self) -> None:
         """Validate test measurements on creation
@@ -682,22 +683,41 @@ class TestMeasurements:
         Convert to legacy nested dict format for backward compatibility
 
         Returns:
-            Dictionary in format: {temperature: {position: {"force": value}}}
+            Dictionary in format: {temperature: {position: {"force": value, "heating_time_s": value, "cooling_time_s": value}}}
         """
         result = {}
         for temp, pos_measurements in self._measurements.items():
             result[temp] = pos_measurements.to_dict()
+
+            # Add timing data to the first position if timing data is available
+            if self._timing_data and result[temp]:
+                first_position = next(iter(result[temp].keys()))
+
+                # Find timing data for this temperature (assume cycle 1 for now)
+                timing_key = f"cycle_1_temp_{int(temp)}"
+                if timing_key in self._timing_data:
+                    timing_info = self._timing_data[timing_key]
+                    result[temp][first_position]["heating_time_s"] = round(
+                        timing_info.get("heating_time_s", 0.0), 2
+                    )
+                    result[temp][first_position]["cooling_time_s"] = round(
+                        timing_info.get("cooling_time_s", 0.0), 2
+                    )
+
         return result
 
     @classmethod
     def from_legacy_dict(
-        cls, data: Dict[float, Dict[float, Dict[str, float]]]
+        cls,
+        data: Dict[float, Dict[float, Dict[str, float]]],
+        timing_data: Optional[Dict[str, Dict[str, float]]] = None,
     ) -> "TestMeasurements":
         """
         Create TestMeasurements from legacy nested dict format
 
         Args:
             data: Dictionary in format: {temperature: {position: {"force": value}}}
+            timing_data: Optional timing data for heating/cooling operations
 
         Returns:
             TestMeasurements instance
@@ -715,7 +735,7 @@ class TestMeasurements:
         measurements = {}
         for temp, positions_data in data.items():
             measurements[temp] = PositionMeasurements.from_dict(positions_data)
-        return cls(_measurements=measurements)
+        return cls(_measurements=measurements, _timing_data=timing_data)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for serialization
@@ -727,7 +747,7 @@ class TestMeasurements:
         pos_range = self.get_position_range()
         force_range = self.get_force_range()
 
-        return {
+        result = {
             "measurements": self.to_legacy_dict(),
             "metadata": {
                 "temperature_count": self.get_temperature_count(),
@@ -737,6 +757,12 @@ class TestMeasurements:
                 "force_range": force_range,
             },
         }
+
+        # Add timing data if available
+        if self._timing_data:
+            result["timing_data"] = self._timing_data
+
+        return result
 
     def __str__(self) -> str:
         """Human-readable string representation"""
@@ -765,3 +791,46 @@ class TestMeasurements:
     def __contains__(self, temperature: float) -> bool:
         """Check if temperature was measured"""
         return temperature in self._measurements
+
+    def get_timing_data(self) -> Optional[Dict[str, Dict[str, float]]]:
+        """Get timing data for heating and cooling operations
+
+        Returns:
+            Dictionary with timing information, or None if not available
+            Format: {cycle_temp_key: {cycle: int, temperature: float, heating_time_s: float, cooling_time_s: float}}
+        """
+        return self._timing_data
+
+    def get_heating_time(self, cycle: int, temperature: float) -> Optional[float]:
+        """Get heating time for specific cycle and temperature
+
+        Args:
+            cycle: Cycle number (1-based)
+            temperature: Target temperature
+
+        Returns:
+            Heating time in seconds, or None if not available
+        """
+        if not self._timing_data:
+            return None
+
+        cycle_key = f"cycle_{cycle}_temp_{int(temperature)}"
+        timing_info = self._timing_data.get(cycle_key)
+        return timing_info.get("heating_time_s") if timing_info else None
+
+    def get_cooling_time(self, cycle: int, temperature: float) -> Optional[float]:
+        """Get cooling time for specific cycle and temperature
+
+        Args:
+            cycle: Cycle number (1-based)
+            temperature: Target temperature
+
+        Returns:
+            Cooling time in seconds, or None if not available
+        """
+        if not self._timing_data:
+            return None
+
+        cycle_key = f"cycle_{cycle}_temp_{int(temperature)}"
+        timing_info = self._timing_data.get(cycle_key)
+        return timing_info.get("cooling_time_s") if timing_info else None

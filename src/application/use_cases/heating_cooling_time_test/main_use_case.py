@@ -7,7 +7,7 @@ Coordinates hardware setup, test execution, and result processing.
 
 # Standard library imports
 # Standard library imports
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 # Third-party imports
 import asyncio
@@ -19,6 +19,9 @@ from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.emergency_stop_service import (
     EmergencyStopService,
 )
+
+if TYPE_CHECKING:
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
@@ -43,6 +46,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         hardware_services: HardwareServiceFacade,
         configuration_service: ConfigurationService,
         emergency_stop_service: Optional[EmergencyStopService] = None,
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
     ):
         """
         Initialize Heating/Cooling Time Test Use Case
@@ -56,6 +60,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         self._hardware_services = hardware_services
         self._configuration_service = configuration_service
         self._hardware_setup = HardwareSetupService(hardware_services)
+        self._industrial_system_manager = industrial_system_manager
 
         # Emergency stop and interruption handling
         self._keyboard_interrupt_raised = False
@@ -94,7 +99,12 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             await self._hardware_setup.setup_mcu(hc_config)
             await self._hardware_setup.initialize_temperature(hc_config)
 
-            # 3. Execute test cycles
+            # 3. Set system status to running
+            if self._industrial_system_manager:
+                from application.services.industrial.tower_lamp_service import SystemStatus
+                await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
+
+            # 4. Execute test cycles
             test_executor = TestCycleExecutor(
                 self._hardware_services, self._hardware_setup.power_monitor
             )
@@ -117,7 +127,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                 hc_config, actual_repeat_count, test_id_str
             )
 
-            # 4. Process results based on execution success
+            # 5. Process results based on execution success
             timing_data = cycle_results["timing_data"]
             power_data = cycle_results["power_data"]
             execution_success = cycle_results.get("success", True)
@@ -127,7 +137,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             heating_results = timing_data["heating_results"]
             cooling_results = timing_data["cooling_results"]
 
-            # 5. Calculate statistics (works with partial data too)
+            # 6. Calculate statistics (works with partial data too)
             statistics = StatisticsCalculator.calculate_statistics(
                 heating_results, cooling_results, power_data, completed_cycles
             )
@@ -135,7 +145,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             # Log summary
             StatisticsCalculator.log_summary(statistics)
 
-            # 6. Create base measurements structure
+            # 7. Create base measurements structure
             measurements = {
                 "configuration": {
                     "activation_temperature": hc_config.activation_temperature,
@@ -156,8 +166,12 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                 "statistics": statistics,
             }
 
-            # 7. Handle success vs partial results
+            # 8. Handle success vs partial results
             if execution_success:
+                # Set system status to idle on success
+                if self._industrial_system_manager:
+                    await self._industrial_system_manager.handle_test_completion(test_success=True)
+
                 # Complete success
                 return HeatingCoolingTimeTestResult(
                     test_status=TestStatus.COMPLETED,
@@ -181,6 +195,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                         "failure_reason": execution_error,
                     }
 
+                    # Set system status to warning on partial success
+                    if self._industrial_system_manager:
+                        await self._industrial_system_manager.handle_test_completion(test_success=False)
+
                     return HeatingCoolingTimeTestResult(
                         test_status=TestStatus.COMPLETED,  # Partial success still provides data
                         is_success=False,  # But mark as failed due to incomplete execution
@@ -188,6 +206,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                         error_message=f"Partial execution: {completed_cycles}/{actual_repeat_count} cycles completed. Error: {execution_error}",
                     )
                 else:
+                    # Set system status to error on complete failure
+                    if self._industrial_system_manager:
+                        await self._industrial_system_manager.handle_test_completion(test_success=False, test_error=True)
+
                     # Complete failure - no cycles completed, delegate to error handler
                     raise RuntimeError(execution_error)
         except KeyboardInterrupt:

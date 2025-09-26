@@ -350,39 +350,49 @@ class TestExecutor(ITestExecutor):
 
             # Parse CSV data - each row represents one complete cycle
             cycle_data = []
-            with open(latest_file, 'r', encoding='utf-8') as csvfile:
+            with open(latest_file, "r", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     try:
-                        cycle = int(row['Cycle'])
+                        cycle = int(row["Cycle"])
                         logger.debug(f"Processing cycle {cycle} from CSV row: {row}")
 
                         # Extract force values for each temperature from this cycle
                         forces = {}
-                        if 'T38_P170' in row and row['T38_P170']:
-                            forces[38.0] = float(row['T38_P170'])
-                        if 'T52_P170' in row and row['T52_P170']:
-                            forces[52.0] = float(row['T52_P170'])
-                        if 'T66_P170' in row and row['T66_P170']:
-                            forces[66.0] = float(row['T66_P170'])
+                        if "T38_P170" in row and row["T38_P170"]:
+                            forces[38.0] = float(row["T38_P170"])
+                        if "T52_P170" in row and row["T52_P170"]:
+                            forces[52.0] = float(row["T52_P170"])
+                        if "T66_P170" in row and row["T66_P170"]:
+                            forces[66.0] = float(row["T66_P170"])
+
+                        # Extract timing data from this cycle
+                        heating_time = float(row.get("Heating_Time_s", 0.0))
+                        cooling_time = float(row.get("Cooling_Time_s", 0.0))
 
                         logger.debug(f"Extracted forces for cycle {cycle}: {forces}")
 
                         # Create entries for each temperature in this cycle
                         for temp, force in forces.items():
-                            cycle_data.append({
-                                'cycle': cycle,
-                                'temperature': temp,
-                                'force': force
-                            })
-                            logger.debug(f"Added entry: cycle={cycle}, temp={temp}, force={force}")
+                            cycle_data.append(
+                                {
+                                    "cycle": cycle,
+                                    "temperature": temp,
+                                    "force": force,
+                                    "heating_time": heating_time,
+                                    "cooling_time": cooling_time,
+                                }
+                            )
+                            logger.debug(
+                                f"Added entry: cycle={cycle}, temp={temp}, force={force}, heating={heating_time}s, cooling={cooling_time}s"
+                            )
 
                     except (ValueError, KeyError) as e:
                         logger.debug(f"Skipping invalid row in cycle CSV: {e}")
                         continue
 
             # Sort by cycle, then by temperature
-            cycle_data.sort(key=lambda x: (x['cycle'], x['temperature']))
+            cycle_data.sort(key=lambda x: (x["cycle"], x["temperature"]))
             logger.debug(f"Loaded {len(cycle_data)} temperature measurements from cycle CSV")
             return cycle_data
 
@@ -402,18 +412,22 @@ class TestExecutor(ITestExecutor):
 
         logger.debug(f"Displaying cycle table with {len(cycle_data)} entries")
 
-        # Create table with cycle, temperature, and force columns
+        # Create table with cycle, temperature, force, and timing columns
         table = Table(title="📊 Test Measurements Summary")
         table.add_column("Cycle", style="magenta", justify="center")
         table.add_column("Temperature", style="cyan", justify="center")
-        table.add_column("Force (N)", style="yellow", justify="center")
+        table.add_column("Force (kgf)", style="yellow", justify="center")
+        table.add_column("Heating Time", style="green", justify="center")
+        table.add_column("Cooling Time", style="blue", justify="center")
 
         current_cycle = None
 
         for data in cycle_data:
-            cycle = data['cycle']
-            temperature = data['temperature']
-            force = data['force']
+            cycle = data["cycle"]
+            temperature = data["temperature"]
+            force = data["force"]
+            heating_time = data.get("heating_time", 0.0)
+            cooling_time = data.get("cooling_time", 0.0)
 
             # Add separator when cycle changes
             if current_cycle is not None and cycle != current_cycle:
@@ -425,7 +439,9 @@ class TestExecutor(ITestExecutor):
             table.add_row(
                 str(cycle),
                 f"{temperature:.1f}°C",
-                f"{force:.2f}"
+                f"{force:.2f}",
+                f"{heating_time:.2f}s",
+                f"{cooling_time:.2f}s",
             )
 
         # Display the table
@@ -442,7 +458,7 @@ class TestExecutor(ITestExecutor):
         # Create table with temperature and max force columns
         table = Table(title="📊 Test Measurements Summary")
         table.add_column("Temperature", style="cyan", justify="center")
-        table.add_column("Force (N)", style="yellow", justify="center")
+        table.add_column("Force (kgf)", style="yellow", justify="center")
 
         # Extract data for each temperature
         temperatures = sorted(measurements.get_temperatures())
