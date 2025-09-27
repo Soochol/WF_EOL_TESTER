@@ -76,7 +76,12 @@ This project uses a simplified Clean Architecture pattern with dependency inject
 ### Key Components
 
 #### Dependency Injection Container
-The application uses `ApplicationContainer` (src/application/containers/application_container.py) to manage all dependencies. This is the central configuration point for the entire application.
+The application uses `SimpleReloadableContainer` (src/application/containers/simple_reloadable_container.py) to manage all dependencies with hot-reload capabilities. This is the central configuration point for the entire application, featuring:
+
+- **Hot-reload functionality**: Settings changes are applied immediately without restart
+- **Layered architecture**: Separates configuration, connection, and service management
+- **Connection preservation**: Maintains active hardware connections during configuration changes
+- **Intelligent reload**: Only reloads components affected by configuration changes
 
 #### Hardware Services
 Hardware is abstracted through interfaces in `src/application/interfaces/hardware/`:
@@ -140,18 +145,18 @@ The application supports both development (mock hardware) and production configu
 1. Define interface in `src/application/interfaces/hardware/`
 2. Implement in `src/infrastructure/adapters/hardware/`
 3. Add to `HardwareFactory` in `src/infrastructure/factories/hardware_factory.py`
-4. Update `ApplicationContainer` dependency injection configuration
+4. Update `SimpleReloadableContainer` dependency injection configuration
 
 ### Adding New Use Cases
 1. Create new directory in `src/application/use_cases/`
 2. Implement use case following existing patterns
-3. Register in `ApplicationContainer`
+3. Register in `SimpleReloadableContainer`
 4. Add CLI/GUI integration points
 
 ## Key Files to Understand
 
 - `src/main_cli.py` - CLI entry point with dependency injection setup
-- `src/application/containers/application_container.py` - Dependency injection configuration
+- `src/application/containers/simple_reloadable_container.py` - Hot-reloadable dependency injection configuration
 - `src/application/services/hardware_facade/hardware_service_facade.py` - Hardware abstraction layer
 - `pyproject.toml` - Project configuration, dependencies, and tool settings
 - `CLI_USAGE.md` - Detailed CLI usage instructions

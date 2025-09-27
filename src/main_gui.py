@@ -7,6 +7,7 @@ Integrates with existing business logic via ApplicationContainer.
 """
 
 # Standard library imports
+# Standard library imports
 from pathlib import Path
 import sys
 from typing import Optional
@@ -19,9 +20,10 @@ from loguru import logger
 # PySide6 imports with detailed error diagnostics
 def check_pyside6_installation():
     """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
+    # Standard library imports
+    import os
     import platform
     import subprocess
-    import os
 
     def run_command(cmd):
         """Run command and return output"""
@@ -35,9 +37,9 @@ def check_pyside6_installation():
         """Check if running in UV environment"""
         # Check for UV environment indicators
         uv_indicators = [
-            os.environ.get('UV_PROJECT_NAME'),
-            os.environ.get('VIRTUAL_ENV') and '.venv' in os.environ.get('VIRTUAL_ENV', ''),
-            os.path.exists('pyproject.toml') and os.path.exists('.venv')
+            os.environ.get("UV_PROJECT_NAME"),
+            os.environ.get("VIRTUAL_ENV") and ".venv" in os.environ.get("VIRTUAL_ENV", ""),
+            os.path.exists("pyproject.toml") and os.path.exists(".venv"),
         ]
         return any(uv_indicators)
 
@@ -47,7 +49,7 @@ def check_pyside6_installation():
         return success
 
     print("🔍 Diagnosing PySide6 installation issue...")
-    print(f"📋 System Info:")
+    print("📋 System Info:")
     print(f"   Platform: {platform.system()} {platform.release()}")
     print(f"   Architecture: {platform.architecture()[0]}")
     print(f"   Python: {platform.python_version()}")
@@ -57,14 +59,14 @@ def check_pyside6_installation():
     uv_available = check_uv_installation()
 
     if is_uv_env:
-        print(f"   Environment: 🚀 UV Virtual Environment")
+        print("   Environment: 🚀 UV Virtual Environment")
         if not uv_available:
-            print(f"   ⚠️  UV command not found!")
+            print("   ⚠️  UV command not found!")
     else:
-        print(f"   Environment: 🐍 Standard Python Environment")
+        print("   Environment: 🐍 Standard Python Environment")
 
     if platform.system() == "Windows":
-        print(f"\n🪟 Windows-specific diagnostics:")
+        print("\n🪟 Windows-specific diagnostics:")
 
         # Check VC++ redistributables
         print("   Checking Visual C++ Redistributables...")
@@ -72,7 +74,7 @@ def check_pyside6_installation():
             r"C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
             r"C:\Program Files (x86)\Microsoft Visual Studio\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
             r"C:\Windows\System32\msvcp140.dll",
-            r"C:\Windows\System32\vcruntime140.dll"
+            r"C:\Windows\System32\vcruntime140.dll",
         ]
 
         found_vc = False
@@ -90,7 +92,7 @@ def check_pyside6_installation():
             print("   ✅ Visual C++ Redistributables found")
 
     # Check Python package installation
-    print(f"\n📦 Python package diagnostics:")
+    print("\n📦 Python package diagnostics:")
 
     if is_uv_env and uv_available:
         # UV environment diagnostics
@@ -109,16 +111,16 @@ def check_pyside6_installation():
         # Check pyproject.toml for PySide6 dependency
         pyside6_in_deps = False
         try:
-            with open('pyproject.toml', 'r', encoding='utf-8') as f:
+            with open("pyproject.toml", "r", encoding="utf-8") as f:
                 content = f.read().lower()
-                pyside6_in_deps = 'pyside6' in content
+                pyside6_in_deps = "pyside6" in content
         except FileNotFoundError:
             pass
 
         if success:
             print("   ✅ PySide6 package found in UV environment")
-            for line in output.split('\n'):
-                if line.strip().startswith('version:'):
+            for line in output.split("\n"):
+                if line.strip().startswith("version:"):
                     print(f"      Version: {line.split(':', 1)[1].strip()}")
         else:
             if pyside6_in_deps:
@@ -136,12 +138,14 @@ def check_pyside6_installation():
     else:
         # Standard pip environment diagnostics
         try:
+            # Third-party imports
             import pip
+
             success, output = run_command("pip show pyside6")
             if success:
                 print("   ✅ PySide6 package is installed")
-                for line in output.split('\n'):
-                    if line.startswith('Version:'):
+                for line in output.split("\n"):
+                    if line.startswith("Version:"):
                         print(f"      {line}")
             else:
                 print("   ❌ PySide6 package not found")
@@ -149,7 +153,7 @@ def check_pyside6_installation():
             print("   ⚠️  pip not available for diagnostics")
 
     # Suggested solutions
-    print(f"\n🔧 Suggested solutions (try in order):")
+    print("\n🔧 Suggested solutions (try in order):")
 
     if platform.system() == "Windows":
         print("   1. Install/reinstall Visual C++ Redistributable (Windows only)")
@@ -162,9 +166,9 @@ def check_pyside6_installation():
         # Check if PySide6 is in dependencies to provide better first step
         pyside6_in_deps = False
         try:
-            with open('pyproject.toml', 'r', encoding='utf-8') as f:
+            with open("pyproject.toml", "r", encoding="utf-8") as f:
                 content = f.read().lower()
-                pyside6_in_deps = 'pyside6' in content
+                pyside6_in_deps = "pyside6" in content
         except FileNotFoundError:
             pass
 
@@ -207,7 +211,7 @@ def check_pyside6_installation():
         print("   • Run as administrator if permission issues")
         print("   • Ensure 64-bit Python on 64-bit Windows")
 
-    print(f"\n💬 If issues persist, please check the DEPLOYMENT.md file for detailed instructions.")
+    print("\n💬 If issues persist, please check the DEPLOYMENT.md file for detailed instructions.")
 
 
 try:
@@ -223,7 +227,7 @@ except ImportError as e:
 # Module imports now work directly since main_gui.py is in the src/ directory
 
 # Local application imports
-from application.containers.application_container import ApplicationContainer
+from application.containers.simple_reloadable_container import SimpleReloadableContainer
 from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.styling import ThemeManager
@@ -241,7 +245,7 @@ class EOLTesterGUIApplication:
         """Initialize GUI application with dependency injection"""
         self.app: Optional[QApplication] = None
         self.main_window: Optional[MainWindow] = None
-        self.container: Optional[ApplicationContainer] = None
+        self.container: Optional[SimpleReloadableContainer] = None
         self.state_manager: Optional[GUIStateManager] = None
         self.asyncio_timer: Optional[QTimer] = None
 
@@ -253,8 +257,8 @@ class EOLTesterGUIApplication:
             settings_manager = None
             try:
                 # Create a minimal container to access configuration
-                ApplicationContainer.ensure_config_exists()
-                temp_container = ApplicationContainer.create()
+                SimpleReloadableContainer.ensure_config_exists()
+                temp_container = SimpleReloadableContainer.create()
                 settings_manager = temp_container.configuration_service()
             except Exception as e:
                 logger.warning(f"Could not load configuration for UI scaling: {e}")
@@ -288,18 +292,16 @@ class EOLTesterGUIApplication:
     def setup_container(self) -> None:
         """Initialize dependency injection container"""
         try:
-            # Ensure configuration files exist
-            ApplicationContainer.ensure_config_exists()
-
             # Create container with loaded configuration
-            self.container = ApplicationContainer.create()
-            logger.info("ApplicationContainer created successfully")
+            # (ensure_config_exists is called internally by create())
+            self.container = SimpleReloadableContainer.create()
+            logger.info("SimpleReloadableContainer created successfully")
 
         except Exception as e:
-            logger.error(f"Failed to create ApplicationContainer: {e}")
+            logger.error(f"Failed to create SimpleReloadableContainer: {e}")
             logger.info("Creating container with fallback configuration")
-            self.container = ApplicationContainer()
-            ApplicationContainer._apply_fallback_config(self.container)
+            # Fallback is handled internally by SimpleReloadableContainer
+            self.container = SimpleReloadableContainer.create()
 
     def setup_state_manager(self) -> None:
         """Initialize GUI state management"""
@@ -314,7 +316,9 @@ class EOLTesterGUIApplication:
         try:
             hardware_facade = self.container.hardware_service_facade()
             logger.info(f"🔧 Hardware facade created with ID: {id(hardware_facade)}")
-            logger.info(f"🔧 Hardware facade GUI State Manager: {getattr(hardware_facade, '_gui_state_manager', 'NOT_SET')}")
+            logger.info(
+                f"🔧 Hardware facade GUI State Manager: {getattr(hardware_facade, '_gui_state_manager', 'NOT_SET')}"
+            )
 
             self.state_manager = GUIStateManager(
                 hardware_facade=hardware_facade,
@@ -340,7 +344,9 @@ class EOLTesterGUIApplication:
         try:
             logger.info("🔄 About to reset Hardware Service Facade Singleton")
             self.container.hardware_service_facade.reset()
-            logger.info("🔄 Hardware Service Facade Singleton reset for new GUI State Manager injection")
+            logger.info(
+                "🔄 Hardware Service Facade Singleton reset for new GUI State Manager injection"
+            )
         except Exception as e:
             logger.error(f"❌ Failed to reset Hardware Service Facade: {e}")
             raise
@@ -348,7 +354,9 @@ class EOLTesterGUIApplication:
         # Also reset any other Singletons that depend on hardware_service_facade
         try:
             # Reset emergency stop service if it's a Singleton and depends on hardware facade
-            if hasattr(self.container, 'emergency_stop_service') and hasattr(self.container.emergency_stop_service, 'reset'):
+            if hasattr(self.container, "emergency_stop_service") and hasattr(
+                self.container.emergency_stop_service, "reset"
+            ):
                 self.container.emergency_stop_service.reset()
                 logger.info("🔄 Emergency Stop Service Singleton reset")
         except Exception as e:
@@ -359,7 +367,10 @@ class EOLTesterGUIApplication:
 
         # Verify the container registration was successful by creating a new facade
         test_facade = self.container.hardware_service_facade()
-        if hasattr(test_facade, '_gui_state_manager') and test_facade._gui_state_manager is not None:
+        if (
+            hasattr(test_facade, "_gui_state_manager")
+            and test_facade._gui_state_manager is not None
+        ):
             logger.info("✅ GUI State Manager successfully injected through container")
             logger.info(f"🔗 Container GUI State Manager = {id(test_facade._gui_state_manager)}")
             logger.info(f"🔗 Created State Manager = {id(self.state_manager)}")
@@ -432,14 +443,13 @@ class EOLTesterGUIApplication:
     def _process_asyncio_events(self) -> None:
         """Process pending asyncio events"""
         try:
-            # Try to get current event loop, but don't fail if none exists
+            # Try to get running event loop (Python 3.10+ compatible)
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # Process some pending tasks if loop is running
-                    pass
+                loop = asyncio.get_running_loop()
+                # Loop is already running, process some pending tasks if needed
+                pass
             except RuntimeError:
-                # No event loop in current thread, this is normal
+                # No running event loop in current thread, this is normal for GUI thread
                 pass
         except Exception:
             # Ignore all errors in asyncio processing
@@ -475,5 +485,7 @@ def main() -> int:
     return exit_code
 
 
+if __name__ == "__main__":
+    sys.exit(main())
 if __name__ == "__main__":
     sys.exit(main())

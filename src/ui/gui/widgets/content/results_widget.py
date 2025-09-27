@@ -106,15 +106,6 @@ class ResultsWidget(QWidget):
         layout = QHBoxLayout()
         layout.setSpacing(10)
 
-        # Title
-        title = QLabel("Test Results")
-        title_font = QFont()
-        title_font.setPointSize(14)
-        title_font.setWeight(QFont.Weight.Bold)
-        title.setFont(title_font)
-        title.setStyleSheet("color: #ffffff;")
-        layout.addWidget(title)
-
         # Add stretch to maintain layout
         layout.addStretch()
 

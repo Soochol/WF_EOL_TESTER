@@ -30,6 +30,7 @@ from ui.gui.widgets.content.results_widget import ResultsWidget
 from ui.gui.widgets.content.hardware_widget import HardwareWidget
 from ui.gui.widgets.content.logs_widget import LogsWidget
 from ui.gui.widgets.content.about_widget import AboutWidget
+from ui.gui.widgets.content.settings_widget import SettingsWidget
 
 
 class TestExecutorThread(QThread):
@@ -535,6 +536,13 @@ class MainWindow(QMainWindow):
         )
         self.content_stack.addWidget(self.about_page)
 
+        # Settings page
+        self.settings_page = SettingsWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.settings_page)
+
         # Store pages for easy access
         self.pages = {
             "dashboard": self.dashboard_page,
@@ -543,11 +551,8 @@ class MainWindow(QMainWindow):
             "hardware": self.hardware_page,
             "logs": self.logs_page,
             "about": self.about_page,
-            "settings": QWidget(),  # Placeholder
+            "settings": self.settings_page,
         }
-
-        # Add placeholder pages
-        self.content_stack.addWidget(self.pages["settings"])
 
     def setup_status_bar(self) -> None:
         """Setup status bar with system information"""
@@ -606,9 +611,6 @@ class MainWindow(QMainWindow):
             page_widget = self.pages[page_id]
             self.content_stack.setCurrentWidget(page_widget)
             self.sidebar.set_current_page(page_id)
-
-            # Update header with current page
-            self.header.set_current_page(page_id)
 
             # Auto-select serial number when navigating to test control
             if page_id == "test_control":

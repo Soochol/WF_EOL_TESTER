@@ -764,10 +764,11 @@ class AXLWrapper:
 
         # Log all missing functions at once
         if missing_functions:
-            print(f"Warning: {len(missing_functions)} AXL functions not found in DLL:")
+            from loguru import logger
+            logger.warning(f"AXL Library: {len(missing_functions)} functions not found in DLL {DLL_PATH}")
             for func in missing_functions:
-                print(f"  - {func}")
-            print("Hardware service will create successfully but some functions may not work.")
+                logger.warning(f"  Missing function: {func}")
+            logger.info("Hardware service will continue but some functions may have limited functionality")
 
     # === Library Functions ===
     def open(self, irq_no: int = 7) -> int:  # pylint: disable=redefined-builtin  # noqa: A003
@@ -1078,7 +1079,8 @@ class AXLWrapper:
 
         # Check if function is available
         if not hasattr(self.dll, "AxmMoveStartVel"):
-            print("Warning: AxmMoveStartVel function not available, returning success")
+            from loguru import logger
+            logger.warning(f"AxmMoveStartVel function not available in AXL DLL, returning success code")
             return 0  # Return success code
 
         return self.dll.AxmMoveStartVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]

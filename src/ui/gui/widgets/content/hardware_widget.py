@@ -47,11 +47,8 @@ class HardwareWidget(QWidget):
         """Setup the hardware UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(15)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Header
-        header_layout = self.create_header()
-        main_layout.addLayout(header_layout)
 
         # Hardware Status
         self.hardware_status = HardwareStatusWidget(
@@ -70,28 +67,6 @@ class HardwareWidget(QWidget):
         # Apply styling
         self.setStyleSheet(self._get_widget_style())
 
-    def create_header(self) -> QHBoxLayout:
-        """Create header with title and refresh button"""
-        layout = QHBoxLayout()
-        layout.setSpacing(10)
-
-        # Title
-        title = QLabel("Hardware Management")
-        title_font = QFont()
-        title_font.setPointSize(14)
-        title_font.setWeight(QFont.Weight.Bold)
-        title.setFont(title_font)
-        title.setStyleSheet("color: #ffffff;")
-        layout.addWidget(title)
-
-        # Stretch to push buttons to right
-        layout.addStretch()
-
-        # Refresh button
-        self.refresh_btn = QPushButton("🔄 Refresh Status")
-        layout.addWidget(self.refresh_btn)
-
-        return layout
 
     def create_controls_group(self) -> QGroupBox:
         """Create hardware controls group"""

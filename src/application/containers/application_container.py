@@ -21,29 +21,37 @@ from application.services.core.repository_service import RepositoryService
 # Hardware
 from application.services.hardware_facade import HardwareServiceFacade
 
+# Industrial Services
+from application.services.industrial.industrial_system_manager import (
+    IndustrialSystemManager,
+)
+
 # Monitoring Services
 from application.services.monitoring.emergency_stop_service import EmergencyStopService
 from application.services.test.test_result_evaluator import TestResultEvaluator
 
-# Industrial Services
-from application.services.industrial.industrial_system_manager import IndustrialSystemManager
-
 # Use Cases
 from application.use_cases.eol_force_test import EOLForceTestUseCase
-from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
+from application.use_cases.heating_cooling_time_test import (
+    HeatingCoolingTimeTestUseCase,
+)
 from application.use_cases.robot_operations import RobotHomeUseCase
 from application.use_cases.system_tests import SimpleMCUTestUseCase
 
 # Domain Configuration
 from domain.value_objects.application_config import ApplicationConfig
 from infrastructure.factories.hardware_factory import HardwareFactory
-from infrastructure.implementation.configuration.yaml_configuration import YamlConfiguration
+from infrastructure.implementation.configuration.yaml_configuration import (
+    YamlConfiguration,
+)
 from infrastructure.implementation.configuration.yaml_container_configuration import (
     YamlContainerConfigurationLoader,
 )
 
 # Persistence
-from infrastructure.implementation.repositories.json_result_repository import JsonResultRepository
+from infrastructure.implementation.repositories.json_result_repository import (
+    JsonResultRepository,
+)
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -218,6 +226,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
             logger.info("Using fallback configuration")
             cls._apply_fallback_config(container)
 
+        # Bind reload_configuration method to the container instance
+        container.reload_configuration = lambda: cls._instance_reload_configuration(container)
+        logger.debug("🔗 Bound reload_configuration method to container instance")
+
         return container
 
     @classmethod
@@ -266,3 +278,175 @@ class ApplicationContainer(containers.DeclarativeContainer):
         container.config.from_dict({"hardware": hardware_config.to_dict()})
 
         logger.info("In-memory default configuration applied successfully")
+
+    @classmethod
+    def _instance_reload_configuration(cls, container_instance: "ApplicationContainer") -> bool:
+        """
+        Instance-specific reload configuration method.
+        This method is bound to container instances to enable hot-reload functionality.
+
+        Args:
+            container_instance: The container instance to reload configuration for
+
+        Returns:
+            bool: True if reload was successful, False otherwise
+        """
+        try:
+            logger.info("🔄 Starting instance configuration reload...")
+
+            # Load fresh configuration from YAML files
+            config_loader = YamlContainerConfigurationLoader()
+            config_data = config_loader.load_all_configurations()
+
+            # Update the configuration provider with new data
+            container_instance.config.from_dict(config_data)
+            logger.info("✅ Configuration data reloaded from YAML files")
+
+            # Synchronize HardwareFactory configuration
+            cls._synchronize_hardware_factory_config(container_instance)
+
+            # Reset hardware-related Singletons to force recreation with new config
+            cls._reset_hardware_singletons_instance(container_instance)
+
+            logger.info("🔄 Instance configuration reload completed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Instance configuration reload failed: {e}")
+            return False
+
+    @classmethod
+    def _synchronize_hardware_factory_config(
+        cls, container_instance: "ApplicationContainer"
+    ) -> None:
+        """
+        Synchronize HardwareFactory configuration with main container configuration.
+        """
+        try:
+            # Get hardware configuration from main container
+            hardware_config = container_instance.config.hardware()
+
+            # Update HardwareFactory config to match
+            container_instance.hardware_factory.config.from_dict(hardware_config)
+            logger.info("🔄 HardwareFactory configuration synchronized")
+
+            # Reset HardwareFactory providers to pick up new config
+            hardware_factory_providers = [
+                "robot_service",
+                "power_service",
+                "mcu_service",
+                "loadcell_service",
+                "digital_io_service",
+            ]
+
+            for provider_name in hardware_factory_providers:
+                try:
+                    provider = getattr(container_instance.hardware_factory, provider_name)
+                    if hasattr(provider, "reset"):
+                        provider.reset()
+                        logger.info(f"🔄 Reset HardwareFactory.{provider_name}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to reset HardwareFactory.{provider_name}: {e}")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to synchronize HardwareFactory config: {e}")
+
+    @classmethod
+    def _reset_hardware_singletons_instance(
+        cls, container_instance: "ApplicationContainer"
+    ) -> None:
+        """
+        Reset hardware-related Singletons for a specific container instance.
+        """
+        singletons_to_reset = [
+            ("hardware_service_facade", container_instance.hardware_service_facade),
+            ("industrial_system_manager", container_instance.industrial_system_manager),
+        ]
+
+        for name, singleton_provider in singletons_to_reset:
+            try:
+                if hasattr(singleton_provider, "reset"):
+                    singleton_provider.reset()
+                    logger.info(f"🔄 Reset {name} Singleton")
+                else:
+                    logger.warning(f"⚠️ {name} does not have reset() method")
+            except Exception as e:
+                logger.error(f"❌ Failed to reset {name}: {e}")
+
+        # Reset emergency_stop_service if it's a Factory that creates instances dependent on hardware
+        try:
+            if hasattr(container_instance.emergency_stop_service, "reset"):
+                container_instance.emergency_stop_service.reset()
+                logger.info("🔄 Reset emergency_stop_service provider")
+        except Exception as e:
+            logger.debug(f"Emergency stop service reset skipped: {e}")
+
+        logger.info("✅ Hardware Singletons reset completed")
+
+    def reload_configuration(self) -> bool:
+        """
+        Reload configuration from YAML files and refresh hardware services.
+
+        This method enables hot-reload of configuration changes made through the Settings UI.
+        It reloads YAML files and resets hardware-related Singletons to apply new configurations.
+
+        Returns:
+            bool: True if reload was successful, False otherwise
+        """
+        try:
+            logger.info("🔄 Starting configuration reload...")
+
+            # Load fresh configuration from YAML files
+            config_loader = YamlContainerConfigurationLoader()
+            config_data = config_loader.load_all_configurations()
+
+            # Update the configuration provider with new data
+            self.config.from_dict(config_data)
+            logger.info("✅ Configuration data reloaded from YAML files")
+
+            # Reset hardware-related Singletons to force recreation with new config
+            self._reset_hardware_singletons()
+
+            logger.info("🔄 Configuration reload completed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Configuration reload failed: {e}")
+            return False
+
+    def _reset_hardware_singletons(self) -> None:
+        """
+        Reset hardware-related Singletons to force recreation with updated configuration.
+        """
+        singletons_to_reset = [
+            ("hardware_service_facade", self.hardware_service_facade),
+            ("industrial_system_manager", self.industrial_system_manager),
+        ]
+
+        for name, singleton_provider in singletons_to_reset:
+            try:
+                if hasattr(singleton_provider, "reset"):
+                    singleton_provider.reset()
+                    logger.info(f"🔄 Reset {name} Singleton")
+                else:
+                    logger.warning(f"⚠️ {name} does not have reset() method")
+            except Exception as e:
+                logger.error(f"❌ Failed to reset {name}: {e}")
+
+        # Reset emergency_stop_service if it's a Factory that creates instances dependent on hardware
+        try:
+            if hasattr(self.emergency_stop_service, "reset"):
+                self.emergency_stop_service.reset()
+                logger.info("🔄 Reset emergency_stop_service provider")
+        except Exception as e:
+            logger.debug(f"Emergency stop service reset skipped: {e}")
+
+        logger.info("✅ Hardware Singletons reset completed")
+        try:
+            if hasattr(self.emergency_stop_service, "reset"):
+                self.emergency_stop_service.reset()
+                logger.info("🔄 Reset emergency_stop_service provider")
+        except Exception as e:
+            logger.debug(f"Emergency stop service reset skipped: {e}")
+
+        logger.info("✅ Hardware Singletons reset completed")

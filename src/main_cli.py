@@ -20,7 +20,7 @@ from loguru import logger
 
 # Local application imports
 # Local infrastructure imports - Dependency Injection
-from application.containers import ApplicationContainer
+from application.containers.simple_reloadable_container import SimpleReloadableContainer
 
 # Local UI imports
 from ui.cli.enhanced_eol_tester_cli import EnhancedEOLTesterCLI
@@ -63,7 +63,7 @@ def maximize_console_window() -> None:
 
 
 async def main() -> None:
-    """CLI-only application entry point with ApplicationContainer dependency injection."""
+    """CLI-only application entry point with SimpleReloadableContainer dependency injection."""
     # Force unbuffered output for real-time logging (Python environment variable equivalent)
     # This ensures logs appear immediately without keyboard input
     # Standard library imports
@@ -82,11 +82,11 @@ async def main() -> None:
     setup_logging(debug=False)
 
     try:
-        logger.info("Creating CLI-only EOL Tester with ApplicationContainer...")
+        logger.info("Creating CLI-only EOL Tester with SimpleReloadableContainer...")
 
         # Create and configure dependency injection container
-        container = ApplicationContainer.create()
-        logger.info("ApplicationContainer configured successfully")
+        container = SimpleReloadableContainer.create()
+        logger.info("SimpleReloadableContainer configured successfully")
 
         # Get core services from container
         hardware_services = container.hardware_service_facade()

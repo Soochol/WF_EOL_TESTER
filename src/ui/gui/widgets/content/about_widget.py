@@ -122,28 +122,28 @@ class AboutWidget(QWidget):
         # Main content - vertical layout with individual cards
         # Product Information
         product_info = self.get_product_info()
-        product_card = InfoCard("📋 Product Information", product_info, "📋")
+        product_card = InfoCard("Product Information", product_info, "📋")
         layout.addWidget(product_card)
 
         # System Information
         system_info = self.get_system_info()
-        system_card = InfoCard("💻 System Information", system_info, "💻")
+        system_card = InfoCard("System Information", system_info, "💻")
         layout.addWidget(system_card)
 
         # Hardware Status
         if self.container:
             hardware_info = self.get_hardware_info()
-            hardware_card = InfoCard("🔧 Hardware Status", hardware_info, "🔧")
+            hardware_card = InfoCard("Hardware Status", hardware_info, "🔧")
             layout.addWidget(hardware_card)
 
         # Development Team
         team_info = self.get_team_info()
-        team_card = InfoCard("👥 Development Team", team_info, "👥")
+        team_card = InfoCard("Development Team", team_info, "👥")
         layout.addWidget(team_card)
 
         # Technology Stack
         tech_info = self.get_technology_info()
-        tech_card = InfoCard("⚙️ Technology Stack", tech_info, "⚙️")
+        tech_card = InfoCard("Technology Stack", tech_info, "⚙️")
         layout.addWidget(tech_card)
 
         # Footer section

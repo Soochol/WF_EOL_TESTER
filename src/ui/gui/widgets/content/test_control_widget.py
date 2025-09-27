@@ -57,7 +57,7 @@ class TestControlWidget(QWidget):
         """Setup the test control UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(15)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         # Test Sequence Selection
         sequence_group = self.create_sequence_group()

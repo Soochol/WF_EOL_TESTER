@@ -92,6 +92,12 @@ class HardwareFactory(containers.DeclarativeContainer):
             baudrate=config.mcu.baudrate,
             timeout=config.mcu.timeout,
         ),
+        ajinextek=providers.Factory(
+            LMAMCU,  # Ajinextek MCU uses LMA implementation
+            port=config.mcu.port,
+            baudrate=config.mcu.baudrate,
+            timeout=config.mcu.timeout,
+        ),
     )
 
     # LoadCell service - Mock or Real hardware based on configuration
@@ -109,6 +115,16 @@ class HardwareFactory(containers.DeclarativeContainer):
         ),
         bs205=providers.Factory(
             BS205LoadCell,
+            port=config.loadcell.port,
+            baudrate=config.loadcell.baudrate,
+            timeout=config.loadcell.timeout,
+            bytesize=config.loadcell.bytesize,
+            stopbits=config.loadcell.stopbits,
+            parity=config.loadcell.parity,
+            indicator_id=config.loadcell.indicator_id,
+        ),
+        ajinextek=providers.Factory(
+            BS205LoadCell,  # Ajinextek loadcell uses BS205 implementation
             port=config.loadcell.port,
             baudrate=config.loadcell.baudrate,
             timeout=config.loadcell.timeout,

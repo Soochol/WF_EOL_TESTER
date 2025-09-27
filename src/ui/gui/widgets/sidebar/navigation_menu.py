@@ -132,6 +132,10 @@ class NavigationMenu(QWidget):
         QPushButton:pressed {
             background-color: #106ebe;
         }
+        QPushButton:focus {
+            outline: none;
+            border: 1px solid #404040;
+        }
         """
 
     def _on_button_clicked(self, button: QPushButton) -> None:
