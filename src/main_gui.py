@@ -303,15 +303,75 @@ class EOLTesterGUIApplication:
 
     def setup_state_manager(self) -> None:
         """Initialize GUI state management"""
+        logger.info("🔧 GUI State Manager setup started")
+
         if not self.container:
+            logger.error("❌ Container not initialized before state manager setup")
             raise RuntimeError("Container must be initialized before state manager")
 
-        self.state_manager = GUIStateManager(
-            hardware_facade=self.container.hardware_service_facade(),
-            configuration_service=self.container.configuration_service(),
-            emergency_stop_service=self.container.emergency_stop_service(),
-        )
-        logger.info("GUI State Manager initialized")
+        logger.info(f"🔧 Container instance ID: {id(self.container)}")
+
+        try:
+            hardware_facade = self.container.hardware_service_facade()
+            logger.info(f"🔧 Hardware facade created with ID: {id(hardware_facade)}")
+            logger.info(f"🔧 Hardware facade GUI State Manager: {getattr(hardware_facade, '_gui_state_manager', 'NOT_SET')}")
+
+            self.state_manager = GUIStateManager(
+                hardware_facade=hardware_facade,
+                configuration_service=self.container.configuration_service(),
+                emergency_stop_service=self.container.emergency_stop_service(),
+            )
+            logger.info(f"🔧 GUI State Manager created with ID: {id(self.state_manager)}")
+        except Exception as e:
+            logger.error(f"❌ Failed to create GUI State Manager: {e}")
+            raise
+
+        # Register GUI State Manager with the container BEFORE any facade creation
+        try:
+            logger.info(f"🔧 About to override GUI State Manager in container {id(self.container)}")
+            self.container.gui_state_manager.override(self.state_manager)
+            logger.info("✅ GUI State Manager registered with dependency injection container")
+            logger.info(f"✅ Overridden with state manager ID: {id(self.state_manager)}")
+        except Exception as e:
+            logger.error(f"❌ Failed to override GUI State Manager: {e}")
+            raise
+
+        # Reset the hardware_service_facade Singleton to force recreation with new GUI State Manager
+        try:
+            logger.info("🔄 About to reset Hardware Service Facade Singleton")
+            self.container.hardware_service_facade.reset()
+            logger.info("🔄 Hardware Service Facade Singleton reset for new GUI State Manager injection")
+        except Exception as e:
+            logger.error(f"❌ Failed to reset Hardware Service Facade: {e}")
+            raise
+
+        # Also reset any other Singletons that depend on hardware_service_facade
+        try:
+            # Reset emergency stop service if it's a Singleton and depends on hardware facade
+            if hasattr(self.container, 'emergency_stop_service') and hasattr(self.container.emergency_stop_service, 'reset'):
+                self.container.emergency_stop_service.reset()
+                logger.info("🔄 Emergency Stop Service Singleton reset")
+        except Exception as e:
+            logger.debug(f"Emergency stop service reset skipped: {e}")
+
+        # Also inject into current hardware facade for backward compatibility
+        hardware_facade._gui_state_manager = self.state_manager
+
+        # Verify the container registration was successful by creating a new facade
+        test_facade = self.container.hardware_service_facade()
+        if hasattr(test_facade, '_gui_state_manager') and test_facade._gui_state_manager is not None:
+            logger.info("✅ GUI State Manager successfully injected through container")
+            logger.info(f"🔗 Container GUI State Manager = {id(test_facade._gui_state_manager)}")
+            logger.info(f"🔗 Created State Manager = {id(self.state_manager)}")
+
+            # Verify they are the same instance
+            if test_facade._gui_state_manager is self.state_manager:
+                logger.info("✅ GUI State Manager instances match - injection successful")
+            else:
+                logger.warning("⚠️ GUI State Manager instances don't match - potential issue")
+        else:
+            logger.error("❌ Failed to inject GUI State Manager through container")
+            raise RuntimeError("Container GUI State Manager injection failed")
 
     def create_main_window(self) -> None:
         """Create and configure main application window"""

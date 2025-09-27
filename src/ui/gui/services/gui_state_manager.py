@@ -246,6 +246,7 @@ class GUIStateManager(QObject):
         status: str = "PASS",
     ) -> None:
         """Add individual cycle result to GUI"""
+        logger.info(f"🔄 GUI State Manager: Creating cycle result for cycle {cycle}/{total_cycles}")
         cycle_result = TestResult(
             cycle=cycle,
             temperature=temperature,
@@ -257,8 +258,12 @@ class GUIStateManager(QObject):
             timestamp=datetime.now(),
         )
         self.test_results.append(cycle_result)
+        logger.info(f"📊 GUI State Manager: About to emit cycle_result_added signal for cycle {cycle}/{total_cycles}")
+        logger.info(f"📊 GUI State Manager: Cycle data - Temp: {temperature:.1f}°C, Force: {force:.2f}kgf, Status: {status}")
+
+        # Emit signal to update GUI (receivers() check removed - emit is always safe)
         self.cycle_result_added.emit(cycle_result)
-        logger.info(f"Cycle {cycle}/{total_cycles} result added to GUI table")
+        logger.info(f"✅ GUI State Manager: Cycle {cycle}/{total_cycles} result signal emitted successfully")
 
     def get_connection_count(self) -> tuple[int, int]:
         """Get connection count (connected, total)"""

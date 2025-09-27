@@ -120,7 +120,15 @@ class ResultsTableWidget(QWidget):
 
     def _on_cycle_result_added(self, result: TestResult) -> None:
         """Handle new cycle result (for individual test repetitions)"""
-        self.add_cycle_result(result)
+        from loguru import logger
+        logger.info(f"📋 Results Table Widget: Received cycle result signal for cycle {result.cycle}")
+        logger.info(f"📋 Results Table Widget: Data - Temp: {result.temperature:.1f}°C, Force: {result.force:.2f}kgf, Status: {result.status}")
+
+        try:
+            self.add_cycle_result(result)
+            logger.info(f"✅ Results Table Widget: Successfully processed cycle {result.cycle} result")
+        except Exception as e:
+            logger.error(f"❌ Results Table Widget: Failed to process cycle {result.cycle} result: {e}")
 
     def add_test_result(self, result) -> None:  # Accept both TestResult and EOLTestResult
         """Add a test result to the table"""

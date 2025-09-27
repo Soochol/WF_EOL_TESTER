@@ -89,6 +89,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     hardware_factory = providers.Container(HardwareFactory, config=config.hardware)
 
+    # GUI State Manager (optional, set by GUI application)
+    gui_state_manager = providers.Object(None)
+
     hardware_service_facade = providers.Singleton(
         HardwareServiceFacade,
         robot_service=hardware_factory.robot_service,
@@ -96,6 +99,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         loadcell_service=hardware_factory.loadcell_service,
         power_service=hardware_factory.power_service,
         digital_io_service=hardware_factory.digital_io_service,
+        gui_state_manager=gui_state_manager,
     )
 
     # ============================================================================

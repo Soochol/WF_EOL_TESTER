@@ -202,6 +202,14 @@ class EOLForceTestUseCase(BaseUseCase):
         measurements: Optional[TestMeasurements] = None
         test_entity = None
 
+        # Verify GUI State Manager connection for real-time updates
+        gui_state_manager_connected = hasattr(self._hardware_services, '_gui_state_manager') and self._hardware_services._gui_state_manager is not None
+        logger.info(f"🔌 EOL UseCase: GUI State Manager connection status: {gui_state_manager_connected}")
+        if gui_state_manager_connected:
+            logger.info(f"🔗 EOL UseCase: GUI State Manager ID = {id(self._hardware_services._gui_state_manager)}")
+        else:
+            logger.warning("⚠️ EOL UseCase: GUI State Manager not connected - cycle results will not be displayed in real-time")
+
         try:
             # Phase 1: Initialize test setup
             await self._config_loader.load_and_validate_configurations()
@@ -233,7 +241,7 @@ class EOLForceTestUseCase(BaseUseCase):
                 await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
 
             # Phase 3: Execute hardware test phases
-            measurements = await self._hardware_executor.execute_hardware_test_phases(
+            measurements, individual_cycle_results = await self._hardware_executor.execute_hardware_test_phases(
                 self._config_loader.test_config,
                 self._config_loader.hardware_config,
                 command.dut_info,
@@ -268,6 +276,7 @@ class EOLForceTestUseCase(BaseUseCase):
                 measurements,
                 execution_duration,
                 is_test_passed,
+                individual_cycle_results,
             )
 
         except KeyboardInterrupt:
@@ -330,6 +339,7 @@ class EOLForceTestUseCase(BaseUseCase):
         measurements: TestMeasurements,
         execution_duration: TestDuration,
         is_test_passed: bool,
+        individual_cycle_results: list,
     ) -> EOLTestResult:
         """
         Create successful test result object
@@ -339,6 +349,7 @@ class EOLForceTestUseCase(BaseUseCase):
             measurements: Test measurements
             execution_duration: Total execution time
             is_test_passed: Whether test passed or failed
+            individual_cycle_results: Results for each repeat cycle
 
         Returns:
             EOLTestResult: Success result with all test data
@@ -351,6 +362,7 @@ class EOLForceTestUseCase(BaseUseCase):
             measurement_ids=self._state_manager.generate_measurement_ids(measurements),
             test_summary=measurements,
             error_message=None,
+            individual_cycle_results=individual_cycle_results,
         )
 
     async def _handle_test_failure(  # pylint: disable=too-many-arguments

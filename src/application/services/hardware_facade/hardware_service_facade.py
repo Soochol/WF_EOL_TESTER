@@ -9,7 +9,7 @@ Previously 786 lines, now significantly reduced by delegating to specialized ser
 # Standard library imports
 # Standard library imports
 # Standard library imports
-from typing import cast, Dict, Optional, TYPE_CHECKING
+from typing import cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 # Standard library imports
 import time
+from datetime import datetime
 
 # Third-party imports
 import asyncio
@@ -31,10 +32,12 @@ from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.power import PowerService
 from application.interfaces.hardware.robot import RobotService
 from domain.enums.robot_state import RobotState
+from domain.value_objects.cycle_result import CycleResult
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
+from domain.value_objects.time_values import TestDuration
 
 
 # Note: All hardware service functionality has been integrated directly into this facade
@@ -578,7 +581,7 @@ class HardwareServiceFacade:
         test_config: TestConfiguration,
         hardware_config: HardwareConfig,
         dut_info: DUTCommandInfo,
-    ) -> TestMeasurements:
+    ) -> Tuple[TestMeasurements, List[CycleResult]]:
         """Perform complete force test measurement sequence with temperature and position matrix"""
         self._log_phase_separator("PERFORMING FORCE TEST SEQUENCE")
         logger.info("Starting force test sequence...")
@@ -594,9 +597,16 @@ class HardwareServiceFacade:
         # Data structure for timing measurements (heating/cooling times per cycle and temperature)
         timing_data = {}
 
+        # Collect individual cycle results for repeat testing
+        individual_cycle_results = []
+
         try:
             # Repeat the entire force test sequence
             for repeat_idx in range(repeat_count):
+                # Initialize cycle-specific measurements for this repeat
+                cycle_measurements_dict = {}
+                cycle_timing_data = {}
+                cycle_start_time = datetime.now()
                 if repeat_count > 1:
                     # Create compact repetition header with background color
                     repetition_header = f"===== Force Test Sequence Repetition {repeat_idx + 1}/{repeat_count} ====="
@@ -638,10 +648,20 @@ class HardwareServiceFacade:
                     if repeat_idx == 0:
                         measurements_dict[temperature] = {}
 
+                    # Initialize cycle measurements for this temperature
+                    cycle_measurements_dict[temperature] = {}
+
                     # Initialize timing data for this cycle-temperature combination
                     cycle_key = f"cycle_{repeat_idx + 1}_temp_{int(temperature)}"
                     timing_data[cycle_key] = {
                         "cycle": repeat_idx + 1,
+                        "temperature": temperature,
+                        "heating_time_s": heating_time_s,
+                        "cooling_time_s": 0.0,  # Will be updated after cooling
+                    }
+
+                    # Store cycle timing data
+                    cycle_timing_data[f"temp_{int(temperature)}"] = {
                         "temperature": temperature,
                         "heating_time_s": heating_time_s,
                         "cooling_time_s": 0.0,  # Will be updated after cooling
@@ -683,6 +703,9 @@ class HardwareServiceFacade:
                                 measurements_dict[temperature][position] = {"force": []}
                             measurements_dict[temperature][position]["force"].append(force.value)
 
+                        # Store individual cycle measurement
+                        cycle_measurements_dict[temperature][position] = {"force": force.value}
+
                         logger.debug(
                             f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N"
                         )
@@ -720,40 +743,17 @@ class HardwareServiceFacade:
                     if cycle_key in timing_data:
                         timing_data[cycle_key]["cooling_time_s"] = cooling_time_s
 
+                    # Update cycle timing data
+                    temp_key = f"temp_{int(temperature)}"
+                    if temp_key in cycle_timing_data:
+                        cycle_timing_data[temp_key]["cooling_time_s"] = cooling_time_s
+
                     # Verify standby temperature reached
                     logger.debug("Verifying standby temperature...")
                     await self.verify_mcu_temperature(test_config.standby_temperature, test_config)
                     logger.debug("Standby temperature verification completed")
 
-                    # Send cycle result to GUI if available
-                    if self._gui_state_manager:
-                        # Calculate average force for this temperature
-                        temp_measurements = measurements_dict[temperature]
-                        total_force = sum(pos_data["force"] for pos_data in temp_measurements.values() if isinstance(pos_data["force"], (int, float)))
-                        if repeat_count > 1:
-                            # For multiple repetitions, get the latest force values
-                            total_force = sum(pos_data["force"][-1] if isinstance(pos_data["force"], list) else pos_data["force"]
-                                            for pos_data in temp_measurements.values())
-                        avg_force = total_force / len(temp_measurements) if temp_measurements else 0.0
-
-                        # Get average stroke position
-                        avg_stroke = sum(test_config.stroke_positions) / len(test_config.stroke_positions)
-
-                        # Get timing data for this cycle
-                        cycle_key = f"cycle_{repeat_idx + 1}_temp_{int(temperature)}"
-                        heating_time = int(timing_data.get(cycle_key, {}).get("heating_time_s", 0))
-                        cooling_time = int(timing_data.get(cycle_key, {}).get("cooling_time_s", 0))
-
-                        self._gui_state_manager.add_cycle_result(
-                            cycle=repeat_idx + 1,
-                            total_cycles=repeat_count,
-                            temperature=temperature,
-                            stroke=avg_stroke,
-                            force=avg_force,
-                            heating_time=heating_time,
-                            cooling_time=cooling_time,
-                            status="PASS"  # Assuming pass for now, can be enhanced with failure detection
-                        )
+                    # Note: GUI cycle result will be sent after the complete cycle (all temperatures)
 
                 # Save cycle data immediately if repository service is available
                 if self._repository_service:
@@ -764,6 +764,77 @@ class HardwareServiceFacade:
                         dut_info.serial_number,
                         timing_data,
                     )
+
+                # Create individual cycle result for this repeat
+                cycle_end_time = datetime.now()
+                cycle_duration = TestDuration.from_seconds((cycle_end_time - cycle_start_time).total_seconds())
+
+                # Create cycle measurements summary
+                cycle_measurements = {
+                    "measurements": cycle_measurements_dict,
+                    "timing_data": cycle_timing_data,
+                    "cycle_number": repeat_idx + 1,
+                    "total_cycles": repeat_count
+                }
+
+                # Determine if this cycle passed (all measurements within tolerance)
+                cycle_passed = True  # Default to passed, will be refined based on actual criteria
+
+                # Create CycleResult for this repeat
+                cycle_result = CycleResult.create_successful(
+                    cycle_number=repeat_idx + 1,
+                    is_passed=cycle_passed,
+                    measurements=cycle_measurements,
+                    execution_duration=cycle_duration,
+                    completed_at=cycle_end_time,
+                    cycle_notes=f"Repeat {repeat_idx + 1}/{repeat_count} completed"
+                )
+
+                individual_cycle_results.append(cycle_result)
+
+                logger.info(f"Cycle {repeat_idx + 1} result created: {cycle_duration.seconds:.2f}s")
+
+                # Send cycle result to GUI after complete cycle (all temperatures processed)
+                logger.info(f"🔌 Hardware Facade: GUI State Manager status: {self._gui_state_manager is not None}")
+                if self._gui_state_manager:
+                    # Calculate overall cycle statistics
+                    all_forces = []
+                    all_temps = []
+                    total_heating_time = 0
+                    total_cooling_time = 0
+
+                    # Collect data from all temperatures in this cycle
+                    for temp, positions in cycle_measurements_dict.items():
+                        all_temps.append(float(temp))
+                        for pos_data in positions.values():
+                            all_forces.append(pos_data.get('force', 0.0))
+
+                    # Calculate timing totals for this cycle
+                    for temp_key, temp_timing in cycle_timing_data.items():
+                        total_heating_time += temp_timing.get('heating_time_s', 0)
+                        total_cooling_time += temp_timing.get('cooling_time_s', 0)
+
+                    # Calculate averages
+                    avg_force = sum(all_forces) / len(all_forces) if all_forces else 0.0
+                    avg_temperature = sum(all_temps) / len(all_temps) if all_temps else 25.0
+                    avg_stroke = sum(test_config.stroke_positions) / len(test_config.stroke_positions)
+
+                    logger.info(f"🎯 Hardware Facade: Sending cycle {repeat_idx + 1}/{repeat_count} result to GUI")
+                    logger.info(f"🎯 Hardware Facade: Calculated stats - Avg Force: {avg_force:.2f}kgf, Avg Temp: {avg_temperature:.1f}°C")
+
+                    self._gui_state_manager.add_cycle_result(
+                        cycle=repeat_idx + 1,
+                        total_cycles=repeat_count,
+                        temperature=avg_temperature,
+                        stroke=avg_stroke,
+                        force=avg_force,
+                        heating_time=int(total_heating_time),
+                        cooling_time=int(total_cooling_time),
+                        status="PASS"  # Assuming pass for now, can be enhanced with failure detection
+                    )
+                    logger.info(f"✅ Hardware Facade: Cycle {repeat_idx + 1} result sent to GUI State Manager successfully")
+                else:
+                    logger.warning(f"⚠️ Hardware Facade: GUI State Manager not available for cycle {repeat_idx + 1} - results will not be displayed in real-time")
 
                 # Add delay between repetitions (except for last repetition)
                 if repeat_count > 1 and repeat_idx < repeat_count - 1:
@@ -794,10 +865,13 @@ class HardwareServiceFacade:
                             processed_dict[temp][pos] = {"force": force_data}
 
                 # Create TestMeasurements object from processed dictionary with timing data
-                return TestMeasurements.from_legacy_dict(processed_dict, timing_data)
+                test_measurements = TestMeasurements.from_legacy_dict(processed_dict, timing_data)
             else:
                 # Single measurement, use original dictionary with timing data
-                return TestMeasurements.from_legacy_dict(measurements_dict, timing_data)
+                test_measurements = TestMeasurements.from_legacy_dict(measurements_dict, timing_data)
+
+            # Return both TestMeasurements and individual cycle results
+            return test_measurements, individual_cycle_results
 
         except Exception as e:
             logger.debug(f"Force test sequence failed with config: {test_config.to_dict()}")

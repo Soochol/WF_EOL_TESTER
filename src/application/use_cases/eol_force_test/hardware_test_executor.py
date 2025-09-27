@@ -15,6 +15,8 @@ from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.hardware_config import HardwareConfig
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
+from domain.value_objects.cycle_result import CycleResult
+from typing import List, Tuple
 
 # Local folder imports
 from .constants import TestExecutionConstants
@@ -69,7 +71,7 @@ class HardwareTestExecutor:
         test_config: TestConfiguration,
         hardware_config: HardwareConfig,
         dut_info: DUTCommandInfo,
-    ) -> TestMeasurements:
+    ) -> Tuple[TestMeasurements, List[CycleResult]]:
         """
         Execute all hardware test phases and collect measurements
 
@@ -79,7 +81,7 @@ class HardwareTestExecutor:
             dut_info: DUT command information including serial number
 
         Returns:
-            TestMeasurements: Collected measurements from hardware tests
+            Tuple[TestMeasurements, List[CycleResult]]: Collected measurements and individual cycle results
 
         Raises:
             TestExecutionException: If hardware test execution fails
@@ -102,14 +104,14 @@ class HardwareTestExecutor:
             await self._hardware_services.setup_test(test_config, hardware_config)
 
             # Execute test measurements
-            measurements = await self._hardware_services.perform_force_test_sequence(
+            measurements, individual_cycle_results = await self._hardware_services.perform_force_test_sequence(
                 test_config, hardware_config, dut_info
             )
             logger.info(
                 TestExecutionConstants.LOG_HARDWARE_TEST_COMPLETED.format(len(measurements))
             )
 
-            return measurements
+            return measurements, individual_cycle_results
 
         except Exception as hardware_error:
             logger.error("Hardware test execution failed: {}", hardware_error)

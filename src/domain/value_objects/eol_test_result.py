@@ -16,6 +16,7 @@ from domain.exceptions.validation_exceptions import ValidationException
 from domain.value_objects.identifiers import MeasurementId, TestId
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.time_values import TestDuration
+from domain.value_objects.cycle_result import CycleResult
 
 
 class EOLTestResult(BaseResult):
@@ -42,6 +43,7 @@ class EOLTestResult(BaseResult):
         measurement_ids: Optional[List[MeasurementId]] = None,
         test_summary: Optional[Union[TestMeasurements, Dict[str, Any]]] = None,
         operator_notes: Optional[str] = None,
+        individual_cycle_results: Optional[List[CycleResult]] = None,
     ):
         """
         Initialize EOL test result
@@ -56,6 +58,7 @@ class EOLTestResult(BaseResult):
             measurement_ids: Individual measurement IDs
             test_summary: Measurement data
             operator_notes: Manual operator notes
+            individual_cycle_results: Results for each repeat cycle (when repeat_count > 1)
         """
         # Initialize BaseResult
         is_success = test_status in (TestStatus.COMPLETED, TestStatus.FAILED)
@@ -73,6 +76,7 @@ class EOLTestResult(BaseResult):
         self._measurement_ids = measurement_ids or []
         self._test_summary = test_summary
         self._operator_notes = operator_notes
+        self._individual_cycle_results = individual_cycle_results or []
 
         self._validate_test_data_consistency()
         self._validate_measurement_data()
@@ -102,6 +106,21 @@ class EOLTestResult(BaseResult):
     def operator_notes(self) -> Optional[str]:
         """Manual operator notes"""
         return self._operator_notes
+
+    @property
+    def individual_cycle_results(self) -> List[CycleResult]:
+        """Individual cycle results for repeat testing"""
+        return self._individual_cycle_results
+
+    @property
+    def cycle_count(self) -> int:
+        """Number of individual cycles in this test"""
+        return len(self._individual_cycle_results)
+
+    @property
+    def has_individual_cycles(self) -> bool:
+        """Whether this test result contains individual cycle data"""
+        return len(self._individual_cycle_results) > 0
 
     def _validate_test_data_consistency(self) -> None:
         """Validate consistency between test status and other fields"""
@@ -377,6 +396,7 @@ class EOLTestResult(BaseResult):
         measurement_ids: Optional[List[MeasurementId]] = None,
         duration: Optional[TestDuration] = None,
         notes: Optional[str] = None,
+        individual_cycle_results: Optional[List[CycleResult]] = None,
     ) -> "EOLTestResult":
         """Create successful test result
 
@@ -387,6 +407,7 @@ class EOLTestResult(BaseResult):
             measurement_ids: List of measurement identifiers
             duration: Test execution duration
             notes: Optional operator notes
+            individual_cycle_results: Individual cycle results for repeat testing
 
         Returns:
             EOLTestResult for successful test execution
@@ -401,11 +422,16 @@ class EOLTestResult(BaseResult):
             measurement_ids=measurement_ids or [],
             test_summary=measurements,
             operator_notes=notes,
+            individual_cycle_results=individual_cycle_results,
         )
 
     @classmethod
     def create_error(
-        cls, test_id: TestId, error_message: str, duration: Optional[TestDuration] = None
+        cls,
+        test_id: TestId,
+        error_message: str,
+        duration: Optional[TestDuration] = None,
+        individual_cycle_results: Optional[List[CycleResult]] = None
     ) -> "EOLTestResult":
         """Create error test result
 
@@ -413,6 +439,7 @@ class EOLTestResult(BaseResult):
             test_id: Test identifier
             error_message: Description of the error
             duration: Partial test execution duration
+            individual_cycle_results: Partial cycle results if any cycles completed
 
         Returns:
             EOLTestResult for failed test execution
@@ -425,11 +452,16 @@ class EOLTestResult(BaseResult):
             completed_at=datetime.now(),
             measurement_ids=[],
             error_message=error_message,
+            individual_cycle_results=individual_cycle_results,
         )
 
     @classmethod
     def create_cancelled(
-        cls, test_id: TestId, reason: Optional[str] = None, duration: Optional[TestDuration] = None
+        cls,
+        test_id: TestId,
+        reason: Optional[str] = None,
+        duration: Optional[TestDuration] = None,
+        individual_cycle_results: Optional[List[CycleResult]] = None
     ) -> "EOLTestResult":
         """Create cancelled test result
 
@@ -437,6 +469,7 @@ class EOLTestResult(BaseResult):
             test_id: Test identifier
             reason: Optional cancellation reason
             duration: Partial test execution duration
+            individual_cycle_results: Partial cycle results if any cycles completed
 
         Returns:
             EOLTestResult for cancelled test execution
@@ -449,6 +482,7 @@ class EOLTestResult(BaseResult):
             completed_at=datetime.now(),
             measurement_ids=[],
             error_message=reason,
+            individual_cycle_results=individual_cycle_results,
         )
 
     def __str__(self) -> str:

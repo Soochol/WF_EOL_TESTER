@@ -23,11 +23,13 @@ from PySide6.QtWidgets import (
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
+from ui.gui.widgets.header.header_widget import HeaderWidget
 from ui.gui.widgets.content.dashboard_widget import DashboardWidget
 from ui.gui.widgets.content.test_control_widget import TestControlWidget
 from ui.gui.widgets.content.results_widget import ResultsWidget
 from ui.gui.widgets.content.hardware_widget import HardwareWidget
 from ui.gui.widgets.content.logs_widget import LogsWidget
+from ui.gui.widgets.content.about_widget import AboutWidget
 
 
 class TestExecutorThread(QThread):
@@ -137,6 +139,24 @@ class TestExecutorThread(QThread):
         test_input = EOLForceTestInput(dut_info=dut_info, operator_id="GUI_USER")
 
         # Get use case from container
+        self.log_message.emit("INFO", "EOL_TEST", f"Using container ID: {id(self.container)}")
+
+        # Verify GUI State Manager connection before test execution
+        hardware_facade = self.container.hardware_service_facade()
+        gui_state_manager_status = hasattr(hardware_facade, '_gui_state_manager') and hardware_facade._gui_state_manager is not None
+        self.log_message.emit("INFO", "EOL_TEST", f"Pre-test GUI State Manager status: {gui_state_manager_status}")
+
+        if gui_state_manager_status:
+            self.log_message.emit("INFO", "EOL_TEST", f"Hardware facade GUI State Manager ID: {id(hardware_facade._gui_state_manager)}")
+        else:
+            self.log_message.emit("WARNING", "EOL_TEST", "GUI State Manager not connected - attempting runtime injection")
+            # Try to get state manager from parent main window and inject it
+            if hasattr(self.parent(), 'state_manager') and self.parent().state_manager:
+                hardware_facade._gui_state_manager = self.parent().state_manager
+                self.log_message.emit("INFO", "EOL_TEST", f"Runtime GUI State Manager injection completed with ID: {id(self.parent().state_manager)}")
+            else:
+                self.log_message.emit("ERROR", "EOL_TEST", "No state manager available for runtime injection")
+
         eol_test_use_case = self.container.eol_force_test_use_case()
 
         self.log_message.emit("INFO", "EOL_TEST", "Executing EOL Force Test...")
@@ -401,10 +421,8 @@ class MainWindow(QMainWindow):
         self.robot_home_thread = None  # For background robot home execution
         self.emergency_stop_active = False  # Track emergency stop state
 
-        # Connect GUI State Manager to Hardware Facade for cycle updates
-        hardware_facade = self.container.hardware_service_facade()
-        if hasattr(hardware_facade, '_gui_state_manager'):
-            hardware_facade._gui_state_manager = state_manager
+        # GUI State Manager is already injected in main_gui.py during initialization
+        # No need to inject again here to avoid overwriting the connection
 
         self.setup_ui()
         self.setup_status_bar()
@@ -423,19 +441,39 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Main layout
-        main_layout = QHBoxLayout(central_widget)
+        # Main layout (vertical to accommodate header)
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Header
+        self.header = HeaderWidget(
+            container=self.container,
+            state_manager=self.state_manager
+        )
+        self.header.emergency_stop_requested.connect(self._on_emergency_stop_requested)
+        self.header.settings_requested.connect(self._on_header_settings_clicked)
+        self.header.notifications_requested.connect(self._on_header_notifications_clicked)
+        main_layout.addWidget(self.header)
+
+        # Content area layout (sidebar + main content)
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(0)
+        content_layout.setContentsMargins(0, 0, 0, 0)
 
         # Sidebar
         self.sidebar = SidebarWidget()
         self.sidebar.page_changed.connect(self.change_page)
-        main_layout.addWidget(self.sidebar)
+        content_layout.addWidget(self.sidebar)
 
-        # Content area
+        # Content stack
         self.content_stack = QStackedWidget()
-        main_layout.addWidget(self.content_stack)
+        content_layout.addWidget(self.content_stack)
+
+        # Add content area to main layout
+        content_widget = QWidget()
+        content_widget.setLayout(content_layout)
+        main_layout.addWidget(content_widget)
 
         # Create and add content pages
         self.create_content_pages()
@@ -490,6 +528,13 @@ class MainWindow(QMainWindow):
         )
         self.content_stack.addWidget(self.logs_page)
 
+        # About page
+        self.about_page = AboutWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.about_page)
+
         # Store pages for easy access
         self.pages = {
             "dashboard": self.dashboard_page,
@@ -497,13 +542,12 @@ class MainWindow(QMainWindow):
             "results": self.results_page,
             "hardware": self.hardware_page,
             "logs": self.logs_page,
+            "about": self.about_page,
             "settings": QWidget(),  # Placeholder
-            "about": QWidget(),  # Placeholder
         }
 
         # Add placeholder pages
         self.content_stack.addWidget(self.pages["settings"])
-        self.content_stack.addWidget(self.pages["about"])
 
     def setup_status_bar(self) -> None:
         """Setup status bar with system information"""
@@ -563,6 +607,9 @@ class MainWindow(QMainWindow):
             self.content_stack.setCurrentWidget(page_widget)
             self.sidebar.set_current_page(page_id)
 
+            # Update header with current page
+            self.header.set_current_page(page_id)
+
             # Auto-select serial number when navigating to test control
             if page_id == "test_control":
                 self.test_control_page.serial_edit.selectAll()
@@ -576,13 +623,34 @@ class MainWindow(QMainWindow):
         current_time = datetime.now().strftime("%H:%M:%S")
         self.time_label.setText(f"🕐 {current_time}")
 
-        # TODO: Update other status information from state manager
-        # This will be implemented when state manager is connected to hardware
+        # Update header system status
+        # TODO: Get actual system status from state manager
+        # For now, keep the header status synchronized
 
     def closeEvent(self, event) -> None:
         """Handle window close event"""
         # TODO: Add cleanup logic if needed
         event.accept()
+
+    # Header Signal Handlers
+    # ============================================================================
+
+    def _on_header_settings_clicked(self) -> None:
+        """Handle settings button click from header"""
+        # Navigate to settings page
+        self.change_page("settings")
+
+    def _on_header_notifications_clicked(self) -> None:
+        """Handle notifications button click from header"""
+        from PySide6.QtWidgets import QMessageBox
+
+        # Show notifications dialog (placeholder)
+        QMessageBox.information(
+            self,
+            "Notifications",
+            "No new notifications.\n\n"
+            "System notifications and alerts will appear here."
+        )
 
     # Test Control Signal Handlers
     # ============================================================================
@@ -627,6 +695,9 @@ class MainWindow(QMainWindow):
             self.state_manager.set_system_status("Testing")
             self.state_manager.add_log_message("INFO", "TEST", f"Starting {test_sequence} for SN: {serial_number}")
 
+            # Update header status
+            self.header.set_system_status("Testing", "testing")
+
             # Update test control status
             self.test_control_page.update_test_status(f"Running {test_sequence}...", "status_loading", 0)
 
@@ -662,6 +733,9 @@ class MainWindow(QMainWindow):
         # Reset GUI state
         self._set_test_running_state(False)
         self.state_manager.set_system_status("Ready")
+
+        # Update header status
+        self.header.set_system_status("Ready", "ready")
 
     def _on_test_paused(self) -> None:
         """Handle test pause request"""
@@ -728,6 +802,9 @@ class MainWindow(QMainWindow):
 
             # Update test control status immediately for user feedback
             self.test_control_page.update_test_status("EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency")
+
+            # Update header status
+            self.header.set_system_status("EMERGENCY STOP", "emergency")
 
             # Set emergency stop flag and disable START TEST button
             self.emergency_stop_active = True
@@ -803,6 +880,10 @@ class MainWindow(QMainWindow):
             self.state_manager.add_log_message("INFO", "ROBOT", message)
             self.test_control_page.update_test_status("Robot Home Completed", "status_success")
 
+            # Update header to show "Robot Homed" status
+            self.header.set_system_status("Robot Homed", "homed")
+            logger.info("Header status updated to 'Robot Homed'")
+
             # Clear emergency stop state and re-enable START TEST button
             self.emergency_stop_active = False
             self.test_control_page.enable_start_button()
@@ -858,13 +939,23 @@ class MainWindow(QMainWindow):
         from loguru import logger
 
         try:
-            # Create fresh container for test execution to avoid event loop conflicts
-            from application.containers.application_container import ApplicationContainer
-            fresh_container = ApplicationContainer.create()
+            # Use the same container instance to maintain GUI State Manager connection
+            # DO NOT create fresh container as it loses GUI State Manager override
+            logger.info(f"Using main container ID: {id(self.container)} for test execution")
 
-            # Create and configure test executor thread with fresh container
+            # Verify GUI State Manager is still connected in main container
+            hardware_facade = self.container.hardware_service_facade()
+            gui_manager_connected = hasattr(hardware_facade, '_gui_state_manager') and hardware_facade._gui_state_manager is not None
+            logger.info(f"Main container GUI State Manager connected: {gui_manager_connected}")
+
+            if not gui_manager_connected:
+                logger.warning("GUI State Manager not connected in main container - applying runtime injection")
+                hardware_facade._gui_state_manager = self.state_manager
+                logger.info("Runtime GUI State Manager injection applied to main container")
+
+            # Create and configure test executor thread with main container (preserves GUI State Manager)
             self.test_executor_thread = TestExecutorThread(
-                container=fresh_container,
+                container=self.container,  # Use main container instead of fresh one
                 test_sequence=test_sequence,
                 serial_number=serial_number,
                 parent=self
@@ -941,6 +1032,9 @@ class MainWindow(QMainWindow):
             f"Progress: {current_cycle}/{total_cycles} cycles"
         )
 
+        # Update header progress
+        self.header.show_test_progress(progress_percent)
+
         progress = TestProgress(
             current_test=self.test_executor_thread.test_sequence if self.test_executor_thread else "Unknown",
             progress_percent=progress_percent,
@@ -983,21 +1077,13 @@ class MainWindow(QMainWindow):
                 else:
                     status_text = result_data.test_status.value
 
-                # Create GUI TestResult with summary data
-                gui_result = TestResult(
-                    cycle=1,  # Summary result
-                    temperature=25.0,  # Default/average values
-                    stroke=12.5,
-                    force=5.0,
-                    heating_time=45,
-                    cooling_time=120,
-                    status=status_text,
-                    timestamp=datetime.now()
-                )
-
-                # Add to state manager (will trigger results table update)
-                self.state_manager.add_test_result(gui_result)
-                logger.info(f"Added test result to results table: {status_text}")
+                # Individual cycle results are already processed in real-time by hardware facade
+                # No need to process them again here to avoid duplication
+                logger.info(f"Test result received: {status_text}")
+                if hasattr(result_data, 'individual_cycle_results') and result_data.individual_cycle_results:
+                    logger.info(f"Test completed with {len(result_data.individual_cycle_results)} cycles (already displayed in real-time)")
+                else:
+                    logger.info("Test completed (single cycle or no individual cycle data)")
 
             else:
                 logger.warning(f"Received unknown result format: {type(result_data)}")
@@ -1019,6 +1105,13 @@ class MainWindow(QMainWindow):
         # Reset GUI state
         self._set_test_running_state(False)
         self.state_manager.set_system_status("Ready")
+
+        # Update header and hide progress
+        if success:
+            self.header.set_system_status("Test Complete", "ready")
+        else:
+            self.header.set_system_status("Test Failed", "error")
+        self.header.hide_test_progress()
 
         # Update test control status instead of showing popup
         if success:
