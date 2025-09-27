@@ -89,6 +89,23 @@ class TowerLampService:
             f"Green: Ch{self.green_lamp_channel}, Beep: Ch{self.beep_channel}"
         )
 
+    def _is_event_loop_available(self) -> bool:
+        """
+        Check if an asyncio event loop is available and running
+
+        Returns:
+            True if event loop is available and not closed, False otherwise
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            return loop is not None and not loop.is_closed()
+        except RuntimeError:
+            # No event loop is running
+            return False
+        except Exception as e:
+            logger.debug(f"🚦 TOWER_LAMP: Event loop check failed: {e}")
+            return False
+
     async def set_system_status(self, status: SystemStatus) -> None:
         """
         Set system status with appropriate lamp pattern
@@ -217,36 +234,92 @@ class TowerLampService:
         if green in [LampState.ON, LampState.OFF]:
             await self._set_lamp_output(self.green_lamp_channel, green == LampState.ON)
 
-        # Start blinking tasks
-        if red in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]:
-            self._blinking_tasks["red"] = asyncio.create_task(
-                self._blink_lamp(self.red_lamp_channel, red)
-            )
-        if yellow in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]:
-            self._blinking_tasks["yellow"] = asyncio.create_task(
-                self._blink_lamp(self.yellow_lamp_channel, yellow)
-            )
-        if green in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]:
-            self._blinking_tasks["green"] = asyncio.create_task(
-                self._blink_lamp(self.green_lamp_channel, green)
-            )
+        # Check if event loop is available for blinking tasks
+        if not self._is_event_loop_available():
+            logger.warning("🚦 TOWER_LAMP: Event loop not available - using static lamp states")
+            # Fallback to static states when blinking is requested but event loop unavailable
+            fallback_red = red == LampState.ON or red in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+            fallback_yellow = yellow == LampState.ON or yellow in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+            fallback_green = green == LampState.ON or green in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+
+            await self._set_lamp_output(self.red_lamp_channel, fallback_red)
+            await self._set_lamp_output(self.yellow_lamp_channel, fallback_yellow)
+            await self._set_lamp_output(self.green_lamp_channel, fallback_green)
+            return
+
+        # Start blinking tasks with enhanced error handling
+        try:
+            # Get current event loop to ensure tasks are created in the correct loop
+            loop = asyncio.get_running_loop()
+            logger.debug(f"🚦 TOWER_LAMP: Creating tasks in event loop: {id(loop)}")
+
+            if red in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]:
+                try:
+                    self._blinking_tasks["red"] = loop.create_task(
+                        self._blink_lamp(self.red_lamp_channel, red)
+                    )
+                    logger.debug(f"🚦 TOWER_LAMP: Created red blinking task")
+                except Exception as task_e:
+                    logger.error(f"🚦 TOWER_LAMP: Failed to create red blinking task: {task_e}")
+                    await self._set_lamp_output(self.red_lamp_channel, True)  # Fallback to ON
+
+            if yellow in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]:
+                try:
+                    self._blinking_tasks["yellow"] = loop.create_task(
+                        self._blink_lamp(self.yellow_lamp_channel, yellow)
+                    )
+                    logger.debug(f"🚦 TOWER_LAMP: Created yellow blinking task")
+                except Exception as task_e:
+                    logger.error(f"🚦 TOWER_LAMP: Failed to create yellow blinking task: {task_e}")
+                    await self._set_lamp_output(self.yellow_lamp_channel, True)  # Fallback to ON
+
+            if green in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]:
+                try:
+                    self._blinking_tasks["green"] = loop.create_task(
+                        self._blink_lamp(self.green_lamp_channel, green)
+                    )
+                    logger.debug(f"🚦 TOWER_LAMP: Created green blinking task")
+                except Exception as task_e:
+                    logger.error(f"🚦 TOWER_LAMP: Failed to create green blinking task: {task_e}")
+                    await self._set_lamp_output(self.green_lamp_channel, True)  # Fallback to ON
+
+        except (RuntimeError, Exception) as e:
+            logger.error(f"🚦 TOWER_LAMP: Event loop error during task creation: {e}")
+            # If event loop becomes unavailable during operation, fall back to static states
+            fallback_red = red == LampState.ON or red in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+            fallback_yellow = yellow == LampState.ON or yellow in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+            fallback_green = green == LampState.ON or green in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+
+            await self._set_lamp_output(self.red_lamp_channel, fallback_red)
+            await self._set_lamp_output(self.yellow_lamp_channel, fallback_yellow)
+            await self._set_lamp_output(self.green_lamp_channel, fallback_green)
 
     async def _set_lamp_output(self, channel: int, state: bool) -> None:
         """
-        Set lamp output state
+        Set lamp output state with robust error handling
 
         Args:
             channel: Digital output channel
             state: True for ON, False for OFF
         """
         try:
+            # Check if event loop is available before attempting async operations
+            if not self._is_event_loop_available():
+                logger.warning(f"🚦 TOWER_LAMP: Event loop not available - skipping lamp channel {channel}")
+                return
+
             if await self.digital_io.is_connected():
                 await self.digital_io.write_output(channel, state)
                 state_str = "ON" if state else "OFF"
                 logger.debug(f"🚦 TOWER_LAMP: Channel {channel} set to {state_str}")
             else:
                 logger.warning("🚦 TOWER_LAMP: Digital I/O not connected - lamp control skipped")
+
+        except (RuntimeError, asyncio.InvalidStateError) as e:
+            # Handle event loop specific errors
+            logger.error(f"🚦 TOWER_LAMP: Event loop error setting lamp channel {channel}: {e}")
         except Exception as e:
+            # Handle all other errors
             logger.error(f"🚦 TOWER_LAMP: Failed to set lamp channel {channel}: {e}")
 
     async def _blink_lamp(self, channel: int, blink_type: LampState) -> None:
@@ -261,14 +334,45 @@ class TowerLampService:
 
         try:
             while True:
+                # Check if task was cancelled before each operation
+                if asyncio.current_task().cancelled():
+                    break
+
                 await self._set_lamp_output(channel, True)
-                await asyncio.sleep(interval)
+
+                # Use asyncio.wait_for with timeout to make cancellation more responsive
+                try:
+                    await asyncio.wait_for(asyncio.sleep(interval), timeout=interval + 0.1)
+                except asyncio.TimeoutError:
+                    pass  # Normal timeout, continue
+
+                if asyncio.current_task().cancelled():
+                    break
+
                 await self._set_lamp_output(channel, False)
-                await asyncio.sleep(interval)
+
+                try:
+                    await asyncio.wait_for(asyncio.sleep(interval), timeout=interval + 0.1)
+                except asyncio.TimeoutError:
+                    pass  # Normal timeout, continue
+
         except asyncio.CancelledError:
-            # Task was cancelled, turn off the lamp
-            await self._set_lamp_output(channel, False)
-            raise
+            # Task was cancelled, turn off the lamp and exit cleanly
+            logger.debug(f"🚦 TOWER_LAMP: Blinking task for channel {channel} cancelled")
+            try:
+                await self._set_lamp_output(channel, False)
+            except Exception as e:
+                logger.debug(f"🚦 TOWER_LAMP: Error turning off lamp during cancellation: {e}")
+            # Don't re-raise CancelledError to allow clean task destruction
+        except Exception as e:
+            logger.error(f"🚦 TOWER_LAMP: Error in blink_lamp for channel {channel}: {e}")
+        finally:
+            # Ensure lamp is off when task ends
+            try:
+                await self._set_lamp_output(channel, False)
+                logger.debug(f"🚦 TOWER_LAMP: Blinking task for channel {channel} finished cleanly")
+            except Exception as e:
+                logger.debug(f"🚦 TOWER_LAMP: Error in finally block: {e}")
 
     async def _set_beep(self, beep_on: bool) -> None:
         """Set beep ON or OFF - hardware handles 1-second interval automatically"""
@@ -280,15 +384,18 @@ class TowerLampService:
             logger.error(f"🔊 TOWER_LAMP: Failed to set beep: {e}")
 
     async def _stop_all_blinking(self) -> None:
-        """Stop all blinking tasks"""
-        for _, task in list(self._blinking_tasks.items()):
+        """Stop all blinking tasks safely without waiting for cancellation"""
+        for color, task in list(self._blinking_tasks.items()):
             if not task.done():
+                logger.debug(f"🚦 TOWER_LAMP: Cancelling {color} blinking task")
                 task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+                # Don't await the task - just cancel and move on to avoid event loop issues
+            else:
+                logger.debug(f"🚦 TOWER_LAMP: {color} blinking task already done")
+
+        # Clear the tasks dictionary immediately
         self._blinking_tasks.clear()
+        logger.debug("🚦 TOWER_LAMP: All blinking tasks cancelled and cleared")
 
     async def _stop_current_status(self) -> None:
         """Stop current status indication"""
@@ -311,6 +418,34 @@ class TowerLampService:
         self._red_state = LampState.OFF
         self._yellow_state = LampState.OFF
         self._green_state = LampState.OFF
+
+    async def shutdown(self) -> None:
+        """
+        Gracefully shutdown the tower lamp service by stopping all tasks and turning off all lamps
+        """
+        logger.info("🚦 TOWER_LAMP: Shutting down service...")
+
+        try:
+            # Stop all current status and blinking
+            await self._stop_current_status()
+
+            # Wait a moment for tasks to finish
+            await asyncio.sleep(0.1)
+
+            # Force clear any remaining tasks
+            if self._blinking_tasks:
+                logger.debug(f"🚦 TOWER_LAMP: Force clearing {len(self._blinking_tasks)} remaining tasks")
+                for color, task in list(self._blinking_tasks.items()):
+                    if not task.done():
+                        task.cancel()
+                        logger.debug(f"🚦 TOWER_LAMP: Force cancelled {color} task")
+
+                self._blinking_tasks.clear()
+
+            logger.info("🚦 TOWER_LAMP: Service shutdown complete")
+
+        except Exception as e:
+            logger.error(f"🚦 TOWER_LAMP: Error during shutdown: {e}")
         self._beep_active = False
 
     async def turn_off_all(self) -> None:

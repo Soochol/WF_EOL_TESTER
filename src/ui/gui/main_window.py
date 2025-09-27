@@ -57,6 +57,78 @@ class TestExecutorThread(QThread):
         """Request test to stop"""
         self.should_stop = True
 
+    def _evaluate_test_result(self, result):
+        """
+        Evaluate test result to determine actual success/failure status.
+
+        Args:
+            result: Test result object (EOLTestResult, HeatingCoolingTestResult, etc.) or None
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from loguru import logger
+
+        # Handle None result (test was cancelled or failed to execute)
+        if result is None:
+            logger.debug("Test result is None - treating as failure")
+            return False, "Test failed to execute or was cancelled"
+
+        # Handle EOLTestResult
+        if hasattr(result, 'test_status'):
+            from domain.enums.test_status import TestStatus
+
+            logger.debug(f"Evaluating EOLTestResult with status: {result.test_status}")
+
+            if result.test_status == TestStatus.COMPLETED:
+                # For COMPLETED status, check if test actually passed
+                if hasattr(result, 'is_passed') and result.is_passed:
+                    return True, "EOL Force Test completed successfully"
+                else:
+                    return False, "EOL Force Test completed but failed validation"
+            elif result.test_status == TestStatus.FAILED:
+                return False, "EOL Force Test failed"
+            elif result.test_status == TestStatus.ERROR:
+                return False, "EOL Force Test encountered an error"
+            elif result.test_status == TestStatus.CANCELLED:
+                return False, "EOL Force Test was cancelled"
+            else:
+                logger.warning(f"Unknown test status: {result.test_status}")
+                return False, f"Test completed with unknown status: {result.test_status}"
+
+        # Handle HeatingCoolingTestResult
+        if hasattr(result, 'success') or hasattr(result, 'passed'):
+            success_field = getattr(result, 'success', getattr(result, 'passed', False))
+            logger.debug(f"Evaluating HeatingCoolingTestResult with success: {success_field}")
+
+            if success_field:
+                return True, "Heating Cooling Test completed successfully"
+            else:
+                return False, "Heating Cooling Test failed"
+
+        # Handle dict results (Custom Test)
+        if isinstance(result, dict):
+            status = result.get('status', '').upper()
+            logger.debug(f"Evaluating dict result with status: {status}")
+
+            if status == 'SUCCESS':
+                return True, result.get('message', 'Custom test completed successfully')
+            else:
+                return False, result.get('message', 'Custom test failed')
+
+        # Handle Simple MCU Test result (placeholder - should check actual result structure)
+        if hasattr(result, 'is_passed'):
+            logger.debug(f"Evaluating MCU test result with is_passed: {result.is_passed}")
+
+            if result.is_passed:
+                return True, "Simple MCU Test completed successfully"
+            else:
+                return False, "Simple MCU Test failed"
+
+        # Unknown result type - assume success if object exists (fallback for backward compatibility)
+        logger.warning(f"Unknown result type: {type(result)} - assuming success")
+        return True, "Test completed (result type unknown)"
+
     def run(self):
         """Run the selected test in background thread"""
         import asyncio
@@ -70,10 +142,9 @@ class TestExecutorThread(QThread):
             # Run the test
             result = loop.run_until_complete(self._execute_test())
 
-            if result:
-                self.test_completed.emit(True, "Test completed successfully")
-            else:
-                self.test_completed.emit(False, "Test failed")
+            # Check actual test success/failure based on result type and content
+            success, message = self._evaluate_test_result(result)
+            self.test_completed.emit(success, message)
 
         except KeyboardInterrupt:
             # Emergency Stop으로 인한 중단 - 정상적인 상황
@@ -84,9 +155,40 @@ class TestExecutorThread(QThread):
             self.test_error.emit(str(e))
         finally:
             try:
+                # Gracefully cleanup all pending tasks before closing the loop
+                pending_tasks = asyncio.all_tasks(loop)
+                if pending_tasks:
+                    logger.debug(f"🧹 TEST_CLEANUP: Found {len(pending_tasks)} pending tasks to cleanup")
+
+                    # Cancel all pending tasks
+                    for task in pending_tasks:
+                        if not task.done():
+                            task.cancel()
+
+                    # Wait for all tasks to finish cancellation (with timeout)
+                    try:
+                        loop.run_until_complete(
+                            asyncio.wait_for(
+                                asyncio.gather(*pending_tasks, return_exceptions=True),
+                                timeout=2.0  # 2 second timeout for cleanup
+                            )
+                        )
+                        logger.debug("🧹 TEST_CLEANUP: All tasks cleaned up successfully")
+                    except asyncio.TimeoutError:
+                        logger.warning("🧹 TEST_CLEANUP: Task cleanup timed out, some tasks may not have finished")
+                    except Exception as cleanup_error:
+                        logger.debug(f"🧹 TEST_CLEANUP: Task cleanup completed with exceptions (expected): {cleanup_error}")
+
+                # Now it's safe to close the loop
                 loop.close()
-            except:
-                pass
+                logger.debug("🧹 TEST_CLEANUP: Event loop closed successfully")
+
+            except Exception as e:
+                logger.error(f"🧹 TEST_CLEANUP: Error during cleanup: {e}")
+                try:
+                    loop.close()
+                except:
+                    pass
 
     async def _execute_test(self):
         """Execute the selected test asynchronously"""

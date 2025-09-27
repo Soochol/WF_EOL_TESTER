@@ -29,6 +29,7 @@ from domain.exceptions.hardware_exceptions import (
 from domain.exceptions.test_exceptions import (
     InvalidTestStateException,
     MeasurementValidationException,
+    TestExecutionException,
     TestTimeoutException,
 )
 
@@ -201,6 +202,19 @@ class ExceptionHandler:
             user_message="Measurement validation failed. Recalibrating and retrying...",
         )
 
+        self._classification_rules[TestExecutionException] = ExceptionClassification(
+            category=ExceptionCategory.BUSINESS_RULE,
+            severity=ExceptionSeverity.HIGH,
+            retry_allowed=False,
+            max_retry_attempts=0,
+            retry_delay_seconds=0.0,
+            auto_recovery=False,
+            notification_required=True,
+            escalation_required=False,
+            description="Test execution failed",
+            user_message="Test execution failed. Please check hardware connections and configuration.",
+        )
+
         # Configuration exceptions
         self._classification_rules[InvalidConfigurationException] = ExceptionClassification(
             category=ExceptionCategory.CONFIGURATION,
@@ -239,6 +253,20 @@ class ExceptionHandler:
             escalation_required=True,
             description="Configuration security violation",
             user_message="Security violation in configuration. System access restricted.",
+        )
+
+        # System exceptions
+        self._classification_rules[RuntimeError] = ExceptionClassification(
+            category=ExceptionCategory.CRITICAL,
+            severity=ExceptionSeverity.HIGH,
+            retry_allowed=False,
+            max_retry_attempts=0,
+            retry_delay_seconds=0.0,
+            auto_recovery=False,
+            notification_required=True,
+            escalation_required=False,
+            description="Runtime system error",
+            user_message="A system runtime error occurred. Please restart the application.",
         )
 
     def _initialize_recovery_strategies(self) -> None:
