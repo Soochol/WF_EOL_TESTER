@@ -5,15 +5,16 @@ Individual cycle result for repeat testing scenarios.
 Contains measurements and status for a single test cycle within a larger test sequence.
 """
 
+# Standard library imports
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
-from domain.value_objects.identifiers import TestId
-from domain.value_objects.measurements import TestMeasurements
+# Local application imports
 from domain.enums.test_status import TestStatus
-from domain.value_objects.time_values import TestDuration
 from domain.exceptions.validation_exceptions import ValidationException
+from domain.value_objects.measurements import TestMeasurements
+from domain.value_objects.time_values import TestDuration
 
 
 @dataclass(frozen=True)
@@ -45,16 +46,12 @@ class CycleResult:
         """Validate cycle number"""
         if self.cycle_number < 1:
             raise ValidationException(
-                "cycle_number",
-                self.cycle_number,
-                "Cycle number must be at least 1"
+                "cycle_number", self.cycle_number, "Cycle number must be at least 1"
             )
 
         if self.cycle_number > 1000:
             raise ValidationException(
-                "cycle_number",
-                self.cycle_number,
-                "Cycle number must not exceed 1000"
+                "cycle_number", self.cycle_number, "Cycle number must not exceed 1000"
             )
 
     def _validate_status_consistency(self) -> None:
@@ -63,23 +60,21 @@ class CycleResult:
             raise ValidationException(
                 "error_message",
                 self.error_message,
-                "Error message is required when test status is FAILED"
+                "Error message is required when test status is FAILED",
             )
 
         if self.test_status == TestStatus.COMPLETED and self.error_message:
             raise ValidationException(
                 "error_message",
                 self.error_message,
-                "Error message should not be present when test status is COMPLETED"
+                "Error message should not be present when test status is COMPLETED",
             )
 
     def _validate_optional_fields(self) -> None:
         """Validate optional fields"""
         if self.cycle_notes and len(self.cycle_notes) > 1000:
             raise ValidationException(
-                "cycle_notes",
-                self.cycle_notes,
-                "Cycle notes must not exceed 1000 characters"
+                "cycle_notes", self.cycle_notes, "Cycle notes must not exceed 1000 characters"
             )
 
     @property
@@ -140,7 +135,9 @@ class CycleResult:
             return (min(temps), max(temps)) if temps else (None, None)
         elif isinstance(self.measurements, dict):
             measurements = self.measurements.get("measurements", {})
-            temps = [float(temp) for temp in measurements.keys() if isinstance(temp, (int, float, str))]
+            temps = [
+                float(temp) for temp in measurements.keys() if isinstance(temp, (int, float, str))
+            ]
             return (min(temps), max(temps)) if temps else (None, None)
         return (None, None)
 
@@ -157,7 +154,8 @@ class CycleResult:
             "error_message": self.error_message,
             "cycle_notes": self.cycle_notes,
             "measurements": (
-                self.measurements.to_dict() if isinstance(self.measurements, TestMeasurements)
+                self.measurements.to_dict()
+                if isinstance(self.measurements, TestMeasurements)
                 else self.measurements
             ),
             "measurement_count": self.get_measurement_count(),
@@ -241,6 +239,9 @@ class CycleResult:
             status_info += " (FAIL)"
 
         duration_info = f", {self.format_duration()}" if self.execution_duration else ""
-        measurement_info = f", {self.get_measurement_count()} measurements" if self.measurements else ""
+        measurement_info = (
+            f", {self.get_measurement_count()} measurements" if self.measurements else ""
+        )
 
+        return f"CycleResult(#{self.cycle_number}: {status_info}{duration_info}{measurement_info})"
         return f"CycleResult(#{self.cycle_number}: {status_info}{duration_info}{measurement_info})"
