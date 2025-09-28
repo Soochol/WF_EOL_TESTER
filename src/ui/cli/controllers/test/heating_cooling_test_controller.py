@@ -301,7 +301,7 @@ class HeatingCoolingTestController:
         """Save test results to JSON file"""
         try:
             # Create results directory
-            results_dir = Path("logs/Heating Cooling Test/power_measurements")
+            results_dir = Path("../logs/Heating Cooling Test/power_measurements")
             results_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate filename with timestamp

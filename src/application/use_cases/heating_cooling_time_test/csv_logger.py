@@ -38,7 +38,7 @@ class HeatingCoolingCSVLogger:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"HC_Test_{timestamp}_{test_id}.csv"
 
-        self.log_dir = Path("logs/Heating Cooling Test/cycle_data")
+        self.log_dir = Path("../logs/Heating Cooling Test/cycle_data")
         self.file_path = self.log_dir / filename
 
         # Track data for summary statistics

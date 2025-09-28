@@ -337,7 +337,7 @@ class TestExecutor(ITestExecutor):
         """
         try:
             # Look for cycle measurement files
-            csv_pattern = "logs/EOL Force Test/raw_data/cycle_measurements_*_total*cycles.csv"
+            csv_pattern = "../logs/EOL Force Test/raw_data/cycle_measurements_*_total*cycles.csv"
             csv_files = glob.glob(csv_pattern)
 
             if not csv_files:

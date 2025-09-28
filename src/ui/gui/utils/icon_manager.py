@@ -102,7 +102,8 @@ class IconManager:
         """
         # Validate icon name first
         if not self._is_valid_icon_name(name):
-            logger.warning(f"Invalid icon name passed: '{name}' - use proper icon names instead of emojis")
+            # Use debug level for emoji fallbacks instead of warning
+            logger.debug(f"Using fallback for icon name: '{name}' (contains emoji characters)")
             return QIcon()  # Return empty icon for invalid names
 
         if theme is None:

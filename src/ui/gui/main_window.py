@@ -933,7 +933,7 @@ class MainWindow(QMainWindow):
             logger.info("Test thread stopped")
 
         # Update test control status
-        self.test_control_page.update_test_status("Test Stopped", "⏹️", 0)
+        self.test_control_page.update_test_status("Test Stopped", "stop", 0)
 
         # Reset GUI state
         self._set_test_running_state(False)
@@ -1342,6 +1342,8 @@ class MainWindow(QMainWindow):
                 else:
                     logger.info("Test completed (single cycle or no individual cycle data)")
 
+            elif result_data is None:
+                logger.info("Test result is None (likely cancelled by Emergency Stop)")
             else:
                 logger.warning(f"Received unknown result format: {type(result_data)}")
 
