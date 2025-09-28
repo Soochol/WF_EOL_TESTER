@@ -23,7 +23,7 @@ from domain.value_objects.test_configuration import TestConfiguration
 class YamlConfiguration:
     """Simple YAML-based configuration implementation"""
 
-    def __init__(self, config_dir: str = "configuration"):
+    def __init__(self, config_dir: str = "../configuration"):
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(exist_ok=True)
 
