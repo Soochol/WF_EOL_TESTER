@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 # Local application imports
+from application.containers.application_container import ApplicationContainer
 from application.containers.simple_reloadable_container import SimpleReloadableContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.widgets.content.about_widget import AboutWidget
