@@ -233,7 +233,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         return container
 
     @classmethod
-    def create_with_paths(cls, **kwargs) -> "ApplicationContainer":
+    def create_with_paths(cls, **_kwargs) -> "ApplicationContainer":
         """
         Create container with configuration paths (legacy method for compatibility).
 
@@ -327,7 +327,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
             hardware_config = container_instance.config.hardware()
 
             # Update HardwareFactory config to match
-            container_instance.hardware_factory.config.from_dict(hardware_config)
+            hardware_factory_instance = container_instance.hardware_factory()
+            if hasattr(hardware_factory_instance, 'config') and hasattr(hardware_factory_instance.config, 'from_dict'):
+                hardware_factory_instance.config.from_dict(hardware_config)
             logger.info("🔄 HardwareFactory configuration synchronized")
 
             # Reset HardwareFactory providers to pick up new config
@@ -373,13 +375,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             except Exception as e:
                 logger.error(f"❌ Failed to reset {name}: {e}")
 
-        # Reset emergency_stop_service if it's a Factory that creates instances dependent on hardware
-        try:
-            if hasattr(container_instance.emergency_stop_service, "reset"):
-                container_instance.emergency_stop_service.reset()
-                logger.info("🔄 Reset emergency_stop_service provider")
-        except Exception as e:
-            logger.debug(f"Emergency stop service reset skipped: {e}")
+        # Note: emergency_stop_service doesn't need reset as it gets fresh dependencies through facade
 
         logger.info("✅ Hardware Singletons reset completed")
 
@@ -433,20 +429,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
             except Exception as e:
                 logger.error(f"❌ Failed to reset {name}: {e}")
 
-        # Reset emergency_stop_service if it's a Factory that creates instances dependent on hardware
-        try:
-            if hasattr(self.emergency_stop_service, "reset"):
-                self.emergency_stop_service.reset()
-                logger.info("🔄 Reset emergency_stop_service provider")
-        except Exception as e:
-            logger.debug(f"Emergency stop service reset skipped: {e}")
-
-        logger.info("✅ Hardware Singletons reset completed")
-        try:
-            if hasattr(self.emergency_stop_service, "reset"):
-                self.emergency_stop_service.reset()
-                logger.info("🔄 Reset emergency_stop_service provider")
-        except Exception as e:
-            logger.debug(f"Emergency stop service reset skipped: {e}")
+        # Note: emergency_stop_service doesn't need reset as it gets fresh dependencies through facade
 
         logger.info("✅ Hardware Singletons reset completed")

@@ -106,7 +106,7 @@ class CycleResult:
     def get_measurement_count(self) -> int:
         """Get number of measurements in this cycle"""
         if isinstance(self.measurements, TestMeasurements):
-            return self.measurements.total_measurement_count
+            return self.measurements.get_total_measurement_count()
         elif isinstance(self.measurements, dict):
             # For dict-based measurements, try to count entries
             return len(self.measurements.get("measurements", {}))
@@ -115,7 +115,12 @@ class CycleResult:
     def get_average_force(self) -> Optional[float]:
         """Get average force value from measurements"""
         if isinstance(self.measurements, TestMeasurements):
-            return self.measurements.average_force
+            # Calculate average force across all measurements
+            forces = []
+            for temp, pos_measurements in self.measurements:
+                for pos, reading in pos_measurements:
+                    forces.append(reading.force)
+            return sum(forces) / len(forces) if forces else None
         elif isinstance(self.measurements, dict):
             # Try to extract average force from dict format
             forces = []
@@ -131,7 +136,7 @@ class CycleResult:
     def get_temperature_range(self) -> tuple[Optional[float], Optional[float]]:
         """Get temperature range from measurements"""
         if isinstance(self.measurements, TestMeasurements):
-            temps = self.measurements.temperatures
+            temps = self.measurements.get_temperatures()
             return (min(temps), max(temps)) if temps else (None, None)
         elif isinstance(self.measurements, dict):
             measurements = self.measurements.get("measurements", {})
@@ -243,5 +248,4 @@ class CycleResult:
             f", {self.get_measurement_count()} measurements" if self.measurements else ""
         )
 
-        return f"CycleResult(#{self.cycle_number}: {status_info}{duration_info}{measurement_info})"
         return f"CycleResult(#{self.cycle_number}: {status_info}{duration_info}{measurement_info})"

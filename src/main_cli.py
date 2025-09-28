@@ -7,6 +7,7 @@ Simplified main application optimized for command-line interface usage.
 """
 
 # Standard library imports
+# Standard library imports
 from datetime import datetime
 from pathlib import Path
 import signal
@@ -44,7 +45,6 @@ def maximize_console_window() -> None:
         if os.name == "nt":  # Windows only
             # Standard library imports
             import ctypes
-            from ctypes import wintypes
 
             # Get console window handle
             kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -57,7 +57,7 @@ def maximize_console_window() -> None:
                 user32.ShowWindow(hwnd, 3)
                 # Also set focus to the window
                 user32.SetForegroundWindow(hwnd)
-    except Exception as e:
+    except Exception:
         # Silently ignore errors - maximizing is not critical
         pass
 

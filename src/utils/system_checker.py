@@ -92,9 +92,6 @@ class SystemChecker:
 
     def _is_uv_environment(self) -> bool:
         """Check if running in UV environment"""
-        # Standard library imports
-        import os
-
         uv_indicators = [
             os.environ.get("UV_PROJECT_NAME"),
             os.environ.get("VIRTUAL_ENV") and ".venv" in os.environ.get("VIRTUAL_ENV", ""),
@@ -145,19 +142,24 @@ class SystemChecker:
             # Try to get Qt version (optional, may not be available)
             try:
                 # Third-party imports
-                from PySide6.QtCore import QT_VERSION_STR
+                from PySide6.QtCore import qVersion
 
-                print(f"📦 Qt Version: {QT_VERSION_STR}")
-            except ImportError:
+                print(f"📦 Qt Version: {qVersion()}")
+            except (ImportError, AttributeError):
                 print("📦 Qt Version: (not available)")
 
             # Try importing core modules
-            # Third-party imports
-            from PySide6.QtCore import QTimer
-            from PySide6.QtGui import QIcon
-            from PySide6.QtWidgets import QApplication
-
-            print("✅ PySide6 core modules import OK")
+            try:
+                # Third-party imports
+                from PySide6.QtCore import QObject
+                from PySide6.QtGui import QPixmap
+                from PySide6.QtWidgets import QWidget
+                # Test that we can instantiate basic objects
+                _ = QObject, QPixmap, QWidget
+                print("✅ PySide6 core modules import OK")
+            except ImportError as e:
+                print(f"❌ PySide6 core modules import failed: {e}")
+                raise
 
         except ImportError as e:
             print(f"❌ PySide6 import failed: {e}")
@@ -200,7 +202,7 @@ class SystemChecker:
                 print(f"   ⚠️  Could not read pyproject.toml: {e}")
 
         # Check UV show command
-        success, output = self.run_command("uv show pyside6")
+        success, _ = self.run_command("uv show pyside6")
         if success:
             print("   ✅ PySide6 package recognized by UV")
         else:
@@ -282,13 +284,13 @@ class SystemChecker:
 
         # Check serial port access (Linux/Windows)
         if platform.system() == "Linux":
-            # Standard library imports
-            import grp
-
             try:
+                # Standard library imports
+                import grp
+
                 # Check if user is in dialout group
-                dialout_gid = grp.getgrnam("dialout").gr_gid
-                user_groups = os.getgroups()
+                dialout_gid = grp.getgrnam("dialout").gr_gid  # type: ignore[attr-defined]
+                user_groups = os.getgroups()  # type: ignore[attr-defined]
 
                 if dialout_gid in user_groups:
                     print("✅ User in 'dialout' group for serial access")
@@ -300,8 +302,8 @@ class SystemChecker:
                     self.recommendations.append(
                         "Add user to dialout group: sudo usermod -a -G dialout $USER"
                     )
-            except KeyError:
-                print("⚠️  'dialout' group not found")
+            except (KeyError, ImportError, AttributeError):
+                print("⚠️  Could not check dialout group access")
 
         elif platform.system() == "Windows":
             # Windows typically has serial access by default
@@ -376,7 +378,9 @@ class SystemChecker:
     def run_command(self, cmd: str) -> Tuple[bool, str]:
         """Run a system command and return success status and output"""
         try:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, timeout=10, check=False
+            )
             return result.returncode == 0, result.stdout.strip()
         except (subprocess.TimeoutExpired, Exception):
             return False, ""

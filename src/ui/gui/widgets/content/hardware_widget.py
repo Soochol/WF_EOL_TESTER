@@ -12,7 +12,6 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
     QPushButton,
     QVBoxLayout,
@@ -49,7 +48,6 @@ class HardwareWidget(QWidget):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-
         # Hardware Status
         self.hardware_status = HardwareStatusWidget(
             container=self.container,
@@ -66,7 +64,6 @@ class HardwareWidget(QWidget):
 
         # Apply styling
         self.setStyleSheet(self._get_widget_style())
-
 
     def create_controls_group(self) -> QGroupBox:
         """Create hardware controls group"""

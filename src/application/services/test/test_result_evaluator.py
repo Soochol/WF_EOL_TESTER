@@ -13,8 +13,8 @@ from loguru import logger
 
 # Local application imports
 from domain.exceptions import (
-    create_test_evaluation_error,
     TestEvaluationError,
+    create_test_evaluation_error,
 )
 from domain.value_objects.pass_criteria import PassCriteria
 
@@ -29,6 +29,7 @@ class TestResultEvaluator:
 
     def __init__(self) -> None:
         """Initialize the test result evaluator"""
+        pass
 
     async def evaluate_measurements(
         self,

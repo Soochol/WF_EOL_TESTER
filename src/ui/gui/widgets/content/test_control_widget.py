@@ -24,8 +24,8 @@ from PySide6.QtWidgets import (
 
 # Local application imports
 from application.containers.application_container import ApplicationContainer
-from ui.gui.utils.icon_manager import get_emoji, get_icon, IconSize
 from ui.gui.services.gui_state_manager import GUIStateManager
+from ui.gui.utils.icon_manager import get_emoji, get_icon, IconSize
 from ui.gui.widgets.log_viewer_widget import LogViewerWidget
 
 

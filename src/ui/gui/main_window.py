@@ -4,33 +4,35 @@ Main Window
 Main application window with sidebar navigation and content area.
 """
 
+# Standard library imports
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer, QThread, Signal
-from PySide6.QtGui import QFont, QIcon
+# Third-party imports
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QWidget,
+    QFrame,
     QHBoxLayout,
-    QVBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
     QStackedWidget,
     QStatusBar,
-    QLabel,
-    QFrame,
-    QMessageBox,
+    QVBoxLayout,
+    QWidget,
 )
 
-from application.containers.application_container import ApplicationContainer
+# Local application imports
+from application.containers.simple_reloadable_container import SimpleReloadableContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
-from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
-from ui.gui.widgets.header.header_widget import HeaderWidget
+from ui.gui.widgets.content.about_widget import AboutWidget
 from ui.gui.widgets.content.dashboard_widget import DashboardWidget
-from ui.gui.widgets.content.test_control_widget import TestControlWidget
-from ui.gui.widgets.content.results_widget import ResultsWidget
 from ui.gui.widgets.content.hardware_widget import HardwareWidget
 from ui.gui.widgets.content.logs_widget import LogsWidget
-from ui.gui.widgets.content.about_widget import AboutWidget
+from ui.gui.widgets.content.results_widget import ResultsWidget
 from ui.gui.widgets.content.settings_widget import SettingsWidget
+from ui.gui.widgets.content.test_control_widget import TestControlWidget
+from ui.gui.widgets.header.header_widget import HeaderWidget
+from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
 
 
 class TestExecutorThread(QThread):
@@ -67,6 +69,7 @@ class TestExecutorThread(QThread):
         Returns:
             tuple: (success: bool, message: str)
         """
+        # Third-party imports
         from loguru import logger
 
         # Handle None result (test was cancelled or failed to execute)
@@ -75,14 +78,15 @@ class TestExecutorThread(QThread):
             return False, "Test failed to execute or was cancelled"
 
         # Handle EOLTestResult
-        if hasattr(result, 'test_status'):
+        if hasattr(result, "test_status"):
+            # Local application imports
             from domain.enums.test_status import TestStatus
 
             logger.debug(f"Evaluating EOLTestResult with status: {result.test_status}")
 
             if result.test_status == TestStatus.COMPLETED:
                 # For COMPLETED status, check if test actually passed
-                if hasattr(result, 'is_passed') and result.is_passed:
+                if hasattr(result, "is_passed") and result.is_passed:
                     return True, "EOL Force Test completed successfully"
                 else:
                     return False, "EOL Force Test completed but failed validation"
@@ -97,8 +101,8 @@ class TestExecutorThread(QThread):
                 return False, f"Test completed with unknown status: {result.test_status}"
 
         # Handle HeatingCoolingTestResult
-        if hasattr(result, 'success') or hasattr(result, 'passed'):
-            success_field = getattr(result, 'success', getattr(result, 'passed', False))
+        if hasattr(result, "success") or hasattr(result, "passed"):
+            success_field = getattr(result, "success", getattr(result, "passed", False))
             logger.debug(f"Evaluating HeatingCoolingTestResult with success: {success_field}")
 
             if success_field:
@@ -108,16 +112,16 @@ class TestExecutorThread(QThread):
 
         # Handle dict results (Custom Test)
         if isinstance(result, dict):
-            status = result.get('status', '').upper()
+            status = result.get("status", "").upper()
             logger.debug(f"Evaluating dict result with status: {status}")
 
-            if status == 'SUCCESS':
-                return True, result.get('message', 'Custom test completed successfully')
+            if status == "SUCCESS":
+                return True, result.get("message", "Custom test completed successfully")
             else:
-                return False, result.get('message', 'Custom test failed')
+                return False, result.get("message", "Custom test failed")
 
         # Handle Simple MCU Test result (placeholder - should check actual result structure)
-        if hasattr(result, 'is_passed'):
+        if hasattr(result, "is_passed"):
             logger.debug(f"Evaluating MCU test result with is_passed: {result.is_passed}")
 
             if result.is_passed:
@@ -131,6 +135,7 @@ class TestExecutorThread(QThread):
 
     def run(self):
         """Run the selected test in background thread"""
+        # Third-party imports
         import asyncio
         from loguru import logger
 
@@ -158,7 +163,9 @@ class TestExecutorThread(QThread):
                 # Gracefully cleanup all pending tasks before closing the loop
                 pending_tasks = asyncio.all_tasks(loop)
                 if pending_tasks:
-                    logger.debug(f"🧹 TEST_CLEANUP: Found {len(pending_tasks)} pending tasks to cleanup")
+                    logger.debug(
+                        f"🧹 TEST_CLEANUP: Found {len(pending_tasks)} pending tasks to cleanup"
+                    )
 
                     # Cancel all pending tasks
                     for task in pending_tasks:
@@ -170,14 +177,18 @@ class TestExecutorThread(QThread):
                         loop.run_until_complete(
                             asyncio.wait_for(
                                 asyncio.gather(*pending_tasks, return_exceptions=True),
-                                timeout=2.0  # 2 second timeout for cleanup
+                                timeout=2.0,  # 2 second timeout for cleanup
                             )
                         )
                         logger.debug("🧹 TEST_CLEANUP: All tasks cleaned up successfully")
                     except asyncio.TimeoutError:
-                        logger.warning("🧹 TEST_CLEANUP: Task cleanup timed out, some tasks may not have finished")
+                        logger.warning(
+                            "🧹 TEST_CLEANUP: Task cleanup timed out, some tasks may not have finished"
+                        )
                     except Exception as cleanup_error:
-                        logger.debug(f"🧹 TEST_CLEANUP: Task cleanup completed with exceptions (expected): {cleanup_error}")
+                        logger.debug(
+                            f"🧹 TEST_CLEANUP: Task cleanup completed with exceptions (expected): {cleanup_error}"
+                        )
 
                 # Now it's safe to close the loop
                 loop.close()
@@ -192,7 +203,7 @@ class TestExecutorThread(QThread):
 
     async def _execute_test(self):
         """Execute the selected test asynchronously"""
-        from loguru import logger
+        # Local application imports
         from domain.value_objects.dut_command_info import DUTCommandInfo
 
         try:
@@ -201,10 +212,12 @@ class TestExecutorThread(QThread):
                 dut_id=f"DUT_{self.serial_number}",
                 model_number="WF_EOL_MODEL",
                 serial_number=self.serial_number,
-                manufacturer="Withforce"
+                manufacturer="Withforce",
             )
 
-            self.log_message.emit("INFO", "TEST", f"Starting {self.test_sequence} for SN: {self.serial_number}")
+            self.log_message.emit(
+                "INFO", "TEST", f"Starting {self.test_sequence} for SN: {self.serial_number}"
+            )
             self.test_started.emit(self.test_sequence)
 
             # Select and execute the appropriate UseCase
@@ -230,8 +243,11 @@ class TestExecutorThread(QThread):
 
     async def _execute_eol_force_test(self, dut_info):
         """Execute EOL Force Test with Task-based cancellation"""
-        from application.use_cases.eol_force_test.main_use_case import EOLForceTestInput
+        # Third-party imports
         import asyncio
+
+        # Local application imports
+        from application.use_cases.eol_force_test.main_use_case import EOLForceTestInput
 
         # Check for stop signal before starting
         if self.should_stop:
@@ -246,19 +262,39 @@ class TestExecutorThread(QThread):
 
         # Verify GUI State Manager connection before test execution
         hardware_facade = self.container.hardware_service_facade()
-        gui_state_manager_status = hasattr(hardware_facade, '_gui_state_manager') and hardware_facade._gui_state_manager is not None
-        self.log_message.emit("INFO", "EOL_TEST", f"Pre-test GUI State Manager status: {gui_state_manager_status}")
+        gui_state_manager_status = (
+            hasattr(hardware_facade, "_gui_state_manager")
+            and hardware_facade._gui_state_manager is not None
+        )
+        self.log_message.emit(
+            "INFO", "EOL_TEST", f"Pre-test GUI State Manager status: {gui_state_manager_status}"
+        )
 
         if gui_state_manager_status:
-            self.log_message.emit("INFO", "EOL_TEST", f"Hardware facade GUI State Manager ID: {id(hardware_facade._gui_state_manager)}")
+            self.log_message.emit(
+                "INFO",
+                "EOL_TEST",
+                f"Hardware facade GUI State Manager ID: {id(hardware_facade._gui_state_manager)}",
+            )
         else:
-            self.log_message.emit("WARNING", "EOL_TEST", "GUI State Manager not connected - attempting runtime injection")
+            self.log_message.emit(
+                "WARNING",
+                "EOL_TEST",
+                "GUI State Manager not connected - attempting runtime injection",
+            )
             # Try to get state manager from parent main window and inject it
-            if hasattr(self.parent(), 'state_manager') and self.parent().state_manager:
-                hardware_facade._gui_state_manager = self.parent().state_manager
-                self.log_message.emit("INFO", "EOL_TEST", f"Runtime GUI State Manager injection completed with ID: {id(self.parent().state_manager)}")
+            parent_state_manager = getattr(self.parent(), "state_manager", None)
+            if parent_state_manager:
+                hardware_facade._gui_state_manager = parent_state_manager
+                self.log_message.emit(
+                    "INFO",
+                    "EOL_TEST",
+                    f"Runtime GUI State Manager injection completed with ID: {id(parent_state_manager)}",
+                )
             else:
-                self.log_message.emit("ERROR", "EOL_TEST", "No state manager available for runtime injection")
+                self.log_message.emit(
+                    "ERROR", "EOL_TEST", "No state manager available for runtime injection"
+                )
 
         eol_test_use_case = self.container.eol_force_test_use_case()
 
@@ -270,14 +306,20 @@ class TestExecutorThread(QThread):
         # Monitor task execution and check for cancellation every 100ms
         while not task.done():
             if self.should_stop:
-                self.log_message.emit("WARNING", "EOL_TEST", "EOL Force Test cancelled - stopping UseCase")
+                self.log_message.emit(
+                    "WARNING", "EOL_TEST", "EOL Force Test cancelled - stopping UseCase"
+                )
                 task.cancel()  # Cancel the UseCase Task
                 try:
                     await task  # Wait for CancelledError processing
                 except (asyncio.CancelledError, KeyboardInterrupt):
-                    self.log_message.emit("INFO", "EOL_TEST", "EOL Force Test cancelled successfully")
+                    self.log_message.emit(
+                        "INFO", "EOL_TEST", "EOL Force Test cancelled successfully"
+                    )
                 except Exception as e:
-                    self.log_message.emit("WARNING", "EOL_TEST", f"Exception during cancellation: {e}")
+                    self.log_message.emit(
+                        "WARNING", "EOL_TEST", f"Exception during cancellation: {e}"
+                    )
                 return None
 
             # Check every 100ms for responsive cancellation
@@ -286,7 +328,9 @@ class TestExecutorThread(QThread):
         # Get result from completed task - ensure all exceptions are handled
         try:
             result = await task
-            self.log_message.emit("INFO", "EOL_TEST", f"EOL Force Test result: {result.test_status.value}")
+            self.log_message.emit(
+                "INFO", "EOL_TEST", f"EOL Force Test result: {result.test_status.value}"
+            )
             return result
         except (asyncio.CancelledError, KeyboardInterrupt):
             self.log_message.emit("INFO", "EOL_TEST", "EOL Force Test was cancelled")
@@ -297,12 +341,19 @@ class TestExecutorThread(QThread):
 
     async def _execute_heating_cooling_test(self, dut_info):
         """Execute Heating Cooling Time Test with Task-based cancellation"""
-        from application.use_cases.heating_cooling_time_test.main_use_case import HeatingCoolingTimeTestInput
+        # Third-party imports
         import asyncio
+
+        # Local application imports
+        from application.use_cases.heating_cooling_time_test.main_use_case import (
+            HeatingCoolingTimeTestInput,
+        )
 
         # Check for stop signal before starting
         if self.should_stop:
-            self.log_message.emit("WARNING", "HEATING_COOLING", "Heating Cooling Test cancelled before start")
+            self.log_message.emit(
+                "WARNING", "HEATING_COOLING", "Heating Cooling Test cancelled before start"
+            )
             return None
 
         # Create test input
@@ -319,14 +370,22 @@ class TestExecutorThread(QThread):
         # Monitor task execution and check for cancellation every 100ms
         while not task.done():
             if self.should_stop:
-                self.log_message.emit("WARNING", "HEATING_COOLING", "Heating Cooling Test cancelled - stopping UseCase")
+                self.log_message.emit(
+                    "WARNING",
+                    "HEATING_COOLING",
+                    "Heating Cooling Test cancelled - stopping UseCase",
+                )
                 task.cancel()  # Cancel the UseCase Task
                 try:
                     await task  # Wait for CancelledError processing
                 except (asyncio.CancelledError, KeyboardInterrupt):
-                    self.log_message.emit("INFO", "HEATING_COOLING", "Heating Cooling Test cancelled successfully")
+                    self.log_message.emit(
+                        "INFO", "HEATING_COOLING", "Heating Cooling Test cancelled successfully"
+                    )
                 except Exception as e:
-                    self.log_message.emit("WARNING", "HEATING_COOLING", f"Exception during cancellation: {e}")
+                    self.log_message.emit(
+                        "WARNING", "HEATING_COOLING", f"Exception during cancellation: {e}"
+                    )
                 return None
 
             # Check every 100ms for responsive cancellation
@@ -335,18 +394,27 @@ class TestExecutorThread(QThread):
         # Get result from completed task - ensure all exceptions are handled
         try:
             result = await task
-            self.log_message.emit("INFO", "HEATING_COOLING", f"Heating Cooling Test result: {result.test_status.value}")
+            self.log_message.emit(
+                "INFO",
+                "HEATING_COOLING",
+                f"Heating Cooling Test result: {result.test_status.value}",
+            )
             return result
         except (asyncio.CancelledError, KeyboardInterrupt):
             self.log_message.emit("INFO", "HEATING_COOLING", "Heating Cooling Test was cancelled")
             return None
         except Exception as e:
-            self.log_message.emit("ERROR", "HEATING_COOLING", f"Heating Cooling Test failed with exception: {e}")
+            self.log_message.emit(
+                "ERROR", "HEATING_COOLING", f"Heating Cooling Test failed with exception: {e}"
+            )
             return None
 
     async def _execute_simple_mcu_test(self, _dut_info):  # pylint: disable=unused-argument
         """Execute Simple MCU Test (placeholder implementation)"""
+        # Third-party imports
         import asyncio
+
+        # Local application imports
         from domain.value_objects.eol_test_result import EOLTestResult
         from domain.value_objects.identifiers import TestId
         from domain.value_objects.time_values import TestDuration
@@ -361,7 +429,9 @@ class TestExecutorThread(QThread):
         # Simulate test duration with cancellation checking
         for _ in range(20):  # 2 seconds = 20 * 0.1s
             if self.should_stop:
-                self.log_message.emit("WARNING", "MCU_TEST", "Simple MCU Test cancelled during execution")
+                self.log_message.emit(
+                    "WARNING", "MCU_TEST", "Simple MCU Test cancelled during execution"
+                )
                 return None
             await asyncio.sleep(0.1)
 
@@ -370,14 +440,17 @@ class TestExecutorThread(QThread):
             test_id=TestId.generate(),
             is_passed=True,
             duration=TestDuration.from_seconds(2.0),
-            notes="Placeholder MCU test - not yet implemented"
+            notes="Placeholder MCU test - not yet implemented",
         )
 
-        self.log_message.emit("INFO", "MCU_TEST", f"Simple MCU Test result: {result.test_status.value}")
+        self.log_message.emit(
+            "INFO", "MCU_TEST", f"Simple MCU Test result: {result.test_status.value}"
+        )
         return result
 
     async def _execute_custom_test(self, _dut_info):  # pylint: disable=unused-argument
         """Execute Custom Test Sequence"""
+        # Third-party imports
         import asyncio
 
         # Check for stop signal before starting
@@ -391,7 +464,9 @@ class TestExecutorThread(QThread):
         # For now, simulate test duration with cancellation checking
         for _ in range(20):  # 2 seconds = 20 * 0.1s
             if self.should_stop:
-                self.log_message.emit("WARNING", "CUSTOM_TEST", "Custom test cancelled during execution")
+                self.log_message.emit(
+                    "WARNING", "CUSTOM_TEST", "Custom test cancelled during execution"
+                )
                 return None
             await asyncio.sleep(0.1)
 
@@ -414,8 +489,9 @@ class RobotHomeThread(QThread):
 
     def run(self):
         """Execute robot home operation in separate thread"""
-        from loguru import logger
+        # Third-party imports
         import asyncio
+        from loguru import logger
 
         self.started.emit()
         logger.info("Robot home thread started")
@@ -445,6 +521,7 @@ class RobotHomeThread(QThread):
 
     async def _run_robot_home_task(self):
         """Run robot home task using START TEST pattern"""
+        # Third-party imports
         import asyncio
 
         # Create task for robot home operation (like START TEST)
@@ -459,8 +536,9 @@ class RobotHomeThread(QThread):
 
     async def _execute_robot_home(self):
         """Execute the robot home operation asynchronously using task-based pattern like START TEST"""
-        from loguru import logger
+        # Third-party imports
         import asyncio
+        from loguru import logger
 
         self.progress.emit("Starting robot home operation...")
         logger.info("Starting robot home operation...")
@@ -472,6 +550,7 @@ class RobotHomeThread(QThread):
 
             # Import required input class
             self.progress.emit("Creating robot home input...")
+            # Local application imports
             from application.use_cases.robot_operations.input import RobotHomeInput
 
             # Create input for robot home operation
@@ -513,7 +592,7 @@ class MainWindow(QMainWindow):
 
     def __init__(
         self,
-        container: ApplicationContainer,
+        container: SimpleReloadableContainer,
         state_manager: GUIStateManager,
         parent: Optional[QWidget] = None,
     ):
@@ -550,10 +629,7 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         # Header
-        self.header = HeaderWidget(
-            container=self.container,
-            state_manager=self.state_manager
-        )
+        self.header = HeaderWidget(container=self.container, state_manager=self.state_manager)
         self.header.emergency_stop_requested.connect(self._on_emergency_stop_requested)
         self.header.settings_requested.connect(self._on_header_settings_clicked)
         self.header.notifications_requested.connect(self._on_header_notifications_clicked)
@@ -680,7 +756,8 @@ class MainWindow(QMainWindow):
         self.status_bar.addPermanentWidget(self.progress_label)
 
         # Style status bar
-        self.status_bar.setStyleSheet("""
+        self.status_bar.setStyleSheet(
+            """
             QStatusBar {
                 background-color: #2d2d2d;
                 color: #cccccc;
@@ -691,7 +768,8 @@ class MainWindow(QMainWindow):
                 padding: 2px 8px;
                 font-size: 14px;
             }
-        """)
+        """
+        )
 
     def setup_update_timer(self) -> None:
         """Setup timer for periodic UI updates"""
@@ -721,6 +799,7 @@ class MainWindow(QMainWindow):
 
     def update_status_bar(self) -> None:
         """Update status bar information"""
+        # Standard library imports
         from datetime import datetime
 
         # Update time
@@ -746,14 +825,14 @@ class MainWindow(QMainWindow):
 
     def _on_header_notifications_clicked(self) -> None:
         """Handle notifications button click from header"""
+        # Third-party imports
         from PySide6.QtWidgets import QMessageBox
 
         # Show notifications dialog (placeholder)
         QMessageBox.information(
             self,
             "Notifications",
-            "No new notifications.\n\n"
-            "System notifications and alerts will appear here."
+            "No new notifications.\n\n" "System notifications and alerts will appear here.",
         )
 
     # Test Control Signal Handlers
@@ -761,19 +840,30 @@ class MainWindow(QMainWindow):
 
     def _on_test_started(self) -> None:
         """Handle test start request"""
+        # Third-party imports
         from loguru import logger
 
         try:
             # Check if test is already running
             if self.test_executor_thread and self.test_executor_thread.isRunning():
-                self.test_control_page.update_test_status("Test already running. Please wait or stop first.", "⚠️")
+                self.test_control_page.update_test_status(
+                    "Test already running. Please wait or stop first.", "⚠️"
+                )
                 return
 
             # Mutex check: Prevent test start if robot home is running
-            if hasattr(self, 'robot_home_thread') and self.robot_home_thread and self.robot_home_thread.isRunning():
+            if (
+                hasattr(self, "robot_home_thread")
+                and self.robot_home_thread
+                and self.robot_home_thread.isRunning()
+            ):
                 logger.warning("Test start blocked - robot home is currently running")
-                self.test_control_page.update_test_status("Test unavailable during robot home", "status_warning")
-                self.state_manager.add_log_message("WARNING", "TEST", "Test start blocked - robot home currently running")
+                self.test_control_page.update_test_status(
+                    "Test unavailable during robot home", "status_warning"
+                )
+                self.state_manager.add_log_message(
+                    "WARNING", "TEST", "Test start blocked - robot home currently running"
+                )
                 return
 
             # Get serial number and test sequence from test control widget
@@ -781,7 +871,9 @@ class MainWindow(QMainWindow):
             test_sequence = self.test_control_page.sequence_combo.currentText()
 
             if not serial_number:
-                self.test_control_page.update_test_status("Please enter a serial number", "status_warning")
+                self.test_control_page.update_test_status(
+                    "Please enter a serial number", "status_warning"
+                )
                 return
 
             logger.info(f"Starting {test_sequence} for serial number: {serial_number}")
@@ -793,17 +885,23 @@ class MainWindow(QMainWindow):
             # Clear live logs when starting a new test
             self.logs_page.log_viewer.clear_logs()
             logger.info("Previous test results and live logs cleared. Starting new test...")
-            self.state_manager.add_log_message("INFO", "TEST", "Previous test results and logs cleared")
+            self.state_manager.add_log_message(
+                "INFO", "TEST", "Previous test results and logs cleared"
+            )
 
             # Update GUI state
             self.state_manager.set_system_status("Testing")
-            self.state_manager.add_log_message("INFO", "TEST", f"Starting {test_sequence} for SN: {serial_number}")
+            self.state_manager.add_log_message(
+                "INFO", "TEST", f"Starting {test_sequence} for SN: {serial_number}"
+            )
 
             # Update header status
             self.header.set_system_status("Testing", "testing")
 
             # Update test control status
-            self.test_control_page.update_test_status(f"Running {test_sequence}...", "status_loading", 0)
+            self.test_control_page.update_test_status(
+                f"Running {test_sequence}...", "status_loading", 0
+            )
 
             # Update button states
             self._set_test_running_state(True)
@@ -813,11 +911,14 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             logger.error(f"Failed to start test: {e}")
-            self.test_control_page.update_test_status(f"Failed to start test: {str(e)}", "status_error")
+            self.test_control_page.update_test_status(
+                f"Failed to start test: {str(e)}", "status_error"
+            )
             self._set_test_running_state(False)
 
     def _on_test_stopped(self) -> None:
         """Handle test stop request"""
+        # Third-party imports
         from loguru import logger
 
         logger.info("Test stop requested")
@@ -843,6 +944,7 @@ class MainWindow(QMainWindow):
 
     def _on_test_paused(self) -> None:
         """Handle test pause request"""
+        # Third-party imports
         from loguru import logger
 
         logger.info("Test pause requested")
@@ -854,6 +956,7 @@ class MainWindow(QMainWindow):
 
     def _on_robot_home_requested(self) -> None:
         """Handle robot home request"""
+        # Third-party imports
         from loguru import logger
 
         logger.critical("🔥 DEBUG: _on_robot_home_requested method called!")
@@ -861,15 +964,27 @@ class MainWindow(QMainWindow):
             # Mutex check: Prevent robot home if test is running
             if self.test_executor_thread and self.test_executor_thread.isRunning():
                 logger.warning("Robot home blocked - test is currently running")
-                self.test_control_page.update_test_status("Robot home unavailable during test", "status_warning")
-                self.state_manager.add_log_message("WARNING", "ROBOT", "Robot home blocked - test currently running")
+                self.test_control_page.update_test_status(
+                    "Robot home unavailable during test", "status_warning"
+                )
+                self.state_manager.add_log_message(
+                    "WARNING", "ROBOT", "Robot home blocked - test currently running"
+                )
                 return
 
             # Mutex check: Prevent multiple robot home operations
-            if hasattr(self, 'robot_home_thread') and self.robot_home_thread and self.robot_home_thread.isRunning():
+            if (
+                hasattr(self, "robot_home_thread")
+                and self.robot_home_thread
+                and self.robot_home_thread.isRunning()
+            ):
                 logger.warning("Robot home already in progress")
-                self.test_control_page.update_test_status("Robot home already in progress", "status_warning")
-                self.state_manager.add_log_message("WARNING", "ROBOT", "Robot home already in progress")
+                self.test_control_page.update_test_status(
+                    "Robot home already in progress", "status_warning"
+                )
+                self.state_manager.add_log_message(
+                    "WARNING", "ROBOT", "Robot home already in progress"
+                )
                 return
 
             logger.info("Robot home requested")
@@ -894,8 +1009,9 @@ class MainWindow(QMainWindow):
 
     def _on_emergency_stop_requested(self) -> None:
         """Handle emergency stop request"""
-        from loguru import logger
+        # Third-party imports
         from PySide6.QtCore import QTimer
+        from loguru import logger
 
         logger.critical("EMERGENCY STOP REQUESTED")
 
@@ -905,7 +1021,9 @@ class MainWindow(QMainWindow):
             logger.info("Executing immediate UI updates for Emergency Stop")
 
             # Update test control status immediately for user feedback
-            self.test_control_page.update_test_status("EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency")
+            self.test_control_page.update_test_status(
+                "EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency"
+            )
 
             # Update header status
             self.header.set_system_status("EMERGENCY STOP", "emergency")
@@ -922,7 +1040,11 @@ class MainWindow(QMainWindow):
         # PRIORITY 2: Stop running test thread (after UI updates)
         def stop_test_thread():
             """Stop running test thread"""
-            if hasattr(self, 'test_executor_thread') and self.test_executor_thread and self.test_executor_thread.isRunning():
+            if (
+                hasattr(self, "test_executor_thread")
+                and self.test_executor_thread
+                and self.test_executor_thread.isRunning()
+            ):
                 logger.info("Stopping running test thread...")
                 self.test_executor_thread.stop_test()
                 self.test_executor_thread.wait(1000)  # Wait up to 1 second
@@ -936,6 +1058,7 @@ class MainWindow(QMainWindow):
 
     def _execute_robot_home_async(self) -> None:
         """Execute robot home operation using QThread (non-blocking)"""
+        # Third-party imports
         from loguru import logger
 
         # Check if robot home is already running
@@ -946,7 +1069,9 @@ class MainWindow(QMainWindow):
         logger.info("Starting robot home thread...")
 
         # Create fresh container for robot home to avoid event loop conflicts
-        from application.containers.application_container import ApplicationContainer
+        # Local application imports
+        from application.containers.simple_reloadable_container import SimpleReloadableContainer
+
         fresh_container = ApplicationContainer.create()
 
         # Create and configure robot home thread with fresh container
@@ -962,7 +1087,9 @@ class MainWindow(QMainWindow):
 
     def _on_robot_home_started(self) -> None:
         """Handle robot home thread started"""
+        # Third-party imports
         from loguru import logger
+
         logger.info("Robot home operation started in background thread")
         self.test_control_page.update_test_status("Robot Homing...", "status_running")
 
@@ -971,12 +1098,15 @@ class MainWindow(QMainWindow):
 
     def _on_robot_home_progress(self, message: str) -> None:
         """Handle robot home progress updates"""
+        # Third-party imports
         from loguru import logger
+
         logger.info(f"Robot home progress: {message}")
         self.state_manager.add_log_message("INFO", "ROBOT", message)
 
     def _on_robot_home_completed(self, success: bool, message: str) -> None:
         """Handle robot home completion"""
+        # Third-party imports
         from loguru import logger
 
         if success:
@@ -991,7 +1121,9 @@ class MainWindow(QMainWindow):
             # Clear emergency stop state and re-enable START TEST button
             self.emergency_stop_active = False
             self.test_control_page.enable_start_button()
-            logger.info("Emergency stop cleared - START TEST button re-enabled after successful robot home")
+            logger.info(
+                "Emergency stop cleared - START TEST button re-enabled after successful robot home"
+            )
 
         else:
             logger.error(f"❌ {message}")
@@ -1010,9 +1142,10 @@ class MainWindow(QMainWindow):
 
     def _execute_emergency_stop_async(self) -> None:
         """Execute emergency stop asynchronously using QTimer"""
-        from loguru import logger
-        import asyncio
+        # Third-party imports
         from PySide6.QtCore import QTimer
+        import asyncio
+        from loguru import logger
 
         try:
             # Create a single-shot timer to execute the async function
@@ -1023,11 +1156,14 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Failed to setup emergency stop async execution: {e}")
             # Fallback to UI-only emergency stop
-            self.state_manager.add_log_message("ERROR", "EMERGENCY", f"Emergency stop setup failed: {str(e)}")
+            self.state_manager.add_log_message(
+                "ERROR", "EMERGENCY", f"Emergency stop setup failed: {str(e)}"
+            )
             self.state_manager.set_system_status("EMERGENCY STOP - ERROR")
 
     async def _run_emergency_stop(self) -> None:
         """Actually run the emergency stop procedure"""
+        # Third-party imports
         from loguru import logger
 
         try:
@@ -1035,11 +1171,14 @@ class MainWindow(QMainWindow):
             logger.info("Emergency stop completed successfully from GUI")
         except Exception as e:
             logger.error(f"Emergency stop execution failed: {e}")
-            self.state_manager.add_log_message("ERROR", "EMERGENCY", f"Emergency stop failed: {str(e)}")
+            self.state_manager.add_log_message(
+                "ERROR", "EMERGENCY", f"Emergency stop failed: {str(e)}"
+            )
             self.state_manager.set_system_status("EMERGENCY STOP - ERROR")
 
     def _start_test_execution(self, test_sequence: str, serial_number: str) -> None:
         """Start test execution in background"""
+        # Third-party imports
         from loguru import logger
 
         try:
@@ -1049,11 +1188,16 @@ class MainWindow(QMainWindow):
 
             # Verify GUI State Manager is still connected in main container
             hardware_facade = self.container.hardware_service_facade()
-            gui_manager_connected = hasattr(hardware_facade, '_gui_state_manager') and hardware_facade._gui_state_manager is not None
+            gui_manager_connected = (
+                hasattr(hardware_facade, "_gui_state_manager")
+                and hardware_facade._gui_state_manager is not None
+            )
             logger.info(f"Main container GUI State Manager connected: {gui_manager_connected}")
 
             if not gui_manager_connected:
-                logger.warning("GUI State Manager not connected in main container - applying runtime injection")
+                logger.warning(
+                    "GUI State Manager not connected in main container - applying runtime injection"
+                )
                 hardware_facade._gui_state_manager = self.state_manager
                 logger.info("Runtime GUI State Manager injection applied to main container")
 
@@ -1062,7 +1206,7 @@ class MainWindow(QMainWindow):
                 container=self.container,  # Use main container instead of fresh one
                 test_sequence=test_sequence,
                 serial_number=serial_number,
-                parent=self
+                parent=self,
             )
 
             # Connect thread signals
@@ -1075,7 +1219,9 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Failed to start test execution thread: {e}")
             self.state_manager.add_log_message("ERROR", "TEST", f"Failed to start test: {str(e)}")
-            self.test_control_page.update_test_status(f"Test start failed: {str(e)}", "status_error")
+            self.test_control_page.update_test_status(
+                f"Test start failed: {str(e)}", "status_error"
+            )
             self._set_test_running_state(False)
 
     def _connect_test_thread_signals(self) -> None:
@@ -1091,13 +1237,13 @@ class MainWindow(QMainWindow):
     def _set_test_running_state(self, running: bool) -> None:
         """Set GUI state for test running/stopped"""
         # Update test control buttons
-        if hasattr(self.test_control_page, 'start_btn'):
+        if hasattr(self.test_control_page, "start_btn"):
             # Only enable start button if not running AND not in emergency stop state
             should_enable_start = not running and not self.emergency_stop_active
             self.test_control_page.start_btn.setEnabled(should_enable_start)
-        if hasattr(self.test_control_page, 'stop_btn'):
+        if hasattr(self.test_control_page, "stop_btn"):
             self.test_control_page.stop_btn.setEnabled(running)
-        if hasattr(self.test_control_page, 'pause_btn'):
+        if hasattr(self.test_control_page, "pause_btn"):
             self.test_control_page.pause_btn.setEnabled(running)
 
         # Mutual exclusion: Disable HOME button during test execution
@@ -1111,6 +1257,7 @@ class MainWindow(QMainWindow):
 
     def _on_thread_test_started(self, test_name: str) -> None:
         """Handle test started from thread"""
+        # Local application imports
         from ui.gui.services.gui_state_manager import TestProgress
 
         progress = TestProgress(
@@ -1120,49 +1267,50 @@ class MainWindow(QMainWindow):
             total_cycles=10,  # Default, will be updated
             status="Starting...",
             elapsed_time="00:00:00",
-            estimated_remaining="--:--:--"
+            estimated_remaining="--:--:--",
         )
         self.state_manager.update_test_progress(progress)
 
     def _on_thread_test_progress(self, current_cycle: int, total_cycles: int, status: str) -> None:
         """Handle test progress from thread"""
+        # Local application imports
         from ui.gui.services.gui_state_manager import TestProgress
 
         progress_percent = int((current_cycle / total_cycles) * 100) if total_cycles > 0 else 0
 
         # Update test control progress bar
         self.test_control_page.update_test_progress(
-            progress_percent,
-            f"Progress: {current_cycle}/{total_cycles} cycles"
+            progress_percent, f"Progress: {current_cycle}/{total_cycles} cycles"
         )
 
         # Update header progress
         self.header.show_test_progress(progress_percent)
 
         progress = TestProgress(
-            current_test=self.test_executor_thread.test_sequence if self.test_executor_thread else "Unknown",
+            current_test=(
+                self.test_executor_thread.test_sequence if self.test_executor_thread else "Unknown"
+            ),
             progress_percent=progress_percent,
             current_cycle=current_cycle,
             total_cycles=total_cycles,
             status=status,
             elapsed_time="00:00:00",  # TODO: Calculate actual elapsed time
-            estimated_remaining="--:--:--"  # TODO: Calculate estimated remaining time
+            estimated_remaining="--:--:--",  # TODO: Calculate estimated remaining time
         )
         self.state_manager.update_test_progress(progress)
 
     def _on_thread_test_result(self, result_data) -> None:
         """Handle test result from thread"""
+        # Third-party imports
         from loguru import logger
-        from ui.gui.services.gui_state_manager import TestResult
-        from datetime import datetime
 
         logger.info(f"Received test result: {result_data}")
 
         try:
             # Convert test result to GUI TestResult for display
-            if hasattr(result_data, 'test_status'):
+            if hasattr(result_data, "test_status"):
                 # Check for EOL-specific attributes first
-                if hasattr(result_data, 'is_device_passed'):
+                if hasattr(result_data, "is_device_passed"):
                     # This is an EOLTestResult from domain layer
                     if result_data.is_device_passed:
                         status_text = "PASS"
@@ -1173,7 +1321,7 @@ class MainWindow(QMainWindow):
                     else:
                         status_text = result_data.test_status.value
                 # For other result types (like HeatingCoolingTimeTestResult), use is_success or error_message
-                elif hasattr(result_data, 'is_success'):
+                elif hasattr(result_data, "is_success"):
                     if result_data.is_success and not result_data.error_message:
                         status_text = "PASS"
                     else:
@@ -1184,8 +1332,13 @@ class MainWindow(QMainWindow):
                 # Individual cycle results are already processed in real-time by hardware facade
                 # No need to process them again here to avoid duplication
                 logger.info(f"Test result received: {status_text}")
-                if hasattr(result_data, 'individual_cycle_results') and result_data.individual_cycle_results:
-                    logger.info(f"Test completed with {len(result_data.individual_cycle_results)} cycles (already displayed in real-time)")
+                if (
+                    hasattr(result_data, "individual_cycle_results")
+                    and result_data.individual_cycle_results
+                ):
+                    logger.info(
+                        f"Test completed with {len(result_data.individual_cycle_results)} cycles (already displayed in real-time)"
+                    )
                 else:
                     logger.info("Test completed (single cycle or no individual cycle data)")
 
@@ -1194,10 +1347,13 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             logger.error(f"Failed to process test result: {e}")
-            self.state_manager.add_log_message("ERROR", "GUI", f"Failed to process test result: {str(e)}")
+            self.state_manager.add_log_message(
+                "ERROR", "GUI", f"Failed to process test result: {str(e)}"
+            )
 
     def _on_thread_test_completed(self, success: bool, message: str) -> None:
         """Handle test completion from thread"""
+        # Third-party imports
         from loguru import logger
 
         logger.info(f"Test completed: success={success}, message={message}")
@@ -1219,12 +1375,15 @@ class MainWindow(QMainWindow):
 
         # Update test control status instead of showing popup
         if success:
-            self.test_control_page.update_test_status("Test Completed Successfully", "status_success", 100)
+            self.test_control_page.update_test_status(
+                "Test Completed Successfully", "status_success", 100
+            )
         else:
             self.test_control_page.update_test_status("Test Failed", "status_error", 0)
 
     def _on_thread_test_error(self, error_message: str) -> None:
         """Handle test error from thread"""
+        # Third-party imports
         from loguru import logger
 
         logger.error(f"Test execution error: {error_message}")
@@ -1237,7 +1396,9 @@ class MainWindow(QMainWindow):
         self.state_manager.set_system_status("Error")
 
         # Show error message
-        QMessageBox.critical(self, "Test Execution Error", f"Test execution failed:\n\n{error_message}")
+        QMessageBox.critical(
+            self, "Test Execution Error", f"Test execution failed:\n\n{error_message}"
+        )
 
     def _on_thread_log_message(self, level: str, component: str, message: str) -> None:
         """Handle log message from thread"""

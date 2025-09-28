@@ -19,7 +19,9 @@ from application.services.core.exception_handler import ExceptionHandler
 from application.services.core.repository_service import RepositoryService
 
 # Industrial Services
-from application.services.industrial.industrial_system_manager import IndustrialSystemManager
+from application.services.industrial.industrial_system_manager import (
+    IndustrialSystemManager,
+)
 
 # Monitoring Services
 from application.services.monitoring.emergency_stop_service import EmergencyStopService
@@ -27,12 +29,16 @@ from application.services.test.test_result_evaluator import TestResultEvaluator
 
 # Use Cases
 from application.use_cases.eol_force_test import EOLForceTestUseCase
-from application.use_cases.heating_cooling_time_test import HeatingCoolingTimeTestUseCase
+from application.use_cases.heating_cooling_time_test import (
+    HeatingCoolingTimeTestUseCase,
+)
 from application.use_cases.robot_operations import RobotHomeUseCase
 from application.use_cases.system_tests import SimpleMCUTestUseCase
 
 # Persistence
-from infrastructure.implementation.repositories.json_result_repository import JsonResultRepository
+from infrastructure.implementation.repositories.json_result_repository import (
+    JsonResultRepository,
+)
 
 
 class ServiceContainer(containers.DeclarativeContainer):
@@ -56,9 +62,9 @@ class ServiceContainer(containers.DeclarativeContainer):
     # Configuration data (will be injected dynamically)
     config = providers.Configuration()
 
-    # Container references (will be set dynamically)
-    _config_container_ref = None
-    _connection_container_ref = None
+    # Container references (will be wired dynamically)
+    config_container = providers.Dependency()
+    connection_container = providers.Dependency()
 
     # ============================================================================
     # PERSISTENCE INFRASTRUCTURE
@@ -82,9 +88,9 @@ class ServiceContainer(containers.DeclarativeContainer):
     repository_service = providers.Singleton(
         RepositoryService,
         test_repository=json_result_repository,
-        raw_data_dir=config_container.config.services.repository_raw_data_path,
-        summary_dir=config_container.config.services.repository_summary_path,
-        summary_filename=config_container.config.services.repository_summary_filename,
+        raw_data_dir=config.services.repository_raw_data_path,
+        summary_dir=config.services.repository_summary_path,
+        summary_filename=config.services.repository_summary_filename,
     )
 
     # ============================================================================
@@ -177,7 +183,7 @@ class ServiceContainer(containers.DeclarativeContainer):
             for service_name in services_to_reset:
                 try:
                     service_provider = getattr(self, service_name)
-                    if hasattr(service_provider, 'reset'):
+                    if hasattr(service_provider, "reset"):
                         service_provider.reset()
                         logger.info(f"🔄 Reset {service_name}")
                 except Exception as e:
@@ -195,7 +201,7 @@ class ServiceContainer(containers.DeclarativeContainer):
             for use_case_name in use_case_factories:
                 try:
                     use_case_provider = getattr(self, use_case_name)
-                    if hasattr(use_case_provider, 'reset'):
+                    if hasattr(use_case_provider, "reset"):
                         use_case_provider.reset()
                         logger.info(f"🔄 Reset {use_case_name}")
                 except Exception as e:
@@ -209,9 +215,7 @@ class ServiceContainer(containers.DeclarativeContainer):
             return False
 
     def sync_configuration(
-        self,
-        config_container: ConfigurationContainer,
-        connection_container: ConnectionContainer
+        self, config_container: ConfigurationContainer, connection_container: ConnectionContainer
     ) -> bool:
         """
         Synchronize service configuration with updated containers.
@@ -241,12 +245,12 @@ class ServiceContainer(containers.DeclarativeContainer):
         """Set GUI alert callback for industrial system manager."""
         try:
             # Get the current industrial system manager instance
-            if hasattr(self.industrial_system_manager, '_provided'):
+            if hasattr(self.industrial_system_manager, "_provided"):
                 # If already created, update the callback directly
                 ism_instance = self.industrial_system_manager()
-                if hasattr(ism_instance, 'set_gui_alert_callback'):
-                    ism_instance.set_gui_alert_callback(callback)
-                    logger.info("🔄 Updated GUI alert callback for existing ISM instance")
+                # Update the private callback attribute directly
+                ism_instance._gui_alert_callback = callback
+                logger.info("🔄 Updated GUI alert callback for existing ISM instance")
 
             # For future instances, we need to update the provider
             # This is more complex with dependency-injector, so we'll handle it
@@ -259,9 +263,7 @@ class ServiceContainer(containers.DeclarativeContainer):
 
     @classmethod
     def create(
-        cls,
-        config_container: ConfigurationContainer,
-        connection_container: ConnectionContainer
+        cls, config_container: ConfigurationContainer, connection_container: ConnectionContainer
     ) -> "ServiceContainer":
         """
         Create service container with configuration and connection dependencies.

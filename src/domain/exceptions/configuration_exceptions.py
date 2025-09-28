@@ -3,7 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 # Local application imports
-from domain.exceptions.domain_exceptions import (
+from .domain_exceptions import (
     DomainException,
 )
 
@@ -29,6 +29,7 @@ class InvalidConfigurationException(ConfigurationException):
         parameter_name: str,
         invalid_value: Any,
         validation_rule: str,
+        *,
         config_source: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -103,6 +104,7 @@ class ConfigurationVersionException(ConfigurationException):
         current_version: str,
         required_version: str,
         compatibility_issue: str,
+        *,
         config_source: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
@@ -130,6 +132,7 @@ class ConfigurationRangeException(ConfigurationException):
         parameter_name: str,
         actual_value: float,
         allowed_range: Dict[str, float],
+        *,
         range_type: str = "numeric",
         config_source: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
@@ -162,6 +165,7 @@ class ConfigurationFormatException(ConfigurationException):
         parameter_name: str,
         invalid_format: str,
         expected_format: str,
+        *,
         format_example: Optional[str] = None,
         config_source: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
@@ -192,6 +196,7 @@ class ConfigurationSecurityException(ConfigurationException):
     def __init__(
         self,
         security_violation: str,
+        *,
         affected_parameters: Optional[List[str]] = None,
         risk_level: str = "medium",
         config_source: Optional[str] = None,

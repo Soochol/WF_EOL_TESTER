@@ -6,6 +6,7 @@ Provides standardized lamp patterns for different system states.
 """
 
 # Standard library imports
+# Standard library imports
 from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
@@ -238,9 +239,18 @@ class TowerLampService:
         if not self._is_event_loop_available():
             logger.warning("🚦 TOWER_LAMP: Event loop not available - using static lamp states")
             # Fallback to static states when blinking is requested but event loop unavailable
-            fallback_red = red == LampState.ON or red in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
-            fallback_yellow = yellow == LampState.ON or yellow in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
-            fallback_green = green == LampState.ON or green in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+            fallback_red = red == LampState.ON or red in [
+                LampState.BLINKING_SLOW,
+                LampState.BLINKING_FAST,
+            ]
+            fallback_yellow = yellow == LampState.ON or yellow in [
+                LampState.BLINKING_SLOW,
+                LampState.BLINKING_FAST,
+            ]
+            fallback_green = green == LampState.ON or green in [
+                LampState.BLINKING_SLOW,
+                LampState.BLINKING_FAST,
+            ]
 
             await self._set_lamp_output(self.red_lamp_channel, fallback_red)
             await self._set_lamp_output(self.yellow_lamp_channel, fallback_yellow)
@@ -258,7 +268,7 @@ class TowerLampService:
                     self._blinking_tasks["red"] = loop.create_task(
                         self._blink_lamp(self.red_lamp_channel, red)
                     )
-                    logger.debug(f"🚦 TOWER_LAMP: Created red blinking task")
+                    logger.debug("🚦 TOWER_LAMP: Created red blinking task")
                 except Exception as task_e:
                     logger.error(f"🚦 TOWER_LAMP: Failed to create red blinking task: {task_e}")
                     await self._set_lamp_output(self.red_lamp_channel, True)  # Fallback to ON
@@ -268,7 +278,7 @@ class TowerLampService:
                     self._blinking_tasks["yellow"] = loop.create_task(
                         self._blink_lamp(self.yellow_lamp_channel, yellow)
                     )
-                    logger.debug(f"🚦 TOWER_LAMP: Created yellow blinking task")
+                    logger.debug("🚦 TOWER_LAMP: Created yellow blinking task")
                 except Exception as task_e:
                     logger.error(f"🚦 TOWER_LAMP: Failed to create yellow blinking task: {task_e}")
                     await self._set_lamp_output(self.yellow_lamp_channel, True)  # Fallback to ON
@@ -278,7 +288,7 @@ class TowerLampService:
                     self._blinking_tasks["green"] = loop.create_task(
                         self._blink_lamp(self.green_lamp_channel, green)
                     )
-                    logger.debug(f"🚦 TOWER_LAMP: Created green blinking task")
+                    logger.debug("🚦 TOWER_LAMP: Created green blinking task")
                 except Exception as task_e:
                     logger.error(f"🚦 TOWER_LAMP: Failed to create green blinking task: {task_e}")
                     await self._set_lamp_output(self.green_lamp_channel, True)  # Fallback to ON
@@ -286,9 +296,18 @@ class TowerLampService:
         except (RuntimeError, Exception) as e:
             logger.error(f"🚦 TOWER_LAMP: Event loop error during task creation: {e}")
             # If event loop becomes unavailable during operation, fall back to static states
-            fallback_red = red == LampState.ON or red in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
-            fallback_yellow = yellow == LampState.ON or yellow in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
-            fallback_green = green == LampState.ON or green in [LampState.BLINKING_SLOW, LampState.BLINKING_FAST]
+            fallback_red = red == LampState.ON or red in [
+                LampState.BLINKING_SLOW,
+                LampState.BLINKING_FAST,
+            ]
+            fallback_yellow = yellow == LampState.ON or yellow in [
+                LampState.BLINKING_SLOW,
+                LampState.BLINKING_FAST,
+            ]
+            fallback_green = green == LampState.ON or green in [
+                LampState.BLINKING_SLOW,
+                LampState.BLINKING_FAST,
+            ]
 
             await self._set_lamp_output(self.red_lamp_channel, fallback_red)
             await self._set_lamp_output(self.yellow_lamp_channel, fallback_yellow)
@@ -305,7 +324,9 @@ class TowerLampService:
         try:
             # Check if event loop is available before attempting async operations
             if not self._is_event_loop_available():
-                logger.warning(f"🚦 TOWER_LAMP: Event loop not available - skipping lamp channel {channel}")
+                logger.warning(
+                    f"🚦 TOWER_LAMP: Event loop not available - skipping lamp channel {channel}"
+                )
                 return
 
             if await self.digital_io.is_connected():
@@ -335,7 +356,8 @@ class TowerLampService:
         try:
             while True:
                 # Check if task was cancelled before each operation
-                if asyncio.current_task().cancelled():
+                current_task = asyncio.current_task()
+                if current_task and current_task.cancelled():
                     break
 
                 await self._set_lamp_output(channel, True)
@@ -346,7 +368,8 @@ class TowerLampService:
                 except asyncio.TimeoutError:
                     pass  # Normal timeout, continue
 
-                if asyncio.current_task().cancelled():
+                current_task = asyncio.current_task()
+                if current_task and current_task.cancelled():
                     break
 
                 await self._set_lamp_output(channel, False)
@@ -434,7 +457,9 @@ class TowerLampService:
 
             # Force clear any remaining tasks
             if self._blinking_tasks:
-                logger.debug(f"🚦 TOWER_LAMP: Force clearing {len(self._blinking_tasks)} remaining tasks")
+                logger.debug(
+                    f"🚦 TOWER_LAMP: Force clearing {len(self._blinking_tasks)} remaining tasks"
+                )
                 for color, task in list(self._blinking_tasks.items()):
                     if not task.done():
                         task.cancel()

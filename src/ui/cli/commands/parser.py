@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from loguru import logger
 
 # Local application imports
-from ui.cli.commands.base import Command, CommandResult
+from .base import Command, CommandResult
 
 
 class SlashCommandParser:

@@ -14,7 +14,7 @@ class DomainException(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[Any, Any]] = None,
+        details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Initialize domain exception

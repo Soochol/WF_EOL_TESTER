@@ -8,7 +8,7 @@ Handles application exit.
 from typing import Dict, List
 
 # Local application imports
-from ui.cli.commands.base import Command, CommandResult
+from .base import Command, CommandResult
 
 
 class ExitCommand(Command):

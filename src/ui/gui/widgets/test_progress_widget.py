@@ -4,20 +4,22 @@ Test Progress Widget
 Widget for displaying test progress and current status.
 """
 
+# Standard library imports
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer
+# Third-party imports
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QProgressBar,
-    QGroupBox,
-    QFrame,
+    QVBoxLayout,
+    QWidget,
 )
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager, TestProgress
 

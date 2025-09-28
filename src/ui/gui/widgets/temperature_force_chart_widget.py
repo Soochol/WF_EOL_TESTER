@@ -4,17 +4,20 @@ Temperature-Force Chart Widget
 Widget for displaying temperature vs force XY scatter plot with cycle grouping.
 """
 
-from typing import Optional, Dict, List
+# Standard library imports
 from collections import defaultdict
+from typing import Dict, List, Optional
 
-from PySide6.QtCore import Qt, QRect
-from PySide6.QtGui import QPainter, QPen, QColor, QFont, QBrush
+# Third-party imports
+from PySide6.QtCore import QRect, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QGroupBox,
+    QVBoxLayout,
+    QWidget,
 )
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager, TestResult
 
@@ -130,7 +133,12 @@ class ChartArea(QWidget):
     Custom widget for drawing the temperature-force chart.
     """
 
-    def __init__(self, cycle_data: Dict[int, List[tuple[float, float]]], cycle_colors: List[QColor], parent: Optional[QWidget] = None):
+    def __init__(
+        self,
+        cycle_data: Dict[int, List[tuple[float, float]]],
+        cycle_colors: List[QColor],
+        parent: Optional[QWidget] = None,
+    ):
         super().__init__(parent)
         self.cycle_data = cycle_data
         self.cycle_colors = cycle_colors
@@ -145,7 +153,7 @@ class ChartArea(QWidget):
         # Get widget dimensions
         rect = self.rect()
         margin = 60
-        chart_rect = QRect(margin, margin, rect.width() - 2*margin, rect.height() - 2*margin)
+        chart_rect = QRect(margin, margin, rect.width() - 2 * margin, rect.height() - 2 * margin)
 
         # Clear background
         painter.fillRect(rect, QColor("#1a1a1a"))
@@ -201,16 +209,24 @@ class ChartArea(QWidget):
         font = QFont()
         font.setPointSize(16)
         painter.setFont(font)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "No Data Available\nStart a test to see results")
+        painter.drawText(
+            rect, Qt.AlignmentFlag.AlignCenter, "No Data Available\nStart a test to see results"
+        )
 
-    def _draw_axes(self, painter: QPainter, rect: QRect, temp_range: tuple[float, float], force_range: tuple[float, float]) -> None:
+    def _draw_axes(
+        self,
+        painter: QPainter,
+        rect: QRect,
+        temp_range: tuple[float, float],
+        force_range: tuple[float, float],
+    ) -> None:
         """Draw chart axes, grid, and labels"""
         pen = QPen(QColor("#666666"), 2)
         painter.setPen(pen)
 
         # Draw main axes
         painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())  # X-axis
-        painter.drawLine(rect.left(), rect.top(), rect.left(), rect.bottom())      # Y-axis
+        painter.drawLine(rect.left(), rect.top(), rect.left(), rect.bottom())  # Y-axis
 
         # Draw grid lines
         grid_pen = QPen(QColor("#333333"), 1)
@@ -263,7 +279,13 @@ class ChartArea(QWidget):
         painter.drawText(-50, 0, "Force (kgf)")
         painter.restore()
 
-    def _draw_data(self, painter: QPainter, rect: QRect, temp_range: tuple[float, float], force_range: tuple[float, float]) -> None:
+    def _draw_data(
+        self,
+        painter: QPainter,
+        rect: QRect,
+        temp_range: tuple[float, float],
+        force_range: tuple[float, float],
+    ) -> None:
         """Draw data points and connecting lines for each cycle"""
         temp_min, temp_max = temp_range
         force_min, force_max = force_range

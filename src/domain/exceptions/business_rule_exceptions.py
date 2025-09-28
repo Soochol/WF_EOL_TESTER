@@ -3,7 +3,7 @@
 from typing import Any, Dict, Optional
 
 # Local application imports
-from domain.exceptions.domain_exceptions import (
+from .domain_exceptions import (
     DomainException,
 )
 

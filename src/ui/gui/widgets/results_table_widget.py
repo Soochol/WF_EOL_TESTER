@@ -4,20 +4,23 @@ Results Table Widget
 Widget for displaying test results in a table format.
 """
 
-from typing import Optional
+# Standard library imports
 from datetime import datetime
+from typing import Optional
 
+# Third-party imports
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QAbstractItemView,
+    QGroupBox,
     QTableWidget,
     QTableWidgetItem,
-    QGroupBox,
-    QAbstractItemView,
+    QVBoxLayout,
+    QWidget,
 )
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager, TestResult
 
@@ -77,7 +80,7 @@ class ResultsTableWidget(QWidget):
             "Heating Time(s)",
             "Cooling Time(s)",
             "Status",
-            "Time"
+            "Time",
         ]
 
         self.results_table.setColumnCount(len(headers))
@@ -94,13 +97,13 @@ class ResultsTableWidget(QWidget):
         header.setStretchLastSection(True)
 
         # Optimize column widths for better header visibility
-        self.results_table.setColumnWidth(0, 80)   # Cycle - wider for repetition display
+        self.results_table.setColumnWidth(0, 80)  # Cycle - wider for repetition display
         self.results_table.setColumnWidth(1, 100)  # Temp(°C) - wider for full header
         self.results_table.setColumnWidth(2, 110)  # Stroke(mm) - wider for full header
         self.results_table.setColumnWidth(3, 110)  # Force(kgf) - wider for full header
         self.results_table.setColumnWidth(4, 140)  # Heating Time(s) - much wider for full header
         self.results_table.setColumnWidth(5, 140)  # Cooling Time(s) - much wider for full header
-        self.results_table.setColumnWidth(6, 80)   # Status
+        self.results_table.setColumnWidth(6, 80)  # Status
         # Time column will stretch
 
         # Vertical header
@@ -120,15 +123,25 @@ class ResultsTableWidget(QWidget):
 
     def _on_cycle_result_added(self, result: TestResult) -> None:
         """Handle new cycle result (for individual test repetitions)"""
+        # Third-party imports
         from loguru import logger
-        logger.info(f"📋 Results Table Widget: Received cycle result signal for cycle {result.cycle}")
-        logger.info(f"📋 Results Table Widget: Data - Temp: {result.temperature:.1f}°C, Force: {result.force:.2f}kgf, Status: {result.status}")
+
+        logger.info(
+            f"📋 Results Table Widget: Received cycle result signal for cycle {result.cycle}"
+        )
+        logger.info(
+            f"📋 Results Table Widget: Data - Temp: {result.temperature:.1f}°C, Force: {result.force:.2f}kgf, Status: {result.status}"
+        )
 
         try:
             self.add_cycle_result(result)
-            logger.info(f"✅ Results Table Widget: Successfully processed cycle {result.cycle} result")
+            logger.info(
+                f"✅ Results Table Widget: Successfully processed cycle {result.cycle} result"
+            )
         except Exception as e:
-            logger.error(f"❌ Results Table Widget: Failed to process cycle {result.cycle} result: {e}")
+            logger.error(
+                f"❌ Results Table Widget: Failed to process cycle {result.cycle} result: {e}"
+            )
 
     def add_test_result(self, result) -> None:  # Accept both TestResult and EOLTestResult
         """Add a test result to the table"""
@@ -136,7 +149,7 @@ class ResultsTableWidget(QWidget):
         self.results_table.insertRow(row)
 
         # Handle different result types - GUI TestResult vs domain EOLTestResult
-        if hasattr(result, 'cycle'):  # GUI TestResult
+        if hasattr(result, "cycle"):  # GUI TestResult
             status_text = result.status
             items = [
                 QTableWidgetItem(str(result.cycle)),
@@ -146,13 +159,13 @@ class ResultsTableWidget(QWidget):
                 QTableWidgetItem(str(result.heating_time)),
                 QTableWidgetItem(str(result.cooling_time)),
                 QTableWidgetItem(status_text),
-                QTableWidgetItem(result.timestamp.strftime("%Y-%m-%d %H:%M"))
+                QTableWidgetItem(result.timestamp.strftime("%Y-%m-%d %H:%M")),
             ]
         else:  # Domain result objects (EOL, HeatingCooling, etc) - convert to display format
             # Determine status text from domain result
-            if hasattr(result, 'test_status'):
+            if hasattr(result, "test_status"):
                 # Check for EOL-specific attributes first
-                if hasattr(result, 'is_device_passed'):
+                if hasattr(result, "is_device_passed"):
                     if result.is_device_passed:
                         status_text = "PASS"
                     elif result.is_device_failed:
@@ -162,7 +175,7 @@ class ResultsTableWidget(QWidget):
                     else:
                         status_text = result.test_status.value
                 # For other result types (like HeatingCoolingTimeTestResult), use is_success or error_message
-                elif hasattr(result, 'is_success'):
+                elif hasattr(result, "is_success"):
                     if result.is_success and not result.error_message:
                         status_text = "PASS"
                     else:
@@ -181,7 +194,7 @@ class ResultsTableWidget(QWidget):
                 QTableWidgetItem("45"),  # Default heating time
                 QTableWidgetItem("120"),  # Default cooling time
                 QTableWidgetItem(status_text),
-                QTableWidgetItem(datetime.now().strftime("%Y-%m-%d %H:%M"))
+                QTableWidgetItem(datetime.now().strftime("%Y-%m-%d %H:%M")),
             ]
 
         for col, item in enumerate(items):
@@ -206,7 +219,7 @@ class ResultsTableWidget(QWidget):
         self.results_table.scrollToBottom()
 
         # Highlight current row if it's the latest
-        if hasattr(result, 'cycle') and result.cycle > 0:  # Not pending
+        if hasattr(result, "cycle") and result.cycle > 0:  # Not pending
             self.results_table.selectRow(row)
 
     def add_cycle_result(self, result: TestResult) -> None:
@@ -225,7 +238,7 @@ class ResultsTableWidget(QWidget):
             QTableWidgetItem(str(result.heating_time)),
             QTableWidgetItem(str(result.cooling_time)),
             QTableWidgetItem(result.status),
-            QTableWidgetItem(result.timestamp.strftime("%Y-%m-%d %H:%M"))
+            QTableWidgetItem(result.timestamp.strftime("%Y-%m-%d %H:%M")),
         ]
 
         for col, item in enumerate(items):

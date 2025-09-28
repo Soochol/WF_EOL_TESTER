@@ -5,25 +5,41 @@ Comprehensive settings interface for editing YAML configuration files.
 Features a 3-panel layout: Files Tree + Settings Tree + Properties Panel.
 """
 
-import os
-import yaml
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable
+# Standard library imports
 from dataclasses import dataclass
 from datetime import datetime
+import os
+from pathlib import Path
 import re
-import json
-from loguru import logger
+from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QTimer, Signal, QModelIndex, QAbstractItemModel, QSortFilterProxyModel
-from PySide6.QtGui import QFont, QIcon, QPixmap, QPalette, QBrush, QColor
+# Third-party imports
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTreeView, QTreeWidget, QTreeWidgetItem,
-    QTreeWidgetItemIterator, QScrollArea, QFrame, QLabel, QLineEdit, QSpinBox, QDoubleSpinBox,
-    QCheckBox, QComboBox, QPushButton, QTextEdit, QGroupBox, QFormLayout, QMessageBox,
-    QHeaderView, QApplication, QSizePolicy, QTabWidget, QStackedWidget, QToolButton, QMenu, QFileDialog
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QSplitter,
+    QTextEdit,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QTreeWidgetItemIterator,
+    QVBoxLayout,
+    QWidget,
 )
+from loguru import logger
+import yaml
 
+# Local application imports
 from application.containers.simple_reloadable_container import SimpleReloadableContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 
@@ -43,36 +59,32 @@ class ConfigValidator:
             "hardware.activation_temperature": {"min": 0.0, "max": 100.0, "type": "float"},
             "hardware.standby_temperature": {"min": 0.0, "max": 100.0, "type": "float"},
             "hardware.fan_speed": {"min": 1, "max": 10, "type": "int"},
-
             # Motion control
             "motion_control.velocity": {"min": 0.0, "max": 200000.0, "type": "float"},
             "motion_control.acceleration": {"min": 0.0, "max": 200000.0, "type": "float"},
             "motion_control.deceleration": {"min": 0.0, "max": 200000.0, "type": "float"},
-
             # Safety parameters
             "safety.max_voltage": {"min": 0.0, "max": 100.0, "type": "float"},
             "safety.max_current": {"min": 0.0, "max": 100.0, "type": "float"},
             "safety.max_stroke": {"min": 0.0, "max": 200000.0, "type": "float"},
-
             # Timing parameters (all should be positive)
             "timing.*": {"min": 0.0, "type": "float"},
-
             # Boolean validations
             "services.repository.auto_save": {"type": "bool"},
             "gui.require_serial_number_popup": {"type": "bool"},
-
             # String validations
-            "application.environment": {"allowed": ["development", "production", "testing"], "type": "str"},
+            "application.environment": {
+                "allowed": ["development", "production", "testing"],
+                "type": "str",
+            },
             "robot.model": {"allowed": ["mock", "ajinextek"], "type": "str"},
             "loadcell.model": {"allowed": ["mock", "bs205"], "type": "str"},
             "mcu.model": {"allowed": ["mock", "lma"], "type": "str"},
             "power.model": {"allowed": ["mock", "oda"], "type": "str"},
             "digital_io.model": {"allowed": ["mock", "ajinextek"], "type": "str"},
-
             # Port validations
             "*.port": {"pattern": r"^COM\d+$", "type": "str"},
             "*.baudrate": {"allowed": [9600, 19200, 38400, 57600, 115200], "type": "int"},
-
             # DUT (Device Under Test) validations
             "default.dut_id": {"type": "str", "min_length": 1, "max_length": 50},
             "default.model": {"type": "str", "min_length": 1, "max_length": 100},
@@ -88,12 +100,10 @@ class ConfigValidator:
         try:
             # Find matching rule
             rule = None
-            exact_key = key
-            wildcard_key = None
 
             # Check for exact match first
-            if exact_key in rules:
-                rule = rules[exact_key]
+            if key in rules:
+                rule = rules[key]
             else:
                 # Check for wildcard matches
                 for rule_key in rules:
@@ -101,7 +111,6 @@ class ConfigValidator:
                         pattern = rule_key.replace("*", ".*")
                         if re.match(pattern, key):
                             rule = rules[rule_key]
-                            wildcard_key = rule_key
                             break
 
             if not rule:
@@ -114,16 +123,16 @@ class ConfigValidator:
                     try:
                         value = int(value)
                     except (ValueError, TypeError):
-                        return False, f"Must be an integer"
+                        return False, "Must be an integer"
                 elif expected_type == "float" and not isinstance(value, (int, float)):
                     try:
                         value = float(value)
                     except (ValueError, TypeError):
-                        return False, f"Must be a number"
+                        return False, "Must be a number"
                 elif expected_type == "bool" and not isinstance(value, bool):
-                    return False, f"Must be true or false"
+                    return False, "Must be true or false"
                 elif expected_type == "str" and not isinstance(value, str):
-                    return False, f"Must be a string"
+                    return False, "Must be a string"
 
             # Range validation
             if "min" in rule and isinstance(value, (int, float)):
@@ -142,7 +151,7 @@ class ConfigValidator:
             # Pattern validation
             if "pattern" in rule and isinstance(value, str):
                 if not re.match(rule["pattern"], value):
-                    return False, f"Invalid format"
+                    return False, "Invalid format"
 
             # String length validation
             if "min_length" in rule and isinstance(value, str):
@@ -162,6 +171,7 @@ class ConfigValidator:
 @dataclass
 class ConfigValue:
     """Configuration value with metadata"""
+
     key: str
     value: Any
     data_type: str
@@ -181,6 +191,7 @@ class ConfigValue:
 @dataclass
 class ConfigFile:
     """Configuration file information"""
+
     name: str
     path: str
     description: str
@@ -211,11 +222,13 @@ class PropertyEditorWidget(QWidget):
         header_layout = QHBoxLayout()
 
         key_label = QLabel(self.config_value.key)
-        key_label.setStyleSheet("""
+        key_label.setStyleSheet(
+            """
             font-weight: bold;
             font-size: 14px;
             color: #ffffff;
-        """)
+        """
+        )
         header_layout.addWidget(key_label)
 
         header_layout.addStretch()
@@ -349,7 +362,8 @@ class PropertyEditorWidget(QWidget):
             def update_appearance():
                 if checkbox_btn.isChecked():
                     checkbox_btn.setText("✓")
-                    checkbox_btn.setStyleSheet("""
+                    checkbox_btn.setStyleSheet(
+                        """
                         QPushButton {
                             background-color: #0078d4;
                             color: #ffffff;
@@ -364,10 +378,12 @@ class PropertyEditorWidget(QWidget):
                         QPushButton:focus {
                             outline: none;
                         }
-                    """)
+                    """
+                    )
                 else:
                     checkbox_btn.setText("✗")
-                    checkbox_btn.setStyleSheet("""
+                    checkbox_btn.setStyleSheet(
+                        """
                         QPushButton {
                             background-color: #2d2d2d;
                             color: #ffffff;
@@ -383,7 +399,8 @@ class PropertyEditorWidget(QWidget):
                         QPushButton:focus {
                             outline: none;
                         }
-                    """)
+                    """
+                    )
 
             # Set initial appearance
             update_appearance()
@@ -423,7 +440,7 @@ class PropertyEditorWidget(QWidget):
             text_edit.setMaximumHeight(150)
             try:
                 text_edit.setPlainText(yaml.dump(value, default_flow_style=False))
-            except:
+            except yaml.YAMLError:
                 text_edit.setPlainText(str(value))
             text_edit.textChanged.connect(lambda: self.emit_value_changed(text_edit.toPlainText()))
             return text_edit
@@ -435,15 +452,18 @@ class PropertyEditorWidget(QWidget):
             line_edit.textChanged.connect(self.emit_value_changed)
             return line_edit
 
-
     def emit_value_changed(self, new_value: Any) -> None:
         """Emit value changed signal"""
-        logger.debug(f"🔧 emit_value_changed: {self.config_value.key} = {new_value} (type: {type(new_value).__name__})")
+        logger.debug(
+            f"🔧 emit_value_changed: {self.config_value.key} = {new_value} (type: {type(new_value).__name__})"
+        )
 
         # For bool values, log current checkbox state
-        if (self.config_value.data_type == "bool" and
-            hasattr(self, 'editor_widget') and
-            isinstance(self.editor_widget, QCheckBox)):
+        if (
+            self.config_value.data_type == "bool"
+            and hasattr(self, "editor_widget")
+            and isinstance(self.editor_widget, QCheckBox)
+        ):
             actual_ui_state = self.editor_widget.isChecked()
             logger.debug(f"🔘 Checkbox UI state: {actual_ui_state}, new_value: {new_value}")
 
@@ -460,9 +480,7 @@ class PropertyEditorWidget(QWidget):
     def validate_current_value(self) -> None:
         """Validate the current value and update UI"""
         is_valid, error_msg = ConfigValidator.validate_value(
-            self.config_value.key,
-            self.config_value.value,
-            self.validation_rules
+            self.config_value.key, self.config_value.value, self.validation_rules
         )
 
         self.config_value.is_valid = is_valid
@@ -480,11 +498,13 @@ class PropertyEditorWidget(QWidget):
             if is_valid:
                 self.editor_widget.setStyleSheet("")
             else:
-                self.editor_widget.setStyleSheet("border: 1px solid #ff4444; background-color: #4d2d2d;")
+                self.editor_widget.setStyleSheet(
+                    "border: 1px solid #ff4444; background-color: #4d2d2d;"
+                )
 
     def _get_available_profiles(self) -> List[str]:
         """Get available test profiles from test_profiles directory"""
-        import os
+        # Standard library imports
         import glob
 
         profiles = []
@@ -502,7 +522,7 @@ class PropertyEditorWidget(QWidget):
             if not profiles or "default" not in profiles:
                 profiles = ["default"] + [p for p in profiles if p != "default"]
 
-        except Exception as e:
+        except Exception:
             # Fallback to default if there's any error
             profiles = ["default"]
 
@@ -525,7 +545,8 @@ class SettingsTreeWidget(QTreeWidget):
         self.setRootIsDecorated(True)
         self.setAlternatingRowColors(True)
 
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QTreeWidget {
                 background-color: #2d2d2d;
                 color: #ffffff;
@@ -545,7 +566,8 @@ class SettingsTreeWidget(QTreeWidget):
             QTreeWidget::item:selected {
                 background-color: #0078d4;
             }
-        """)
+        """
+        )
 
         # Connect selection signal
         self.itemClicked.connect(self.on_item_clicked)
@@ -562,7 +584,9 @@ class SettingsTreeWidget(QTreeWidget):
         for file_name, config_file in config_files.items():
             # Create file root item
             file_item = QTreeWidgetItem(self, [file_name])
-            file_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "file", "config_file": config_file})
+            file_item.setData(
+                0, Qt.ItemDataRole.UserRole, {"type": "file", "config_file": config_file}
+            )
 
             # Add categories and settings (no file_name prefix to avoid duplicate keys)
             self.add_config_items(file_item, config_file.data, config_file.path, "")
@@ -574,8 +598,13 @@ class SettingsTreeWidget(QTreeWidget):
             else:
                 file_item.setExpanded(False)
 
-    def add_config_items(self, parent_item: QTreeWidgetItem, data: Dict[str, Any],
-                        file_path: str, category_prefix: str = "") -> None:
+    def add_config_items(
+        self,
+        parent_item: QTreeWidgetItem,
+        data: Dict[str, Any],
+        file_path: str,
+        category_prefix: str = "",
+    ) -> None:
         """Recursively add configuration items to tree"""
         for key, value in data.items():
             if key == "metadata":
@@ -586,7 +615,9 @@ class SettingsTreeWidget(QTreeWidget):
             if isinstance(value, dict):
                 # Create category item
                 category_item = QTreeWidgetItem(parent_item, [key])
-                category_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "category", "key": item_key})
+                category_item.setData(
+                    0, Qt.ItemDataRole.UserRole, {"type": "category", "key": item_key}
+                )
 
                 # Recursively add sub-items
                 self.add_config_items(category_item, value, file_path, item_key)
@@ -601,10 +632,12 @@ class SettingsTreeWidget(QTreeWidget):
                     value=value,
                     data_type=type(value).__name__,
                     file_path=file_path,
-                    category=category_prefix
+                    category=category_prefix,
                 )
 
-                setting_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "setting", "config_value": config_value})
+                setting_item.setData(
+                    0, Qt.ItemDataRole.UserRole, {"type": "setting", "config_value": config_value}
+                )
                 self.config_values[item_key] = config_value
 
                 # Set icon based on type
@@ -617,7 +650,7 @@ class SettingsTreeWidget(QTreeWidget):
                     else:
                         setting_item.setText(0, f"{key}: {value_str}")
 
-    def on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+    def on_item_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
         """Handle item click"""
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if data:
@@ -640,7 +673,7 @@ class SettingsTreeWidget(QTreeWidget):
             # Collapse all other top-level items
             for i in range(self.topLevelItemCount()):
                 top_item = self.topLevelItem(i)
-                if top_item != item and top_item.isExpanded():
+                if top_item is not None and top_item != item and top_item.isExpanded():
                     top_item.setExpanded(False)
 
     def filter_tree(self, search_text: str) -> None:
@@ -658,6 +691,8 @@ class SettingsTreeWidget(QTreeWidget):
         # Filter each top-level file item
         for i in range(self.topLevelItemCount()):
             file_item = self.topLevelItem(i)
+            if file_item is None:
+                continue
             file_name = file_item.text(0)
 
             # Check if file name matches
@@ -678,7 +713,9 @@ class SettingsTreeWidget(QTreeWidget):
 
         self.update_status_message(search_text, matching_files, matching_settings)
 
-    def filter_file_item(self, file_item: QTreeWidgetItem, search_text_lower: str, file_matches: bool) -> int:
+    def filter_file_item(
+        self, file_item: QTreeWidgetItem, search_text_lower: str, file_matches: bool
+    ) -> int:
         """Filter items within a file and return count of matches"""
         matching_count = 0
 
@@ -690,7 +727,9 @@ class SettingsTreeWidget(QTreeWidget):
 
         return matching_count
 
-    def filter_item_recursive(self, item: QTreeWidgetItem, search_text_lower: str, parent_matches: bool) -> int:
+    def filter_item_recursive(
+        self, item: QTreeWidgetItem, search_text_lower: str, parent_matches: bool
+    ) -> int:
         """Recursively filter item and its children"""
         item_text = item.text(0).lower()
         item_matches = parent_matches or search_text_lower in item_text
@@ -719,6 +758,8 @@ class SettingsTreeWidget(QTreeWidget):
         """Show all items in the tree"""
         for i in range(self.topLevelItemCount()):
             file_item = self.topLevelItem(i)
+            if file_item is None:
+                continue
             file_item.setHidden(False)
             # Only expand the first item to maintain accordion behavior
             if i == 0:
@@ -735,17 +776,28 @@ class SettingsTreeWidget(QTreeWidget):
             child_item.setExpanded(True)
             self.show_all_children(child_item)
 
-    def update_status_message(self, search_text: str = "", files: int = 0, settings: int = 0) -> None:
+    def update_status_message(
+        self, search_text: str = "", files: int = 0, settings: int = 0
+    ) -> None:
         """Update status message with search results"""
-        if hasattr(self.parent(), 'status_label'):
-            if search_text:
-                if files == 0 and settings == 0:
-                    self.parent().status_label.setText(f"No matches found for '{search_text}'")
-                else:
-                    self.parent().status_label.setText(f"Found {settings} settings in {files} files for '{search_text}'")
-            else:
-                self.parent().status_label.setText(f"Loaded {self.topLevelItemCount()} configuration files - Changes auto-save")
-
+        parent_widget = self.parent()
+        while parent_widget is not None:
+            if hasattr(parent_widget, "status_label"):
+                status_label = getattr(parent_widget, "status_label", None)
+                if status_label is not None:
+                    if search_text:
+                        if files == 0 and settings == 0:
+                            status_label.setText(f"No matches found for '{search_text}'")
+                        else:
+                            status_label.setText(
+                                f"Found {settings} settings in {files} files for '{search_text}'"
+                            )
+                    else:
+                        status_label.setText(
+                            f"Loaded {self.topLevelItemCount()} configuration files - Changes auto-save"
+                        )
+                    return
+            parent_widget = parent_widget.parent()
 
 
 class SettingsWidget(QWidget):
@@ -791,12 +843,14 @@ class SettingsWidget(QWidget):
         self.property_panel = QScrollArea()
         self.property_panel.setWidgetResizable(True)
         self.property_panel.setMinimumWidth(350)
-        self.property_panel.setStyleSheet("""
+        self.property_panel.setStyleSheet(
+            """
             QScrollArea {
                 background-color: #2d2d2d;
                 border: 1px solid #404040;
             }
-        """)
+        """
+        )
         splitter.addWidget(self.property_panel)
 
         # Set splitter proportions (50% : 50%)
@@ -809,33 +863,39 @@ class SettingsWidget(QWidget):
         layout.addWidget(footer)
 
         # Apply main widget styling for consistency
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             SettingsWidget {
                 background-color: #1e1e1e;
                 color: #cccccc;
             }
-        """)
+        """
+        )
 
     def create_header(self) -> QWidget:
         """Create header with title and search"""
         header = QFrame()
         header.setFixedHeight(50)
-        header.setStyleSheet("""
+        header.setStyleSheet(
+            """
             QFrame {
                 background-color: #1e1e1e;
             }
-        """)
+        """
+        )
 
         layout = QHBoxLayout(header)
         layout.setContentsMargins(15, 10, 15, 10)
 
         # Title
         title = QLabel("Settings")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 18px;
             font-weight: bold;
             color: #ffffff;
-        """)
+        """
+        )
         layout.addWidget(title)
 
         layout.addStretch()
@@ -844,7 +904,8 @@ class SettingsWidget(QWidget):
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search settings, files, or categories...")
         self.search_box.setFixedWidth(250)
-        self.search_box.setStyleSheet("""
+        self.search_box.setStyleSheet(
+            """
             QLineEdit {
                 padding: 5px;
                 border: 1px solid #555555;
@@ -855,7 +916,8 @@ class SettingsWidget(QWidget):
             QLineEdit:focus {
                 border: 1px solid #0078d4;
             }
-        """)
+        """
+        )
         self.search_box.textChanged.connect(self.on_search_changed)
         layout.addWidget(self.search_box)
 
@@ -865,12 +927,14 @@ class SettingsWidget(QWidget):
         """Create footer with action buttons"""
         footer = QFrame()
         footer.setFixedHeight(50)
-        footer.setStyleSheet("""
+        footer.setStyleSheet(
+            """
             QFrame {
                 background-color: #404040;
                 border-top: 1px solid #555555;
             }
-        """)
+        """
+        )
 
         layout = QHBoxLayout(footer)
         layout.setContentsMargins(15, 10, 15, 10)
@@ -914,7 +978,7 @@ class SettingsWidget(QWidget):
             try:
                 full_path = Path(rel_path)
                 if full_path.exists():
-                    with open(full_path, 'r', encoding='utf-8') as f:
+                    with open(full_path, "r", encoding="utf-8") as f:
                         data = yaml.safe_load(f) or {}
 
                     config_file = ConfigFile(
@@ -922,7 +986,7 @@ class SettingsWidget(QWidget):
                         path=str(full_path),
                         description=f"Configuration file: {name}",
                         data=data,
-                        last_loaded=datetime.now()
+                        last_loaded=datetime.now(),
                     )
 
                     self.config_files[name] = config_file
@@ -936,7 +1000,9 @@ class SettingsWidget(QWidget):
         # Update UI
         self.settings_tree.load_config_data(self.config_files)
 
-        self.status_label.setText(f"Loaded {len(self.config_files)} configuration files - Changes auto-save")
+        self.status_label.setText(
+            f"Loaded {len(self.config_files)} configuration files - Changes auto-save"
+        )
 
     def load_active_test_profile(self) -> None:
         """Load the currently active test profile"""
@@ -953,7 +1019,7 @@ class SettingsWidget(QWidget):
             full_path = Path(profile_path)
 
             if full_path.exists():
-                with open(full_path, 'r', encoding='utf-8') as f:
+                with open(full_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
 
                 config_file = ConfigFile(
@@ -961,7 +1027,7 @@ class SettingsWidget(QWidget):
                     path=str(full_path),
                     description=f"Currently active test profile: {active_profile}",
                     data=data,
-                    last_loaded=datetime.now()
+                    last_loaded=datetime.now(),
                 )
 
                 self.config_files[f"Active Test Profile ({active_profile})"] = config_file
@@ -1010,11 +1076,13 @@ class SettingsWidget(QWidget):
             # Immediately save the configuration file
             try:
                 logger.info(f"💾 Attempting to save file: {saved_file.path}")
-                with open(saved_file.path, 'w', encoding='utf-8') as f:
+                with open(saved_file.path, "w", encoding="utf-8") as f:
                     yaml.dump(saved_file.data, f, default_flow_style=False, indent=2)
 
                 self.status_label.setText(f"Auto-saved: {key}")
-                logger.info(f"✅ Successfully auto-saved setting: {key} = {new_value} to {saved_file.path}")
+                logger.info(
+                    f"✅ Successfully auto-saved setting: {key} = {new_value} to {saved_file.path}"
+                )
 
                 # Check if active_profile was changed
                 if key == "active_profile":
@@ -1027,7 +1095,7 @@ class SettingsWidget(QWidget):
                 QMessageBox.warning(self, "Auto-save Error", f"Failed to save {key}: {str(e)}")
         else:
             logger.warning(f"⚠️ No target file found for setting: {key}")
-            self.status_label.setText(f"Save failed: No target file found")
+            self.status_label.setText("Save failed: No target file found")
 
         # Update tree item text immediately after successful save
         if saved_file:
@@ -1055,7 +1123,7 @@ class SettingsWidget(QWidget):
                 config_value = data.get("config_value")
                 if config_value and config_value.key == key:
                     # Update the item text based on type
-                    key_name = key.split('.')[-1]  # Get the last part of the key
+                    key_name = key.split(".")[-1]  # Get the last part of the key
                     if isinstance(new_value, bool):
                         item.setText(0, f"{key_name} ✓" if new_value else f"{key_name} ✗")
                     else:
@@ -1074,7 +1142,9 @@ class SettingsWidget(QWidget):
         """Reload the active test profile when profile changes"""
         try:
             # Remove old active test profile entries
-            keys_to_remove = [k for k in self.config_files.keys() if k.startswith("Active Test Profile")]
+            keys_to_remove = [
+                k for k in self.config_files.keys() if k.startswith("Active Test Profile")
+            ]
             for key in keys_to_remove:
                 del self.config_files[key]
 
@@ -1098,7 +1168,7 @@ class SettingsWidget(QWidget):
     def update_nested_dict(self, data: Dict[str, Any], key: str, value: Any) -> bool:
         """Update nested dictionary value by key path"""
         logger.debug(f"🔧 Updating nested dict: {key} = {value}")
-        keys = key.split('.')
+        keys = key.split(".")
         current = data
 
         # Navigate to parent
@@ -1121,7 +1191,9 @@ class SettingsWidget(QWidget):
                 value = bool(value)
 
             current[final_key] = value
-            logger.debug(f"  ✅ Updated {final_key}: {old_value} → {value} (type: {type(value).__name__})")
+            logger.debug(
+                f"  ✅ Updated {final_key}: {old_value} → {value} (type: {type(value).__name__})"
+            )
             return True
         else:
             logger.debug(f"  ❌ Final key '{final_key}' not found in current dict")
@@ -1133,7 +1205,7 @@ class SettingsWidget(QWidget):
 
         for config_file in self.config_files.values():
             try:
-                with open(config_file.path, 'w', encoding='utf-8') as f:
+                with open(config_file.path, "w", encoding="utf-8") as f:
                     yaml.dump(config_file.data, f, default_flow_style=False, indent=2)
 
                 saved_count += 1
@@ -1142,7 +1214,7 @@ class SettingsWidget(QWidget):
                 QMessageBox.warning(self, "Save Error", f"Failed to save {config_file.name}: {e}")
 
         if saved_count > 0:
-            self.status_label.setText(f"All configurations saved")
+            self.status_label.setText("All configurations saved")
         else:
             self.status_label.setText("Save operation completed")
 
@@ -1152,7 +1224,7 @@ class SettingsWidget(QWidget):
             self,
             "Reset Configuration",
             "Are you sure you want to reset all configurations to default values?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -1162,15 +1234,12 @@ class SettingsWidget(QWidget):
     def import_config(self) -> None:
         """Import configuration from file"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Import Configuration",
-            "",
-            "YAML files (*.yaml *.yml);;All files (*)"
+            self, "Import Configuration", "", "YAML files (*.yaml *.yml);;All files (*)"
         )
 
         if file_path:
             # Implementation for importing config
-            self.status_label.setText(f"Import functionality not yet implemented")
+            self.status_label.setText("Import functionality not yet implemented")
 
     def export_config(self) -> None:
         """Export configuration to file"""
@@ -1178,12 +1247,12 @@ class SettingsWidget(QWidget):
             self,
             "Export Configuration",
             "config_export.yaml",
-            "YAML files (*.yaml *.yml);;All files (*)"
+            "YAML files (*.yaml *.yml);;All files (*)",
         )
 
         if file_path:
             # Implementation for exporting config
-            self.status_label.setText(f"Export functionality not yet implemented")
+            self.status_label.setText("Export functionality not yet implemented")
 
     def _connect_container_reload(self) -> None:
         """Connect settings changes to container reload for hot-reload functionality"""
@@ -1207,11 +1276,11 @@ class SettingsWidget(QWidget):
         logger.info("🔍 Starting comprehensive container analysis...")
         logger.info(f"🔍 Container type: {type(self.container)}")
         logger.info(f"🔍 Container class: {self.container.__class__}")
-        logger.info(f"🔍 Container MRO: {[cls.__name__ for cls in self.container.__class__.__mro__]}")
+        logger.info(
+            f"🔍 Container MRO: {[cls.__name__ for cls in self.container.__class__.__mro__]}"
+        )
 
         # Check if container is the correct type
-        from application.containers.simple_reloadable_container import SimpleReloadableContainer
-
         if isinstance(self.container, SimpleReloadableContainer):
             logger.info("✅ Container is SimpleReloadableContainer - proceeding with direct access")
             try:
@@ -1225,7 +1294,9 @@ class SettingsWidget(QWidget):
         else:
             logger.info(f"🔍 Container is DynamicContainer instance: {type(self.container)}")
             logger.info("🔍 Available container methods:")
-            container_methods = [method for method in dir(self.container) if not method.startswith('_')]
+            container_methods = [
+                method for method in dir(self.container) if not method.startswith("_")
+            ]
             logger.info(f"🔍 Methods: {container_methods}")
 
             # Try multiple detection methods as fallback
@@ -1242,7 +1313,7 @@ class SettingsWidget(QWidget):
 
             # Method 2: getattr with default
             if not method_found:
-                reload_method = getattr(self.container, 'reload_configuration', None)
+                reload_method = getattr(self.container, "reload_configuration", None)
                 if reload_method and callable(reload_method):
                     method_found = True
                     logger.info("✅ Method found via getattr")
@@ -1259,6 +1330,10 @@ class SettingsWidget(QWidget):
             logger.info(f"🏭 Container instance ID: {id(self.container)}")
 
             try:
+                if reload_method is None:
+                    logger.error("❌ reload_method is None despite method detection")
+                    self.status_label.setText("❌ Internal error: method is None")
+                    return
                 success = reload_method()
                 logger.info("✅ Fallback method call succeeded")
 
@@ -1276,10 +1351,14 @@ class SettingsWidget(QWidget):
                         # Log current configuration values
                         robot_model = self.container.config.hardware.robot.model()
                         robot_axis = self.container.config.hardware.robot.axis_id()
-                        logger.info(f"📋 Current robot config: model={robot_model}, axis_id={robot_axis}")
+                        logger.info(
+                            f"📋 Current robot config: model={robot_model}, axis_id={robot_axis}"
+                        )
 
                     except Exception as verification_error:
-                        logger.warning(f"⚠️ Could not verify hardware services: {verification_error}")
+                        logger.warning(
+                            f"⚠️ Could not verify hardware services: {verification_error}"
+                        )
 
                 else:
                     self.status_label.setText("❌ Configuration reload failed")

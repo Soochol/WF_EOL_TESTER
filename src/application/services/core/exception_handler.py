@@ -5,13 +5,13 @@ Service for classifying, handling, and providing recovery strategies for excepti
 """
 
 # Standard library imports
-from dataclasses import dataclass
-from enum import Enum
-import time
-from typing import Any, Callable, Dict, Optional, Type
-
 # Third-party imports
 import asyncio
+import time
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Callable, Dict, Optional, Type
+
 from loguru import logger
 
 # Local application imports

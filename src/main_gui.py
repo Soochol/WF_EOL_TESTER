@@ -7,6 +7,9 @@ Integrates with existing business logic via ApplicationContainer.
 """
 
 # Standard library imports
+# Standard library imports
+# Standard library imports
+# Standard library imports
 from pathlib import Path
 import sys
 from typing import Optional
@@ -19,6 +22,7 @@ from loguru import logger
 # PySide6 imports with detailed error diagnostics
 def check_pyside6_installation():
     """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
+    # Standard library imports
     import os
     import platform
     import subprocess
@@ -26,7 +30,7 @@ def check_pyside6_installation():
     def run_command(cmd):
         """Run command and return output"""
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=False)
             return result.returncode == 0, result.stdout.strip()
         except Exception:
             return False, ""
@@ -97,7 +101,7 @@ def check_pyside6_installation():
         print("   Using UV package manager...")
 
         # Check UV cache status
-        success, cache_info = run_command("uv cache info")
+        success, _ = run_command("uv cache info")
         if success:
             print("   📊 UV Cache Status: Available")
         else:
@@ -212,6 +216,7 @@ def check_pyside6_installation():
 try:
     # Third-party imports - PySide6
     # pylint: disable=no-name-in-module
+    # Third-party imports
     from PySide6.QtCore import QTimer
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
@@ -348,15 +353,7 @@ class EOLTesterGUIApplication:
             raise
 
         # Also reset any other Singletons that depend on hardware_service_facade
-        try:
-            # Reset emergency stop service if it's a Singleton and depends on hardware facade
-            if hasattr(self.container, "emergency_stop_service") and hasattr(
-                self.container.emergency_stop_service, "reset"
-            ):
-                self.container.emergency_stop_service.reset()
-                logger.info("🔄 Emergency Stop Service Singleton reset")
-        except Exception as e:
-            logger.debug(f"Emergency stop service reset skipped: {e}")
+        # Note: EmergencyStopService doesn't need reset as it gets fresh dependencies through facade
 
         # Note: Direct injection was removed to respect encapsulation
         # The GUI state manager is now properly injected via the container
@@ -441,9 +438,8 @@ class EOLTesterGUIApplication:
         try:
             # Try to get running event loop (Python 3.10+ compatible)
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Loop is already running, process some pending tasks if needed
-                pass
             except RuntimeError:
                 # No running event loop in current thread, this is normal for GUI thread
                 pass

@@ -6,7 +6,6 @@ with intelligent reload capabilities while maintaining backward compatibility.
 """
 
 # Third-party imports
-from dependency_injector import containers, providers
 from loguru import logger
 
 # Local application imports
@@ -72,20 +71,36 @@ class SimpleReloadableContainer(ApplicationContainer):
         """Bind instance methods to the container instance."""
         try:
             # Bind implementation methods directly to the instance
-            container_instance._instance_reload_configuration_impl = cls._get_instance_reload_configuration_impl(container_instance)
-            container_instance._instance_has_config_changed_impl = cls._get_instance_has_config_changed_impl(container_instance)
-            container_instance._instance_update_config_hash_impl = cls._get_instance_update_config_hash_impl(container_instance)
+            container_instance._instance_reload_configuration_impl = (
+                cls._get_instance_reload_configuration_impl(container_instance)
+            )
+            container_instance._instance_has_config_changed_impl = (
+                cls._get_instance_has_config_changed_impl(container_instance)
+            )
+            container_instance._instance_update_config_hash_impl = (
+                cls._get_instance_update_config_hash_impl(container_instance)
+            )
 
             # Bind additional methods that the container needs
-            container_instance._apply_intelligent_reload = cls._get_apply_intelligent_reload_impl(container_instance)
-            container_instance._notify_reload_callbacks = cls._get_notify_reload_callbacks_impl(container_instance)
+            container_instance._apply_intelligent_reload = cls._get_apply_intelligent_reload_impl(
+                container_instance
+            )
+            container_instance._notify_reload_callbacks = cls._get_notify_reload_callbacks_impl(
+                container_instance
+            )
 
             # Bind the reload_configuration method
-            container_instance.reload_configuration = lambda: cls._instance_reload_configuration(container_instance)
+            container_instance.reload_configuration = lambda: cls._instance_reload_configuration(
+                container_instance
+            )
 
             # Bind the config change detection methods
-            container_instance._has_config_changed = lambda: cls._instance_has_config_changed(container_instance)
-            container_instance._update_config_hash = lambda: cls._instance_update_config_hash(container_instance)
+            container_instance._has_config_changed = lambda: cls._instance_has_config_changed(
+                container_instance
+            )
+            container_instance._update_config_hash = lambda: cls._instance_update_config_hash(
+                container_instance
+            )
 
             logger.debug("🔗 Instance methods bound to container")
         except Exception as e:
@@ -94,6 +109,7 @@ class SimpleReloadableContainer(ApplicationContainer):
     @classmethod
     def _get_instance_reload_configuration_impl(cls, container_instance):
         """Get bound method for reload configuration implementation."""
+
         def impl():
             try:
                 logger.info("🔄 Starting intelligent configuration reload...")
@@ -107,7 +123,9 @@ class SimpleReloadableContainer(ApplicationContainer):
                 container_instance.config.from_dict(new_config_data)
 
                 # Step 3: Detect what changed and apply appropriate reload strategy
-                reload_success = container_instance._apply_intelligent_reload(old_config, new_config_data)
+                reload_success = container_instance._apply_intelligent_reload(
+                    old_config, new_config_data
+                )
 
                 # Step 4: Update hash if successful
                 if reload_success:
@@ -124,13 +142,16 @@ class SimpleReloadableContainer(ApplicationContainer):
             except Exception as e:
                 logger.error(f"❌ Intelligent configuration reload failed: {e}")
                 return False
+
         return impl
 
     @classmethod
     def _get_instance_has_config_changed_impl(cls, container_instance):
         """Get bound method for config change detection implementation."""
+
         def impl():
             try:
+                # Standard library imports
                 import hashlib
                 import json
 
@@ -144,13 +165,16 @@ class SimpleReloadableContainer(ApplicationContainer):
             except Exception as e:
                 logger.error(f"Failed to check config changes: {e}")
                 return True  # Assume changed to be safe
+
         return impl
 
     @classmethod
     def _get_instance_update_config_hash_impl(cls, container_instance):
         """Get bound method for config hash update implementation."""
+
         def impl():
             try:
+                # Standard library imports
                 import hashlib
                 import json
 
@@ -162,11 +186,13 @@ class SimpleReloadableContainer(ApplicationContainer):
             except Exception as e:
                 logger.error(f"Failed to update config hash: {e}")
                 container_instance._last_config_hash = None
+
         return impl
 
     @classmethod
     def _get_apply_intelligent_reload_impl(cls, container_instance):
         """Get bound method for apply intelligent reload implementation."""
+
         def impl(old_config: dict, new_config: dict) -> bool:
             try:
                 # Detect what changed
@@ -189,18 +215,22 @@ class SimpleReloadableContainer(ApplicationContainer):
             except Exception as e:
                 logger.error(f"Error applying intelligent reload: {e}")
                 return False
+
         return impl
 
     @classmethod
     def _get_notify_reload_callbacks_impl(cls, container_instance):
         """Get bound method for notify reload callbacks implementation."""
+
         def impl():
             try:
                 # Use getattr with default to handle DynamicContainer instances gracefully
-                reload_callbacks = getattr(container_instance, '_reload_callbacks', {})
+                reload_callbacks = getattr(container_instance, "_reload_callbacks", {})
 
                 if not reload_callbacks:
-                    logger.debug("📞 No reload callbacks registered (container may be DynamicContainer instance)")
+                    logger.debug(
+                        "📞 No reload callbacks registered (container may be DynamicContainer instance)"
+                    )
                     return
 
                 for name, callback in reload_callbacks.items():
@@ -211,6 +241,7 @@ class SimpleReloadableContainer(ApplicationContainer):
                         logger.error(f"Error in reload callback {name}: {e}")
             except Exception as e:
                 logger.error(f"Error notifying reload callbacks: {e}")
+
         return impl
 
     @classmethod
@@ -220,44 +251,44 @@ class SimpleReloadableContainer(ApplicationContainer):
 
         try:
             # Check hardware model changes
-            hardware_categories = ['robot', 'power', 'mcu', 'loadcell', 'digital_io']
+            hardware_categories = ["robot", "power", "mcu", "loadcell", "digital_io"]
 
             for category in hardware_categories:
-                old_model = old_config.get('hardware', {}).get(category, {}).get('model')
-                new_model = new_config.get('hardware', {}).get(category, {}).get('model')
+                old_model = old_config.get("hardware", {}).get(category, {}).get("model")
+                new_model = new_config.get("hardware", {}).get(category, {}).get("model")
 
                 if old_model != new_model:
-                    changes.append(f'hardware.{category}.model')
+                    changes.append(f"hardware.{category}.model")
 
             # Check other hardware parameter changes
-            old_hardware = old_config.get('hardware', {})
-            new_hardware = new_config.get('hardware', {})
+            old_hardware = old_config.get("hardware", {})
+            new_hardware = new_config.get("hardware", {})
 
-            if old_hardware != new_hardware and not any('.model' in change for change in changes):
-                changes.append('hardware.config')
+            if old_hardware != new_hardware and not any(".model" in change for change in changes):
+                changes.append("hardware.config")
 
             # Check application config changes
-            old_app = {k: v for k, v in old_config.items() if k != 'hardware'}
-            new_app = {k: v for k, v in new_config.items() if k != 'hardware'}
+            old_app = {k: v for k, v in old_config.items() if k != "hardware"}
+            new_app = {k: v for k, v in new_config.items() if k != "hardware"}
 
             if old_app != new_app:
-                changes.append('application.config')
+                changes.append("application.config")
 
         except Exception as e:
             logger.error(f"Error detecting changes: {e}")
-            changes.append('unknown')  # Trigger safe full reload
+            changes.append("unknown")  # Trigger safe full reload
 
         return changes
 
     @classmethod
     def _has_hardware_model_changes_static(cls, changes: list) -> bool:
         """Check if any hardware model changes occurred."""
-        return any('.model' in change for change in changes)
+        return any(".model" in change for change in changes)
 
     @classmethod
     def _has_hardware_config_changes_static(cls, changes: list) -> bool:
         """Check if hardware configuration changes occurred."""
-        return any('hardware.' in change for change in changes)
+        return any("hardware." in change for change in changes)
 
     @classmethod
     def _reload_hardware_with_preservation_static(cls, container_instance) -> bool:
@@ -267,15 +298,15 @@ class SimpleReloadableContainer(ApplicationContainer):
 
             # Step 1: Reset main hardware providers that need to pick up new configuration
             hardware_providers = [
-                'hardware_service_facade',
-                'industrial_system_manager',
+                "hardware_service_facade",
+                "industrial_system_manager",
             ]
 
             for provider_name in hardware_providers:
                 try:
                     if hasattr(container_instance, provider_name):
                         provider = getattr(container_instance, provider_name)
-                        if hasattr(provider, 'reset'):
+                        if hasattr(provider, "reset"):
                             provider.reset()
                             logger.info(f"🔄 Reset {provider_name}")
                         else:
@@ -306,21 +337,25 @@ class SimpleReloadableContainer(ApplicationContainer):
                 "digital_io_service",
             ]
 
-            if hasattr(container_instance, 'hardware_factory'):
+            if hasattr(container_instance, "hardware_factory"):
                 hardware_factory = container_instance.hardware_factory()
                 for provider_name in hardware_factory_providers:
                     try:
                         if hasattr(hardware_factory, provider_name):
                             provider = getattr(hardware_factory, provider_name)
-                            if hasattr(provider, 'reset'):
+                            if hasattr(provider, "reset"):
                                 provider.reset()
                                 logger.info(f"🏭 Reset hardware factory provider: {provider_name}")
                             else:
                                 logger.debug(f"🏭 Provider {provider_name} has no reset method")
                         else:
-                            logger.debug(f"🏭 Provider {provider_name} not found in hardware factory")
+                            logger.debug(
+                                f"🏭 Provider {provider_name} not found in hardware factory"
+                            )
                     except Exception as e:
-                        logger.warning(f"⚠️ Failed to reset hardware factory provider {provider_name}: {e}")
+                        logger.warning(
+                            f"⚠️ Failed to reset hardware factory provider {provider_name}: {e}"
+                        )
             else:
                 logger.warning("⚠️ Container has no hardware_factory attribute")
 
@@ -350,16 +385,16 @@ class SimpleReloadableContainer(ApplicationContainer):
 
             # Reset service providers that depend on application configuration
             service_providers = [
-                'test_result_evaluator',
-                'repository_service',
-                'json_result_repository',
+                "test_result_evaluator",
+                "repository_service",
+                "json_result_repository",
             ]
 
             for provider_name in service_providers:
                 try:
                     if hasattr(container_instance, provider_name):
                         provider = getattr(container_instance, provider_name)
-                        if hasattr(provider, 'reset'):
+                        if hasattr(provider, "reset"):
                             provider.reset()
                             logger.info(f"🔄 Reset service provider: {provider_name}")
                         else:
@@ -376,7 +411,9 @@ class SimpleReloadableContainer(ApplicationContainer):
             return False
 
     @classmethod
-    def _instance_reload_configuration(cls, container_instance: "SimpleReloadableContainer") -> bool:
+    def _instance_reload_configuration(
+        cls, container_instance: "SimpleReloadableContainer"
+    ) -> bool:
         """Instance-specific reload configuration method."""
         return container_instance._instance_reload_configuration_impl()
 
@@ -393,6 +430,7 @@ class SimpleReloadableContainer(ApplicationContainer):
     def _update_config_hash(self):
         """Update stored configuration hash for change detection."""
         try:
+            # Standard library imports
             import hashlib
             import json
 
@@ -408,6 +446,7 @@ class SimpleReloadableContainer(ApplicationContainer):
     def _has_config_changed(self) -> bool:
         """Check if configuration has changed since last reload."""
         try:
+            # Standard library imports
             import hashlib
             import json
 
@@ -498,42 +537,42 @@ class SimpleReloadableContainer(ApplicationContainer):
 
         try:
             # Check hardware model changes
-            hardware_categories = ['robot', 'power', 'mcu', 'loadcell', 'digital_io']
+            hardware_categories = ["robot", "power", "mcu", "loadcell", "digital_io"]
 
             for category in hardware_categories:
-                old_model = old_config.get('hardware', {}).get(category, {}).get('model')
-                new_model = new_config.get('hardware', {}).get(category, {}).get('model')
+                old_model = old_config.get("hardware", {}).get(category, {}).get("model")
+                new_model = new_config.get("hardware", {}).get(category, {}).get("model")
 
                 if old_model != new_model:
-                    changes.append(f'hardware.{category}.model')
+                    changes.append(f"hardware.{category}.model")
 
             # Check other hardware parameter changes
-            old_hardware = old_config.get('hardware', {})
-            new_hardware = new_config.get('hardware', {})
+            old_hardware = old_config.get("hardware", {})
+            new_hardware = new_config.get("hardware", {})
 
-            if old_hardware != new_hardware and f'hardware.{category}.model' not in changes:
-                changes.append('hardware.config')
+            if old_hardware != new_hardware and f"hardware.{category}.model" not in changes:
+                changes.append("hardware.config")
 
             # Check application config changes
-            old_app = {k: v for k, v in old_config.items() if k != 'hardware'}
-            new_app = {k: v for k, v in new_config.items() if k != 'hardware'}
+            old_app = {k: v for k, v in old_config.items() if k != "hardware"}
+            new_app = {k: v for k, v in new_config.items() if k != "hardware"}
 
             if old_app != new_app:
-                changes.append('application.config')
+                changes.append("application.config")
 
         except Exception as e:
             logger.error(f"Error detecting changes: {e}")
-            changes.append('unknown')  # Trigger safe full reload
+            changes.append("unknown")  # Trigger safe full reload
 
         return changes
 
     def _has_hardware_model_changes(self, changes: list) -> bool:
         """Check if any hardware model changes occurred."""
-        return any('.model' in change for change in changes)
+        return any(".model" in change for change in changes)
 
     def _has_hardware_config_changes(self, changes: list) -> bool:
         """Check if hardware configuration changes occurred."""
-        return any('hardware.' in change for change in changes)
+        return any("hardware." in change for change in changes)
 
     def _reload_hardware_with_preservation(self) -> bool:
         """Reload hardware with connection preservation (for model changes)."""
@@ -545,14 +584,14 @@ class SimpleReloadableContainer(ApplicationContainer):
 
             # Step 2: Reset hardware-related providers
             hardware_providers = [
-                'hardware_service_facade',
-                'industrial_system_manager',
+                "hardware_service_facade",
+                "industrial_system_manager",
             ]
 
             for provider_name in hardware_providers:
                 try:
                     provider = getattr(self, provider_name)
-                    if hasattr(provider, 'reset'):
+                    if hasattr(provider, "reset"):
                         provider.reset()
                         logger.info(f"🔄 Reset {provider_name}")
                 except Exception as e:
@@ -590,15 +629,15 @@ class SimpleReloadableContainer(ApplicationContainer):
 
             # Reset service providers that depend on application configuration
             service_providers = [
-                'test_result_evaluator',
-                'repository_service',
-                'json_result_repository',
+                "test_result_evaluator",
+                "repository_service",
+                "json_result_repository",
             ]
 
             for provider_name in service_providers:
                 try:
                     provider = getattr(self, provider_name)
-                    if hasattr(provider, 'reset'):
+                    if hasattr(provider, "reset"):
                         provider.reset()
                         logger.info(f"🔄 Reset {provider_name}")
                 except Exception as e:
@@ -625,7 +664,7 @@ class SimpleReloadableContainer(ApplicationContainer):
             for provider_name in hardware_factory_providers:
                 try:
                     provider = getattr(self.hardware_factory, provider_name)
-                    if hasattr(provider, 'reset'):
+                    if hasattr(provider, "reset"):
                         provider.reset()
                         logger.info(f"🔄 Reset HardwareFactory.{provider_name}")
                 except Exception as e:
@@ -637,7 +676,7 @@ class SimpleReloadableContainer(ApplicationContainer):
     def register_reload_callback(self, name: str, callback):
         """Register a callback to be notified when reload completes."""
         # Ensure _reload_callbacks exists, initialize if missing
-        if not hasattr(self, '_reload_callbacks'):
+        if not hasattr(self, "_reload_callbacks"):
             self._reload_callbacks = {}
 
         self._reload_callbacks[name] = callback
@@ -645,7 +684,7 @@ class SimpleReloadableContainer(ApplicationContainer):
 
     def unregister_reload_callback(self, name: str):
         """Unregister a reload callback."""
-        reload_callbacks = getattr(self, '_reload_callbacks', {})
+        reload_callbacks = getattr(self, "_reload_callbacks", {})
         if name in reload_callbacks:
             del reload_callbacks[name]
             logger.debug(f"📞 Unregistered reload callback: {name}")
@@ -653,10 +692,12 @@ class SimpleReloadableContainer(ApplicationContainer):
     def _notify_reload_callbacks(self):
         """Notify all registered callbacks that reload completed."""
         # Use getattr with default to handle DynamicContainer instances gracefully
-        reload_callbacks = getattr(self, '_reload_callbacks', {})
+        reload_callbacks = getattr(self, "_reload_callbacks", {})
 
         if not reload_callbacks:
-            logger.debug("📞 No reload callbacks registered (container may be DynamicContainer instance)")
+            logger.debug(
+                "📞 No reload callbacks registered (container may be DynamicContainer instance)"
+            )
             return
 
         for name, callback in reload_callbacks.items():

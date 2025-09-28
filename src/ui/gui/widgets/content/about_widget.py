@@ -4,23 +4,24 @@ About Widget
 Professional about page showing company, product, and system information.
 """
 
+# Standard library imports
+from datetime import datetime
 import platform
 import sys
-from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont, QPixmap
+# Third-party imports
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QFrame,
     QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 
@@ -37,7 +38,8 @@ class InfoCard(QFrame):
     def setup_ui(self, title: str, content: str, icon: str) -> None:
         """Setup the card UI"""
         self.setFrameStyle(QFrame.Shape.Box)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             InfoCard {
                 background-color: #2d2d2d;
                 border: 1px solid #404040;
@@ -49,7 +51,8 @@ class InfoCard(QFrame):
                 border-color: #0078d4;
                 background-color: #333333;
             }
-        """)
+        """
+        )
 
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
@@ -62,11 +65,13 @@ class InfoCard(QFrame):
             title_layout.addWidget(icon_label)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet("""
+        title_label.setStyleSheet(
+            """
             font-size: 16px;
             font-weight: bold;
             color: #ffffff;
-        """)
+        """
+        )
         title_layout.addWidget(title_label)
         title_layout.addStretch()
 
@@ -74,11 +79,13 @@ class InfoCard(QFrame):
 
         # Content
         content_label = QLabel(content)
-        content_label.setStyleSheet("""
+        content_label.setStyleSheet(
+            """
             color: #cccccc;
             font-size: 14px;
             line-height: 1.4;
-        """)
+        """
+        )
         content_label.setWordWrap(True)
         layout.addWidget(content_label)
 
@@ -168,46 +175,53 @@ class AboutWidget(QWidget):
         # Company logo placeholder
         logo_label = QLabel("🏭")
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_label.setStyleSheet("""
+        logo_label.setStyleSheet(
+            """
             font-size: 64px;
             color: #0078d4;
             margin: 20px;
-        """)
+        """
+        )
         layout.addWidget(logo_label)
 
         # Product title
         title_label = QLabel("WF EOL Tester")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("""
+        title_label.setStyleSheet(
+            """
             font-size: 32px;
             font-weight: bold;
             color: #ffffff;
             margin-bottom: 10px;
-        """)
+        """
+        )
         layout.addWidget(title_label)
 
         # Version and description
         version_label = QLabel("Version 2.0.0 - Industrial End-of-Line Testing Solution")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        version_label.setStyleSheet("""
+        version_label.setStyleSheet(
+            """
             font-size: 16px;
             color: #0078d4;
             margin-bottom: 20px;
-        """)
+        """
+        )
         layout.addWidget(version_label)
 
         # Company name
         company_label = QLabel("Withforce Co., Ltd.")
         company_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        company_label.setStyleSheet("""
+        company_label.setStyleSheet(
+            """
             font-size: 18px;
             color: #cccccc;
             margin-bottom: 30px;
-        """)
+        """
+        )
         layout.addWidget(company_label)
 
         return header
-
 
     def create_footer_section(self) -> QWidget:
         """Create footer with copyright and contact info"""
@@ -222,23 +236,29 @@ class AboutWidget(QWidget):
         layout.addWidget(separator)
 
         # Copyright
-        copyright_label = QLabel(f"© {datetime.now().year} Withforce Co., Ltd. All rights reserved.")
+        copyright_label = QLabel(
+            f"© {datetime.now().year} Withforce Co., Ltd. All rights reserved."
+        )
         copyright_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        copyright_label.setStyleSheet("""
+        copyright_label.setStyleSheet(
+            """
             color: #888888;
             font-size: 12px;
             margin: 10px;
-        """)
+        """
+        )
         layout.addWidget(copyright_label)
 
         # Contact info
         contact_label = QLabel("Contact: info@withforce.co.kr | Support: support@withforce.co.kr")
         contact_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        contact_label.setStyleSheet("""
+        contact_label.setStyleSheet(
+            """
             color: #888888;
             font-size: 12px;
             margin-bottom: 20px;
-        """)
+        """
+        )
         layout.addWidget(contact_label)
 
         return footer
@@ -264,10 +284,14 @@ class AboutWidget(QWidget):
 
     def get_system_info(self) -> str:
         """Get system information"""
-        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        python_version = (
+            f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        )
 
         try:
+            # Third-party imports
             import PySide6
+
             pyside_version = PySide6.__version__
         except:
             pyside_version = "Unknown"
@@ -352,7 +376,6 @@ class AboutWidget(QWidget):
         • Robot Control APIs
         """
 
-
     def setup_animations(self) -> None:
         """Setup fade-in animations for the widget"""
         self.setStyleSheet("background-color: #1e1e1e;")
@@ -370,4 +393,3 @@ class AboutWidget(QWidget):
 
         # Start animation with a slight delay
         QTimer.singleShot(100, self.fade_animation.start)
-
