@@ -885,6 +885,7 @@ class MainWindow(QMainWindow):
 
             # Clear live logs when starting a new test
             self.logs_page.log_viewer.clear_logs()
+            self.test_control_page.log_viewer.clear_logs()
             logger.info("Previous test results and live logs cleared. Starting new test...")
             self.state_manager.add_log_message(
                 "INFO", "TEST", "Previous test results and logs cleared"
