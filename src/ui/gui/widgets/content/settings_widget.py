@@ -552,6 +552,7 @@ class SettingsTreeWidget(QTreeWidget):
                 color: #ffffff;
                 border: 1px solid #404040;
                 selection-background-color: #0078d4;
+                alternate-background-color: #353535;
             }
             QTreeWidget:focus {
                 outline: none;
@@ -559,6 +560,10 @@ class SettingsTreeWidget(QTreeWidget):
             QTreeWidget::item {
                 height: 25px;
                 padding: 2px;
+                background-color: #2d2d2d;
+            }
+            QTreeWidget::item:alternate {
+                background-color: #353535;
             }
             QTreeWidget::item:hover {
                 background-color: #404040;

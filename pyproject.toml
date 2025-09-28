@@ -36,7 +36,7 @@ dependencies = [
     "openpyxl>=3.1.0",
     # Dependency Injection
     "dependency-injector[yaml]>=4.41.0",
-    "pyside6>=6.9.1",
+    "pyside6==6.5.3",
     "pyinstaller>=6.15.0",
 ]
 
