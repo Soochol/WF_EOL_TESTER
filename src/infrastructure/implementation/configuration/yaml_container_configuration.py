@@ -24,8 +24,8 @@ class YamlContainerConfigurationLoader:
 
     def __init__(
         self,
-        application_config_path: str = "configuration/application.yaml",
-        hardware_config_path: str = "configuration/hardware_config.yaml",
+        application_config_path: str = "../configuration/application.yaml",
+        hardware_config_path: str = "../configuration/hardware_config.yaml",
     ):
         self.application_config_path = application_config_path
         self.hardware_config_path = hardware_config_path
