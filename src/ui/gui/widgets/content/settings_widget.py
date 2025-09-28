@@ -510,7 +510,7 @@ class PropertyEditorWidget(QWidget):
         profiles = []
         try:
             # Get test_profiles directory path
-            test_profiles_dir = "configuration/test_profiles"
+            test_profiles_dir = "../configuration/test_profiles"
             if os.path.exists(test_profiles_dir):
                 # Find all .yaml files in the directory
                 yaml_files = glob.glob(os.path.join(test_profiles_dir, "*.yaml"))
@@ -969,11 +969,11 @@ class SettingsWidget(QWidget):
     def load_configuration_files(self) -> None:
         """Load all configuration files"""
         base_config_paths = {
-            "Application": "configuration/application.yaml",
-            "Hardware": "configuration/hardware_config.yaml",
-            "Heating/Cooling Test": "configuration/heating_cooling_time_test.yaml",
-            "Profile Management": "configuration/profile.yaml",
-            "DUT Defaults": "configuration/dut_defaults.yaml",
+            "Application": "../configuration/application.yaml",
+            "Hardware": "../configuration/hardware_config.yaml",
+            "Heating/Cooling Test": "../configuration/heating_cooling_time_test.yaml",
+            "Profile Management": "../configuration/profile.yaml",
+            "DUT Defaults": "../configuration/dut_defaults.yaml",
         }
 
         self.config_files.clear()
@@ -1020,7 +1020,7 @@ class SettingsWidget(QWidget):
             active_profile = profile_config.data.get("active_profile", "default")
 
             # Load the active test profile
-            profile_path = f"configuration/test_profiles/{active_profile}.yaml"
+            profile_path = f"../configuration/test_profiles/{active_profile}.yaml"
             full_path = Path(profile_path)
 
             if full_path.exists():
