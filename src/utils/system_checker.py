@@ -11,12 +11,13 @@ Usage:
     python -m utils.system_checker  # From src/ directory
 """
 
+# Standard library imports
 import os
+from pathlib import Path
 import platform
 import subprocess
 import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Tuple
 
 
 class SystemChecker:
@@ -72,14 +73,14 @@ class SystemChecker:
         uv_available = self._check_uv_available()
 
         if is_uv_env:
-            print(f"🚀 Environment: UV Virtual Environment")
+            print("🚀 Environment: UV Virtual Environment")
             if uv_available:
-                print(f"   ✅ UV command available")
+                print("   ✅ UV command available")
             else:
-                print(f"   ❌ UV command not found!")
+                print("   ❌ UV command not found!")
                 self.issues_found.append("UV environment detected but UV command not available")
         else:
-            print(f"🐍 Environment: Standard Python Environment")
+            print("🐍 Environment: Standard Python Environment")
 
         # Check if we're on a supported platform
         if platform.system() not in ["Windows", "Linux", "Darwin"]:
@@ -91,11 +92,13 @@ class SystemChecker:
 
     def _is_uv_environment(self) -> bool:
         """Check if running in UV environment"""
+        # Standard library imports
         import os
+
         uv_indicators = [
-            os.environ.get('UV_PROJECT_NAME'),
-            os.environ.get('VIRTUAL_ENV') and '.venv' in os.environ.get('VIRTUAL_ENV', ''),
-            Path('pyproject.toml').exists() and Path('.venv').exists()
+            os.environ.get("UV_PROJECT_NAME"),
+            os.environ.get("VIRTUAL_ENV") and ".venv" in os.environ.get("VIRTUAL_ENV", ""),
+            Path("pyproject.toml").exists() and Path(".venv").exists(),
         ]
         return any(uv_indicators)
 
@@ -134,20 +137,26 @@ class SystemChecker:
 
         # First check if PySide6 can be imported
         try:
+            # Third-party imports
             import PySide6
+
             print(f"✅ PySide6 {PySide6.__version__} installed")
 
             # Try to get Qt version (optional, may not be available)
             try:
+                # Third-party imports
                 from PySide6.QtCore import QT_VERSION_STR
+
                 print(f"📦 Qt Version: {QT_VERSION_STR}")
             except ImportError:
                 print("📦 Qt Version: (not available)")
 
             # Try importing core modules
-            from PySide6.QtWidgets import QApplication
+            # Third-party imports
             from PySide6.QtCore import QTimer
             from PySide6.QtGui import QIcon
+            from PySide6.QtWidgets import QApplication
+
             print("✅ PySide6 core modules import OK")
 
         except ImportError as e:
@@ -180,9 +189,9 @@ class SystemChecker:
         pyproject_path = Path("pyproject.toml")
         if pyproject_path.exists():
             try:
-                with open(pyproject_path, 'r', encoding='utf-8') as f:
+                with open(pyproject_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                    if 'pyside6' in content.lower():
+                    if "pyside6" in content.lower():
                         print("   ✅ PySide6 found in pyproject.toml dependencies")
                     else:
                         print("   ❌ PySide6 not found in pyproject.toml dependencies")
@@ -224,7 +233,7 @@ class SystemChecker:
         vc_files = [
             r"C:\Windows\System32\msvcp140.dll",
             r"C:\Windows\System32\vcruntime140.dll",
-            r"C:\Windows\System32\vcruntime140_1.dll"
+            r"C:\Windows\System32\vcruntime140_1.dll",
         ]
 
         missing_vc = []
@@ -247,12 +256,7 @@ class SystemChecker:
 
     def check_packages(self) -> bool:
         """Check required Python packages"""
-        required_packages = [
-            "loguru",
-            "dependency-injector",
-            "rich",
-            "asyncio"
-        ]
+        required_packages = ["loguru", "dependency-injector", "rich", "asyncio"]
 
         missing_packages = []
         for package in required_packages:
@@ -265,7 +269,9 @@ class SystemChecker:
 
         if missing_packages:
             self.issues_found.append(f"Missing packages: {', '.join(missing_packages)}")
-            self.recommendations.append(f"Install missing packages: pip install {' '.join(missing_packages)}")
+            self.recommendations.append(
+                f"Install missing packages: pip install {' '.join(missing_packages)}"
+            )
             return False
 
         return True
@@ -276,18 +282,24 @@ class SystemChecker:
 
         # Check serial port access (Linux/Windows)
         if platform.system() == "Linux":
+            # Standard library imports
             import grp
+
             try:
                 # Check if user is in dialout group
-                dialout_gid = grp.getgrnam('dialout').gr_gid
+                dialout_gid = grp.getgrnam("dialout").gr_gid
                 user_groups = os.getgroups()
 
                 if dialout_gid in user_groups:
                     print("✅ User in 'dialout' group for serial access")
                 else:
-                    self.warnings.append("User not in 'dialout' group - serial ports may not be accessible")
+                    self.warnings.append(
+                        "User not in 'dialout' group - serial ports may not be accessible"
+                    )
                     print("⚠️  User not in 'dialout' group")
-                    self.recommendations.append("Add user to dialout group: sudo usermod -a -G dialout $USER")
+                    self.recommendations.append(
+                        "Add user to dialout group: sudo usermod -a -G dialout $USER"
+                    )
             except KeyError:
                 print("⚠️  'dialout' group not found")
 
@@ -364,9 +376,7 @@ class SystemChecker:
     def run_command(self, cmd: str) -> Tuple[bool, str]:
         """Run a system command and return success status and output"""
         try:
-            result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
             return result.returncode == 0, result.stdout.strip()
         except (subprocess.TimeoutExpired, Exception):
             return False, ""

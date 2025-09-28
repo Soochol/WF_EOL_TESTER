@@ -7,8 +7,6 @@ Integrates with existing business logic via ApplicationContainer.
 """
 
 # Standard library imports
-# Standard library imports
-# Standard library imports
 from pathlib import Path
 import sys
 from typing import Optional
@@ -21,7 +19,6 @@ from loguru import logger
 # PySide6 imports with detailed error diagnostics
 def check_pyside6_installation():
     """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
-    # Standard library imports
     import os
     import platform
     import subprocess
@@ -139,9 +136,6 @@ def check_pyside6_installation():
     else:
         # Standard pip environment diagnostics
         try:
-            # Third-party imports
-            import pip
-
             success, output = run_command("pip show pyside6")
             if success:
                 print("   ✅ PySide6 package is installed")
@@ -216,16 +210,17 @@ def check_pyside6_installation():
 
 
 try:
-    # Third-party imports
-    from PySide6.QtCore import QTimer  # pylint: disable=no-name-in-module
-    from PySide6.QtGui import QIcon  # pylint: disable=no-name-in-module
-    from PySide6.QtWidgets import QApplication  # pylint: disable=no-name-in-module
+    # Third-party imports - PySide6
+    # pylint: disable=no-name-in-module
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QIcon
+    from PySide6.QtWidgets import QApplication
+
+    # pylint: enable=no-name-in-module
 except ImportError as e:
     print(f"❌ PySide6 import error: {e}")
     check_pyside6_installation()
     sys.exit(1)
-
-# Module imports now work directly since main_gui.py is in the src/ directory
 
 # Local application imports
 from application.containers.simple_reloadable_container import SimpleReloadableContainer
@@ -363,8 +358,8 @@ class EOLTesterGUIApplication:
         except Exception as e:
             logger.debug(f"Emergency stop service reset skipped: {e}")
 
-        # Also inject into current hardware facade for backward compatibility
-        hardware_facade._gui_state_manager = self.state_manager
+        # Note: Direct injection was removed to respect encapsulation
+        # The GUI state manager is now properly injected via the container
 
         # Verify the container registration was successful by creating a new facade
         test_facade = self.container.hardware_service_facade()
@@ -486,7 +481,5 @@ def main() -> int:
     return exit_code
 
 
-if __name__ == "__main__":
-    sys.exit(main())
 if __name__ == "__main__":
     sys.exit(main())

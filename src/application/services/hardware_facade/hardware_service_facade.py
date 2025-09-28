@@ -794,45 +794,39 @@ class HardwareServiceFacade:
 
                 logger.info(f"Cycle {repeat_idx + 1} result created: {cycle_duration.seconds:.2f}s")
 
-                # Send cycle result to GUI after complete cycle (all temperatures processed)
+                # Send individual temperature results to GUI (instead of averaged cycle result)
                 logger.info(f"🔌 Hardware Facade: GUI State Manager status: {self._gui_state_manager is not None}")
                 if self._gui_state_manager:
-                    # Calculate overall cycle statistics
-                    all_forces = []
-                    all_temps = []
-                    total_heating_time = 0
-                    total_cooling_time = 0
-
-                    # Collect data from all temperatures in this cycle
-                    for temp, positions in cycle_measurements_dict.items():
-                        all_temps.append(float(temp))
-                        for pos_data in positions.values():
-                            all_forces.append(pos_data.get('force', 0.0))
-
-                    # Calculate timing totals for this cycle
-                    for temp_key, temp_timing in cycle_timing_data.items():
-                        total_heating_time += temp_timing.get('heating_time_s', 0)
-                        total_cooling_time += temp_timing.get('cooling_time_s', 0)
-
-                    # Calculate averages
-                    avg_force = sum(all_forces) / len(all_forces) if all_forces else 0.0
-                    avg_temperature = sum(all_temps) / len(all_temps) if all_temps else 25.0
                     avg_stroke = sum(test_config.stroke_positions) / len(test_config.stroke_positions)
 
-                    logger.info(f"🎯 Hardware Facade: Sending cycle {repeat_idx + 1}/{repeat_count} result to GUI")
-                    logger.info(f"🎯 Hardware Facade: Calculated stats - Avg Force: {avg_force:.2f}kgf, Avg Temp: {avg_temperature:.1f}°C")
+                    logger.info(f"🎯 Hardware Facade: Sending individual temperature results for cycle {repeat_idx + 1}/{repeat_count}")
 
-                    self._gui_state_manager.add_cycle_result(
-                        cycle=repeat_idx + 1,
-                        total_cycles=repeat_count,
-                        temperature=avg_temperature,
-                        stroke=avg_stroke,
-                        force=avg_force,
-                        heating_time=int(total_heating_time),
-                        cooling_time=int(total_cooling_time),
-                        status="PASS"  # Assuming pass for now, can be enhanced with failure detection
-                    )
-                    logger.info(f"✅ Hardware Facade: Cycle {repeat_idx + 1} result sent to GUI State Manager successfully")
+                    # Send individual result for each temperature in this cycle
+                    for temp, positions in cycle_measurements_dict.items():
+                        # Calculate force average for this specific temperature
+                        temp_forces = [pos_data.get('force', 0.0) for pos_data in positions.values()]
+                        temp_avg_force = sum(temp_forces) / len(temp_forces) if temp_forces else 0.0
+
+                        # Get timing data for this specific temperature
+                        temp_key = f"temp_{int(float(temp))}"
+                        temp_heating_time = cycle_timing_data.get(temp_key, {}).get('heating_time_s', 0)
+                        temp_cooling_time = cycle_timing_data.get(temp_key, {}).get('cooling_time_s', 0)
+
+                        logger.info(f"🌡️ Hardware Facade: Temp {temp}°C - Force: {temp_avg_force:.2f}kgf, Heating: {temp_heating_time:.1f}s, Cooling: {temp_cooling_time:.1f}s")
+
+                        # Send individual temperature result
+                        self._gui_state_manager.add_cycle_result(
+                            cycle=repeat_idx + 1,
+                            total_cycles=repeat_count,
+                            temperature=float(temp),           # Individual temperature
+                            stroke=avg_stroke,
+                            force=temp_avg_force,              # Force for this specific temperature
+                            heating_time=int(temp_heating_time),
+                            cooling_time=int(temp_cooling_time),
+                            status="PASS"  # Assuming pass for now, can be enhanced with failure detection
+                        )
+
+                    logger.info(f"✅ Hardware Facade: All {len(cycle_measurements_dict)} temperature results for cycle {repeat_idx + 1} sent to GUI State Manager")
                 else:
                     logger.warning(f"⚠️ Hardware Facade: GUI State Manager not available for cycle {repeat_idx + 1} - results will not be displayed in real-time")
 
