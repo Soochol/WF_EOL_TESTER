@@ -199,7 +199,7 @@ class TestExecutorThread(QThread):
                 logger.error(f"🧹 TEST_CLEANUP: Error during cleanup: {e}")
                 try:
                     loop.close()
-                except:
+                except Exception:
                     pass
 
     async def _execute_test(self):
@@ -517,7 +517,7 @@ class RobotHomeThread(QThread):
         finally:
             try:
                 loop.close()
-            except:
+            except Exception:
                 pass
 
     async def _run_robot_home_task(self):
@@ -600,8 +600,12 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.container = container
         self.state_manager = state_manager
-        self.test_executor_thread = None  # For background test execution
-        self.robot_home_thread = None  # For background robot home execution
+        self.test_executor_thread: Optional[TestExecutorThread] = (
+            None  # For background test execution
+        )
+        self.robot_home_thread: Optional[RobotHomeThread] = (
+            None  # For background robot home execution
+        )
         self.emergency_stop_active = False  # Track emergency stop state
 
         # GUI State Manager is already injected in main_gui.py during initialization
@@ -794,7 +798,7 @@ class MainWindow(QMainWindow):
             self.sidebar.set_current_page(page_id)
 
             # Auto-select serial number when navigating to test control
-            if page_id == "test_control":
+            if page_id == "test_control" and self.test_control_page.serial_edit:
                 self.test_control_page.serial_edit.selectAll()
                 self.test_control_page.serial_edit.setFocus()
 
@@ -868,6 +872,12 @@ class MainWindow(QMainWindow):
                 return
 
             # Get serial number and test sequence from test control widget
+            if not self.test_control_page.serial_edit or not self.test_control_page.sequence_combo:
+                self.test_control_page.update_test_status(
+                    "Test controls not initialized", "status_error"
+                )
+                return
+
             serial_number = self.test_control_page.serial_edit.text().strip()
             test_sequence = self.test_control_page.sequence_combo.currentText()
 
@@ -880,12 +890,16 @@ class MainWindow(QMainWindow):
             logger.info(f"Starting {test_sequence} for serial number: {serial_number}")
 
             # Clear previous test results from Results table and chart
-            self.results_page.results_table.clear_results()
-            self.results_page.temp_force_chart.clear_data()
+            if self.results_page.results_table:
+                self.results_page.results_table.clear_results()
+            if self.results_page.temp_force_chart:
+                self.results_page.temp_force_chart.clear_data()
 
             # Clear live logs when starting a new test
-            self.logs_page.log_viewer.clear_logs()
-            self.test_control_page.log_viewer.clear_logs()
+            if self.logs_page.log_viewer:
+                self.logs_page.log_viewer.clear_logs()
+            if self.test_control_page.log_viewer:
+                self.test_control_page.log_viewer.clear_logs()
             logger.info("Previous test results and live logs cleared. Starting new test...")
             self.state_manager.add_log_message(
                 "INFO", "TEST", "Previous test results and logs cleared"
@@ -1072,7 +1086,6 @@ class MainWindow(QMainWindow):
 
         # Create fresh container for robot home to avoid event loop conflicts
         # Local application imports
-        from application.containers.simple_reloadable_container import SimpleReloadableContainer
 
         fresh_container = ApplicationContainer.create()
 
@@ -1239,13 +1252,13 @@ class MainWindow(QMainWindow):
     def _set_test_running_state(self, running: bool) -> None:
         """Set GUI state for test running/stopped"""
         # Update test control buttons
-        if hasattr(self.test_control_page, "start_btn"):
+        if hasattr(self.test_control_page, "start_btn") and self.test_control_page.start_btn:
             # Only enable start button if not running AND not in emergency stop state
             should_enable_start = not running and not self.emergency_stop_active
             self.test_control_page.start_btn.setEnabled(should_enable_start)
-        if hasattr(self.test_control_page, "stop_btn"):
+        if hasattr(self.test_control_page, "stop_btn") and self.test_control_page.stop_btn:
             self.test_control_page.stop_btn.setEnabled(running)
-        if hasattr(self.test_control_page, "pause_btn"):
+        if hasattr(self.test_control_page, "pause_btn") and self.test_control_page.pause_btn:
             self.test_control_page.pause_btn.setEnabled(running)
 
         # Mutual exclusion: Disable HOME button during test execution

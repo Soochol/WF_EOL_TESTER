@@ -2,9 +2,12 @@
 Splash screen for WF EOL Tester application.
 """
 
+# Standard library imports
+from typing import Optional
+
 # Third-party imports
-from PySide6.QtCore import QPropertyAnimation, QRect, Qt, QTimer
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtCore import QPropertyAnimation, Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel, QProgressBar, QSplashScreen, QVBoxLayout, QWidget
 
 
@@ -16,14 +19,28 @@ class WFEOLSplashScreen(QSplashScreen):
     """
 
     def __init__(self, parent=None):
-        # Create a simple colored background since we don't have an image
-        pixmap = QPixmap(500, 350)
-        pixmap.fill(Qt.darkBlue)
+        # Create a clean white background
+        pixmap = QPixmap(550, 400)
+        pixmap.fill(Qt.GlobalColor.white)
 
-        super().__init__(pixmap, Qt.WindowStaysOnTopHint)
+        super().__init__(pixmap, Qt.WindowType.WindowStaysOnTopHint)
 
-        # Disable close button
-        self.setWindowFlags(Qt.SplashScreen | Qt.WindowStaysOnTopHint)
+        # Disable close button and add subtle styling
+        self.setWindowFlags(
+            Qt.WindowType.SplashScreen
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.FramelessWindowHint
+        )
+
+        # Add subtle shadow effect
+        self.setStyleSheet(
+            """
+            QSplashScreen {
+                border: 1px solid #bdc3c7;
+                border-radius: 8px;
+            }
+        """
+        )
 
         self._setup_ui()
         self._setup_animations()
@@ -32,36 +49,45 @@ class WFEOLSplashScreen(QSplashScreen):
         """Set up the splash screen UI elements."""
         # Create a widget to hold our custom content
         self.content_widget = QWidget(self)
-        self.content_widget.setGeometry(0, 0, 500, 350)
+        self.content_widget.setGeometry(0, 0, 550, 400)
 
         # Main layout
         layout = QVBoxLayout(self.content_widget)
-        layout.setContentsMargins(50, 50, 50, 50)
-        layout.setSpacing(20)
+        layout.setContentsMargins(60, 70, 60, 60)
+        layout.setSpacing(25)
 
         # Title label
         self.title_label = QLabel("WF EOL Tester")
-        self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setStyleSheet("""
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setStyleSheet(
+            """
             QLabel {
-                color: white;
-                font-size: 28px;
-                font-weight: bold;
-                margin-bottom: 10px;
+                color: #2c3e50;
+                font-size: 32px;
+                font-weight: 300;
+                font-family: 'Segoe UI Light', 'Arial', sans-serif;
+                margin-bottom: 8px;
+                letter-spacing: 1px;
             }
-        """)
+        """
+        )
         layout.addWidget(self.title_label)
 
         # Subtitle
         self.subtitle_label = QLabel("Wafer Fabrication End-of-Line Testing")
-        self.subtitle_label.setAlignment(Qt.AlignCenter)
-        self.subtitle_label.setStyleSheet("""
+        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.subtitle_label.setStyleSheet(
+            """
             QLabel {
-                color: lightgray;
-                font-size: 14px;
-                margin-bottom: 30px;
+                color: #7f8c8d;
+                font-size: 13px;
+                font-weight: 400;
+                font-family: 'Segoe UI', 'Arial', sans-serif;
+                margin-bottom: 25px;
+                letter-spacing: 0.5px;
             }
-        """)
+        """
+        )
         layout.addWidget(self.subtitle_label)
 
         # Add some spacing
@@ -69,14 +95,18 @@ class WFEOLSplashScreen(QSplashScreen):
 
         # Status label
         self.status_label = QLabel("Initializing...")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("""
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setStyleSheet(
+            """
             QLabel {
-                color: white;
-                font-size: 12px;
-                margin-bottom: 10px;
+                color: #34495e;
+                font-size: 11px;
+                font-weight: 400;
+                font-family: 'Segoe UI', 'Arial', sans-serif;
+                margin-bottom: 15px;
             }
-        """)
+        """
+        )
         layout.addWidget(self.status_label)
 
         # Progress bar
@@ -84,31 +114,38 @@ class WFEOLSplashScreen(QSplashScreen):
         self.progress_bar.setMinimum(0)
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setStyleSheet("""
+        self.progress_bar.setFixedHeight(6)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setStyleSheet(
+            """
             QProgressBar {
-                border: 2px solid lightgray;
-                border-radius: 5px;
-                text-align: center;
-                color: white;
-                background-color: rgba(255, 255, 255, 0.2);
+                border: none;
+                border-radius: 3px;
+                background-color: #ecf0f1;
             }
             QProgressBar::chunk {
-                background-color: #4CAF50;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2980b9);
                 border-radius: 3px;
             }
-        """)
+        """
+        )
         layout.addWidget(self.progress_bar)
 
         # Version label
-        self.version_label = QLabel("Version 0.1.0")
-        self.version_label.setAlignment(Qt.AlignCenter)
-        self.version_label.setStyleSheet("""
+        self.version_label = QLabel("Version 2.0.0")
+        self.version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.version_label.setStyleSheet(
+            """
             QLabel {
-                color: lightgray;
-                font-size: 10px;
-                margin-top: 20px;
+                color: #95a5a6;
+                font-size: 9px;
+                font-weight: 400;
+                font-family: 'Segoe UI', 'Arial', sans-serif;
+                margin-top: 25px;
             }
-        """)
+        """
+        )
         layout.addWidget(self.version_label)
 
     def _setup_animations(self):
@@ -119,6 +156,9 @@ class WFEOLSplashScreen(QSplashScreen):
         self.fade_in_animation.setDuration(500)
         self.fade_in_animation.setStartValue(0.0)
         self.fade_in_animation.setEndValue(1.0)
+
+        # Initialize fade_out_animation to None (will be created when needed)
+        self.fade_out_animation: Optional[QPropertyAnimation] = None
 
     def show_with_animation(self):
         """Show the splash screen with fade-in animation."""
@@ -157,7 +197,9 @@ class WFEOLSplashScreen(QSplashScreen):
         Args:
             main_window: The main window to show after splash
         """
-        self.fade_out_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.fade_out_animation = QPropertyAnimation(
+            self, b"windowOpacity"
+        )  # pylint: disable=attribute-defined-outside-init
         self.fade_out_animation.setDuration(300)
         self.fade_out_animation.setStartValue(1.0)
         self.fade_out_animation.setEndValue(0.0)
@@ -179,7 +221,7 @@ class LoadingSteps:
         (55, "Connecting to hardware..."),
         (70, "Loading user interface..."),
         (85, "Preparing main window..."),
-        (100, "Ready!")
+        (100, "Ready!"),
     ]
 
     @classmethod

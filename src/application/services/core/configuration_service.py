@@ -49,8 +49,6 @@ class ConfigurationService:
         profile_preference_path: str,
         test_profiles_dir: str,
         heating_cooling_config_path: str,
-        profile_config_path: str,
-        dut_defaults_config_path: str,
     ):
         self._configuration = configuration
         self.application_config_path = application_config_path
@@ -58,8 +56,6 @@ class ConfigurationService:
         self.profile_preference_path = profile_preference_path
         self.test_profiles_dir = test_profiles_dir
         self.heating_cooling_config_path = heating_cooling_config_path
-        self.profile_config_path = profile_config_path
-        self.dut_defaults_config_path = dut_defaults_config_path
 
     @property
     def configuration(self) -> Configuration:
