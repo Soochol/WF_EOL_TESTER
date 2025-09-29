@@ -168,32 +168,32 @@ class ApplicationConfig:
             ),
             services=ServicesConfigPaths(
                 repository_results_path=services_data.get("repository", {}).get(
-                    "results_path", "../logs/test_results/json"
+                    "results_path", str(PROJECT_ROOT / "logs" / "test_results" / "json")
                 ),
                 repository_raw_data_path=services_data.get("repository", {}).get(
-                    "raw_data_path", "../logs/EOL Force Test/raw_data"
+                    "raw_data_path", str(PROJECT_ROOT / "logs" / "EOL Force Test" / "raw_data")
                 ),
                 repository_summary_path=services_data.get("repository", {}).get(
-                    "summary_path", "../logs/EOL Force Test"
+                    "summary_path", str(PROJECT_ROOT / "logs" / "EOL Force Test")
                 ),
                 repository_summary_filename=services_data.get("repository", {}).get(
                     "summary_filename", "test_summary.csv"
                 ),
                 repository_auto_save=services_data.get("repository", {}).get("auto_save", True),
                 config_application_path=services_data.get("configuration", {}).get(
-                    "application_path", "configuration/application.yaml"
+                    "application_path", str(PROJECT_ROOT / "configuration" / "application.yaml")
                 ),
                 config_hardware_path=services_data.get("configuration", {}).get(
-                    "hardware_path", "configuration/hardware_config.yaml"
+                    "hardware_path", str(PROJECT_ROOT / "configuration" / "hardware_config.yaml")
                 ),
                 config_profile_preference_path=services_data.get("configuration", {}).get(
-                    "profile_preference_path", "configuration/profile_preferences.json"
+                    "profile_preference_path", str(PROJECT_ROOT / "configuration" / "profile_preferences.json")
                 ),
                 config_test_profiles_dir=services_data.get("configuration", {}).get(
-                    "test_profiles_dir", "configuration/test_profiles"
+                    "test_profiles_dir", str(PROJECT_ROOT / "configuration" / "test_profiles")
                 ),
                 config_heating_cooling_path=services_data.get("configuration", {}).get(
-                    "heating_cooling_path", "configuration/heating_cooling_time_test.yaml"
+                    "heating_cooling_path", str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
                 ),
             ),
             logging=LoggingConfig(level=logging_data.get("level", "INFO")),
