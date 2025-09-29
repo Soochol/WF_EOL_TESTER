@@ -7,7 +7,7 @@ name = "wf-eol-tester"
 version = "0.1.0"
 description = "End-of-Line (EOL) Tester for Wafer Fabrication with Clean Architecture"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "loguru>=0.6.0",
     "asyncio-mqtt>=0.11.0",
@@ -33,7 +33,8 @@ dependencies = [
     "openpyxl>=3.1.0",
     # Dependency Injection
     "dependency-injector[yaml]>=4.41.0",
-    "pyside6>=6.5.3,<6.10.0",
+    # PySide6 - conservative version for broad compatibility
+    "pyside6>=6.5.3,<6.8.0",
     "pyinstaller>=6.15.0",
     "numpy>=2.0.0",
     "scipy>=1.14.0",
@@ -50,6 +51,8 @@ dev = [
     "pylint>=2.15.0",
     "pyinstaller>=5.13.0",
 ]
+# Platform-specific installations (note: legacy requires separate setup)
+# For legacy Windows (7/8/10 < 1809), manually install: uv add "pyside6>=6.1.0,<6.2.0"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -394,4 +397,10 @@ dev = [
     "mypy>=1.17.0",
     "pylint>=3.3.7",
     "ruff>=0.13.2",
+]
+
+[tool.uv]
+environments = [
+    "python_version >= '3.10' and sys_platform == 'win32'",  # Modern Windows
+    "python_version >= '3.10' and sys_platform != 'win32'",  # Other platforms
 ]
