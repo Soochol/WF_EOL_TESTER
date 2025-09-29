@@ -239,6 +239,7 @@ from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.styling import ThemeManager
 from ui.gui.utils.ui_scaling import setup_ui_scaling
+from ui.gui.widgets.splash.splash_screen import WFEOLSplashScreen, LoadingSteps
 
 
 class EOLTesterGUIApplication:
@@ -255,6 +256,7 @@ class EOLTesterGUIApplication:
         self.container: Optional[SimpleReloadableContainer] = None
         self.state_manager: Optional[GUIStateManager] = None
         self.asyncio_timer: Optional[QTimer] = None
+        self.splash_screen: Optional[WFEOLSplashScreen] = None
 
     def setup_ui_scaling(self) -> None:
         """Setup UI scaling before creating QApplication"""
@@ -321,6 +323,31 @@ class EOLTesterGUIApplication:
             self.app.setWindowIcon(QIcon(str(icon_path)))
 
         logger.info("GUI Application initialized")
+
+    def create_splash_screen(self) -> None:
+        """Create and show splash screen"""
+        if not self.app:
+            raise RuntimeError("QApplication must be initialized before splash screen")
+
+        self.splash_screen = WFEOLSplashScreen()
+        self.splash_screen.show_with_animation()
+
+        # Process events to ensure splash screen is visible
+        self.app.processEvents()
+        logger.info("Splash screen displayed")
+
+    def update_splash_progress(self, step_index: int) -> None:
+        """Update splash screen with loading step"""
+        if self.splash_screen:
+            progress, message = LoadingSteps.get_step(step_index)
+            self.splash_screen.update_progress(progress, message)
+            self.app.processEvents()  # Ensure UI updates are visible
+
+            # Small delay to show progress (except for last step)
+            if step_index < LoadingSteps.get_total_steps() - 1:
+                import time
+                time.sleep(0.1)
+                self.app.processEvents()
 
     def setup_container(self) -> None:
         """Initialize dependency injection container"""
@@ -435,17 +462,35 @@ class EOLTesterGUIApplication:
 
             # Setup application components
             self.setup_application()
+            self.create_splash_screen()
+            self.update_splash_progress(0)  # Loading configuration...
+
+            # Small delay to let splash screen render
+            import time
+            time.sleep(0.2)
+            self.app.processEvents()
+
+            self.update_splash_progress(1)  # Initializing dependency injection...
+
             self.setup_container()
+            self.update_splash_progress(2)  # Setting up hardware services...
+
             self.setup_state_manager()
+            self.update_splash_progress(3)  # Connecting to hardware...
+
             self.create_main_window()
+            self.update_splash_progress(4)  # Loading user interface...
 
-            # Show main window
+            # Setup asyncio integration for Qt
+            self._setup_asyncio_integration()
+            self.update_splash_progress(5)  # Preparing main window...
+
+            # Show main window and finish splash
             if self.main_window:
-                self.main_window.show()
-                logger.info("Main window displayed")
+                self.update_splash_progress(6)  # Ready!
 
-                # Setup asyncio integration for Qt
-                self._setup_asyncio_integration()
+                # Small delay to show "Ready!" message
+                QTimer.singleShot(500, lambda: self._finish_splash_and_show_main())
 
                 # Run application event loop
                 return self.app.exec() if self.app else 1
@@ -455,7 +500,20 @@ class EOLTesterGUIApplication:
 
         except Exception as e:
             logger.error(f"Application startup failed: {e}")
+            if self.splash_screen:
+                self.splash_screen.close()
             return 1
+
+    def _finish_splash_and_show_main(self) -> None:
+        """Finish splash screen and show main window"""
+        if self.splash_screen and self.main_window:
+            self.splash_screen.finish_with_fade(self.main_window)
+            logger.info("Main window displayed")
+        elif self.main_window:
+            self.main_window.show()
+            logger.info("Main window displayed (no splash)")
+        else:
+            logger.error("Main window not available")
 
     def _setup_asyncio_integration(self) -> None:
         """Setup asyncio integration with Qt event loop"""

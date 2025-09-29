@@ -509,8 +509,21 @@ class PropertyEditorWidget(QWidget):
 
         profiles = []
         try:
-            # Get test_profiles directory path
-            test_profiles_dir = "../configuration/test_profiles"
+            # Get test_profiles directory path from ConfigurationService
+            test_profiles_dir = "../configuration/test_profiles"  # fallback
+
+            # Find the SettingsWidget parent and get container
+            widget = self
+            while widget is not None:
+                if hasattr(widget, 'container') and widget.container:
+                    try:
+                        config_service = widget.container.configuration_service()
+                        test_profiles_dir = config_service.test_profiles_dir
+                        break
+                    except Exception:
+                        pass  # Use fallback
+                widget = widget.parent()
+
             if os.path.exists(test_profiles_dir):
                 # Find all .yaml files in the directory
                 yaml_files = glob.glob(os.path.join(test_profiles_dir, "*.yaml"))
@@ -968,6 +981,7 @@ class SettingsWidget(QWidget):
 
     def load_configuration_files(self) -> None:
         """Load all configuration files"""
+        # Default fallback paths
         base_config_paths = {
             "Application": "../configuration/application.yaml",
             "Hardware": "../configuration/hardware_config.yaml",
@@ -975,6 +989,20 @@ class SettingsWidget(QWidget):
             "Profile Management": "../configuration/profile.yaml",
             "DUT Defaults": "../configuration/dut_defaults.yaml",
         }
+
+        # Get paths from ConfigurationService if available
+        if self.container:
+            try:
+                config_service = self.container.configuration_service()
+                base_config_paths = {
+                    "Application": config_service.application_config_path,
+                    "Hardware": config_service.hardware_config_path,
+                    "Heating/Cooling Test": config_service.heating_cooling_config_path,
+                    "Profile Management": config_service.profile_config_path,
+                    "DUT Defaults": config_service.dut_defaults_config_path,
+                }
+            except Exception as e:
+                logger.warning(f"Failed to get paths from ConfigurationService, using fallback: {e}")
 
         self.config_files.clear()
 
@@ -1020,7 +1048,16 @@ class SettingsWidget(QWidget):
             active_profile = profile_config.data.get("active_profile", "default")
 
             # Load the active test profile
-            profile_path = f"../configuration/test_profiles/{active_profile}.yaml"
+            profile_path = f"../configuration/test_profiles/{active_profile}.yaml"  # fallback
+
+            # Get path from ConfigurationService if available
+            if self.container:
+                try:
+                    config_service = self.container.configuration_service()
+                    profile_path = str(Path(config_service.test_profiles_dir) / f"{active_profile}.yaml")
+                except Exception:
+                    pass  # Use fallback
+
             full_path = Path(profile_path)
 
             if full_path.exists():

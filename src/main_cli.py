@@ -9,6 +9,7 @@ Simplified main application optimized for command-line interface usage.
 # Standard library imports
 # Standard library imports
 # Standard library imports
+# Standard library imports
 from datetime import datetime
 from pathlib import Path
 import signal
@@ -99,7 +100,7 @@ async def main() -> None:
         # Ensure profile system is fully initialized at startup
         try:
             logger.info("Initializing configuration profiles at startup...")
-            await configuration_service._ensure_profile_system_initialized()
+            await configuration_service._ensure_profile_system_initialized()  # pylint: disable=protected-access
             logger.info("✅ Configuration profiles initialized successfully")
         except Exception as e:
             logger.warning(f"⚠️ Profile system initialization warning: {e}")
@@ -108,7 +109,7 @@ async def main() -> None:
         # Ensure heating/cooling configuration is initialized at startup
         try:
             logger.info("Initializing heating/cooling configuration at startup...")
-            await configuration_service._ensure_heating_cooling_config_initialized()
+            await configuration_service._ensure_heating_cooling_config_initialized()  # pylint: disable=protected-access
             logger.info("✅ Heating/cooling configuration initialized successfully")
         except Exception as e:
             logger.warning(f"⚠️ Heating/cooling configuration initialization warning: {e}")
@@ -192,48 +193,6 @@ def setup_logging(debug: bool = False) -> None:
 
     # Console logging setup
     log_level = "DEBUG" if debug else "INFO"
-
-    # Simplified formatter for CLI mode
-    def cli_formatter(record):
-        message = record["message"]
-
-        # Special formatting for different message types
-        if "✅" in message or "🔧" in message:
-            # Success and verification messages - green
-            return (
-                "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
-                "<cyan>{name}</cyan> - <green>{message}</green>\n"
-            )
-        elif "⚠️" in message or "💡" in message:
-            # Warning and info messages - yellow
-            return (
-                "<green>{time:HH:mm:ss}</green> | <yellow><bold>WARNING </bold></yellow> | "
-                "<cyan>{name}</cyan> - <yellow>{message}</yellow>\n"
-            )
-        elif "❌" in message or "🚨" in message:
-            # Error messages - red
-            return (
-                "<green>{time:HH:mm:ss}</green> | <red><bold>ERROR   </bold></red> | "
-                "<cyan>{name}</cyan> - <red><bold>{message}</bold></red>\n"
-            )
-        else:
-            # Default format with proper Rich markup for each level
-            level_name = record.get("level", {}).get("name", "INFO")
-            if level_name == "INFO":
-                level_color = "blue"
-            elif level_name == "WARNING":
-                level_color = "yellow"
-            elif level_name == "ERROR":
-                level_color = "red"
-            elif level_name == "DEBUG":
-                level_color = "dim"
-            else:
-                level_color = "white"
-
-            return (
-                f"<green>{{time:HH:mm:ss}}</green> | <{level_color}>{{level: <8}}</{level_color}> | "
-                f"<cyan>{{name}}</cyan> - <{level_color}>{{message}}</{level_color}>\n"
-            )
 
     # Create Rich Console for log output to prevent conflicts with Rich panels
     # Third-party imports
@@ -330,7 +289,7 @@ def setup_signal_handlers():
     def signal_handler(signum, frame):
         """Handle termination signals and cancel all asyncio tasks"""
         _ = frame  # Unused parameter
-        signal_names = {
+        signal_names: dict[int, str] = {
             signal.SIGINT: "SIGINT (Ctrl+C)",
             signal.SIGTERM: "SIGTERM",
         }

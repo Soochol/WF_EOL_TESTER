@@ -21,14 +21,28 @@ pip install -e .
 ```
 
 ### Running the Application
+
+#### GUI Application (Multiple Options)
+```bash
+# Option 1: Standard command line (shows both CMD and GUI windows)
+uv run src/main_gui.py
+
+# Option 2: GUI-only launcher (Windows - minimal console visibility)
+./run_gui.bat
+
+# Option 3: Silent GUI launcher (Windows - completely hidden console)
+./run_gui_silent.vbs
+# or double-click: run_gui_silent.vbs
+
+# Option 4: Create desktop shortcut for easy access
+./create_desktop_shortcut.bat
+```
+
+#### CLI Application
 ```bash
 # CLI-only version (main entry point)
 uv run src/main_cli.py
 # or: python src/main_cli.py
-
-# GUI version (auto-installs compatible PySide6)
-uv run src/main_gui.py
-# or: python src/main_gui.py
 
 # Generate configuration files
 uv run src/main_cli.py --generate-config default    # Development config with mock hardware
@@ -330,12 +344,39 @@ If you encounter PySide6 import errors:
    uv cache clean && uv sync         # Clean reinstall
    uv run src/main_gui.py            # Auto-detects and installs compatible PySide6
 
+   # GUI-only execution (no console window)
+   ./run_gui_silent.vbs              # Completely silent (recommended)
+   ./run_gui.bat                     # Minimal console visibility
+
    # For legacy Windows systems (manual)
    uv add "pyside6>=6.1.0,<6.2.0"   # Windows 7/8/10 < 1809
 
    # Advanced diagnosis
    python src/utils/platform_detection.py
    ```
+
+### Creating Standalone Executable (Optional)
+
+For distribution without requiring Python/UV installation:
+
+```bash
+# Install PyInstaller (already included in dependencies)
+uv sync
+
+# Create standalone GUI executable (Windows)
+uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" src/main_gui.py
+
+# Create with custom icon (if available)
+uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" --icon="src/ui/gui/resources/icons/app.ico" src/main_gui.py
+
+# Output location: dist/WF_EOL_Tester.exe
+```
+
+**PyInstaller Options Explained:**
+- `--windowed`: No console window (GUI only)
+- `--onefile`: Single executable file
+- `--name`: Custom executable name
+- `--icon`: Custom application icon
 
 ### Migration Planning
 - **Windows 10 EOL (Oct 2025)**: Plan migration to Windows 11 or consider extended support

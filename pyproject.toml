@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "End-of-Line (EOL) Tester for Wafer Fabrication with Clean Architecture"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
+
 dependencies = [
     "loguru>=0.6.0",
     "asyncio-mqtt>=0.11.0",
@@ -39,6 +40,13 @@ dependencies = [
     "numpy>=2.0.0",
     "scipy>=1.14.0",
 ]
+
+[project.scripts]
+wf-eol-cli = "main_cli:main"
+wf-eol-gui = "main_gui:main"
+
+[project.gui-scripts]
+wf-eol-gui-windows = "main_gui:main"
 
 [project.optional-dependencies]
 dev = [

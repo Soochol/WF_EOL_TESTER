@@ -72,6 +72,8 @@ class ServicesConfigPaths:
     config_profile_preference_path: str = str(PROJECT_ROOT / "configuration" / "profile_preferences.json")
     config_test_profiles_dir: str = str(PROJECT_ROOT / "configuration" / "test_profiles")
     config_heating_cooling_path: str = str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
+    config_profile_path: str = str(PROJECT_ROOT / "configuration" / "profile.yaml")
+    config_dut_defaults_path: str = str(PROJECT_ROOT / "configuration" / "dut_defaults.yaml")
 
 
 @dataclass(frozen=True)
@@ -125,6 +127,8 @@ class ApplicationConfig:
                     "profile_preference_path": self.services.config_profile_preference_path,
                     "test_profiles_dir": self.services.config_test_profiles_dir,
                     "heating_cooling_path": self.services.config_heating_cooling_path,
+                    "profile_path": self.services.config_profile_path,
+                    "dut_defaults_path": self.services.config_dut_defaults_path,
                 },
             },
             "logging": {"level": self.logging.level},
@@ -194,6 +198,12 @@ class ApplicationConfig:
                 ),
                 config_heating_cooling_path=services_data.get("configuration", {}).get(
                     "heating_cooling_path", str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
+                ),
+                config_profile_path=services_data.get("configuration", {}).get(
+                    "profile_path", str(PROJECT_ROOT / "configuration" / "profile.yaml")
+                ),
+                config_dut_defaults_path=services_data.get("configuration", {}).get(
+                    "dut_defaults_path", str(PROJECT_ROOT / "configuration" / "dut_defaults.yaml")
                 ),
             ),
             logging=LoggingConfig(level=logging_data.get("level", "INFO")),

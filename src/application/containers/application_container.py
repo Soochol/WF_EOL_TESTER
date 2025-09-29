@@ -87,6 +87,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
         profile_preference_path=_default_config.services.config_profile_preference_path,
         test_profiles_dir=_default_config.services.config_test_profiles_dir,
         heating_cooling_config_path=_default_config.services.config_heating_cooling_path,
+        profile_config_path=_default_config.services.config_profile_path,
+        dut_defaults_config_path=_default_config.services.config_dut_defaults_path,
     )
 
     configuration_validator = providers.Singleton(ConfigurationValidator)
