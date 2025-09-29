@@ -13,8 +13,6 @@ dependencies = [
     "asyncio-mqtt>=0.11.0",
     "pyserial>=3.5",
     "pyserial-asyncio>=0.6",
-    "numpy==1.26.4",
-    "scipy>=1.7.0",
     "pyyaml>=6.0",
     "rich>=13.0.0",
     "prompt-toolkit>=3.0.38",
@@ -32,12 +30,13 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "python-dotenv>=1.0.0",
     "structlog>=23.0.0",
-    "pandas>=2.0.0",
     "openpyxl>=3.1.0",
     # Dependency Injection
     "dependency-injector[yaml]>=4.41.0",
-    "pyside6==6.5.3",
+    "pyside6>=6.5.3,<6.10.0",
     "pyinstaller>=6.15.0",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
 ]
 
 [project.optional-dependencies]

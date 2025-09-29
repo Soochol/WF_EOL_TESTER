@@ -7,19 +7,24 @@ Integrates with existing business logic via ApplicationContainer.
 """
 
 # Standard library imports
-# Standard library imports
-# Standard library imports
-# Standard library imports
 from pathlib import Path
 import sys
 from typing import Optional
+import warnings
 
 # Third-party imports
 import asyncio
 from loguru import logger
 
 
-# PySide6 imports with detailed error diagnostics
+# Suppress NumPy MINGW-W64 warnings on Windows before any NumPy imports
+# These warnings are caused by experimental NumPy builds and are non-critical
+warnings.filterwarnings("ignore", message="Numpy built with MINGW-W64.*")
+warnings.filterwarnings("ignore", message="CRASHES ARE TO BE EXPECTED.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy.*")
+
+
+# PySide6 diagnostic utility function
 def check_pyside6_installation():
     """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
     # Standard library imports
@@ -213,6 +218,7 @@ def check_pyside6_installation():
     print("\n💬 If issues persist, please check the DEPLOYMENT.md file for detailed instructions.")
 
 
+# Try to import PySide6 with diagnostic support
 try:
     # Third-party imports - PySide6
     # pylint: disable=no-name-in-module
@@ -282,6 +288,32 @@ class EOLTesterGUIApplication:
         self.app.setApplicationVersion("2.0.0")
         self.app.setOrganizationName("Withforce")
         self.app.setOrganizationDomain("withforce.co.kr")
+
+        # Set Korean environment safe fonts to prevent DirectWrite errors
+        # Third-party imports
+        from PySide6.QtGui import QFont
+
+        # Define font fallback chain optimized for Korean Windows environment
+        korean_safe_fonts = [
+            "Malgun Gothic",  # Windows Korean UI font
+            "맑은 고딕",  # Korean name for Malgun Gothic
+            "Segoe UI",  # Windows default UI font
+            "Microsoft Sans Serif",  # Safer than MS Sans Serif
+            "Arial",  # Universal fallback
+            "sans-serif",  # System default
+        ]
+
+        # Set application default font
+        default_font = QFont()
+        for font_name in korean_safe_fonts:
+            default_font.setFamily(font_name)
+            if default_font.exactMatch():
+                break
+
+        default_font.setPointSize(9)  # Standard Windows UI size
+        self.app.setFont(default_font)
+
+        logger.info(f"Application font set to: {default_font.family()}")
 
         # Set application icon if available
         icon_path = Path(__file__).parent / "resources" / "icons" / "app_icon.png"

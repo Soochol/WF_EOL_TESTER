@@ -11,7 +11,32 @@ from __future__ import annotations
 # Standard library imports
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
+
+
+# Project root path calculation
+# src/domain/value_objects/application_config.py → WF_EOL_TESTER/
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+
+
+def ensure_project_directories():
+    """Ensure all required project directories exist"""
+    required_dirs = [
+        PROJECT_ROOT / "configuration",
+        PROJECT_ROOT / "configuration" / "test_profiles",
+        PROJECT_ROOT / "logs",
+        PROJECT_ROOT / "logs" / "test_results" / "json",
+        PROJECT_ROOT / "logs" / "EOL Force Test" / "raw_data",
+        PROJECT_ROOT / "logs" / "EOL Force Test"
+    ]
+
+    for directory in required_dirs:
+        directory.mkdir(parents=True, exist_ok=True)
+
+
+# Auto-create directories when module loads
+ensure_project_directories()
 
 
 @dataclass(frozen=True)
@@ -34,19 +59,19 @@ class ApplicationInfo:
 class ServicesConfigPaths:
     """Services configuration paths"""
 
-    # Repository paths
-    repository_results_path: str = "../logs/test_results/json"
-    repository_raw_data_path: str = "../logs/EOL Force Test/raw_data"
-    repository_summary_path: str = "../logs/EOL Force Test"
+    # Repository paths (absolute paths)
+    repository_results_path: str = str(PROJECT_ROOT / "logs" / "test_results" / "json")
+    repository_raw_data_path: str = str(PROJECT_ROOT / "logs" / "EOL Force Test" / "raw_data")
+    repository_summary_path: str = str(PROJECT_ROOT / "logs" / "EOL Force Test")
     repository_summary_filename: str = "test_summary.csv"
     repository_auto_save: bool = True
 
-    # Configuration file paths
-    config_application_path: str = "configuration/application.yaml"
-    config_hardware_path: str = "configuration/hardware_config.yaml"
-    config_profile_preference_path: str = "configuration/profile_preferences.json"
-    config_test_profiles_dir: str = "configuration/test_profiles"
-    config_heating_cooling_path: str = "configuration/heating_cooling_time_test.yaml"
+    # Configuration file paths (absolute paths)
+    config_application_path: str = str(PROJECT_ROOT / "configuration" / "application.yaml")
+    config_hardware_path: str = str(PROJECT_ROOT / "configuration" / "hardware_config.yaml")
+    config_profile_preference_path: str = str(PROJECT_ROOT / "configuration" / "profile_preferences.json")
+    config_test_profiles_dir: str = str(PROJECT_ROOT / "configuration" / "test_profiles")
+    config_heating_cooling_path: str = str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
 
 
 @dataclass(frozen=True)

@@ -83,7 +83,7 @@ class ThemeManager(QObject):
         QWidget {{
             background-color: {self.COLORS['background_primary']};
             color: {self.COLORS['text_secondary']};
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Malgun Gothic', '맑은 고딕', 'Segoe UI', 'Microsoft Sans Serif', Arial, sans-serif;
             font-size: 14px;
         }}
 
@@ -241,7 +241,7 @@ class ThemeManager(QObject):
             color: {self.COLORS['text_secondary']};
             border: 1px solid {self.COLORS['border_primary']};
             selection-background-color: {self.COLORS['accent_primary']};
-            font-family: 'Consolas', 'Monaco', monospace;
+            font-family: 'D2Coding', 'Consolas', 'Malgun Gothic', '맑은 고딕', 'Courier New', monospace;
         }}
 
         /* Scroll Bars */
