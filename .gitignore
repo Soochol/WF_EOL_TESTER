@@ -1,16 +1,13 @@
-# logs
-logs
+# Log files and root-level logs directory (but keep source code logs/ modules)
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 dev-debug.log
+/logs/
 
 # Profile preferences and user data
 data/
-
-# Test results and logs
-logs/
 
 # Dependency directories
 node_modules/
