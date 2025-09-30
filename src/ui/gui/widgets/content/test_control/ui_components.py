@@ -46,6 +46,8 @@ class UIComponentFactory:
 
     def create_button_with_icon(self, text: str, icon_name: str, height: int = 38) -> QPushButton:
         """Create button with icon or emoji fallback"""
+        from PySide6.QtWidgets import QSizePolicy
+
         button = QPushButton(text)
 
         # Try to set icon first
@@ -60,13 +62,17 @@ class UIComponentFactory:
 
         button.setMinimumHeight(height)
         button.setMaximumHeight(height + 10)  # Allow some flexibility
+        button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return button
 
     def create_emergency_button(self) -> QPushButton:
         """Create emergency stop button with special styling"""
+        from PySide6.QtWidgets import QSizePolicy
+
         button = QPushButton("EMERGENCY STOP")
         button.setMinimumHeight(45)
         button.setMaximumHeight(55)  # Allow some flexibility
+        button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         # Emergency button specific styling
         emergency_style = f"""
