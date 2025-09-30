@@ -74,7 +74,7 @@ class WFEOLSplashScreen(QSplashScreen):
         layout.addWidget(self.title_label)
 
         # Subtitle
-        self.subtitle_label = QLabel("Wafer Fabrication End-of-Line Testing")
+        self.subtitle_label = QLabel("End-of-Line Testing")
         self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.subtitle_label.setStyleSheet(
             """
@@ -215,12 +215,25 @@ class LoadingSteps:
     """Predefined loading steps for the splash screen."""
 
     STEPS = [
-        (10, "Loading configuration..."),
-        (25, "Initializing dependency injection..."),
-        (40, "Setting up hardware services..."),
-        (55, "Connecting to hardware..."),
-        (70, "Loading user interface..."),
-        (85, "Preparing main window..."),
+        (5, "Loading configuration..."),
+        (10, "Initializing dependency injection..."),
+        (15, "Creating hardware factory..."),
+        (25, "Loading robot service..."),
+        (35, "Loading MCU service..."),
+        (40, "Loading power service..."),
+        (45, "Loading loadcell service..."),
+        (50, "Loading digital I/O service..."),
+        (55, "Initializing hardware facade..."),
+        (60, "Creating main window..."),
+        (65, "Applying theme..."),
+        (70, "Initializing widgets..."),
+        (75, "Loading dashboard..."),
+        (80, "Loading test controls..."),
+        (85, "Loading hardware controls..."),
+        (88, "Loading results viewer..."),
+        (91, "Loading logs viewer..."),
+        (94, "Loading settings..."),
+        (97, "Loading about page..."),
         (100, "Ready!"),
     ]
 

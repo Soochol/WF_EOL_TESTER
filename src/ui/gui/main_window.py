@@ -8,11 +8,12 @@ Main application window with sidebar navigation and content area.
 from typing import Optional
 
 # Third-party imports
-from PySide6.QtCore import QThread, QTimer, Signal
+from PySide6.QtCore import QThread, QTimer, Signal, Qt
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMainWindow,
     QMessageBox,
     QStackedWidget,
@@ -596,6 +597,7 @@ class MainWindow(QMainWindow):
         container: SimpleReloadableContainer,
         state_manager: GUIStateManager,
         parent: Optional[QWidget] = None,
+        lazy_init: bool = False,
     ):
         super().__init__(parent)
         self.container = container
@@ -611,18 +613,261 @@ class MainWindow(QMainWindow):
         # GUI State Manager is already injected in main_gui.py during initialization
         # No need to inject again here to avoid overwriting the connection
 
-        self.setup_ui()
+        # Initialize widgets containers for lazy loading
+        self.content_widgets = {}
+        self.sidebar = None
+        self.content_stack = None
+        self.header = None
+
+        if lazy_init:
+            self.setup_basic_ui()
+        else:
+            self.setup_ui()
+            self.setup_status_bar()
+            self.setup_update_timer()
+            # Start maximized for industrial use
+            self.showMaximized()
+
+    def setup_basic_ui(self) -> None:
+        """Setup basic window structure for lazy loading"""
+        # Window properties
+        self.setWindowTitle("WF EOL Tester - Industrial GUI")
+        self.setMinimumSize(1200, 900)  # Increased height to ensure NavigationMenu is fully visible
+        self.resize(1400, 1000)
+
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Main layout (vertical to accommodate header)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Content area layout (sidebar + main content) - use proper horizontal layout
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(0)
+        content_layout.setContentsMargins(0, 10, 0, 0)  # 10px top margin for alignment
+
+        # Create proper SidebarWidget with navigation functionality
+        self.sidebar = SidebarWidget()
+        self.sidebar.page_changed.connect(self.change_page)
+        self.sidebar.settings_clicked.connect(self._on_header_settings_clicked)
+
+        # Content stack - create but don't populate (remove problematic margins)
+        self.content_stack = QStackedWidget()
+        self.content_stack.setContentsMargins(10, 0, 0, 0)  # Small left separation margin only
+        self.content_stack.setMinimumWidth(400)  # Ensure content has minimum space
+
+        # Add widgets to layout with proper stretch factors
+        content_layout.addWidget(self.sidebar)  # Sidebar: fixed width (200px)
+        content_layout.addWidget(self.content_stack)  # Content: expandable
+
+        # Set stretch factors: sidebar fixed (0), content expandable (1)
+        content_layout.setStretchFactor(self.sidebar, 0)  # Fixed: 200px
+        content_layout.setStretchFactor(self.content_stack, 1)  # Expandable: remaining space
+
+        # Add content area to main layout with stretch factor to take remaining space
+        content_widget = QWidget()
+        content_widget.setLayout(content_layout)
+        main_layout.addWidget(content_widget, 1)  # Stretch factor 1: take all remaining vertical space
+
+        # Show maximized for industrial use
+        self.showMaximized()
+
+    def init_header(self) -> None:
+        """Initialize header widget"""
+        if self.header is not None:
+            return  # Already initialized
+
+        # Get main layout
+        main_layout: Optional[QLayout] = self.centralWidget().layout()
+        if main_layout is None:
+            return
+
+        # Create header
+        self.header = HeaderWidget(container=self.container, state_manager=self.state_manager)
+        self.header.emergency_stop_requested.connect(self._on_emergency_stop_requested)
+        self.header.notifications_requested.connect(self._on_header_notifications_clicked)
+
+        # Insert header at the beginning
+        main_layout.insertWidget(0, self.header)
+
+    def init_sidebar(self) -> None:
+        """Initialize sidebar widget"""
+        if self.sidebar is not None:
+            return  # Already initialized
+
+        # Get content layout - find the content widget
+        main_layout: Optional[QLayout] = self.centralWidget().layout()
+        if main_layout is None:
+            return
+
+        content_widget = None
+
+        # Find the content widget in the main layout
+        for i in range(main_layout.count()):
+            item = main_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if widget.layout() and widget.layout().count() > 0:
+                    # This should be our content widget
+                    content_widget = widget
+                    break
+
+        if content_widget is None:
+            logger.error("Could not find content widget for sidebar initialization")
+            return
+
+        content_layout: Optional[QLayout] = content_widget.layout()
+        if content_layout is None:
+            logger.error("Content widget has no layout for sidebar initialization")
+            return
+
+        # Create sidebar
+        self.sidebar = SidebarWidget()
+        self.sidebar.page_changed.connect(self.change_page)
+
+        # Insert sidebar at the beginning of content layout
+        content_layout.insertWidget(0, self.sidebar)
+
+        # Remove fixed margin - let stretch factors handle spacing automatically
+        self.content_stack.setContentsMargins(0, 0, 0, 0)
+
+        # Set stretch factors: sidebar fixed, content takes remaining space
+        content_layout.setStretchFactor(self.sidebar, 0)  # Sidebar: fixed size
+        content_layout.setStretchFactor(self.content_stack, 1)  # Content: expand to fill
+
+    def init_dashboard_tab(self) -> None:
+        """Initialize dashboard tab"""
+        if "dashboard" in self.content_widgets:
+            return  # Already initialized
+
+        self.dashboard_page = DashboardWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.dashboard_page)
+        self.content_widgets["dashboard"] = self.dashboard_page
+
+    def init_test_control_tab(self) -> None:
+        """Initialize test control tab"""
+        if "test_control" in self.content_widgets:
+            return  # Already initialized
+
+        self.test_control_page = TestControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        # Connect test control signals
+        self.test_control_page.test_started.connect(self._on_test_started)
+        self.test_control_page.test_stopped.connect(self._on_test_stopped)
+        self.test_control_page.test_paused.connect(self._on_test_paused)
+        self.test_control_page.robot_home_requested.connect(self._on_robot_home_requested)
+        self.test_control_page.emergency_stop_requested.connect(self._on_emergency_stop_requested)
+
+        # Set initial test status
+        self.test_control_page.update_test_status("Ready", "status_ready", 0)
+
+        self.content_stack.addWidget(self.test_control_page)
+        self.content_widgets["test_control"] = self.test_control_page
+
+    def init_hardware_tab(self) -> None:
+        """Initialize hardware tab"""
+        if "hardware" in self.content_widgets:
+            return  # Already initialized
+
+        self.hardware_page = HardwareWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.hardware_page)
+        self.content_widgets["hardware"] = self.hardware_page
+
+    def init_results_tab(self) -> None:
+        """Initialize results tab"""
+        if "results" in self.content_widgets:
+            return  # Already initialized
+
+        self.results_page = ResultsWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.results_page)
+        self.content_widgets["results"] = self.results_page
+
+    def init_logs_tab(self) -> None:
+        """Initialize logs tab"""
+        if "logs" in self.content_widgets:
+            return  # Already initialized
+
+        self.logs_page = LogsWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.logs_page)
+        self.content_widgets["logs"] = self.logs_page
+
+    def init_about_tab(self) -> None:
+        """Initialize about tab"""
+        if "about" in self.content_widgets:
+            return  # Already initialized
+
+        self.about_page = AboutWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.about_page)
+        self.content_widgets["about"] = self.about_page
+
+    def init_settings_tab(self) -> None:
+        """Initialize settings tab"""
+        if "settings" in self.content_widgets:
+            return  # Already initialized
+
+        self.settings_page = SettingsWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.settings_page)
+        self.content_widgets["settings"] = self.settings_page
+
+    def finalize_initialization(self) -> None:
+        """Finalize window initialization"""
+        # Create self.pages dictionary for compatibility with existing code
+        self.pages = {}
+
+        # Map content_widgets to pages dictionary using proper attribute names
+        for tab_name in self.content_widgets:
+            if tab_name == "dashboard" and hasattr(self, 'dashboard_page'):
+                self.pages["dashboard"] = self.dashboard_page
+            elif tab_name == "test_control" and hasattr(self, 'test_control_page'):
+                self.pages["test_control"] = self.test_control_page
+            elif tab_name == "hardware" and hasattr(self, 'hardware_page'):
+                self.pages["hardware"] = self.hardware_page
+            elif tab_name == "results" and hasattr(self, 'results_page'):
+                self.pages["results"] = self.results_page
+            elif tab_name == "logs" and hasattr(self, 'logs_page'):
+                self.pages["logs"] = self.logs_page
+            elif tab_name == "settings" and hasattr(self, 'settings_page'):
+                self.pages["settings"] = self.settings_page
+            elif tab_name == "about" and hasattr(self, 'about_page'):
+                self.pages["about"] = self.about_page
+
+        # Setup status bar and update timer
         self.setup_status_bar()
         self.setup_update_timer()
-        # Start maximized for industrial use
-        self.showMaximized()
+
+        # Set initial page if sidebar is initialized
+        if self.sidebar is not None and "dashboard" in self.content_widgets:
+            self.change_page("dashboard")
 
     def setup_ui(self) -> None:
         """Setup the main window UI"""
         # Window properties
         self.setWindowTitle("WF EOL Tester - Industrial GUI")
-        self.setMinimumSize(1200, 800)
-        self.resize(1400, 900)
+        self.setMinimumSize(1200, 900)  # Increased height to ensure NavigationMenu is fully visible
+        self.resize(1400, 1000)
 
         # Central widget
         central_widget = QWidget()
@@ -636,28 +881,59 @@ class MainWindow(QMainWindow):
         # Header
         self.header = HeaderWidget(container=self.container, state_manager=self.state_manager)
         self.header.emergency_stop_requested.connect(self._on_emergency_stop_requested)
-        self.header.settings_requested.connect(self._on_header_settings_clicked)
         self.header.notifications_requested.connect(self._on_header_notifications_clicked)
         main_layout.addWidget(self.header)
 
         # Content area layout (sidebar + main content)
         content_layout = QHBoxLayout()
         content_layout.setSpacing(0)
-        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setContentsMargins(0, 10, 0, 0)  # 10px top margin for alignment
+
+        # Create sidebar container for top alignment
+        sidebar_container = QWidget()
+        sidebar_layout = QVBoxLayout(sidebar_container)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
 
         # Sidebar
         self.sidebar = SidebarWidget()
         self.sidebar.page_changed.connect(self.change_page)
-        content_layout.addWidget(self.sidebar)
+        self.sidebar.settings_clicked.connect(self._on_header_settings_clicked)
 
-        # Content stack
+        # Add sidebar to container with top alignment
+        sidebar_layout.addWidget(self.sidebar, 0, Qt.AlignmentFlag.AlignTop)
+        sidebar_layout.addStretch(1)  # Push sidebar to top
+
+        # Set container width to match sidebar
+        sidebar_container.setFixedWidth(200)
+
+        # Content stack with explicit sizing constraints
         self.content_stack = QStackedWidget()
+        # Enforce clear separation between sidebar and content
+        self.content_stack.setContentsMargins(10, 0, 0, 0)  # 10px left margin for separation
+
+        # Set explicit minimum width to prevent overlap
+        self.content_stack.setMinimumWidth(400)  # Ensure content has minimum space
+
+        # Add widgets to layout
+        content_layout.addWidget(sidebar_container)
         content_layout.addWidget(self.content_stack)
 
-        # Add content area to main layout
+        # Set stretch factors: sidebar fixed (0), content expandable (1)
+        content_layout.setStretchFactor(sidebar_container, 0)  # Fixed: 200px
+        content_layout.setStretchFactor(self.content_stack, 1)  # Expandable: remaining space
+
+        # Setup debug timer for post-render geometry analysis
+        from PySide6.QtCore import QTimer
+        self.debug_timer = QTimer(self)
+        self.debug_timer.timeout.connect(self.debug_widget_geometry)
+        self.debug_timer.setSingleShot(True)
+        # Will be started after window is shown
+
+        # Add content area to main layout with stretch factor to take remaining space
         content_widget = QWidget()
         content_widget.setLayout(content_layout)
-        main_layout.addWidget(content_widget)
+        main_layout.addWidget(content_widget, 1)  # Stretch factor 1: take all remaining vertical space
 
         # Create and add content pages
         self.create_content_pages()
@@ -819,6 +1095,78 @@ class MainWindow(QMainWindow):
         """Handle window close event"""
         # TODO: Add cleanup logic if needed
         event.accept()
+
+    def debug_widget_geometry(self) -> None:
+        """Debug method to log widget geometry information"""
+        # Import logger locally to avoid import issues
+        from loguru import logger
+
+        logger.info(f"🔍 === LAYOUT DEBUG INFO ===")
+
+        # Main window info
+        logger.info(f"📐 Main Window - Size: {self.width()}x{self.height()}px")
+        logger.info(f"📐 Main Window - Geometry: {self.geometry()}")
+
+        # Header info
+        if hasattr(self, 'header') and self.header:
+            logger.info(f"📋 Header - Size: {self.header.width()}x{self.header.height()}px")
+            logger.info(f"📋 Header - Geometry: {self.header.geometry()}")
+
+        # Sidebar detailed info
+        logger.info(f"📂 Sidebar - Size: {self.sidebar.width()}x{self.sidebar.height()}px")
+        logger.info(f"📂 Sidebar - Geometry: {self.sidebar.geometry()}")
+        logger.info(f"📂 Sidebar - Position: x={self.sidebar.x()}, y={self.sidebar.y()}")
+        logger.info(f"📂 Sidebar - Size Policy: {self.sidebar.sizePolicy().horizontalPolicy()}, {self.sidebar.sizePolicy().verticalPolicy()}")
+
+        # Navigation menu info
+        if hasattr(self.sidebar, 'navigation_menu') and self.sidebar.navigation_menu:
+            nav_menu = self.sidebar.navigation_menu
+            logger.info(f"🧭 Navigation Menu - Size: {nav_menu.width()}x{nav_menu.height()}px")
+            logger.info(f"🧭 Navigation Menu - Geometry: {nav_menu.geometry()}")
+            logger.info(f"🧭 Navigation Menu - Position: x={nav_menu.x()}, y={nav_menu.y()}")
+
+        # Content stack detailed info
+        logger.info(f"📄 Content Stack - Size: {self.content_stack.width()}x{self.content_stack.height()}px")
+        logger.info(f"📄 Content Stack - Geometry: {self.content_stack.geometry()}")
+        logger.info(f"📄 Content Stack - Position: x={self.content_stack.x()}, y={self.content_stack.y()}")
+        logger.info(f"📄 Content Stack - Margins: {self.content_stack.contentsMargins()}")
+
+        # Layout spacing info
+        content_widget = self.centralWidget()
+        if content_widget and hasattr(content_widget, 'layout') and content_widget.layout():
+            layout = content_widget.layout()
+            logger.info(f"🔲 Content Layout - Spacing: {layout.spacing()}px")
+            logger.info(f"🔲 Content Layout - Margins: {layout.contentsMargins()}")
+
+            # Stretch factors
+            if hasattr(layout, 'stretch'):
+                for i in range(layout.count()):
+                    item = layout.itemAt(i)
+                    if item and item.widget():
+                        stretch = layout.stretch(i)
+                        widget_name = item.widget().__class__.__name__
+                        logger.info(f"🔲 Layout Item {i} ({widget_name}) - Stretch: {stretch}")
+
+        logger.info(f"🔍 === END DEBUG INFO ===")
+
+        # Also trigger navigation menu button debug
+        if hasattr(self.sidebar, 'navigation_menu') and self.sidebar.navigation_menu:
+            self._debug_navigation_buttons()
+
+    def _debug_navigation_buttons(self) -> None:
+        """Debug navigation button positions and sizes"""
+        # Import logger locally to avoid import issues
+        from loguru import logger
+
+        nav_menu = self.sidebar.navigation_menu
+        if hasattr(nav_menu, 'nav_buttons') and nav_menu.nav_buttons:
+            logger.info(f"🔘 === NAVIGATION BUTTONS DEBUG ===")
+            for i, button in enumerate(nav_menu.nav_buttons.buttons()):
+                if button:
+                    logger.info(f"🔘 Button {i} ({button.text()}) - Size: {button.width()}x{button.height()}px")
+                    logger.info(f"🔘 Button {i} - Geometry: {button.geometry()}")
+                    logger.info(f"🔘 Button {i} - Visible: {button.isVisible()}")
+            logger.info(f"🔘 === END NAVIGATION BUTTONS DEBUG ===")
 
     # Header Signal Handlers
     # ============================================================================

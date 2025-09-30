@@ -63,9 +63,6 @@ class SystemInfo(QWidget):
         layout.addWidget(self.temperature_label)
         layout.addWidget(self.time_label)
 
-        # Add stretch to push content to top
-        layout.addStretch()
-
     def create_info_label(self, text: str) -> QLabel:
         """Create an info label with consistent styling"""
         label = QLabel(text)

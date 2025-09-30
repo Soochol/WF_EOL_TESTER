@@ -1,19 +1,17 @@
 """
 Hardware Widget
 
-Hardware management page with device status and controls.
+Modular hardware management page with device status and controls.
+Refactored to use factory pattern and reusable components.
 """
 
 # Standard library imports
-from typing import Optional
+from typing import Dict, Optional
 
 # Third-party imports
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
-    QLabel,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -23,12 +21,18 @@ from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.widgets.hardware_status_widget import HardwareStatusWidget
 
+# Local folder imports
+# Local hardware control imports
+from .hardware import HardwareControlFactory, HardwareControlWidget
+from .hardware.styles import HardwareStyles
+
 
 class HardwareWidget(QWidget):
     """
-    Hardware widget for device management and control.
+    Modular hardware widget for device management and control.
 
-    Shows detailed hardware status and provides control options.
+    Shows detailed hardware status and provides control options using
+    reusable components and factory pattern.
     """
 
     def __init__(
@@ -40,10 +44,12 @@ class HardwareWidget(QWidget):
         super().__init__(parent)
         self.container = container
         self.state_manager = state_manager
+        self.hardware_controls: Dict[str, HardwareControlWidget] = {}
         self.setup_ui()
+        self.setup_connections()
 
     def setup_ui(self) -> None:
-        """Setup the hardware UI"""
+        """Setup the modular hardware UI."""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -62,109 +68,170 @@ class HardwareWidget(QWidget):
         # Add stretch to push content to top
         main_layout.addStretch()
 
-        # Apply styling
-        self.setStyleSheet(self._get_widget_style())
+        # Apply centralized styling
+        self.setStyleSheet(HardwareStyles.get_complete_stylesheet())
 
     def create_controls_group(self) -> QGroupBox:
-        """Create hardware controls group"""
+        """Create modular hardware controls group using factory pattern."""
         group = QGroupBox("Device Controls")
-        group.setFont(self._get_group_font())
+        group.setFont(HardwareStyles.get_group_font())
         grid_layout = QGridLayout(group)
         grid_layout.setSpacing(10)
 
-        # Loadcell controls
-        grid_layout.addWidget(QLabel("Loadcell:"), 0, 0)
-        self.loadcell_connect_btn = QPushButton("Connect")
-        self.loadcell_disconnect_btn = QPushButton("Disconnect")
-        self.loadcell_calibrate_btn = QPushButton("Calibrate")
-        grid_layout.addWidget(self.loadcell_connect_btn, 0, 1)
-        grid_layout.addWidget(self.loadcell_disconnect_btn, 0, 2)
-        grid_layout.addWidget(self.loadcell_calibrate_btn, 0, 3)
+        # Create all hardware controls using factory
+        self.hardware_controls = HardwareControlFactory.create_all_controls(parent=group)
 
-        # MCU controls
-        grid_layout.addWidget(QLabel("MCU:"), 1, 0)
-        self.mcu_connect_btn = QPushButton("Connect")
-        self.mcu_disconnect_btn = QPushButton("Disconnect")
-        self.mcu_reset_btn = QPushButton("Reset")
-        grid_layout.addWidget(self.mcu_connect_btn, 1, 1)
-        grid_layout.addWidget(self.mcu_disconnect_btn, 1, 2)
-        grid_layout.addWidget(self.mcu_reset_btn, 1, 3)
-
-        # Power Supply controls
-        grid_layout.addWidget(QLabel("Power Supply:"), 2, 0)
-        self.power_connect_btn = QPushButton("Connect")
-        self.power_disconnect_btn = QPushButton("Disconnect")
-        self.power_test_btn = QPushButton("Test Output")
-        grid_layout.addWidget(self.power_connect_btn, 2, 1)
-        grid_layout.addWidget(self.power_disconnect_btn, 2, 2)
-        grid_layout.addWidget(self.power_test_btn, 2, 3)
-
-        # Robot controls
-        grid_layout.addWidget(QLabel("Robot:"), 3, 0)
-        self.robot_connect_btn = QPushButton("Connect")
-        self.robot_disconnect_btn = QPushButton("Disconnect")
-        self.robot_home_btn = QPushButton("Home")
-        grid_layout.addWidget(self.robot_connect_btn, 3, 1)
-        grid_layout.addWidget(self.robot_disconnect_btn, 3, 2)
-        grid_layout.addWidget(self.robot_home_btn, 3, 3)
-
-        # Digital I/O controls
-        grid_layout.addWidget(QLabel("Digital I/O:"), 4, 0)
-        self.io_connect_btn = QPushButton("Connect")
-        self.io_disconnect_btn = QPushButton("Disconnect")
-        self.io_test_btn = QPushButton("Test Channels")
-        grid_layout.addWidget(self.io_connect_btn, 4, 1)
-        grid_layout.addWidget(self.io_disconnect_btn, 4, 2)
-        grid_layout.addWidget(self.io_test_btn, 4, 3)
+        # Add controls to grid layout in order
+        hardware_order = ["loadcell", "mcu", "power_supply", "robot", "digital_io"]
+        for row, hardware_type in enumerate(hardware_order):
+            if hardware_type in self.hardware_controls:
+                control_widget = self.hardware_controls[hardware_type]
+                grid_layout.addWidget(control_widget, row, 0, 1, 4)  # Span all columns
 
         return group
 
-    def _get_group_font(self) -> QFont:
-        """Get font for group boxes"""
-        font = QFont()
-        font.setPointSize(14)
-        font.setWeight(QFont.Weight.Bold)
-        return font
+    def setup_connections(self) -> None:
+        """Setup button connections for hardware controls."""
+        self._setup_loadcell_connections()
+        self._setup_mcu_connections()
+        self._setup_power_connections()
+        self._setup_robot_connections()
+        self._setup_io_connections()
 
-    def _get_widget_style(self) -> str:
-        """Get widget stylesheet"""
-        return """
-        HardwareWidget {
-            background-color: #1e1e1e;
-            color: #cccccc;
-        }
-        QGroupBox {
-            font-weight: bold;
-            border: 2px solid #404040;
-            border-radius: 5px;
-            margin-top: 10px;
-            padding-top: 10px;
-            color: #ffffff;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 5px 0 5px;
-        }
-        QLabel {
-            color: #cccccc;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        QPushButton {
-            background-color: #0078d4;
-            color: white;
-            border: 1px solid #106ebe;
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 14px;
-            min-width: 80px;
-            min-height: 30px;
-        }
-        QPushButton:hover {
-            background-color: #106ebe;
-        }
-        QPushButton:pressed {
-            background-color: #005a9e;
-        }
+    def _setup_loadcell_connections(self) -> None:
+        """Setup loadcell control connections."""
+        if "loadcell" in self.hardware_controls:
+            control = self.hardware_controls["loadcell"]
+            control.connect_button("connect", self._on_loadcell_connect)
+            control.connect_button("disconnect", self._on_loadcell_disconnect)
+            control.connect_button("calibrate", self._on_loadcell_calibrate)
+
+    def _setup_mcu_connections(self) -> None:
+        """Setup MCU control connections."""
+        if "mcu" in self.hardware_controls:
+            control = self.hardware_controls["mcu"]
+            control.connect_button("connect", self._on_mcu_connect)
+            control.connect_button("disconnect", self._on_mcu_disconnect)
+            control.connect_button("reset", self._on_mcu_reset)
+
+    def _setup_power_connections(self) -> None:
+        """Setup power supply control connections."""
+        if "power_supply" in self.hardware_controls:
+            control = self.hardware_controls["power_supply"]
+            control.connect_button("connect", self._on_power_connect)
+            control.connect_button("disconnect", self._on_power_disconnect)
+            control.connect_button("test", self._on_power_test)
+
+    def _setup_robot_connections(self) -> None:
+        """Setup robot control connections."""
+        if "robot" in self.hardware_controls:
+            control = self.hardware_controls["robot"]
+            control.connect_button("connect", self._on_robot_connect)
+            control.connect_button("disconnect", self._on_robot_disconnect)
+            control.connect_button("home", self._on_robot_home)
+
+    def _setup_io_connections(self) -> None:
+        """Setup digital I/O control connections."""
+        if "digital_io" in self.hardware_controls:
+            control = self.hardware_controls["digital_io"]
+            control.connect_button("connect", self._on_io_connect)
+            control.connect_button("disconnect", self._on_io_disconnect)
+            control.connect_button("test", self._on_io_test)
+
+    # Hardware control callbacks
+    def _on_loadcell_connect(self) -> None:
+        """Handle loadcell connect button."""
+        # TODO: Implement loadcell connection logic
+        pass
+
+    def _on_loadcell_disconnect(self) -> None:
+        """Handle loadcell disconnect button."""
+        # TODO: Implement loadcell disconnection logic
+        pass
+
+    def _on_loadcell_calibrate(self) -> None:
+        """Handle loadcell calibrate button."""
+        # TODO: Implement loadcell calibration logic
+        pass
+
+    def _on_mcu_connect(self) -> None:
+        """Handle MCU connect button."""
+        # TODO: Implement MCU connection logic
+        pass
+
+    def _on_mcu_disconnect(self) -> None:
+        """Handle MCU disconnect button."""
+        # TODO: Implement MCU disconnection logic
+        pass
+
+    def _on_mcu_reset(self) -> None:
+        """Handle MCU reset button."""
+        # TODO: Implement MCU reset logic
+        pass
+
+    def _on_power_connect(self) -> None:
+        """Handle power supply connect button."""
+        # TODO: Implement power supply connection logic
+        pass
+
+    def _on_power_disconnect(self) -> None:
+        """Handle power supply disconnect button."""
+        # TODO: Implement power supply disconnection logic
+        pass
+
+    def _on_power_test(self) -> None:
+        """Handle power supply test button."""
+        # TODO: Implement power supply test logic
+        pass
+
+    def _on_robot_connect(self) -> None:
+        """Handle robot connect button."""
+        # TODO: Implement robot connection logic
+        pass
+
+    def _on_robot_disconnect(self) -> None:
+        """Handle robot disconnect button."""
+        # TODO: Implement robot disconnection logic
+        pass
+
+    def _on_robot_home(self) -> None:
+        """Handle robot home button."""
+        # TODO: Implement robot homing logic
+        pass
+
+    def _on_io_connect(self) -> None:
+        """Handle digital I/O connect button."""
+        # TODO: Implement digital I/O connection logic
+        pass
+
+    def _on_io_disconnect(self) -> None:
+        """Handle digital I/O disconnect button."""
+        # TODO: Implement digital I/O disconnection logic
+        pass
+
+    def _on_io_test(self) -> None:
+        """Handle digital I/O test button."""
+        # TODO: Implement digital I/O test logic
+        pass
+
+    # Public API for external access to controls
+    def get_hardware_control(self, hardware_type: str) -> Optional[HardwareControlWidget]:
+        """Get a hardware control widget by type.
+
+        Args:
+            hardware_type: Type of hardware control to retrieve
+
+        Returns:
+            Hardware control widget or None if not found
         """
+        return self.hardware_controls.get(hardware_type)
+
+    def set_hardware_enabled(self, hardware_type: str, enabled: bool) -> None:
+        """Enable or disable all buttons for a specific hardware type.
+
+        Args:
+            hardware_type: Type of hardware to modify
+            enabled: Whether the hardware controls should be enabled
+        """
+        if hardware_type in self.hardware_controls:
+            self.hardware_controls[hardware_type].set_all_buttons_enabled(enabled)

@@ -63,6 +63,24 @@ class ConfigurationService:
         return self._configuration
 
     # ============================================================================
+    # ADDITIONAL CONFIGURATION PATHS FOR SETTINGS WIDGET
+    # ============================================================================
+
+    @property
+    def profile_config_path(self) -> str:
+        """Get path to profile configuration file for settings widget"""
+        # Use same base directory as other config files
+        config_dir = Path(self.application_config_path).parent
+        return str(config_dir / "profile.yaml")
+
+    @property
+    def dut_defaults_config_path(self) -> str:
+        """Get path to DUT defaults configuration file for settings widget"""
+        # Use same base directory as other config files
+        config_dir = Path(self.application_config_path).parent
+        return str(config_dir / "dut_defaults.yaml")
+
+    # ============================================================================
     # CORE CONFIGURATION LOADING
     # ============================================================================
 

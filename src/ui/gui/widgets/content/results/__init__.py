@@ -1,0 +1,1 @@
+"""Results widget package."""

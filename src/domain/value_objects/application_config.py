@@ -69,7 +69,7 @@ class ServicesConfigPaths:
     # Configuration file paths (absolute paths)
     config_application_path: str = str(PROJECT_ROOT / "configuration" / "application.yaml")
     config_hardware_path: str = str(PROJECT_ROOT / "configuration" / "hardware_config.yaml")
-    config_profile_preference_path: str = str(PROJECT_ROOT / "configuration" / "profile_preferences.json")
+    config_profile_preference_path: str = str(PROJECT_ROOT / "configuration" / "profile_preferences.yaml")
     config_test_profiles_dir: str = str(PROJECT_ROOT / "configuration" / "test_profiles")
     config_heating_cooling_path: str = str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
 
@@ -187,7 +187,7 @@ class ApplicationConfig:
                     "hardware_path", str(PROJECT_ROOT / "configuration" / "hardware_config.yaml")
                 ),
                 config_profile_preference_path=services_data.get("configuration", {}).get(
-                    "profile_preference_path", str(PROJECT_ROOT / "configuration" / "profile_preferences.json")
+                    "profile_preference_path", str(PROJECT_ROOT / "configuration" / "profile_preferences.yaml")
                 ),
                 config_test_profiles_dir=services_data.get("configuration", {}).get(
                     "test_profiles_dir", str(PROJECT_ROOT / "configuration" / "test_profiles")

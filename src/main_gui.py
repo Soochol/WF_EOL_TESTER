@@ -9,6 +9,7 @@ Integrates with existing business logic via ApplicationContainer.
 # Standard library imports
 from pathlib import Path
 import sys
+import time
 from typing import Optional
 import warnings
 
@@ -24,36 +25,52 @@ warnings.filterwarnings("ignore", message="CRASHES ARE TO BE EXPECTED.*")
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy.*")
 
 
-# PySide6 diagnostic utility function
-def check_pyside6_installation():
-    """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
+# PySide6 diagnostic utility functions
+def _run_command(cmd: str) -> tuple[bool, str]:
+    """Run command and return success status and output"""
     # Standard library imports
-    import os
-    import platform
     import subprocess
 
-    def run_command(cmd):
-        """Run command and return output"""
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=False)
-            return result.returncode == 0, result.stdout.strip()
-        except Exception:
-            return False, ""
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=False)
+        return result.returncode == 0, result.stdout.strip()
+    except Exception:
+        return False, ""
 
-    def is_uv_environment():
-        """Check if running in UV environment"""
-        # Check for UV environment indicators
-        uv_indicators = [
-            os.environ.get("UV_PROJECT_NAME"),
-            os.environ.get("VIRTUAL_ENV") and ".venv" in os.environ.get("VIRTUAL_ENV", ""),
-            os.path.exists("pyproject.toml") and os.path.exists(".venv"),
-        ]
-        return any(uv_indicators)
 
-    def check_uv_installation():
-        """Check if UV is installed and available"""
-        success, _ = run_command("uv --version")
-        return success
+def _is_uv_environment() -> bool:
+    """Check if running in UV environment"""
+    # Standard library imports
+    import os
+
+    uv_indicators = [
+        os.environ.get("UV_PROJECT_NAME"),
+        os.environ.get("VIRTUAL_ENV") and ".venv" in os.environ.get("VIRTUAL_ENV", ""),
+        os.path.exists("pyproject.toml") and os.path.exists(".venv"),
+    ]
+    return any(uv_indicators)
+
+
+def _check_uv_installation() -> bool:
+    """Check if UV is installed and available"""
+    success, _ = _run_command("uv --version")
+    return success
+
+
+def _read_pyproject_toml() -> tuple[bool, str]:
+    """Read pyproject.toml and check for PySide6 dependency"""
+    try:
+        with open("pyproject.toml", "r", encoding="utf-8") as f:
+            content = f.read()
+            return True, content.lower()
+    except FileNotFoundError:
+        return False, ""
+
+
+def _print_system_info() -> tuple[bool, bool]:
+    """Print system information and return UV environment status"""
+    # Standard library imports
+    import platform
 
     print("🔍 Diagnosing PySide6 installation issue...")
     print("📋 System Info:")
@@ -62,8 +79,8 @@ def check_pyside6_installation():
     print(f"   Python: {platform.python_version()}")
 
     # Check UV environment
-    is_uv_env = is_uv_environment()
-    uv_available = check_uv_installation()
+    is_uv_env = _is_uv_environment()
+    uv_available = _check_uv_installation()
 
     if is_uv_env:
         print("   Environment: 🚀 UV Virtual Environment")
@@ -72,91 +89,109 @@ def check_pyside6_installation():
     else:
         print("   Environment: 🐍 Standard Python Environment")
 
-    if platform.system() == "Windows":
-        print("\n🪟 Windows-specific diagnostics:")
+    return is_uv_env, uv_available
 
-        # Check VC++ redistributables
-        print("   Checking Visual C++ Redistributables...")
-        vc_paths = [
-            r"C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
-            r"C:\Program Files (x86)\Microsoft Visual Studio\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
-            r"C:\Windows\System32\msvcp140.dll",
-            r"C:\Windows\System32\vcruntime140.dll",
-        ]
 
-        found_vc = False
-        for path in vc_paths:
-            success, _ = run_command(f'if exist "{path}" echo found')
-            if success:
-                found_vc = True
-                break
+def _check_windows_diagnostics() -> None:
+    """Check Windows-specific diagnostics"""
+    # Standard library imports
+    import platform
 
-        if not found_vc:
-            print("   ⚠️  Visual C++ Redistributables not found!")
-            print("   💡 Solution: Download and install Microsoft Visual C++ Redistributable")
-            print("      📥 Download: https://aka.ms/vs/17/release/vc_redist.x64.exe")
-        else:
-            print("   ✅ Visual C++ Redistributables found")
+    if platform.system() != "Windows":
+        return
 
-    # Check Python package installation
+    print("\n🪟 Windows-specific diagnostics:")
+    print("   Checking Visual C++ Redistributables...")
+
+    vc_paths = [
+        r"C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+        r"C:\Program Files (x86)\Microsoft Visual Studio\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+        r"C:\Windows\System32\msvcp140.dll",
+        r"C:\Windows\System32\vcruntime140.dll",
+    ]
+
+    found_vc = False
+    for path in vc_paths:
+        success, _ = _run_command(f'if exist "{path}" echo found')
+        if success:
+            found_vc = True
+            break
+
+    if not found_vc:
+        print("   ⚠️  Visual C++ Redistributables not found!")
+        print("   💡 Solution: Download and install Microsoft Visual C++ Redistributable")
+        print("      📥 Download: https://aka.ms/vs/17/release/vc_redist.x64.exe")
+    else:
+        print("   ✅ Visual C++ Redistributables found")
+
+
+def _check_python_packages(is_uv_env: bool, uv_available: bool) -> None:
+    """Check Python package installation"""
     print("\n📦 Python package diagnostics:")
 
     if is_uv_env and uv_available:
-        # UV environment diagnostics
-        print("   Using UV package manager...")
-
-        # Check UV cache status
-        success, _ = run_command("uv cache info")
-        if success:
-            print("   📊 UV Cache Status: Available")
-        else:
-            print("   ⚠️  UV Cache Status: Issues detected")
-
-        # Check PySide6 installation via UV
-        success, output = run_command("uv show pyside6")
-
-        # Check pyproject.toml for PySide6 dependency
-        pyside6_in_deps = False
-        try:
-            with open("pyproject.toml", "r", encoding="utf-8") as f:
-                content = f.read().lower()
-                pyside6_in_deps = "pyside6" in content
-        except FileNotFoundError:
-            pass
-
-        if success:
-            print("   ✅ PySide6 package found in UV environment")
-            for line in output.split("\n"):
-                if line.strip().startswith("version:"):
-                    print(f"      Version: {line.split(':', 1)[1].strip()}")
-        else:
-            if pyside6_in_deps:
-                print("   ⚠️  PySide6 defined in pyproject.toml but not installed in UV environment")
-                print("   💡 Environment needs synchronization")
-
-                # Check sync status
-                sync_success, _ = run_command("uv sync --dry-run")
-                if not sync_success:
-                    print("   📋 UV sync required to install missing dependencies")
-            else:
-                print("   ❌ PySide6 not found in UV environment or pyproject.toml")
-                print("   💡 PySide6 needs to be added to dependencies")
-
+        _check_uv_packages()
     else:
-        # Standard pip environment diagnostics
-        try:
-            success, output = run_command("pip show pyside6")
-            if success:
-                print("   ✅ PySide6 package is installed")
-                for line in output.split("\n"):
-                    if line.startswith("Version:"):
-                        print(f"      {line}")
-            else:
-                print("   ❌ PySide6 package not found")
-        except ImportError:
-            print("   ⚠️  pip not available for diagnostics")
+        _check_pip_packages()
 
-    # Suggested solutions
+
+def _check_uv_packages() -> None:
+    """Check UV environment packages"""
+    print("   Using UV package manager...")
+
+    # Check UV cache status
+    success, _ = _run_command("uv cache info")
+    if success:
+        print("   📊 UV Cache Status: Available")
+    else:
+        print("   ⚠️  UV Cache Status: Issues detected")
+
+    # Check PySide6 installation via UV
+    success, output = _run_command("uv show pyside6")
+
+    # Check pyproject.toml for PySide6 dependency
+    toml_exists, content = _read_pyproject_toml()
+    pyside6_in_deps = toml_exists and "pyside6" in content
+
+    if success:
+        print("   ✅ PySide6 package found in UV environment")
+        for line in output.split("\n"):
+            if line.strip().startswith("version:"):
+                print(f"      Version: {line.split(':', 1)[1].strip()}")
+    else:
+        if pyside6_in_deps:
+            print("   ⚠️  PySide6 defined in pyproject.toml but not installed in UV environment")
+            print("   💡 Environment needs synchronization")
+
+            # Check sync status
+            sync_success, _ = _run_command("uv sync --dry-run")
+            if not sync_success:
+                print("   📋 UV sync required to install missing dependencies")
+        else:
+            print("   ❌ PySide6 not found in UV environment or pyproject.toml")
+            print("   💡 PySide6 needs to be added to dependencies")
+
+
+def _check_pip_packages() -> None:
+    """Check pip environment packages"""
+    try:
+        success, output = _run_command("pip show pyside6")
+        if success:
+            print("   ✅ PySide6 package is installed")
+            for line in output.split("\n"):
+                if line.startswith("Version:"):
+                    print(f"      {line}")
+        else:
+            print("   ❌ PySide6 package not found")
+    except ImportError:
+        print("   ⚠️  pip not available for diagnostics")
+
+
+def _print_suggested_solutions(is_uv_env: bool, uv_available: bool) -> None:
+    """Print suggested solutions based on environment"""
+    # Standard library imports
+    import platform
+
     print("\n🔧 Suggested solutions (try in order):")
 
     if platform.system() == "Windows":
@@ -164,50 +199,9 @@ def check_pyside6_installation():
         print("      📥 https://aka.ms/vs/17/release/vc_redist.x64.exe")
 
     if is_uv_env and uv_available:
-        # UV-specific solutions with context-aware recommendations
-        print("   📦 UV Environment Solutions:")
-
-        # Check if PySide6 is in dependencies to provide better first step
-        pyside6_in_deps = False
-        try:
-            with open("pyproject.toml", "r", encoding="utf-8") as f:
-                content = f.read().lower()
-                pyside6_in_deps = "pyside6" in content
-        except FileNotFoundError:
-            pass
-
-        if pyside6_in_deps:
-            # PySide6 is defined but not working - sync first
-            print("   🎯 First try (recommended for your situation):")
-            print("      📝 uv sync")
-            print("   2. If sync fails, clean cache and sync:")
-            print("      📝 uv cache clean")
-            print("      📝 uv sync")
-            print("   3. Force complete reinstall:")
-            print("      📝 uv sync --reinstall")
-        else:
-            # PySide6 not in dependencies - add it first
-            print("   🎯 First try (recommended for your situation):")
-            print("      📝 uv add pyside6")
-            print("   2. If add fails, clean cache first:")
-            print("      📝 uv cache clean")
-            print("      📝 uv add pyside6")
-
-        print("   4. Reset UV virtual environment (nuclear option):")
-        print("      📝 Remove .venv directory")
-        print("      📝 uv sync")
-        print("   5. Use specific PySide6 version:")
-        print("      📝 uv add pyside6==6.9.1")
+        _print_uv_solutions()
     else:
-        # Standard pip solutions
-        print("   📦 Standard Python Environment Solutions:")
-        print("   2. Reinstall PySide6:")
-        print("      📝 pip uninstall PySide6")
-        print("      📝 pip install PySide6")
-        print("   3. Try alternative installation:")
-        print("      📝 pip install PySide6 --force-reinstall --no-cache-dir")
-        print("   4. Use conda instead:")
-        print("      📝 conda install pyside6 -c conda-forge")
+        _print_pip_solutions()
 
     if platform.system() == "Windows":
         print("   🔍 Additional Windows Checks:")
@@ -216,6 +210,58 @@ def check_pyside6_installation():
         print("   • Ensure 64-bit Python on 64-bit Windows")
 
     print("\n💬 If issues persist, please check the DEPLOYMENT.md file for detailed instructions.")
+
+
+def _print_uv_solutions() -> None:
+    """Print UV-specific solutions"""
+    print("   📦 UV Environment Solutions:")
+
+    # Check if PySide6 is in dependencies
+    toml_exists, content = _read_pyproject_toml()
+    pyside6_in_deps = toml_exists and "pyside6" in content
+
+    if pyside6_in_deps:
+        # PySide6 is defined but not working - sync first
+        print("   🎯 First try (recommended for your situation):")
+        print("      📝 uv sync")
+        print("   2. If sync fails, clean cache and sync:")
+        print("      📝 uv cache clean")
+        print("      📝 uv sync")
+        print("   3. Force complete reinstall:")
+        print("      📝 uv sync --reinstall")
+    else:
+        # PySide6 not in dependencies - add it first
+        print("   🎯 First try (recommended for your situation):")
+        print("      📝 uv add pyside6")
+        print("   2. If add fails, clean cache first:")
+        print("      📝 uv cache clean")
+        print("      📝 uv add pyside6")
+
+    print("   4. Reset UV virtual environment (nuclear option):")
+    print("      📝 Remove .venv directory")
+    print("      📝 uv sync")
+    print("   5. Use specific PySide6 version:")
+    print("      📝 uv add pyside6==6.9.1")
+
+
+def _print_pip_solutions() -> None:
+    """Print pip-specific solutions"""
+    print("   📦 Standard Python Environment Solutions:")
+    print("   2. Reinstall PySide6:")
+    print("      📝 pip uninstall PySide6")
+    print("      📝 pip install PySide6")
+    print("   3. Try alternative installation:")
+    print("      📝 pip install PySide6 --force-reinstall --no-cache-dir")
+    print("   4. Use conda instead:")
+    print("      📝 conda install pyside6 -c conda-forge")
+
+
+def check_pyside6_installation() -> None:
+    """Check PySide6 installation and provide detailed diagnostics with UV environment support"""
+    is_uv_env, uv_available = _print_system_info()
+    _check_windows_diagnostics()
+    _check_python_packages(is_uv_env, uv_available)
+    _print_suggested_solutions(is_uv_env, uv_available)
 
 
 # Try to import PySide6 with diagnostic support
@@ -239,7 +285,28 @@ from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.styling import ThemeManager
 from ui.gui.utils.ui_scaling import setup_ui_scaling
-from ui.gui.widgets.splash.splash_screen import WFEOLSplashScreen, LoadingSteps
+from ui.gui.widgets.splash.splash_screen import LoadingSteps, WFEOLSplashScreen
+
+
+# Application constants
+class AppConstants:
+    """Constants for the GUI application"""
+
+    # Timing constants (in milliseconds)
+    ASYNCIO_TIMER_INTERVAL = 10
+    SPLASH_READY_DELAY = 500
+
+    # Timing constants (in seconds)
+    PROGRESS_STEP_DELAY = 0.1
+    INITIAL_RENDER_DELAY = 0.2
+
+    # UI constants
+    DEFAULT_FONT_SIZE = 9
+    APPLICATION_VERSION = "2.0.0"
+
+    # Organization info
+    ORGANIZATION_NAME = "Withforce"
+    ORGANIZATION_DOMAIN = "withforce.co.kr"
 
 
 class EOLTesterGUIApplication:
@@ -277,7 +344,7 @@ class EOLTesterGUIApplication:
             scale_factor = setup_ui_scaling(settings_manager)
             logger.info(f"UI scaling applied with factor: {scale_factor}")
 
-        except Exception as e:
+        except (ImportError, AttributeError, OSError) as e:
             logger.error(f"Failed to setup UI scaling: {e}")
             logger.info("Continuing with default scaling")
 
@@ -287,9 +354,9 @@ class EOLTesterGUIApplication:
 
         # Application metadata
         self.app.setApplicationName("WF EOL Tester")
-        self.app.setApplicationVersion("2.0.0")
-        self.app.setOrganizationName("Withforce")
-        self.app.setOrganizationDomain("withforce.co.kr")
+        self.app.setApplicationVersion(AppConstants.APPLICATION_VERSION)
+        self.app.setOrganizationName(AppConstants.ORGANIZATION_NAME)
+        self.app.setOrganizationDomain(AppConstants.ORGANIZATION_DOMAIN)
 
         # Set Korean environment safe fonts to prevent DirectWrite errors
         # Third-party imports
@@ -312,7 +379,7 @@ class EOLTesterGUIApplication:
             if default_font.exactMatch():
                 break
 
-        default_font.setPointSize(9)  # Standard Windows UI size
+        default_font.setPointSize(AppConstants.DEFAULT_FONT_SIZE)  # Standard Windows UI size
         self.app.setFont(default_font)
 
         logger.info(f"Application font set to: {default_font.family()}")
@@ -333,20 +400,20 @@ class EOLTesterGUIApplication:
         self.splash_screen.show_with_animation()
 
         # Process events to ensure splash screen is visible
-        self.app.processEvents()
+        if self.app:
+            self.app.processEvents()
         logger.info("Splash screen displayed")
 
     def update_splash_progress(self, step_index: int) -> None:
         """Update splash screen with loading step"""
-        if self.splash_screen:
+        if self.splash_screen and self.app:
             progress, message = LoadingSteps.get_step(step_index)
             self.splash_screen.update_progress(progress, message)
             self.app.processEvents()  # Ensure UI updates are visible
 
             # Small delay to show progress (except for last step)
             if step_index < LoadingSteps.get_total_steps() - 1:
-                import time
-                time.sleep(0.1)
+                time.sleep(AppConstants.PROGRESS_STEP_DELAY)
                 self.app.processEvents()
 
     def setup_container(self) -> None:
@@ -357,11 +424,38 @@ class EOLTesterGUIApplication:
             self.container = SimpleReloadableContainer.create()
             logger.info("SimpleReloadableContainer created successfully")
 
-        except Exception as e:
+        except (ImportError, AttributeError, FileNotFoundError) as e:
             logger.error(f"Failed to create SimpleReloadableContainer: {e}")
             logger.info("Creating container with fallback configuration")
             # Fallback is handled internally by SimpleReloadableContainer
             self.container = SimpleReloadableContainer.create()
+
+    def _setup_hardware_services_with_progress(self) -> None:
+        """Setup hardware services with progress updates for splash screen"""
+        logger.info("🔧 Hardware services setup started")
+
+        # Simulate progressive hardware service loading
+        hardware_steps = [
+            (3, "Loading robot service..."),
+            (4, "Loading MCU service..."),
+            (5, "Loading power service..."),
+            (6, "Loading loadcell service..."),
+            (7, "Loading digital I/O service..."),
+        ]
+
+        for step_index, step_message in hardware_steps:
+            self.update_splash_progress(step_index)
+            logger.info(f"🔧 {step_message}")
+
+            # Process events to keep GUI responsive
+            if self.app:
+                self.app.processEvents()
+
+            # Small delay to simulate hardware loading time and show progress
+            # This is where actual hardware initialization happens
+            time.sleep(0.2)  # Adjust this value based on actual hardware loading time
+
+        logger.info("✅ Hardware services setup completed")
 
     def setup_state_manager(self) -> None:
         """Initialize GUI state management"""
@@ -371,12 +465,12 @@ class EOLTesterGUIApplication:
             logger.error("❌ Container not initialized before state manager setup")
             raise RuntimeError("Container must be initialized before state manager")
 
-        logger.info(f"🔧 Container instance ID: {id(self.container)}")
+        logger.debug(f"🔧 Container instance ID: {id(self.container)}")
 
         try:
             hardware_facade = self.container.hardware_service_facade()
-            logger.info(f"🔧 Hardware facade created with ID: {id(hardware_facade)}")
-            logger.info(
+            logger.debug(f"🔧 Hardware facade created with ID: {id(hardware_facade)}")
+            logger.debug(
                 f"🔧 Hardware facade GUI State Manager: {getattr(hardware_facade, '_gui_state_manager', 'NOT_SET')}"
             )
 
@@ -385,37 +479,33 @@ class EOLTesterGUIApplication:
                 configuration_service=self.container.configuration_service(),
                 emergency_stop_service=self.container.emergency_stop_service(),
             )
-            logger.info(f"🔧 GUI State Manager created with ID: {id(self.state_manager)}")
-        except Exception as e:
+            logger.debug(f"🔧 GUI State Manager created with ID: {id(self.state_manager)}")
+        except (ImportError, AttributeError, TypeError) as e:
             logger.error(f"❌ Failed to create GUI State Manager: {e}")
-            raise
+            raise RuntimeError(f"GUI State Manager creation failed: {e}") from e
 
         # Register GUI State Manager with the container BEFORE any facade creation
         try:
-            logger.info(f"🔧 About to override GUI State Manager in container {id(self.container)}")
+            logger.debug(
+                f"🔧 About to override GUI State Manager in container {id(self.container)}"
+            )
             self.container.gui_state_manager.override(self.state_manager)
             logger.info("✅ GUI State Manager registered with dependency injection container")
-            logger.info(f"✅ Overridden with state manager ID: {id(self.state_manager)}")
-        except Exception as e:
+            logger.debug(f"✅ Overridden with state manager ID: {id(self.state_manager)}")
+        except (AttributeError, TypeError) as e:
             logger.error(f"❌ Failed to override GUI State Manager: {e}")
-            raise
+            raise RuntimeError(f"GUI State Manager registration failed: {e}") from e
 
         # Reset the hardware_service_facade Singleton to force recreation with new GUI State Manager
         try:
-            logger.info("🔄 About to reset Hardware Service Facade Singleton")
+            logger.debug("🔄 About to reset Hardware Service Facade Singleton")
             self.container.hardware_service_facade.reset()
-            logger.info(
+            logger.debug(
                 "🔄 Hardware Service Facade Singleton reset for new GUI State Manager injection"
             )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
             logger.error(f"❌ Failed to reset Hardware Service Facade: {e}")
-            raise
-
-        # Also reset any other Singletons that depend on hardware_service_facade
-        # Note: EmergencyStopService doesn't need reset as it gets fresh dependencies through facade
-
-        # Note: Direct injection was removed to respect encapsulation
-        # The GUI state manager is now properly injected via the container
+            raise RuntimeError(f"Hardware Service Facade reset failed: {e}") from e
 
         # Verify the container registration was successful by creating a new facade
         test_facade = self.container.hardware_service_facade()
@@ -424,8 +514,8 @@ class EOLTesterGUIApplication:
             and test_facade._gui_state_manager is not None
         ):
             logger.info("✅ GUI State Manager successfully injected through container")
-            logger.info(f"🔗 Container GUI State Manager = {id(test_facade._gui_state_manager)}")
-            logger.info(f"🔗 Created State Manager = {id(self.state_manager)}")
+            logger.debug(f"🔗 Container GUI State Manager = {id(test_facade._gui_state_manager)}")
+            logger.debug(f"🔗 Created State Manager = {id(self.state_manager)}")
 
             # Verify they are the same instance
             if test_facade._gui_state_manager is self.state_manager:
@@ -436,8 +526,91 @@ class EOLTesterGUIApplication:
             logger.error("❌ Failed to inject GUI State Manager through container")
             raise RuntimeError("Container GUI State Manager injection failed")
 
+    def create_main_window_with_progress(self) -> None:
+        """Create and configure main application window with progressive tab loading"""
+        if not self.container or not self.state_manager:
+            raise RuntimeError("Container and state manager must be initialized first")
+
+        # Step 1: Create basic main window structure
+        self.update_splash_progress(9)  # Creating main window...
+        logger.info("🔧 Creating main window structure...")
+        self.main_window = MainWindow(container=self.container, state_manager=self.state_manager, lazy_init=True)
+
+        # Process events to keep GUI responsive
+        if self.app:
+            self.app.processEvents()
+        time.sleep(0.1)  # Brief pause for visual feedback
+
+        # Step 2: Initialize header
+        self.update_splash_progress(10)  # Applying theme...
+        logger.info("🔧 Initializing header...")
+        self.main_window.init_header()
+
+        # Process events to keep GUI responsive
+        if self.app:
+            self.app.processEvents()
+        time.sleep(0.1)  # Brief pause for visual feedback
+
+        # Step 3: Initialize sidebar
+        self.update_splash_progress(11)  # Initializing widgets...
+        logger.info("🔧 Initializing sidebar...")
+        self.main_window.init_sidebar()
+
+        # Process events to keep GUI responsive
+        if self.app:
+            self.app.processEvents()
+        time.sleep(0.1)  # Brief pause for visual feedback
+
+        # Step 4: Initialize main tabs progressively
+        tabs = [
+            ("dashboard", "Loading dashboard..."),
+            ("test_control", "Loading test controls..."),
+            ("hardware", "Loading hardware controls..."),
+            ("results", "Loading results viewer..."),
+            ("logs", "Loading logs viewer..."),
+            ("settings", "Loading settings..."),
+            ("about", "Loading about page..."),
+        ]
+
+        current_step = 12
+        for tab_name, message in tabs:
+            self.update_splash_progress(current_step)
+            logger.info(f"🔧 {message}")
+
+            # Initialize the specific tab
+            if hasattr(self.main_window, f"init_{tab_name}_tab"):
+                getattr(self.main_window, f"init_{tab_name}_tab")()
+
+            # Process events to keep GUI responsive
+            if self.app:
+                self.app.processEvents()
+            time.sleep(0.05)  # Brief pause for visual feedback
+
+            current_step += 1
+
+        # Step 5: Apply theme after all widgets are created
+        logger.info("🎨 Applying industrial theme...")
+        theme_manager = ThemeManager()
+        theme_manager.apply_industrial_theme(self.main_window)
+
+        # Process events to keep GUI responsive
+        if self.app:
+            self.app.processEvents()
+        time.sleep(0.1)  # Brief pause for visual feedback
+
+        # Step 6: Finalize initialization
+        logger.info("🔧 Finalizing window initialization...")
+        self.main_window.finalize_initialization()
+
+        # Process events to keep GUI responsive
+        if self.app:
+            self.app.processEvents()
+        time.sleep(0.1)  # Brief pause for visual feedback
+
+        logger.info("✅ Main window created and configured with all tabs")
+
     def create_main_window(self) -> None:
-        """Create and configure main application window"""
+        """Create and configure main application window (legacy method)"""
         if not self.container or not self.state_manager:
             raise RuntimeError("Container and state manager must be initialized first")
 
@@ -466,31 +639,47 @@ class EOLTesterGUIApplication:
             self.update_splash_progress(0)  # Loading configuration...
 
             # Small delay to let splash screen render
-            import time
-            time.sleep(0.2)
-            self.app.processEvents()
+            time.sleep(AppConstants.INITIAL_RENDER_DELAY)
+            if self.app:
+                self.app.processEvents()
+
+            self.update_splash_progress(0)  # Loading configuration...
 
             self.update_splash_progress(1)  # Initializing dependency injection...
-
             self.setup_container()
-            self.update_splash_progress(2)  # Setting up hardware services...
 
+            self.update_splash_progress(2)  # Creating hardware factory...
+            # Give user visual feedback that hardware factory is being created
+            if self.app:
+                self.app.processEvents()
+            time.sleep(0.1)  # Brief pause for visual feedback
+
+            # Simulate hardware service loading with progress updates
+            self._setup_hardware_services_with_progress()
+
+            self.update_splash_progress(8)  # Initializing hardware facade...
             self.setup_state_manager()
-            self.update_splash_progress(3)  # Connecting to hardware...
 
-            self.create_main_window()
-            self.update_splash_progress(4)  # Loading user interface...
+            # Create main window with detailed progress updates
+            self.create_main_window_with_progress()
 
+            self.update_splash_progress(19)  # Preparing application...
             # Setup asyncio integration for Qt
             self._setup_asyncio_integration()
-            self.update_splash_progress(5)  # Preparing main window...
+
+            # Process events to keep GUI responsive
+            if self.app:
+                self.app.processEvents()
+            time.sleep(0.1)  # Brief pause for visual feedback
 
             # Show main window and finish splash
             if self.main_window:
-                self.update_splash_progress(6)  # Ready!
+                self.update_splash_progress(20)  # Ready!
 
                 # Small delay to show "Ready!" message
-                QTimer.singleShot(500, lambda: self._finish_splash_and_show_main())
+                QTimer.singleShot(
+                    AppConstants.SPLASH_READY_DELAY, lambda: self._finish_splash_and_show_main()
+                )
 
                 # Run application event loop
                 return self.app.exec() if self.app else 1
@@ -509,18 +698,35 @@ class EOLTesterGUIApplication:
         if self.splash_screen and self.main_window:
             self.splash_screen.finish_with_fade(self.main_window)
             logger.info("Main window displayed")
+            # Start debug timer for post-render geometry analysis
+            self._start_debug_timer()
         elif self.main_window:
             self.main_window.show()
             logger.info("Main window displayed (no splash)")
+            # Start debug timer for post-render geometry analysis
+            self._start_debug_timer()
         else:
             logger.error("Main window not available")
+
+        # Also trigger immediate debug for quick analysis
+        if self.main_window:
+            # Use QTimer.singleShot for immediate execution after event loop processes
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(100, lambda: self.main_window.debug_widget_geometry() if hasattr(self.main_window, 'debug_widget_geometry') else None)
+
+    def _start_debug_timer(self) -> None:
+        """Start debug timer to log widget geometry after layout is settled"""
+        if self.main_window and hasattr(self.main_window, 'debug_timer'):
+            # Start timer to capture geometry 2 seconds after window is shown
+            self.main_window.debug_timer.start(2000)
+            logger.info("🔍 Debug timer started - geometry will be logged in 2 seconds")
 
     def _setup_asyncio_integration(self) -> None:
         """Setup asyncio integration with Qt event loop"""
         # Create a timer to process asyncio events
         self.asyncio_timer = QTimer()
         self.asyncio_timer.timeout.connect(self._process_asyncio_events)
-        self.asyncio_timer.start(10)  # Process every 10ms
+        self.asyncio_timer.start(AppConstants.ASYNCIO_TIMER_INTERVAL)  # Process every 10ms
         logger.info("Asyncio integration configured")
 
     def _process_asyncio_events(self) -> None:

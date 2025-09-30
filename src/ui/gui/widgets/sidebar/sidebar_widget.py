@@ -11,13 +11,14 @@ from typing import Optional
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFrame,
+    QSizePolicy,
+    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
 
 # Local folder imports
 from .navigation_menu import NavigationMenu
-from .system_info import SystemInfo
 
 
 class SidebarWidget(QWidget):
@@ -28,6 +29,7 @@ class SidebarWidget(QWidget):
     """
 
     page_changed = Signal(str)  # Forwards navigation signals
+    settings_clicked = Signal()  # Forwards settings button clicks
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -37,33 +39,29 @@ class SidebarWidget(QWidget):
         """Setup the sidebar UI"""
         layout = QVBoxLayout(self)
         layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 0, 0, 0)  # No margin - alignment handled by content_layout
 
         # Navigation menu
         self.navigation_menu = NavigationMenu()
         self.navigation_menu.page_changed.connect(self.page_changed.emit)
+        self.navigation_menu.settings_clicked.connect(self.settings_clicked.emit)
         layout.addWidget(self.navigation_menu)
 
-        # Separator
-        separator = self.create_separator()
-        layout.addWidget(separator)
+        # Add stretcher to push navigation menu to top
+        stretcher = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        layout.addItem(stretcher)
 
-        # System info
-        self.system_info = SystemInfo()
-        layout.addWidget(self.system_info)
 
         # Apply sidebar styling
         self.setStyleSheet(self._get_sidebar_style())
-        self.setFixedWidth(234)
+        # Set explicit fixed size to prevent content overlap
+        self.setFixedWidth(200)  # Restore original width
+        self.setMinimumWidth(200)  # Enforce minimum width
+        self.setMaximumWidth(200)  # Enforce maximum width
 
-    def create_separator(self) -> QFrame:
-        """Create a separator line"""
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        separator.setStyleSheet("color: #404040; margin: 5px 10px;")
-        separator.setFixedHeight(1)
-        return separator
+        # Set size policy: fixed width, expanding height (full height, content controlled internally)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+
 
     def _get_sidebar_style(self) -> str:
         """Get sidebar stylesheet"""
@@ -78,14 +76,3 @@ class SidebarWidget(QWidget):
         """Set the current page"""
         self.navigation_menu.set_current_page(page_id)
 
-    def update_system_status(self, status: str) -> None:
-        """Update system status in system info"""
-        self.system_info.update_system_status(status)
-
-    def update_connection_status(self, connected: int, total: int) -> None:
-        """Update connection status in system info"""
-        self.system_info.update_connection_status(connected, total)
-
-    def update_temperature(self, temperature: float) -> None:
-        """Update temperature in system info"""
-        self.system_info.update_temperature(temperature)

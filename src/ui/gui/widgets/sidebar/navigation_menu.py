@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QPushButton,
     QSizePolicy,
+    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
@@ -31,17 +32,27 @@ class NavigationMenu(QWidget):
     """
 
     page_changed = Signal(str)  # Emits page name when selection changes
+    settings_clicked = Signal()  # Emits when settings button is clicked
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.current_page = "dashboard"
         self.setup_ui()
+        # Set size policy to preferred size to allow stretcher to work effectively
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        # Navigation menu will size to its content, allowing stretcher to control layout
+
+        # Ensure we don't get compressed horizontally and limit navigation height
+        self.setMinimumWidth(200)  # Match sidebar width
+        self.setMaximumWidth(200)  # Match sidebar width
+        self.setMaximumHeight(385)  # Limit navigation menu to half height
 
     def setup_ui(self) -> None:
         """Setup the navigation menu UI"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(2)
-        layout.setContentsMargins(5, 10, 5, 10)
+        layout.setSpacing(0)  # No spacing between buttons
+        layout.setContentsMargins(0, 0, 0, 0)  # Remove all margins to prevent overlap
+        # Remove size constraint to allow dynamic sizing
 
         # Navigation buttons
         self.nav_buttons = QButtonGroup(self)
@@ -53,7 +64,6 @@ class NavigationMenu(QWidget):
             ("test_control", "test_control", "Test Control"),
             ("results", "results", "Results"),
             ("hardware", "hardware", "Hardware"),
-            ("settings", "settings", "Settings"),
             ("about", "status_info", "About"),
         ]
 
@@ -62,14 +72,20 @@ class NavigationMenu(QWidget):
             layout.addWidget(btn)
             self.nav_buttons.addButton(btn)
 
+        # Add stretcher to push navigation buttons up and settings button down
+        stretcher = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        layout.addItem(stretcher)
+
+        # Add settings button at the bottom
+        self.settings_btn = self.create_settings_button()
+        layout.addWidget(self.settings_btn)
+
         # Set default selection
         self.nav_buttons.buttons()[0].setChecked(True)
 
         # Connect signals
         self.nav_buttons.buttonClicked.connect(self._on_button_clicked)
-
-        # Add stretch to push buttons to top
-        layout.addStretch()
+        self.settings_btn.clicked.connect(self.settings_clicked.emit)
 
     def create_nav_button(self, page_id: str, icon_name: str, label: str) -> QPushButton:
         """Create a navigation button with icon and text"""
@@ -91,9 +107,9 @@ class NavigationMenu(QWidget):
             if emoji:
                 btn.setText(f"{emoji} {label}")
 
-        # Style the button
-        btn.setMinimumHeight(52)
-        btn.setMaximumHeight(59)
+        # Style the button - fixed height to allow stretcher to work
+        btn.setMinimumHeight(55)  # Compact size for half-height navigation
+        btn.setMaximumHeight(55)  # Fix button height to prevent expansion
         btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         # Set font
@@ -107,18 +123,83 @@ class NavigationMenu(QWidget):
 
         return btn
 
-    def _get_button_style(self) -> str:
-        """Get button stylesheet"""
+    def create_settings_button(self) -> QPushButton:
+        """Create a settings button with same styling as navigation buttons"""
+        # Try to get icon from icon manager
+        icon = get_icon("settings", IconSize.MEDIUM)
+
+        # Create button with text
+        btn = QPushButton("Settings")
+        btn.setObjectName("settings_btn")
+        btn.setCheckable(False)  # Settings button is not checkable like nav buttons
+
+        # Set icon if available, otherwise use emoji fallback
+        if not icon.isNull():
+            btn.setIcon(icon)
+        else:
+            # Use emoji fallback in button text
+            emoji = get_emoji("settings")
+            if emoji:
+                btn.setText(f"{emoji} Settings")
+            else:
+                btn.setText("⚙️ Settings")
+
+        # Style the button same as navigation buttons
+        btn.setMinimumHeight(55)  # Same minimum height as nav buttons
+        btn.setMaximumHeight(55)  # Fix button height to prevent expansion
+        btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        # Set font
+        font = QFont()
+        font.setPointSize(14)
+        font.setWeight(QFont.Weight.Medium)
+        btn.setFont(font)
+
+        # Set alignment - use similar style but without checkable states
+        btn.setStyleSheet(self._get_settings_button_style())
+
+        return btn
+
+    def _get_settings_button_style(self) -> str:
+        """Get settings button stylesheet (similar to nav buttons but no checked state)"""
         return """
         QPushButton {
-            text-align: left;
-            padding: 10px 12px;
+            text-align: center;
+            padding: 0px;
+            margin: 0px;
             border: 1px solid #404040;
             border-radius: 4px;
             background-color: #2d2d2d;
             color: #cccccc;
-            min-height: 52px;
-            max-height: 59px;
+            min-height: 55px;
+            max-height: 55px;
+        }
+        QPushButton:hover {
+            background-color: #404040;
+            color: #ffffff;
+        }
+        QPushButton:pressed {
+            background-color: #106ebe;
+        }
+        QPushButton:focus {
+            outline: none;
+            border: 1px solid #404040;
+        }
+        """
+
+    def _get_button_style(self) -> str:
+        """Get button stylesheet"""
+        return """
+        QPushButton {
+            text-align: center;
+            padding: 0px;
+            margin: 0px;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            background-color: #2d2d2d;
+            color: #cccccc;
+            min-height: 55px;
+            max-height: 55px;
         }
         QPushButton:hover {
             background-color: #404040;

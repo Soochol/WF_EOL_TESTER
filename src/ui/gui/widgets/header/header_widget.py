@@ -196,7 +196,6 @@ class ControlSection(HeaderSectionWidget):
 
     # Signals
     emergency_stop_clicked = Signal()
-    settings_clicked = Signal()
     notifications_clicked = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -229,14 +228,6 @@ class ControlSection(HeaderSectionWidget):
         user_layout.addWidget(self.user_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout.addLayout(user_layout)
-
-        # Settings button
-        self.settings_btn = QPushButton("⚙️")
-        self.settings_btn.setFixedSize(35, 35)
-        self.settings_btn.setStyleSheet(self.get_icon_button_style())
-        self.settings_btn.setToolTip("Settings")
-        self.settings_btn.clicked.connect(self.settings_clicked.emit)
-        layout.addWidget(self.settings_btn)
 
         # Notifications button
         self.notifications_btn = QPushButton("🔔")
@@ -308,7 +299,6 @@ class HeaderWidget(QWidget):
 
     # Signals
     emergency_stop_requested = Signal()
-    settings_requested = Signal()
     notifications_requested = Signal()
 
     def __init__(
@@ -359,7 +349,6 @@ class HeaderWidget(QWidget):
     def connect_signals(self) -> None:
         """Connect internal signals"""
         self.control_section.emergency_stop_clicked.connect(self.emergency_stop_requested.emit)
-        self.control_section.settings_clicked.connect(self.settings_requested.emit)
         self.control_section.notifications_clicked.connect(self.notifications_requested.emit)
 
 
