@@ -6,7 +6,7 @@ with search and filtering capabilities.
 """
 
 # Standard library imports
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 # Third-party imports
 from PySide6.QtCore import Qt, Signal
@@ -89,6 +89,42 @@ class SettingsTreeWidget(QTreeWidget):
                 # Create setting item
                 setting_item = QTreeWidgetItem(parent_item, [key])
 
+                # Determine allowed values for hardware model, port, and baudrate fields
+                allowed_values = None
+                if key == "model":
+                    # Extract hardware type from category (e.g., "robot", "digital_io")
+                    hardware_type = category_prefix.split(".")[-1] if category_prefix else None
+                    if hardware_type == "robot":
+                        allowed_values = ["mock", "ajinextek"]
+                    elif hardware_type == "digital_io":
+                        allowed_values = ["mock", "ajinextek"]
+                    elif hardware_type == "power":
+                        allowed_values = ["mock", "oda"]
+                    elif hardware_type == "loadcell":
+                        allowed_values = ["mock", "bs205"]
+                    elif hardware_type == "mcu":
+                        allowed_values = ["mock", "lma"]
+                elif key == "port":
+                    # Get available serial ports
+                    allowed_values = self._get_available_ports(value)
+                elif key == "baudrate":
+                    # Common baudrate values for serial communication
+                    allowed_values = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+                    # Ensure current value is in the list
+                    if value and isinstance(value, int) and value not in allowed_values:
+                        allowed_values.append(value)
+                        allowed_values.sort()
+                elif key == "parity":
+                    # Standard parity options for serial communication
+                    allowed_values = ["none", "even", "odd", "mark", "space"]
+                    # Handle null/None values
+                    if value is None or value == "null":
+                        value = "none"
+                    # Ensure current value is in the list
+                    if value and isinstance(value, str) and value.lower() not in allowed_values:
+                        allowed_values.append(value.lower())
+                        allowed_values.sort()
+
                 # Create ConfigValue
                 config_value = ConfigValue(
                     key=item_key,
@@ -96,6 +132,7 @@ class SettingsTreeWidget(QTreeWidget):
                     data_type=type(value).__name__,
                     file_path=file_path,
                     category=category_prefix,
+                    allowed_values=allowed_values,
                 )
 
                 setting_item.setData(
@@ -271,6 +308,40 @@ class SettingsTreeWidget(QTreeWidget):
                         )
                     return
             parent_widget = parent_widget.parent()
+
+    def _get_available_ports(self, current_value: Any) -> List[str]:
+        """Get list of available serial ports"""
+        try:
+            import serial.tools.list_ports
+
+            # Get available ports
+            ports = serial.tools.list_ports.comports()
+            available_ports = [port.device for port in ports]
+
+            # Ensure current value is in the list (for manual entry support)
+            if current_value and isinstance(current_value, str):
+                if current_value not in available_ports:
+                    available_ports.append(current_value)
+
+            # Sort ports for better UX
+            available_ports.sort()
+
+            # If no ports found, provide some common defaults
+            if not available_ports:
+                available_ports = ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"]
+                if current_value and isinstance(current_value, str) and current_value not in available_ports:
+                    available_ports.append(current_value)
+                    available_ports.sort()
+
+            return available_ports
+
+        except ImportError:
+            # If pyserial is not available, return common default ports
+            default_ports = ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"]
+            if current_value and isinstance(current_value, str) and current_value not in default_ports:
+                default_ports.append(current_value)
+                default_ports.sort()
+            return default_ports
 
     def update_item_text(self, key: str, new_value: Any) -> None:
         """Update tree item text after value change"""

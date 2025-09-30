@@ -5,27 +5,31 @@ Provides YAML file-based configuration loading/saving and profile preference man
 """
 
 # Standard library imports
+import re
 from datetime import datetime
 from pathlib import Path
-import re
 from typing import Any, Dict, List, Optional
+
+import yaml
 
 # Third-party imports
 from loguru import logger
-import yaml
 
 # Local application imports
+from domain.value_objects.application_config import CONFIG_DIR
 from domain.value_objects.hardware_config import HardwareConfig
-from domain.value_objects.heating_cooling_configuration import HeatingCoolingConfiguration
+from domain.value_objects.heating_cooling_configuration import (
+    HeatingCoolingConfiguration,
+)
 from domain.value_objects.test_configuration import TestConfiguration
 
 
 class YamlConfiguration:
     """Simple YAML-based configuration implementation"""
 
-    def __init__(self, config_dir: str = "../configuration"):
-        self.config_dir = Path(config_dir)
-        self.config_dir.mkdir(exist_ok=True)
+    def __init__(self, config_dir: Path = CONFIG_DIR):
+        self.config_dir = config_dir
+        self.config_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize test_profiles directory and default profile at startup
         self._initialize_profile_system()
@@ -254,14 +258,10 @@ class YamlConfiguration:
             from datetime import datetime
 
             default_config = {
-                "active_profile": "default",
                 "default": {
                     "dut_id": "DEFAULT001",
-                    "model": "Default Model",
-                    "operator_id": "DEFAULT_OP",
-                    "manufacturer": "Default Manufacturer",
+                    "model_number": "Default Model",
                     "serial_number": "SN001",
-                    "part_number": "PN001",
                 },
                 "metadata": {
                     "created_at": datetime.now().isoformat(),
@@ -279,18 +279,30 @@ class YamlConfiguration:
 
             # Return the appropriate profile
             if profile_name and profile_name in default_config:
-                return default_config[profile_name]
-            return default_config.get("default", default_config)
+                profile_data = default_config[profile_name]
+                if isinstance(profile_data, dict):
+                    return profile_data
+
+            # Get default profile, fallback to empty dict if not found
+            default_profile = default_config.get("default", {})
+            if isinstance(default_profile, dict):
+                return default_profile
+            return {}
 
         with open(dut_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         # If profile_name is specified, try to get profile-specific defaults
         if profile_name and profile_name in data:
-            return data[profile_name]
+            profile_data = data[profile_name]
+            if isinstance(profile_data, dict):
+                return profile_data
 
-        # Otherwise return the default section or the whole data
-        return data.get("default", data)
+        # Otherwise return the default section, fallback to empty dict
+        default_profile = data.get("default", {})
+        if isinstance(default_profile, dict):
+            return default_profile
+        return {}
 
     async def save_profile(self, profile_name: str, test_config: TestConfiguration) -> None:
         """Save test configuration profile"""
@@ -450,14 +462,10 @@ class YamlConfiguration:
             from datetime import datetime
 
             default_config = {
-                "active_profile": "default",
                 "default": {
                     "dut_id": "DEFAULT001",
-                    "model": "Default Model",
-                    "operator_id": "DEFAULT_OP",
-                    "manufacturer": "Default Manufacturer",
+                    "model_number": "Default Model",
                     "serial_number": "SN001",
-                    "part_number": "PN001",
                 },
                 "metadata": {
                     "created_at": datetime.now().isoformat(),

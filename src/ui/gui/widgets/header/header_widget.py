@@ -60,15 +60,6 @@ class BrandingSection(HeaderSectionWidget):
         layout.setContentsMargins(15, 5, 10, 5)
         layout.setSpacing(10)
 
-        # Company logo/icon
-        self.logo_label = QLabel("🏭")
-        self.logo_label.setStyleSheet("""
-            font-size: 28px;
-            color: #0078d4;
-            margin: 0px;
-        """)
-        layout.addWidget(self.logo_label)
-
         # Product info container
         info_layout = QVBoxLayout()
         info_layout.setSpacing(2)

@@ -54,6 +54,7 @@ class IconManager:
             "dashboard": "🏠",
             "test_control": "⚡",
             "results": "📊",
+            "statistics": "📈",
             "hardware": "⚙️",
             "settings": "🔧",
             "logs": "📋",

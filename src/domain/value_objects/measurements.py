@@ -689,20 +689,32 @@ class TestMeasurements:
         for temp, pos_measurements in self._measurements.items():
             result[temp] = pos_measurements.to_dict()
 
-            # Add timing data to the first position if timing data is available
+            # Add timing data to ALL positions if timing data is available
             if self._timing_data and result[temp]:
-                first_position = next(iter(result[temp].keys()))
+                # Collect all timing data for this temperature across all cycles
+                heating_times = []
+                cooling_times = []
 
-                # Find timing data for this temperature (assume cycle 1 for now)
-                timing_key = f"cycle_1_temp_{int(temp)}"
-                if timing_key in self._timing_data:
-                    timing_info = self._timing_data[timing_key]
-                    result[temp][first_position]["heating_time_s"] = round(
-                        timing_info.get("heating_time_s", 0.0), 2
-                    )
-                    result[temp][first_position]["cooling_time_s"] = round(
-                        timing_info.get("cooling_time_s", 0.0), 2
-                    )
+                for timing_key, timing_info in self._timing_data.items():
+                    # Check if this timing data is for the current temperature
+                    if timing_info.get("temperature") == temp:
+                        if "heating_time_s" in timing_info:
+                            heating_times.append(timing_info["heating_time_s"])
+                        if "cooling_time_s" in timing_info:
+                            cooling_times.append(timing_info["cooling_time_s"])
+
+                # Calculate average times (or use single value if only one cycle)
+                avg_heating_time = (
+                    round(sum(heating_times) / len(heating_times), 2) if heating_times else 0.0
+                )
+                avg_cooling_time = (
+                    round(sum(cooling_times) / len(cooling_times), 2) if cooling_times else 0.0
+                )
+
+                # Add timing data to ALL positions for this temperature
+                for position in result[temp]:
+                    result[temp][position]["heating_time_s"] = avg_heating_time
+                    result[temp][position]["cooling_time_s"] = avg_cooling_time
 
         return result
 

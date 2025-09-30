@@ -76,3 +76,7 @@ class SidebarWidget(QWidget):
         """Set the current page"""
         self.navigation_menu.set_current_page(page_id)
 
+    def set_statistics_submenu_visible(self, visible: bool) -> None:
+        """Show or hide the statistics submenu"""
+        self.navigation_menu.set_statistics_submenu_visible(visible)
+

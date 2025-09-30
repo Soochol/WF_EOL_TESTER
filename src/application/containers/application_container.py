@@ -137,6 +137,15 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     # ============================================================================
+    # STATISTICS SERVICES
+    # ============================================================================
+
+    eol_statistics_service = providers.Singleton(
+        "application.services.statistics.eol_statistics_service.EOLStatisticsService",
+        repository=json_result_repository,
+    )
+
+    # ============================================================================
     # MONITORING SERVICES
     # ============================================================================
 

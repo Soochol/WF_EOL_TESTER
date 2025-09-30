@@ -179,7 +179,7 @@ class Styles:
     # Tree widget styles
     TREE_WIDGET = f"""
         QTreeWidget {{
-            background-color: {Colors.BACKGROUND_SECONDARY};
+            background-color: {Colors.BACKGROUND};
             color: {Colors.TEXT_PRIMARY};
             border: 1px solid {Colors.BORDER};
             outline: none;
@@ -200,7 +200,7 @@ class Styles:
             image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTYgNGw0IDQtNCA0VjR6Ii8+PC9zdmc+);
         }}
         QTreeWidget::branch:open:has-children {{
-            image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTQgNmw0IDQgNC00SDR6Ii8+PC9zdmc+);
+            image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTQgNmw0IDQgNC00SDR6Ci8+PC9zdmc+);
         }}
     """
 
@@ -259,7 +259,7 @@ class Styles:
     # Property panel styles
     PROPERTY_PANEL = f"""
         QWidget {{
-            background-color: {Colors.BACKGROUND_SECONDARY};
+            background-color: {Colors.BACKGROUND};
             border: 1px solid {Colors.BORDER};
         }}
     """

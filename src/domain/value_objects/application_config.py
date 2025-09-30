@@ -20,15 +20,32 @@ from typing import Any, Dict, Optional
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
+# Configuration path constants (Single Source of Truth)
+CONFIG_DIR = PROJECT_ROOT / "configuration"
+CONFIG_TEST_PROFILES_DIR = CONFIG_DIR / "test_profiles"
+CONFIG_APPLICATION_PATH = CONFIG_DIR / "application.yaml"
+CONFIG_HARDWARE_PATH = CONFIG_DIR / "hardware_config.yaml"
+CONFIG_PROFILE_PATH = CONFIG_DIR / "profile.yaml"
+CONFIG_PROFILE_PREFERENCES_PATH = CONFIG_DIR / "profile_preferences.yaml"
+CONFIG_DUT_DEFAULTS_PATH = CONFIG_DIR / "dut_defaults.yaml"
+CONFIG_HEATING_COOLING_PATH = CONFIG_DIR / "heating_cooling_time_test.yaml"
+
+# Logs path constants
+LOGS_DIR = PROJECT_ROOT / "logs"
+LOGS_TEST_RESULTS_JSON_DIR = LOGS_DIR / "test_results" / "json"
+LOGS_EOL_RAW_DATA_DIR = LOGS_DIR / "EOL Force Test" / "raw_data"
+LOGS_EOL_SUMMARY_DIR = LOGS_DIR / "EOL Force Test"
+
+
 def ensure_project_directories():
     """Ensure all required project directories exist"""
     required_dirs = [
-        PROJECT_ROOT / "configuration",
-        PROJECT_ROOT / "configuration" / "test_profiles",
-        PROJECT_ROOT / "logs",
-        PROJECT_ROOT / "logs" / "test_results" / "json",
-        PROJECT_ROOT / "logs" / "EOL Force Test" / "raw_data",
-        PROJECT_ROOT / "logs" / "EOL Force Test"
+        CONFIG_DIR,
+        CONFIG_TEST_PROFILES_DIR,
+        LOGS_DIR,
+        LOGS_TEST_RESULTS_JSON_DIR,
+        LOGS_EOL_RAW_DATA_DIR,
+        LOGS_EOL_SUMMARY_DIR
     ]
 
     for directory in required_dirs:

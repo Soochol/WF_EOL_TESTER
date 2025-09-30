@@ -4,17 +4,20 @@ Base editor widget class.
 Provides common functionality for all configuration value editors.
 """
 
+# Standard library imports
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Optional
 
-from PySide6.QtCore import QObject
+# Third-party imports
 from PySide6.QtWidgets import QWidget
 
+# Local folder imports
 from ...core import ConfigValue
 
 
-class BaseEditorMeta(type(QWidget), ABCMeta):
+class BaseEditorMeta(type(QWidget), ABCMeta):  # type: ignore[misc]
     """Metaclass to resolve conflicts between QWidget and ABC metaclasses"""
+
     pass
 
 

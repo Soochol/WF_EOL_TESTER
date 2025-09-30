@@ -205,7 +205,10 @@ class WFEOLSplashScreen(QSplashScreen):
         self.fade_out_animation.setEndValue(0.0)
 
         def on_fade_complete():
-            self.finish(main_window)
+            # Close splash screen first
+            self.close()
+            # Show main window after splash is completely gone
+            main_window.show()
 
         self.fade_out_animation.finished.connect(on_fade_complete)
         self.fade_out_animation.start()

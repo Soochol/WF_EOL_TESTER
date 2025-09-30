@@ -57,9 +57,6 @@ class SettingsWidget(ModularSettingsWidget):
         self._container: Optional[SimpleReloadableContainer] = container
         self._state_manager: Optional[GUIStateManager] = state_manager
 
-        # Connect to existing signals if needed
-        self.settings_changed.connect(self._handle_settings_change)
-
     def set_container(self, container: SimpleReloadableContainer) -> None:
         """
         Set the dependency injection container.
@@ -77,15 +74,6 @@ class SettingsWidget(ModularSettingsWidget):
             state_manager: The state manager instance
         """
         self._state_manager = state_manager
-
-    def _handle_settings_change(self) -> None:
-        """Handle settings changes for container integration"""
-        if self._container:
-            try:
-                # Trigger container reload if configuration changed
-                self._container.reload_configuration()
-            except Exception as e:
-                print(f"Error reloading container configuration: {e}")
 
 
 # Legacy compatibility exports

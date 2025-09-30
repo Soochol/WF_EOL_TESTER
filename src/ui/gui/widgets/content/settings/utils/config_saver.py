@@ -19,7 +19,7 @@ class ConfigFileSaver:
     """Utility class for saving configuration files"""
 
     @staticmethod
-    def save_config_file(config_file: ConfigFile, backup: bool = True) -> bool:
+    def save_config_file(config_file: ConfigFile, backup: bool = False) -> bool:
         """
         Save configuration file to disk.
 

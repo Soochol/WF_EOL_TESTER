@@ -10,6 +10,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+# Local application imports
+from domain.value_objects.application_config import (
+    CONFIG_APPLICATION_PATH,
+    CONFIG_HARDWARE_PATH,
+    CONFIG_HEATING_COOLING_PATH,
+    CONFIG_PROFILE_PATH,
+    CONFIG_DUT_DEFAULTS_PATH,
+    CONFIG_TEST_PROFILES_DIR,
+)
+
 
 @dataclass
 class ConfigValue:
@@ -49,14 +59,14 @@ class ConfigPaths:
     def get_default_paths() -> Dict[str, str]:
         """Get default configuration file paths"""
         return {
-            "Application": "../configuration/application.yaml",
-            "Hardware": "../configuration/hardware_config.yaml",
-            "Heating/Cooling Test": "../configuration/heating_cooling_time_test.yaml",
-            "Profile Management": "../configuration/profile.yaml",
-            "DUT Defaults": "../configuration/dut_defaults.yaml",
+            "Application": str(CONFIG_APPLICATION_PATH),
+            "Hardware": str(CONFIG_HARDWARE_PATH),
+            "Heating/Cooling Test": str(CONFIG_HEATING_COOLING_PATH),
+            "Profile Management": str(CONFIG_PROFILE_PATH),
+            "DUT Defaults": str(CONFIG_DUT_DEFAULTS_PATH),
         }
 
     @staticmethod
     def get_test_profile_path(profile_name: str) -> str:
         """Get path for a specific test profile"""
-        return f"../configuration/test_profiles/{profile_name}.yaml"
+        return str(CONFIG_TEST_PROFILES_DIR / f"{profile_name}.yaml")

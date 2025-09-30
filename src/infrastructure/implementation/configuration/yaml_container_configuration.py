@@ -5,17 +5,24 @@ Provides YAML file-based configuration loading specifically for dependency injec
 """
 
 # Standard library imports
+import re
 from datetime import datetime
 from pathlib import Path
-import re
 from typing import Any, Dict
+
+import yaml
 
 # Third-party imports
 from loguru import logger
-import yaml
 
 # Local application imports
-from domain.value_objects.application_config import ApplicationConfig
+from domain.value_objects.application_config import (
+    CONFIG_APPLICATION_PATH,
+    CONFIG_HARDWARE_PATH,
+    CONFIG_PROFILE_PATH,
+    CONFIG_TEST_PROFILES_DIR,
+    ApplicationConfig,
+)
 from domain.value_objects.hardware_config import HardwareConfig
 
 
@@ -24,11 +31,15 @@ class YamlContainerConfigurationLoader:
 
     def __init__(
         self,
-        application_config_path: str = "../configuration/application.yaml",
-        hardware_config_path: str = "../configuration/hardware_config.yaml",
+        application_config_path: Path = CONFIG_APPLICATION_PATH,
+        hardware_config_path: Path = CONFIG_HARDWARE_PATH,
+        profile_config_path: Path = CONFIG_PROFILE_PATH,
+        test_profiles_dir: Path = CONFIG_TEST_PROFILES_DIR,
     ):
         self.application_config_path = application_config_path
         self.hardware_config_path = hardware_config_path
+        self.profile_config_path = profile_config_path
+        self.test_profiles_dir = test_profiles_dir
 
     def _format_yaml_with_spacing(self, yaml_content: str) -> str:
         """
@@ -85,6 +96,11 @@ class YamlContainerConfigurationLoader:
             combined_config = app_config.copy()
             combined_config["hardware"] = hardware_config
 
+            # Load and merge active test profile (overrides hardware settings)
+            test_profile_config = self._load_active_test_profile()
+            if test_profile_config:
+                self._merge_test_profile_into_config(combined_config, test_profile_config)
+
             logger.info("All configurations loaded successfully")
             return combined_config
 
@@ -131,6 +147,82 @@ class YamlContainerConfigurationLoader:
             logger.info("Using default hardware configuration")
             return HardwareConfig().to_dict()
 
+    def _load_active_test_profile(self) -> Dict[str, Any]:
+        """
+        Load active test profile from profile.yaml and test_profiles directory.
+
+        Returns:
+            Dictionary containing test profile configuration, or empty dict if not found
+        """
+        try:
+            # Load profile.yaml to get active profile name
+            profile_config_file = Path(self.profile_config_path)
+            if not profile_config_file.exists():
+                logger.debug(f"Profile config not found: {self.profile_config_path}")
+                return {}
+
+            with open(profile_config_file, "r", encoding="utf-8") as f:
+                profile_data = yaml.safe_load(f)
+
+            active_profile = profile_data.get("active_profile", "default")
+
+            # Load test profile file
+            test_profile_path = Path(self.test_profiles_dir) / f"{active_profile}.yaml"
+            if not test_profile_path.exists():
+                logger.warning(f"Active test profile not found: {test_profile_path}")
+                return {}
+
+            with open(test_profile_path, "r", encoding="utf-8") as f:
+                test_profile_config = yaml.safe_load(f)
+
+            logger.info(f"Active test profile '{active_profile}' loaded from: {test_profile_path}")
+            return test_profile_config
+
+        except Exception as e:
+            logger.warning(f"Failed to load active test profile: {e}")
+            return {}
+
+    def _merge_test_profile_into_config(
+        self, combined_config: Dict[str, Any], test_profile_config: Dict[str, Any]
+    ) -> None:
+        """
+        Merge test profile configuration into combined config.
+        Test profile settings override hardware config settings.
+
+        Args:
+            combined_config: Combined configuration to merge into (modified in-place)
+            test_profile_config: Test profile configuration to merge
+        """
+        try:
+            # Merge hardware settings from test profile (voltage, current, etc.)
+            if "hardware" in test_profile_config:
+                if "hardware" not in combined_config:
+                    combined_config["hardware"] = {}
+
+                # Override hardware settings with test profile values
+                for key, value in test_profile_config["hardware"].items():
+                    combined_config["hardware"][key] = value
+                    logger.debug(f"Override hardware.{key} = {value} from test profile")
+
+            # Merge other test profile sections (motion_control, timing, etc.)
+            for section in [
+                "motion_control",
+                "timing",
+                "test_parameters",
+                "safety",
+                "execution",
+                "tolerances",
+                "pass_criteria",
+            ]:
+                if section in test_profile_config:
+                    combined_config[section] = test_profile_config[section]
+                    logger.debug(f"Added {section} from test profile")
+
+            logger.info("Test profile settings merged into configuration")
+
+        except Exception as e:
+            logger.error(f"Failed to merge test profile: {e}")
+
     def _ensure_config_files_exist(self) -> None:
         """Ensure configuration files exist, create from domain defaults if missing."""
         try:
@@ -142,12 +234,12 @@ class YamlContainerConfigurationLoader:
             logger.error(f"Failed to ensure configuration files exist: {e}")
             raise
 
-    def _ensure_config_from_defaults(self, target_path: str, config_type: str) -> None:
+    def _ensure_config_from_defaults(self, target_path: Path | str, config_type: str) -> None:
         """
         Create configuration file from domain defaults if it doesn't exist.
 
         Args:
-            target_path: Path where config file should be created
+            target_path: Path where config file should be created (Path object or string)
             config_type: Type of config ("application" or "hardware")
         """
         target_file = Path(target_path)
@@ -190,12 +282,12 @@ class YamlContainerConfigurationLoader:
             logger.error(f"Failed to create config from defaults: {e}")
             raise
 
-    def _load_yaml_file(self, file_path: str) -> Dict[str, Any]:
+    def _load_yaml_file(self, file_path: Path | str) -> Dict[str, Any]:
         """
         Load YAML configuration file.
 
         Args:
-            file_path: Path to YAML file
+            file_path: Path to YAML file (Path object or string)
 
         Returns:
             Dictionary containing loaded configuration

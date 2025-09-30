@@ -41,7 +41,7 @@ class EditorFactory:
             Editor widget or None if no suitable editor found
         """
         # Check for allowed values first (combo box)
-        if config_value.allowed_values and len(config_value.allowed_values) > 1:
+        if config_value.allowed_values and len(config_value.allowed_values) >= 1:
             return ComboEditorWidget(config_value, value_changed_callback, parent)
 
         # Type-specific editors
@@ -68,7 +68,7 @@ class EditorFactory:
         Returns:
             Editor type name
         """
-        if config_value.allowed_values and len(config_value.allowed_values) > 1:
+        if config_value.allowed_values and len(config_value.allowed_values) >= 1:
             return "combo"
 
         data_type = config_value.data_type.lower()

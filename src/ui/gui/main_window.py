@@ -8,7 +8,7 @@ Main application window with sidebar navigation and content area.
 from typing import Optional
 
 # Third-party imports
-from PySide6.QtCore import QThread, QTimer, Signal, Qt
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -139,6 +139,7 @@ class TestExecutorThread(QThread):
         """Run the selected test in background thread"""
         # Third-party imports
         import asyncio
+
         from loguru import logger
 
         try:
@@ -493,6 +494,7 @@ class RobotHomeThread(QThread):
         """Execute robot home operation in separate thread"""
         # Third-party imports
         import asyncio
+
         from loguru import logger
 
         self.started.emit()
@@ -540,6 +542,7 @@ class RobotHomeThread(QThread):
         """Execute the robot home operation asynchronously using task-based pattern like START TEST"""
         # Third-party imports
         import asyncio
+
         from loguru import logger
 
         self.progress.emit("Starting robot home operation...")
@@ -670,7 +673,9 @@ class MainWindow(QMainWindow):
         # Add content area to main layout with stretch factor to take remaining space
         content_widget = QWidget()
         content_widget.setLayout(content_layout)
-        main_layout.addWidget(content_widget, 1)  # Stretch factor 1: take all remaining vertical space
+        main_layout.addWidget(
+            content_widget, 1
+        )  # Stretch factor 1: take all remaining vertical space
 
         # Show maximized for industrial use
         self.showMaximized()
@@ -681,8 +686,12 @@ class MainWindow(QMainWindow):
             return  # Already initialized
 
         # Get main layout
-        main_layout: Optional[QLayout] = self.centralWidget().layout()
-        if main_layout is None:
+        layout = self.centralWidget().layout()
+        if layout is None:
+            return
+
+        # Ensure it's a QVBoxLayout (should be based on setup_basic_ui)
+        if not isinstance(layout, QVBoxLayout):
             return
 
         # Create header
@@ -691,7 +700,7 @@ class MainWindow(QMainWindow):
         self.header.notifications_requested.connect(self._on_header_notifications_clicked)
 
         # Insert header at the beginning
-        main_layout.insertWidget(0, self.header)
+        layout.insertWidget(0, self.header)
 
     def init_sidebar(self) -> None:
         """Initialize sidebar widget"""
@@ -719,9 +728,14 @@ class MainWindow(QMainWindow):
             logger.error("Could not find content widget for sidebar initialization")
             return
 
-        content_layout: Optional[QLayout] = content_widget.layout()
-        if content_layout is None:
+        layout = content_widget.layout()
+        if layout is None:
             logger.error("Content widget has no layout for sidebar initialization")
+            return
+
+        # Ensure it's a QHBoxLayout (should be based on setup_basic_ui)
+        if not isinstance(layout, QHBoxLayout):
+            logger.error("Content layout is not QHBoxLayout for sidebar initialization")
             return
 
         # Create sidebar
@@ -729,19 +743,23 @@ class MainWindow(QMainWindow):
         self.sidebar.page_changed.connect(self.change_page)
 
         # Insert sidebar at the beginning of content layout
-        content_layout.insertWidget(0, self.sidebar)
+        layout.insertWidget(0, self.sidebar)
 
         # Remove fixed margin - let stretch factors handle spacing automatically
-        self.content_stack.setContentsMargins(0, 0, 0, 0)
+        if self.content_stack is not None:
+            self.content_stack.setContentsMargins(0, 0, 0, 0)
 
-        # Set stretch factors: sidebar fixed, content takes remaining space
-        content_layout.setStretchFactor(self.sidebar, 0)  # Sidebar: fixed size
-        content_layout.setStretchFactor(self.content_stack, 1)  # Content: expand to fill
+            # Set stretch factors: sidebar fixed, content takes remaining space
+            layout.setStretchFactor(self.sidebar, 0)  # Sidebar: fixed size
+            layout.setStretchFactor(self.content_stack, 1)  # Content: expand to fill
 
     def init_dashboard_tab(self) -> None:
         """Initialize dashboard tab"""
         if "dashboard" in self.content_widgets:
             return  # Already initialized
+
+        if self.content_stack is None:
+            return
 
         self.dashboard_page = DashboardWidget(
             container=self.container,
@@ -754,6 +772,9 @@ class MainWindow(QMainWindow):
         """Initialize test control tab"""
         if "test_control" in self.content_widgets:
             return  # Already initialized
+
+        if self.content_stack is None:
+            return
 
         self.test_control_page = TestControlWidget(
             container=self.container,
@@ -777,6 +798,9 @@ class MainWindow(QMainWindow):
         if "hardware" in self.content_widgets:
             return  # Already initialized
 
+        if self.content_stack is None:
+            return
+
         self.hardware_page = HardwareWidget(
             container=self.container,
             state_manager=self.state_manager,
@@ -789,6 +813,9 @@ class MainWindow(QMainWindow):
         if "results" in self.content_widgets:
             return  # Already initialized
 
+        if self.content_stack is None:
+            return
+
         self.results_page = ResultsWidget(
             container=self.container,
             state_manager=self.state_manager,
@@ -796,10 +823,90 @@ class MainWindow(QMainWindow):
         self.content_stack.addWidget(self.results_page)
         self.content_widgets["results"] = self.results_page
 
+    def init_statistics_tab(self) -> None:
+        """Initialize all 6 statistics sub-pages with shared header"""
+        # Third-party imports
+        from loguru import logger
+
+        if "statistics_overview" in self.content_widgets:
+            logger.info("⚠️ Statistics sub-pages already initialized")
+            return  # Already initialized
+
+        if self.content_stack is None:
+            logger.error("Content stack is None, cannot initialize statistics tab")
+            return
+
+        try:
+            logger.info("🔧 Initializing 6 statistics sub-pages...")
+
+            # Import sub-pages
+            # Local application imports
+            from ui.gui.widgets.content.statistics.header_controls import (
+                StatisticsHeaderControls,
+            )
+            from ui.gui.widgets.content.statistics.pages import (
+                Analysis4DPage,
+                Charts2DPage,
+                ExportPage,
+                OverviewPage,
+                PerformancePage,
+                Visualizations3DPage,
+            )
+
+            # Create shared header controls (one instance for all sub-pages)
+            self.statistics_header = StatisticsHeaderControls(
+                container=self.container,
+                state_manager=self.state_manager,
+            )
+            logger.info("✅ Shared statistics header created")
+
+            # Get statistics service
+            statistics_service = self.container.eol_statistics_service()
+            logger.info("✅ Statistics service obtained")
+
+            # Define 6 sub-pages with their titles
+            sub_pages = {
+                "statistics_overview": (OverviewPage, "EOL Statistics - Overview"),
+                "statistics_2d": (Charts2DPage, "EOL Statistics - 2D Charts"),
+                "statistics_3d": (Visualizations3DPage, "EOL Statistics - 3D Visualizations"),
+                "statistics_4d": (Analysis4DPage, "EOL Statistics - 4D Analysis"),
+                "statistics_performance": (PerformancePage, "EOL Statistics - Performance"),
+                "statistics_export": (ExportPage, "EOL Statistics - Export"),
+            }
+
+            # Create all 6 sub-pages
+            for page_id, (PageClass, title) in sub_pages.items():
+                logger.info(f"  Creating {page_id}...")
+
+                # Create page instance with shared header
+                page = PageClass(
+                    header_controls=self.statistics_header,
+                    statistics_service=statistics_service,
+                )
+
+                # Add to content stack and pages dict
+                self.content_stack.addWidget(page)
+                self.pages[page_id] = page
+                self.content_widgets[page_id] = page
+
+                logger.info(f"  ✅ {page_id} created")
+
+            logger.info("✅ All 6 statistics sub-pages initialized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize statistics sub-pages: {e}")
+            # Standard library imports
+            import traceback
+
+            traceback.print_exc()
+
     def init_logs_tab(self) -> None:
         """Initialize logs tab"""
         if "logs" in self.content_widgets:
             return  # Already initialized
+
+        if self.content_stack is None:
+            return
 
         self.logs_page = LogsWidget(
             container=self.container,
@@ -813,6 +920,9 @@ class MainWindow(QMainWindow):
         if "about" in self.content_widgets:
             return  # Already initialized
 
+        if self.content_stack is None:
+            return
+
         self.about_page = AboutWidget(
             container=self.container,
             state_manager=self.state_manager,
@@ -824,6 +934,9 @@ class MainWindow(QMainWindow):
         """Initialize settings tab"""
         if "settings" in self.content_widgets:
             return  # Already initialized
+
+        if self.content_stack is None:
+            return
 
         self.settings_page = SettingsWidget(
             container=self.container,
@@ -839,19 +952,21 @@ class MainWindow(QMainWindow):
 
         # Map content_widgets to pages dictionary using proper attribute names
         for tab_name in self.content_widgets:
-            if tab_name == "dashboard" and hasattr(self, 'dashboard_page'):
+            if tab_name == "dashboard" and hasattr(self, "dashboard_page"):
                 self.pages["dashboard"] = self.dashboard_page
-            elif tab_name == "test_control" and hasattr(self, 'test_control_page'):
+            elif tab_name == "test_control" and hasattr(self, "test_control_page"):
                 self.pages["test_control"] = self.test_control_page
-            elif tab_name == "hardware" and hasattr(self, 'hardware_page'):
+            elif tab_name == "hardware" and hasattr(self, "hardware_page"):
                 self.pages["hardware"] = self.hardware_page
-            elif tab_name == "results" and hasattr(self, 'results_page'):
+            elif tab_name == "results" and hasattr(self, "results_page"):
                 self.pages["results"] = self.results_page
-            elif tab_name == "logs" and hasattr(self, 'logs_page'):
+            elif tab_name == "statistics" and hasattr(self, "statistics_page"):
+                self.pages["statistics"] = self.statistics_page
+            elif tab_name == "logs" and hasattr(self, "logs_page"):
                 self.pages["logs"] = self.logs_page
-            elif tab_name == "settings" and hasattr(self, 'settings_page'):
+            elif tab_name == "settings" and hasattr(self, "settings_page"):
                 self.pages["settings"] = self.settings_page
-            elif tab_name == "about" and hasattr(self, 'about_page'):
+            elif tab_name == "about" and hasattr(self, "about_page"):
                 self.pages["about"] = self.about_page
 
         # Setup status bar and update timer
@@ -924,7 +1039,9 @@ class MainWindow(QMainWindow):
         content_layout.setStretchFactor(self.content_stack, 1)  # Expandable: remaining space
 
         # Setup debug timer for post-render geometry analysis
+        # Third-party imports
         from PySide6.QtCore import QTimer
+
         self.debug_timer = QTimer(self)
         self.debug_timer.timeout.connect(self.debug_widget_geometry)
         self.debug_timer.setSingleShot(True)
@@ -933,7 +1050,9 @@ class MainWindow(QMainWindow):
         # Add content area to main layout with stretch factor to take remaining space
         content_widget = QWidget()
         content_widget.setLayout(content_layout)
-        main_layout.addWidget(content_widget, 1)  # Stretch factor 1: take all remaining vertical space
+        main_layout.addWidget(
+            content_widget, 1
+        )  # Stretch factor 1: take all remaining vertical space
 
         # Create and add content pages
         self.create_content_pages()
@@ -943,6 +1062,9 @@ class MainWindow(QMainWindow):
 
     def create_content_pages(self) -> None:
         """Create and add content pages to stack"""
+        if self.content_stack is None:
+            return
+
         # Dashboard page
         self.dashboard_page = DashboardWidget(
             container=self.container,
@@ -973,6 +1095,18 @@ class MainWindow(QMainWindow):
             state_manager=self.state_manager,
         )
         self.content_stack.addWidget(self.results_page)
+
+        # Statistics page - Note: StatisticsWidget doesn't exist as a single widget
+        # Statistics functionality is now split into multiple sub-pages (see init_statistics_tab)
+        # This placeholder is kept for compatibility but statistics pages are created separately
+        # Third-party imports
+        from loguru import logger
+        from PySide6.QtWidgets import QLabel
+
+        logger.info("ℹ️ Statistics pages handled separately via init_statistics_tab()")
+        placeholder = QLabel("Statistics - Use sidebar navigation to access statistics pages")
+        self.statistics_page = placeholder
+        self.content_stack.addWidget(placeholder)
 
         # Hardware page
         self.hardware_page = HardwareWidget(
@@ -1007,6 +1141,7 @@ class MainWindow(QMainWindow):
             "dashboard": self.dashboard_page,
             "test_control": self.test_control_page,
             "results": self.results_page,
+            "statistics": self.statistics_page,
             "hardware": self.hardware_page,
             "logs": self.logs_page,
             "about": self.about_page,
@@ -1068,15 +1203,47 @@ class MainWindow(QMainWindow):
 
     def change_page(self, page_id: str) -> None:
         """Change to a different content page"""
+        # Third-party imports
+        from loguru import logger
+
+        logger.info(f"📄 change_page called with page_id: {page_id}")
+
+        # Lazy load statistics sub-pages if needed
+        if page_id.startswith("statistics"):
+            if "statistics_overview" not in self.pages:
+                logger.info("⚙️ Lazy loading statistics sub-pages...")
+                self.init_statistics_tab()
+
+        # Standard lazy loading for other pages
+        elif page_id not in self.pages:
+            logger.info(f"⚙️ Lazy loading {page_id} page...")
+            # Other lazy loading logic here if needed
+
         if page_id in self.pages:
             page_widget = self.pages[page_id]
-            self.content_stack.setCurrentWidget(page_widget)
-            self.sidebar.set_current_page(page_id)
+            logger.info(f"✅ Found page widget: {type(page_widget).__name__}")
+
+            if self.content_stack is not None:
+                self.content_stack.setCurrentWidget(page_widget)
+
+            # Update sidebar
+            if self.sidebar is not None:
+                if page_id.startswith("statistics"):
+                    self.sidebar.set_statistics_submenu_visible(True)
+                else:
+                    self.sidebar.set_statistics_submenu_visible(False)
+                self.sidebar.set_current_page(page_id)
 
             # Auto-select serial number when navigating to test control
-            if page_id == "test_control" and self.test_control_page.serial_edit:
+            if (
+                page_id == "test_control"
+                and hasattr(self, "test_control_page")
+                and self.test_control_page.serial_edit
+            ):
                 self.test_control_page.serial_edit.selectAll()
                 self.test_control_page.serial_edit.setFocus()
+        else:
+            logger.error(f"❌ Page '{page_id}' not found in self.pages!")
 
     def update_status_bar(self) -> None:
         """Update status bar information"""
@@ -1099,47 +1266,59 @@ class MainWindow(QMainWindow):
     def debug_widget_geometry(self) -> None:
         """Debug method to log widget geometry information"""
         # Import logger locally to avoid import issues
+        # Third-party imports
         from loguru import logger
 
-        logger.info(f"🔍 === LAYOUT DEBUG INFO ===")
+        logger.info("🔍 === LAYOUT DEBUG INFO ===")
 
         # Main window info
         logger.info(f"📐 Main Window - Size: {self.width()}x{self.height()}px")
         logger.info(f"📐 Main Window - Geometry: {self.geometry()}")
 
         # Header info
-        if hasattr(self, 'header') and self.header:
+        if hasattr(self, "header") and self.header:
             logger.info(f"📋 Header - Size: {self.header.width()}x{self.header.height()}px")
             logger.info(f"📋 Header - Geometry: {self.header.geometry()}")
 
         # Sidebar detailed info
-        logger.info(f"📂 Sidebar - Size: {self.sidebar.width()}x{self.sidebar.height()}px")
-        logger.info(f"📂 Sidebar - Geometry: {self.sidebar.geometry()}")
-        logger.info(f"📂 Sidebar - Position: x={self.sidebar.x()}, y={self.sidebar.y()}")
-        logger.info(f"📂 Sidebar - Size Policy: {self.sidebar.sizePolicy().horizontalPolicy()}, {self.sidebar.sizePolicy().verticalPolicy()}")
+        if self.sidebar is not None:
+            logger.info(f"📂 Sidebar - Size: {self.sidebar.width()}x{self.sidebar.height()}px")
+            logger.info(f"📂 Sidebar - Geometry: {self.sidebar.geometry()}")
+            logger.info(f"📂 Sidebar - Position: x={self.sidebar.x()}, y={self.sidebar.y()}")
+            logger.info(
+                f"📂 Sidebar - Size Policy: {self.sidebar.sizePolicy().horizontalPolicy()}, {self.sidebar.sizePolicy().verticalPolicy()}"
+            )
 
-        # Navigation menu info
-        if hasattr(self.sidebar, 'navigation_menu') and self.sidebar.navigation_menu:
-            nav_menu = self.sidebar.navigation_menu
-            logger.info(f"🧭 Navigation Menu - Size: {nav_menu.width()}x{nav_menu.height()}px")
-            logger.info(f"🧭 Navigation Menu - Geometry: {nav_menu.geometry()}")
-            logger.info(f"🧭 Navigation Menu - Position: x={nav_menu.x()}, y={nav_menu.y()}")
+            # Navigation menu info
+            if hasattr(self.sidebar, "navigation_menu") and self.sidebar.navigation_menu:
+                nav_menu = self.sidebar.navigation_menu
+                logger.info(f"🧭 Navigation Menu - Size: {nav_menu.width()}x{nav_menu.height()}px")
+                logger.info(f"🧭 Navigation Menu - Geometry: {nav_menu.geometry()}")
+                logger.info(f"🧭 Navigation Menu - Position: x={nav_menu.x()}, y={nav_menu.y()}")
 
         # Content stack detailed info
-        logger.info(f"📄 Content Stack - Size: {self.content_stack.width()}x{self.content_stack.height()}px")
-        logger.info(f"📄 Content Stack - Geometry: {self.content_stack.geometry()}")
-        logger.info(f"📄 Content Stack - Position: x={self.content_stack.x()}, y={self.content_stack.y()}")
-        logger.info(f"📄 Content Stack - Margins: {self.content_stack.contentsMargins()}")
+        if self.content_stack is not None:
+            logger.info(
+                f"📄 Content Stack - Size: {self.content_stack.width()}x{self.content_stack.height()}px"
+            )
+            logger.info(f"📄 Content Stack - Geometry: {self.content_stack.geometry()}")
+            logger.info(
+                f"📄 Content Stack - Position: x={self.content_stack.x()}, y={self.content_stack.y()}"
+            )
+            logger.info(f"📄 Content Stack - Margins: {self.content_stack.contentsMargins()}")
 
         # Layout spacing info
         content_widget = self.centralWidget()
-        if content_widget and hasattr(content_widget, 'layout') and content_widget.layout():
+        if content_widget and hasattr(content_widget, "layout") and content_widget.layout():
             layout = content_widget.layout()
             logger.info(f"🔲 Content Layout - Spacing: {layout.spacing()}px")
             logger.info(f"🔲 Content Layout - Margins: {layout.contentsMargins()}")
 
-            # Stretch factors
-            if hasattr(layout, 'stretch'):
+            # Stretch factors (only for QBoxLayout types)
+            # Third-party imports
+            from PySide6.QtWidgets import QBoxLayout
+
+            if isinstance(layout, QBoxLayout):
                 for i in range(layout.count()):
                     item = layout.itemAt(i)
                     if item and item.widget():
@@ -1147,26 +1326,36 @@ class MainWindow(QMainWindow):
                         widget_name = item.widget().__class__.__name__
                         logger.info(f"🔲 Layout Item {i} ({widget_name}) - Stretch: {stretch}")
 
-        logger.info(f"🔍 === END DEBUG INFO ===")
+        logger.info("🔍 === END DEBUG INFO ===")
 
         # Also trigger navigation menu button debug
-        if hasattr(self.sidebar, 'navigation_menu') and self.sidebar.navigation_menu:
+        if (
+            self.sidebar is not None
+            and hasattr(self.sidebar, "navigation_menu")
+            and self.sidebar.navigation_menu
+        ):
             self._debug_navigation_buttons()
 
     def _debug_navigation_buttons(self) -> None:
         """Debug navigation button positions and sizes"""
         # Import logger locally to avoid import issues
+        # Third-party imports
         from loguru import logger
 
+        if self.sidebar is None:
+            return
+
         nav_menu = self.sidebar.navigation_menu
-        if hasattr(nav_menu, 'nav_buttons') and nav_menu.nav_buttons:
-            logger.info(f"🔘 === NAVIGATION BUTTONS DEBUG ===")
+        if hasattr(nav_menu, "nav_buttons") and nav_menu.nav_buttons:
+            logger.info("🔘 === NAVIGATION BUTTONS DEBUG ===")
             for i, button in enumerate(nav_menu.nav_buttons.buttons()):
                 if button:
-                    logger.info(f"🔘 Button {i} ({button.text()}) - Size: {button.width()}x{button.height()}px")
+                    logger.info(
+                        f"🔘 Button {i} ({button.text()}) - Size: {button.width()}x{button.height()}px"
+                    )
                     logger.info(f"🔘 Button {i} - Geometry: {button.geometry()}")
                     logger.info(f"🔘 Button {i} - Visible: {button.isVisible()}")
-            logger.info(f"🔘 === END NAVIGATION BUTTONS DEBUG ===")
+            logger.info("🔘 === END NAVIGATION BUTTONS DEBUG ===")
 
     # Header Signal Handlers
     # ============================================================================
@@ -1237,6 +1426,21 @@ class MainWindow(QMainWindow):
 
             logger.info(f"Starting {test_sequence} for serial number: {serial_number}")
 
+            # Reload configuration before starting test to pick up any changes from Settings
+            if hasattr(self.container, "reload_configuration"):
+                logger.info("🔄 Reloading configuration before test start...")
+                reload_success = self.container.reload_configuration()
+                if reload_success:
+                    logger.info("✅ Configuration reloaded successfully")
+                    self.state_manager.add_log_message(
+                        "INFO", "CONFIG", "Configuration reloaded from files"
+                    )
+                else:
+                    logger.warning("⚠️ Configuration reload failed, using cached configuration")
+                    self.state_manager.add_log_message(
+                        "WARNING", "CONFIG", "Configuration reload failed, using cached values"
+                    )
+
             # Clear previous test results from Results table and chart
             if self.results_page.results_table:
                 self.results_page.results_table.clear_results()
@@ -1260,7 +1464,8 @@ class MainWindow(QMainWindow):
             )
 
             # Update header status
-            self.header.set_system_status("Testing", "testing")
+            if self.header is not None:
+                self.header.set_system_status("Testing", "testing")
 
             # Update test control status
             self.test_control_page.update_test_status(
@@ -1304,7 +1509,8 @@ class MainWindow(QMainWindow):
         self.state_manager.set_system_status("Ready")
 
         # Update header status
-        self.header.set_system_status("Ready", "ready")
+        if self.header is not None:
+            self.header.set_system_status("Ready", "ready")
 
     def _on_test_paused(self) -> None:
         """Handle test pause request"""
@@ -1374,8 +1580,8 @@ class MainWindow(QMainWindow):
     def _on_emergency_stop_requested(self) -> None:
         """Handle emergency stop request"""
         # Third-party imports
-        from PySide6.QtCore import QTimer
         from loguru import logger
+        from PySide6.QtCore import QTimer
 
         logger.critical("EMERGENCY STOP REQUESTED")
 
@@ -1390,7 +1596,8 @@ class MainWindow(QMainWindow):
             )
 
             # Update header status
-            self.header.set_system_status("EMERGENCY STOP", "emergency")
+            if self.header is not None:
+                self.header.set_system_status("EMERGENCY STOP", "emergency")
 
             # Set emergency stop flag and disable START TEST button
             self.emergency_stop_active = True
@@ -1478,8 +1685,9 @@ class MainWindow(QMainWindow):
             self.test_control_page.update_test_status("Robot Home Completed", "status_success")
 
             # Update header to show "Robot Homed" status
-            self.header.set_system_status("Robot Homed", "homed")
-            logger.info("Header status updated to 'Robot Homed'")
+            if self.header is not None:
+                self.header.set_system_status("Robot Homed", "homed")
+                logger.info("Header status updated to 'Robot Homed'")
 
             # Clear emergency stop state and re-enable START TEST button
             self.emergency_stop_active = False
@@ -1506,9 +1714,10 @@ class MainWindow(QMainWindow):
     def _execute_emergency_stop_async(self) -> None:
         """Execute emergency stop asynchronously using QTimer"""
         # Third-party imports
-        from PySide6.QtCore import QTimer
         import asyncio
+
         from loguru import logger
+        from PySide6.QtCore import QTimer
 
         try:
             # Create a single-shot timer to execute the async function
@@ -1647,7 +1856,8 @@ class MainWindow(QMainWindow):
         )
 
         # Update header progress
-        self.header.show_test_progress(progress_percent)
+        if self.header is not None:
+            self.header.show_test_progress(progress_percent)
 
         progress = TestProgress(
             current_test=(
@@ -1732,11 +1942,12 @@ class MainWindow(QMainWindow):
         self.state_manager.set_system_status("Ready")
 
         # Update header and hide progress
-        if success:
-            self.header.set_system_status("Test Complete", "ready")
-        else:
-            self.header.set_system_status("Test Failed", "error")
-        self.header.hide_test_progress()
+        if self.header is not None:
+            if success:
+                self.header.set_system_status("Test Complete", "ready")
+            else:
+                self.header.set_system_status("Test Failed", "error")
+            self.header.hide_test_progress()
 
         # Update test control status instead of showing popup
         if success:

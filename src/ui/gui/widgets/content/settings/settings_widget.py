@@ -120,7 +120,7 @@ class SettingsWidget(QWidget):
         splitter.setStretchFactor(1, 2)  # Editor takes 2/3
         splitter.setSizes([300, 600])
 
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, stretch=1)
 
     def setup_property_editor(self) -> None:
         """Setup property editor panel"""
@@ -156,11 +156,13 @@ class SettingsWidget(QWidget):
             border-top: 1px solid {Colors.BORDER};
         """
         )
-        layout.addWidget(self.status_label)
+        layout.addWidget(self.status_label, stretch=0)
 
     def load_configurations(self) -> None:
         """Load all configuration files"""
         from loguru import logger
+        from pathlib import Path
+        import asyncio
 
         logger.info("Loading configuration files...")
 
@@ -171,15 +173,33 @@ class SettingsWidget(QWidget):
                 base_paths = {
                     "Application": config_service.application_config_path,
                     "Hardware": config_service.hardware_config_path,
-                    "Profile Preferences": config_service.profile_preference_path,
-                    "Test Profiles": config_service.test_profiles_dir,
                     "Heating/Cooling": config_service.heating_cooling_config_path,
                     "Profile": config_service.profile_config_path,
                     "DUT Defaults": config_service.dut_defaults_config_path,
                 }
+
+                # Get active profile using existing ConfigurationService method
+                try:
+                    active_profile = asyncio.run(config_service.get_active_profile_name())
+                    # Add active test profile to paths
+                    test_profile_path = Path(config_service.test_profiles_dir) / f"{active_profile}.yaml"
+                    base_paths[f"Test Profile ({active_profile})"] = str(test_profile_path)
+                    logger.info(f"Loading active test profile: {active_profile}")
+                except Exception as e:
+                    logger.warning(f"Failed to get active profile: {e}")
             else:
                 # Fallback to default paths if no container available
                 base_paths = ConfigPaths.get_default_paths()
+
+            # Ensure missing configuration files are created with defaults
+            if self.container:
+                try:
+                    # Auto-create missing files by loading through ConfigurationService
+                    # This will trigger automatic creation if files don't exist
+                    asyncio.run(config_service.load_heating_cooling_config())
+                    logger.info("Ensured heating/cooling configuration exists")
+                except Exception as e:
+                    logger.warning(f"Failed to ensure heating/cooling config: {e}")
 
             # Resolve to absolute paths
             file_paths = FileOperations.resolve_config_paths(base_paths)

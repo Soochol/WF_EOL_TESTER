@@ -446,8 +446,8 @@ metadata:
             )
 
         try:
-            # Extract profile name if present
-            profile_name = dut_defaults_data.get("active_profile", "default")
+            # Use active profile from profile.yaml, not from dut_defaults_data
+            profile_name = await self.get_active_profile_name()
 
             # Save using the configuration repository
             await self._configuration.save_dut_defaults(dut_defaults_data, profile_name)

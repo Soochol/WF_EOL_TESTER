@@ -124,7 +124,7 @@ class EnhancedInputIntegrator:
             try:
                 defaults = await self.configuration_service.load_dut_defaults()
                 self.console.print(
-                    f"[dim][green]✓ Loaded defaults: DUT ID: {defaults.get('dut_id')}, Model: {defaults.get('model')}, Operator: {defaults.get('operator_id')}[/green][/dim]"
+                    f"[dim][green]✓ Loaded defaults: DUT ID: {defaults.get('dut_id')}, Model: {defaults.get('model_number')}[/green][/dim]"
                 )
             except Exception as e:
                 self.console.print(f"[dim][red]✗ Could not load defaults: {e}[/red][/dim]")
@@ -134,7 +134,7 @@ class EnhancedInputIntegrator:
             return None
 
         # Validate required defaults are present
-        required_fields = ["dut_id", "model", "operator_id"]
+        required_fields = ["dut_id", "model_number"]
         for field in required_fields:
             if not defaults.get(field):
                 self.console.print(f"[red]Error: Missing required default value for {field}[/red]")
@@ -142,19 +142,23 @@ class EnhancedInputIntegrator:
 
         # Use defaults automatically
         dut_id = defaults["dut_id"]
-        model = defaults["model"]
-        operator = defaults["operator_id"]
+        model_number = defaults["model_number"]
 
-        # Only prompt for Serial Number
-        serial = input(f"Serial Number [{dut_id}]: ").strip()
+        # Prompt for operator ID (removed from dut_defaults)
+        operator = input("Operator ID [OPERATOR]: ").strip()
+        if not operator:
+            operator = "OPERATOR"
+
+        # Prompt for Serial Number
+        serial = input(f"Serial Number [{defaults.get('serial_number', dut_id)}]: ").strip()
         if not serial:
-            serial = dut_id  # Default to DUT ID
+            serial = defaults.get('serial_number', dut_id)
 
         self.console.print(
-            f"[dim]Using: DUT ID={dut_id}, Model={model}, Operator={operator}, Serial={serial}[/dim]"
+            f"[dim]Using: DUT ID={dut_id}, Model={model_number}, Operator={operator}, Serial={serial}[/dim]"
         )
 
-        return {"id": dut_id, "model": model, "serial": serial, "operator": operator}
+        return {"id": dut_id, "model": model_number, "serial": serial, "operator": operator}
 
     async def get_slash_command(self) -> Optional[str]:
         """Get slash command using simple input (enhanced functionality removed)"""

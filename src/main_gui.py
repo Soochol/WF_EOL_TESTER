@@ -536,6 +536,9 @@ class EOLTesterGUIApplication:
         logger.info("🔧 Creating main window structure...")
         self.main_window = MainWindow(container=self.container, state_manager=self.state_manager, lazy_init=True)
 
+        # Hide main window until splash is complete
+        self.main_window.hide()
+
         # Process events to keep GUI responsive
         if self.app:
             self.app.processEvents()
@@ -709,10 +712,10 @@ class EOLTesterGUIApplication:
             logger.error("Main window not available")
 
         # Also trigger immediate debug for quick analysis
-        if self.main_window:
+        if self.main_window and hasattr(self.main_window, 'debug_widget_geometry'):
             # Use QTimer.singleShot for immediate execution after event loop processes
             from PySide6.QtCore import QTimer
-            QTimer.singleShot(100, lambda: self.main_window.debug_widget_geometry() if hasattr(self.main_window, 'debug_widget_geometry') else None)
+            QTimer.singleShot(100, self.main_window.debug_widget_geometry)
 
     def _start_debug_timer(self) -> None:
         """Start debug timer to log widget geometry after layout is settled"""
