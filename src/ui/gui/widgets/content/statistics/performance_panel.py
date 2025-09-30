@@ -40,19 +40,21 @@ class PerformancePanel(QWidget):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Title
-        title_label = QLabel("Test Performance Analysis")
+        # Modern title
+        title_label = QLabel("⚡ Test Performance Analysis")
         title_font = QFont()
-        title_font.setPointSize(12)
+        title_font.setPointSize(14)
         title_font.setBold(True)
         title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #ffffff; margin-bottom: 5px;")
+        title_label.setStyleSheet("""
+            color: #ffffff;
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid #2196F3;
+            border-radius: 8px;
+        """)
         main_layout.addWidget(title_label)
-
-        # Description
-        desc_label = QLabel("Duration metrics and performance comparison")
-        desc_label.setStyleSheet("color: #aaaaaa; font-size: 10pt;")
-        main_layout.addWidget(desc_label)
 
         # Grid layout for two tables
         tables_layout = QGridLayout()
@@ -71,7 +73,7 @@ class PerformancePanel(QWidget):
     def create_fastest_group(self) -> QGroupBox:
         """Create fastest tests table group."""
         group = QGroupBox("⚡ Top 5 Fastest Tests")
-        group.setStyleSheet(self._get_group_style("#10b981"))
+        group.setStyleSheet(self._get_group_style("#00D9A5"))
 
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
@@ -97,7 +99,7 @@ class PerformancePanel(QWidget):
     def create_slowest_group(self) -> QGroupBox:
         """Create slowest tests table group."""
         group = QGroupBox("🐌 Top 5 Slowest Tests")
-        group.setStyleSheet(self._get_group_style("#ef4444"))
+        group.setStyleSheet(self._get_group_style("#F44336"))
 
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
@@ -124,20 +126,24 @@ class PerformancePanel(QWidget):
         """Get group box styling with custom border color."""
         return f"""
             QGroupBox {{
-                font-weight: bold;
-                font-size: 11pt;
+                font-weight: 600;
+                font-size: 13px;
                 color: #ffffff;
-                border: 2px solid {border_color};
-                border-radius: 6px;
-                margin-top: 8px;
-                padding-top: 5px;
-                background-color: #2d2d2d;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(45, 45, 45, 0.95),
+                    stop:1 rgba(35, 35, 35, 0.95));
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-left: 4px solid {border_color};
+                border-radius: 12px;
+                margin-top: 12px;
+                padding: 15px;
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                background-color: #1e1e1e;
+                left: 12px;
+                padding: 0 10px;
+                background-color: transparent;
+                color: {border_color};
             }}
         """
 
@@ -145,24 +151,32 @@ class PerformancePanel(QWidget):
         """Get table styling."""
         return """
             QTableWidget {
-                background-color: #2d2d2d;
+                background-color: transparent;
                 color: #ffffff;
-                border: 1px solid #404040;
-                border-radius: 4px;
-                gridline-color: #404040;
+                border: none;
+                border-radius: 8px;
+                gridline-color: rgba(255, 255, 255, 0.05);
+                font-size: 13px;
             }
             QTableWidget::item {
-                padding: 6px;
+                padding: 10px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
             QTableWidget::item:selected {
-                background-color: #0078d4;
+                background-color: rgba(33, 150, 243, 0.3);
+                color: #ffffff;
+            }
+            QTableWidget::item:hover {
+                background-color: rgba(255, 255, 255, 0.05);
             }
             QHeaderView::section {
-                background-color: #1e1e1e;
+                background-color: rgba(33, 150, 243, 0.2);
                 color: #ffffff;
-                padding: 6px;
-                border: 1px solid #404040;
-                font-weight: bold;
+                padding: 10px;
+                border: none;
+                border-bottom: 2px solid #2196F3;
+                font-weight: 600;
+                font-size: 12px;
             }
         """
 

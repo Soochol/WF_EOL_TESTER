@@ -51,15 +51,32 @@ class ResultsWidget(QWidget):
         self.setup_ui()
 
     def setup_ui(self) -> None:
-        """Setup the simplified results UI."""
+        """Setup the modern results UI."""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(12)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Apply dark background
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #1e1e1e;
+            }
+        """)
 
         # Create flexible splitter for table and chart
         self.main_splitter = QSplitter(Qt.Orientation.Vertical)
         self.main_splitter.setChildrenCollapsible(False)
-        self.main_splitter.setHandleWidth(4)
+        self.main_splitter.setHandleWidth(8)
+        self.main_splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+                margin: 4px 0;
+            }
+            QSplitter::handle:hover {
+                background-color: rgba(33, 150, 243, 0.3);
+            }
+        """)
 
         # Results table
         self.results_table = ResultsTableWidget(
@@ -75,18 +92,7 @@ class ResultsWidget(QWidget):
         )
         self.main_splitter.addWidget(self.temp_force_chart)
 
-        # Set optimized splitter proportions (65% table, 35% chart)
-        self.main_splitter.setSizes([650, 350])
+        # Set optimized splitter proportions (60% table, 40% chart)
+        self.main_splitter.setSizes([600, 400])
 
         main_layout.addWidget(self.main_splitter)
-
-        # Apply styling
-        self.apply_styling()
-
-    def apply_styling(self) -> None:
-        """Apply styling to the widget."""
-        widget_style = get_results_widget_style()
-        splitter_style = get_splitter_style()
-
-        combined_style = widget_style + splitter_style
-        self.setStyleSheet(combined_style)

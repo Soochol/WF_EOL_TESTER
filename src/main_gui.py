@@ -7,16 +7,18 @@ Integrates with existing business logic via ApplicationContainer.
 """
 
 # Standard library imports
-from pathlib import Path
-import sys
-import time
-from typing import Optional
-import warnings
-
+# Standard library imports
+# Standard library imports
+# Standard library imports
 # Third-party imports
 import asyncio
-from loguru import logger
+import sys
+import time
+import warnings
+from pathlib import Path
+from typing import Optional
 
+from loguru import logger
 
 # Suppress NumPy MINGW-W64 warnings on Windows before any NumPy imports
 # These warnings are caused by experimental NumPy builds and are non-critical
@@ -280,12 +282,16 @@ except ImportError as e:
     sys.exit(1)
 
 # Local application imports
+# pylint: disable=wrong-import-position  # Must import after PySide6 check
 from application.containers.simple_reloadable_container import SimpleReloadableContainer
 from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.styling import ThemeManager
 from ui.gui.utils.ui_scaling import setup_ui_scaling
-from ui.gui.widgets.splash.splash_screen import LoadingSteps, WFEOLSplashScreen
+from ui.gui.widgets.splash.modern_splash_screen import ModernSplashScreen
+from ui.gui.widgets.splash.splash_screen import LoadingSteps
+
+# pylint: enable=wrong-import-position
 
 
 # Application constants
@@ -323,7 +329,7 @@ class EOLTesterGUIApplication:
         self.container: Optional[SimpleReloadableContainer] = None
         self.state_manager: Optional[GUIStateManager] = None
         self.asyncio_timer: Optional[QTimer] = None
-        self.splash_screen: Optional[WFEOLSplashScreen] = None
+        self.splash_screen: Optional[ModernSplashScreen] = None
 
     def setup_ui_scaling(self) -> None:
         """Setup UI scaling before creating QApplication"""
@@ -396,7 +402,7 @@ class EOLTesterGUIApplication:
         if not self.app:
             raise RuntimeError("QApplication must be initialized before splash screen")
 
-        self.splash_screen = WFEOLSplashScreen()
+        self.splash_screen = ModernSplashScreen()
         self.splash_screen.show_with_animation()
 
         # Process events to ensure splash screen is visible
@@ -509,6 +515,7 @@ class EOLTesterGUIApplication:
 
         # Verify the container registration was successful by creating a new facade
         test_facade = self.container.hardware_service_facade()
+        # pylint: disable=protected-access  # Intentional access for verification
         if (
             hasattr(test_facade, "_gui_state_manager")
             and test_facade._gui_state_manager is not None
@@ -525,6 +532,7 @@ class EOLTesterGUIApplication:
         else:
             logger.error("❌ Failed to inject GUI State Manager through container")
             raise RuntimeError("Container GUI State Manager injection failed")
+        # pylint: enable=protected-access
 
     def create_main_window_with_progress(self) -> None:
         """Create and configure main application window with progressive tab loading"""
@@ -534,7 +542,9 @@ class EOLTesterGUIApplication:
         # Step 1: Create basic main window structure
         self.update_splash_progress(9)  # Creating main window...
         logger.info("🔧 Creating main window structure...")
-        self.main_window = MainWindow(container=self.container, state_manager=self.state_manager, lazy_init=True)
+        self.main_window = MainWindow(
+            container=self.container, state_manager=self.state_manager, lazy_init=True
+        )
 
         # Hide main window until splash is complete
         self.main_window.hide()
@@ -681,7 +691,7 @@ class EOLTesterGUIApplication:
 
                 # Small delay to show "Ready!" message
                 QTimer.singleShot(
-                    AppConstants.SPLASH_READY_DELAY, lambda: self._finish_splash_and_show_main()
+                    AppConstants.SPLASH_READY_DELAY, self._finish_splash_and_show_main
                 )
 
                 # Run application event loop
@@ -712,14 +722,13 @@ class EOLTesterGUIApplication:
             logger.error("Main window not available")
 
         # Also trigger immediate debug for quick analysis
-        if self.main_window and hasattr(self.main_window, 'debug_widget_geometry'):
+        if self.main_window and hasattr(self.main_window, "debug_widget_geometry"):
             # Use QTimer.singleShot for immediate execution after event loop processes
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(100, self.main_window.debug_widget_geometry)
 
     def _start_debug_timer(self) -> None:
         """Start debug timer to log widget geometry after layout is settled"""
-        if self.main_window and hasattr(self.main_window, 'debug_timer'):
+        if self.main_window and hasattr(self.main_window, "debug_timer"):
             # Start timer to capture geometry 2 seconds after window is shown
             self.main_window.debug_timer.start(2000)
             logger.info("🔍 Debug timer started - geometry will be logged in 2 seconds")

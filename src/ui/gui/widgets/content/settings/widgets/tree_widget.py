@@ -140,11 +140,19 @@ class SettingsTreeWidget(QTreeWidget):
                 )
                 self.config_values[item_key] = config_value
 
-                # Set brighter background color for setting items (leaf nodes)
+                # Set modern glassmorphism background for setting items (leaf nodes)
                 setting_item.setBackground(0, QBrush(QColor(Colors.TREE_SETTING_ITEM_BACKGROUND)))
 
-                # Add tooltip to indicate this is an editable setting
-                setting_item.setToolTip(0, "Click to edit this setting")
+                # Add modern tooltip
+                setting_item.setToolTip(0, "✏️ Click to edit this setting")
+
+                # Set text color based on value type for better visual distinction
+                if isinstance(value, bool):
+                    # Green for True, Red for False
+                    setting_item.setForeground(0, QBrush(QColor("#00D9A5" if value else "#F44336")))
+                elif isinstance(value, (int, float)):
+                    # Blue for numbers
+                    setting_item.setForeground(0, QBrush(QColor("#2196F3")))
 
                 # Set display text based on type
                 self._set_item_display_text(setting_item, key, value)

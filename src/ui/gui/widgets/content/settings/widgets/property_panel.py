@@ -39,22 +39,32 @@ class PropertyEditorWidget(QWidget):
         # Header with key name and type
         header_layout = QHBoxLayout()
 
-        key_label = QLabel(self.config_value.key)
+        key_label = QLabel(f"⚙️ {self.config_value.key}")
         key_label.setStyleSheet(
             f"""
-            font-weight: bold;
-            font-size: 14px;
+            font-weight: 600;
+            font-size: 15px;
             color: {Colors.TEXT_PRIMARY};
             border: none;
             background-color: transparent;
+            padding: 8px 0;
         """
         )
         header_layout.addWidget(key_label)
 
         header_layout.addStretch()
 
-        type_label = QLabel(f"({self.config_value.data_type})")
-        type_label.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 11px; border: none; background-color: transparent;")
+        # Modern type badge
+        type_label = QLabel(f"  {self.config_value.data_type}  ")
+        type_label.setStyleSheet(f"""
+            color: {Colors.TEXT_MUTED};
+            background-color: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 10px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 500;
+        """)
         header_layout.addWidget(type_label)
 
         layout.addLayout(header_layout)
@@ -121,19 +131,43 @@ class PropertyEditorWidget(QWidget):
         if is_valid:
             self.validation_label.setText("✓ Valid")
             self.validation_label.setStyleSheet(
-                f"color: {Colors.SUCCESS}; font-size: 11px; margin-top: 5px; border: none; background-color: transparent;"
+                f"""
+                color: {Colors.SUCCESS};
+                background-color: rgba(0, 217, 165, 0.1);
+                border-left: 3px solid {Colors.SUCCESS};
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 500;
+                margin-top: 8px;
+                """
             )
         else:
             self.validation_label.setText(f"✗ {error_msg}")
             self.validation_label.setStyleSheet(
-                f"color: {Colors.ERROR}; font-size: 11px; margin-top: 5px; border: none; background-color: transparent;"
+                f"""
+                color: {Colors.ERROR};
+                background-color: rgba(244, 67, 54, 0.1);
+                border-left: 3px solid {Colors.ERROR};
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 500;
+                margin-top: 8px;
+                """
             )
 
-        # Update editor widget styling based on validation
+        # Update editor widget styling based on validation - modern error highlight
         if self.editor_widget:
             if is_valid:
+                # Reset to default style
                 self.editor_widget.setStyleSheet("")
             else:
+                # Modern error styling
                 self.editor_widget.setStyleSheet(
-                    f"border: 1px solid {Colors.ERROR}; background-color: #4d2d2d;"
+                    f"""
+                    border: 2px solid {Colors.ERROR};
+                    background-color: rgba(244, 67, 54, 0.05);
+                    border-radius: 8px;
+                    """
                 )

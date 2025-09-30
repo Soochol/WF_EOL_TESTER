@@ -71,12 +71,28 @@ class BaseStatisticsPage(QWidget):
         scroll_area.setWidget(self.content_widget)
         main_layout.addWidget(scroll_area)
 
-        # Apply styling
+        # Apply modern styling with Material Design 3
         self.setStyleSheet(
             """
             QScrollArea {
                 border: none;
                 background-color: #1e1e1e;
+            }
+            QScrollBar:vertical {
+                background-color: transparent;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: rgba(255, 255, 255, 0.3);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
             QWidget {
                 background-color: #1e1e1e;

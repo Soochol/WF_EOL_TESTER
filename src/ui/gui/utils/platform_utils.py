@@ -78,7 +78,7 @@ def get_default_scale_factor(platform_type: PlatformType) -> float:
     """
     scale_factors = {
         "WSL": 1.2,  # 30% larger for WSL
-        "Windows": 0.8,  # Smaller size for Windows
+        "Windows": 1.0,  # Default size for Windows
         "Linux": 1.2,  # Slightly larger for Linux
     }
 

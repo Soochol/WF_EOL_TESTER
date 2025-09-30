@@ -5,23 +5,23 @@ Professional header bar for the WF EOL Tester GUI application.
 Contains branding, status information, and control buttons.
 """
 
-from datetime import datetime
+# Standard library imports
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont, QPixmap
+# Third-party imports
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QLabel,
-    QPushButton,
     QFrame,
-    QSizePolicy,
+    QHBoxLayout,
+    QLabel,
     QProgressBar,
-    QSpacerItem,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 
@@ -37,12 +37,14 @@ class HeaderSectionWidget(QWidget):
 
     def setup_base_style(self) -> None:
         """Setup base styling for header sections"""
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             HeaderSectionWidget {
                 background-color: transparent;
                 border: none;
             }
-        """)
+        """
+        )
 
 
 class BrandingSection(HeaderSectionWidget):
@@ -67,21 +69,25 @@ class BrandingSection(HeaderSectionWidget):
 
         # Product name
         self.product_label = QLabel("WF EOL Tester")
-        self.product_label.setStyleSheet("""
+        self.product_label.setStyleSheet(
+            """
             font-size: 16px;
             font-weight: bold;
             color: #ffffff;
             margin: 0px;
-        """)
+        """
+        )
         info_layout.addWidget(self.product_label)
 
         # Version and company
         self.version_label = QLabel("v2.0.0 • Withforce")
-        self.version_label.setStyleSheet("""
+        self.version_label.setStyleSheet(
+            """
             font-size: 11px;
             color: #cccccc;
             margin: 0px;
-        """)
+        """
+        )
         info_layout.addWidget(self.version_label)
 
         layout.addLayout(info_layout)
@@ -117,12 +123,14 @@ class StatusSection(HeaderSectionWidget):
         status_layout.addWidget(self.status_icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.status_label = QLabel(self.system_status)
-        self.status_label.setStyleSheet(f"""
+        self.status_label.setStyleSheet(
+            f"""
             font-size: 14px;
             font-weight: bold;
             color: {self.status_color};
             text-align: center;
-        """)
+        """
+        )
         status_layout.addWidget(self.status_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout.addLayout(status_layout)
@@ -131,7 +139,8 @@ class StatusSection(HeaderSectionWidget):
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedSize(100, 6)
         self.progress_bar.setVisible(False)
-        self.progress_bar.setStyleSheet("""
+        self.progress_bar.setStyleSheet(
+            """
             QProgressBar {
                 border: 1px solid #404040;
                 border-radius: 3px;
@@ -142,7 +151,8 @@ class StatusSection(HeaderSectionWidget):
                 background-color: #0078d4;
                 border-radius: 2px;
             }
-        """)
+        """
+        )
         layout.addWidget(self.progress_bar, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout.addStretch()
@@ -156,18 +166,19 @@ class StatusSection(HeaderSectionWidget):
         separator.setFixedWidth(1)
         return separator
 
-
     def set_system_status(self, status: str, color: str = "#00ff00", icon: str = "🟢") -> None:
         """Set the system status display"""
         self.system_status = status
         self.status_color = color
         self.status_label.setText(status)
-        self.status_label.setStyleSheet(f"""
+        self.status_label.setStyleSheet(
+            f"""
             font-size: 14px;
             font-weight: bold;
             color: {color};
             text-align: center;
-        """)
+        """
+        )
         self.status_icon_label.setText(icon)
 
     def show_progress(self, value: int = 0) -> None:
@@ -182,11 +193,10 @@ class StatusSection(HeaderSectionWidget):
 
 class ControlSection(HeaderSectionWidget):
     """
-    Right section of header containing user info, settings, and emergency stop
+    Right section of header containing user info and settings
     """
 
     # Signals
-    emergency_stop_clicked = Signal()
     notifications_clicked = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -211,11 +221,13 @@ class ControlSection(HeaderSectionWidget):
         user_layout.addWidget(user_icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.user_label = QLabel(self.user_name)
-        self.user_label.setStyleSheet("""
+        self.user_label.setStyleSheet(
+            """
             font-size: 12px;
             color: #cccccc;
             text-align: center;
-        """)
+        """
+        )
         user_layout.addWidget(self.user_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout.addLayout(user_layout)
@@ -227,14 +239,6 @@ class ControlSection(HeaderSectionWidget):
         self.notifications_btn.setToolTip("Notifications")
         self.notifications_btn.clicked.connect(self.notifications_clicked.emit)
         layout.addWidget(self.notifications_btn)
-
-        # Emergency stop button
-        self.emergency_btn = QPushButton("🛑")
-        self.emergency_btn.setFixedSize(45, 35)
-        self.emergency_btn.setStyleSheet(self.get_emergency_button_style())
-        self.emergency_btn.setToolTip("Emergency Stop")
-        self.emergency_btn.clicked.connect(self.emergency_stop_clicked.emit)
-        layout.addWidget(self.emergency_btn)
 
     def get_icon_button_style(self) -> str:
         """Get styling for icon buttons"""
@@ -256,27 +260,6 @@ class ControlSection(HeaderSectionWidget):
             }
         """
 
-    def get_emergency_button_style(self) -> str:
-        """Get styling for emergency stop button"""
-        return """
-            QPushButton {
-                background-color: #cc0000;
-                color: #ffffff;
-                border: 2px solid #990000;
-                border-radius: 6px;
-                font-size: 18px;
-                font-weight: bold;
-                padding: 2px;
-            }
-            QPushButton:hover {
-                background-color: #ff0000;
-                border-color: #cc0000;
-            }
-            QPushButton:pressed {
-                background-color: #990000;
-            }
-        """
-
     def set_user_name(self, name: str) -> None:
         """Set the user name display"""
         self.user_name = name
@@ -289,7 +272,6 @@ class HeaderWidget(QWidget):
     """
 
     # Signals
-    emergency_stop_requested = Signal()
     notifications_requested = Signal()
 
     def __init__(
@@ -322,8 +304,8 @@ class HeaderWidget(QWidget):
 
         # Add sections with proportional sizing
         layout.addWidget(self.branding_section, 3)  # 30%
-        layout.addWidget(self.status_section, 4)    # 40%
-        layout.addWidget(self.control_section, 3)   # 30%
+        layout.addWidget(self.status_section, 4)  # 40%
+        layout.addWidget(self.control_section, 3)  # 30%
 
         # Apply header styling
         self.setStyleSheet(self.get_header_style())
@@ -339,9 +321,7 @@ class HeaderWidget(QWidget):
 
     def connect_signals(self) -> None:
         """Connect internal signals"""
-        self.control_section.emergency_stop_clicked.connect(self.emergency_stop_requested.emit)
         self.control_section.notifications_clicked.connect(self.notifications_requested.emit)
-
 
     def set_system_status(self, status: str, status_type: str = "normal") -> None:
         """Set system status with type-based styling"""
@@ -368,18 +348,20 @@ class HeaderWidget(QWidget):
             "ready": "#2d2d2d",
             "testing": "#2d3d4d",  # Blue tint
             "warning": "#4d3d2d",  # Orange tint
-            "error": "#4d2d2d",    # Red tint
-            "emergency": "#4d2d2d", # Red tint
-            "homed": "#2d4d4d"     # Cyan tint
+            "error": "#4d2d2d",  # Red tint
+            "emergency": "#4d2d2d",  # Red tint
+            "homed": "#2d4d4d",  # Cyan tint
         }
 
         bg_color = backgrounds.get(status_type.lower(), backgrounds["normal"])
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
             HeaderWidget {{
                 background-color: {bg_color};
                 border-bottom: 1px solid #404040;
             }}
-        """)
+        """
+        )
 
     def show_test_progress(self, progress: int) -> None:
         """Show test progress in header"""

@@ -33,41 +33,41 @@ class UIConstants:
 
 
 class Colors:
-    """Color definitions for consistent theming"""
+    """Color definitions for consistent theming - Material Design 3"""
 
     # Primary colors
     BACKGROUND = "#1e1e1e"
-    SECONDARY_BACKGROUND = "#2d2d2d"
+    SECONDARY_BACKGROUND = "rgba(45, 45, 45, 0.95)"
     TERTIARY_BACKGROUND = "#353535"
-    BORDER = "#404040"
-    BORDER_HOVER = "#555555"
+    BORDER = "rgba(255, 255, 255, 0.1)"
+    BORDER_HOVER = "rgba(33, 150, 243, 0.3)"
 
     # Text colors
     TEXT_PRIMARY = "#ffffff"
     TEXT_SECONDARY = "#cccccc"
-    TEXT_MUTED = "#888888"
-    TEXT_DISABLED = "#777777"
+    TEXT_MUTED = "#999999"
+    TEXT_DISABLED = "#666666"
 
-    # Accent colors
-    PRIMARY_ACCENT = "#0078d4"
-    PRIMARY_ACCENT_HOVER = "#106ebe"
-    SUCCESS = "#00ff00"
-    ERROR = "#ff4444"
-    WARNING = "#ffaa00"
+    # Accent colors - Material Design 3
+    PRIMARY_ACCENT = "#2196F3"
+    PRIMARY_ACCENT_HOVER = "#42A5F5"
+    SUCCESS = "#00D9A5"
+    ERROR = "#F44336"
+    WARNING = "#FF9800"
 
     # Button colors
-    BUTTON_CHECKED = "#0078d4"
-    BUTTON_UNCHECKED = "#2d2d2d"
-    BUTTON_BORDER_CHECKED = "#0078d4"
-    BUTTON_BORDER_UNCHECKED = "#555555"
+    BUTTON_CHECKED = "#2196F3"
+    BUTTON_UNCHECKED = "rgba(255, 255, 255, 0.05)"
+    BUTTON_BORDER_CHECKED = "#2196F3"
+    BUTTON_BORDER_UNCHECKED = "rgba(255, 255, 255, 0.1)"
 
     # Additional aliases for compatibility
     BACKGROUND_SECONDARY = SECONDARY_BACKGROUND
-    BORDER_LIGHT = "#333333"
-    BACKGROUND_HOVER = "#383838"
+    BORDER_LIGHT = "rgba(255, 255, 255, 0.05)"
+    BACKGROUND_HOVER = "rgba(255, 255, 255, 0.05)"
 
     # Tree widget specific colors
-    TREE_SETTING_ITEM_BACKGROUND = "#3a3a3a"  # Brighter background for leaf setting items
+    TREE_SETTING_ITEM_BACKGROUND = "rgba(45, 45, 45, 0.95)"  # Glassmorphism for leaf items
 
 
 class ValidationRules:
@@ -176,83 +176,97 @@ class Styles:
         }}
     """
 
-    # Tree widget styles
+    # Tree widget styles - Modern Material Design 3
     TREE_WIDGET = f"""
         QTreeWidget {{
             background-color: {Colors.BACKGROUND};
             color: {Colors.TEXT_PRIMARY};
             border: 1px solid {Colors.BORDER};
+            border-radius: 12px;
             outline: none;
             font-size: 13px;
+            padding: 5px;
         }}
         QTreeWidget::item {{
-            padding: 8px;
+            padding: 10px 8px;
             border-bottom: 1px solid {Colors.BORDER_LIGHT};
+            border-radius: 8px;
+            margin: 2px;
         }}
         QTreeWidget::item:hover {{
             background-color: {Colors.BACKGROUND_HOVER};
         }}
         QTreeWidget::item:selected {{
-            background-color: {Colors.PRIMARY_ACCENT};
+            background-color: rgba(33, 150, 243, 0.3);
             color: white;
+            border-left: 3px solid {Colors.PRIMARY_ACCENT};
         }}
         QTreeWidget::branch:closed:has-children {{
             image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTYgNGw0IDQtNCA0VjR6Ii8+PC9zdmc+);
         }}
         QTreeWidget::branch:open:has-children {{
-            image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTQgNmw0IDQgNC00SDR6Ci8+PC9zdmc+);
+            image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSJ3aGl0ZSIgZD0iTTQgNmw0IDQgNC00SDR6Ii8+PC9zdmc+);
         }}
     """
 
-    # Button styles
+    # Button styles - Material Design 3
     BUTTON = f"""
         QPushButton {{
-            background-color: {Colors.BACKGROUND_SECONDARY};
-            border: 2px solid {Colors.BORDER};
-            border-radius: 4px;
-            padding: 8px 16px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #2196F3,
+                stop:1 #1976D2);
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
             color: {Colors.TEXT_PRIMARY};
             font-size: 13px;
-            font-weight: bold;
+            font-weight: 600;
+            min-height: 38px;
         }}
         QPushButton:hover {{
-            background-color: {Colors.BACKGROUND_HOVER};
-            border-color: {Colors.PRIMARY_ACCENT};
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #42A5F5,
+                stop:1 #2196F3);
         }}
         QPushButton:pressed {{
-            background-color: {Colors.PRIMARY_ACCENT};
-            color: white;
+            background-color: #1565C0;
         }}
     """
 
-    # Search box styles
+    # Search box styles - Material Design 3
     SEARCH_BOX = f"""
         QLineEdit {{
-            border: 2px solid {Colors.BORDER};
-            border-radius: 4px;
-            padding: 8px;
+            border: 1px solid {Colors.BORDER};
+            border-radius: 20px;
+            padding: 10px 16px;
             font-size: 13px;
-            background-color: {Colors.BACKGROUND_SECONDARY};
+            background-color: rgba(255, 255, 255, 0.05);
             color: {Colors.TEXT_PRIMARY};
         }}
         QLineEdit:focus {{
             border-color: {Colors.PRIMARY_ACCENT};
+            background-color: rgba(33, 150, 243, 0.1);
         }}
         QLineEdit:hover {{
             border-color: {Colors.BORDER_HOVER};
         }}
     """
 
-    # Splitter styles
+    # Splitter styles - Modern
     SPLITTER = f"""
         QSplitter::handle {{
             background-color: {Colors.BORDER};
+            border-radius: 4px;
+            margin: 4px 0;
         }}
         QSplitter::handle:horizontal {{
-            width: 2px;
+            width: 8px;
         }}
         QSplitter::handle:vertical {{
-            height: 2px;
+            height: 8px;
+        }}
+        QSplitter::handle:hover {{
+            background-color: rgba(33, 150, 243, 0.3);
         }}
     """
 
@@ -261,6 +275,7 @@ class Styles:
         QWidget {{
             background-color: {Colors.BACKGROUND};
             border: 1px solid {Colors.BORDER};
+            border-radius: 12px;
         }}
     """
 

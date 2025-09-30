@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 from application.containers.application_container import ApplicationContainer
 from application.containers.simple_reloadable_container import SimpleReloadableContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
+from ui.gui.utils.page_transition import PageTransitionManager
 from ui.gui.widgets.content.about_widget import AboutWidget
 from ui.gui.widgets.content.dashboard_widget import DashboardWidget
 from ui.gui.widgets.content.hardware_widget import HardwareWidget
@@ -33,7 +34,7 @@ from ui.gui.widgets.content.logs_widget import LogsWidget
 from ui.gui.widgets.content.results_widget import ResultsWidget
 from ui.gui.widgets.content.settings_widget import SettingsWidget
 from ui.gui.widgets.content.test_control_widget import TestControlWidget
-from ui.gui.widgets.header.header_widget import HeaderWidget
+from ui.gui.widgets.header.modern_header_widget import ModernHeaderWidget
 from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
 
 
@@ -265,6 +266,7 @@ class TestExecutorThread(QThread):
 
         # Verify GUI State Manager connection before test execution
         hardware_facade = self.container.hardware_service_facade()
+        # pylint: disable=protected-access  # Intentional access for verification
         gui_state_manager_status = (
             hasattr(hardware_facade, "_gui_state_manager")
             and hardware_facade._gui_state_manager is not None
@@ -298,6 +300,7 @@ class TestExecutorThread(QThread):
                 self.log_message.emit(
                     "ERROR", "EOL_TEST", "No state manager available for runtime injection"
                 )
+        # pylint: enable=protected-access
 
         eol_test_use_case = self.container.eol_force_test_use_case()
 
@@ -612,6 +615,7 @@ class MainWindow(QMainWindow):
             None  # For background robot home execution
         )
         self.emergency_stop_active = False  # Track emergency stop state
+        self.page_transition_manager: Optional[PageTransitionManager] = None  # Page transitions
 
         # GUI State Manager is already injected in main_gui.py during initialization
         # No need to inject again here to avoid overwriting the connection
@@ -662,6 +666,9 @@ class MainWindow(QMainWindow):
         self.content_stack.setContentsMargins(10, 0, 0, 0)  # Small left separation margin only
         self.content_stack.setMinimumWidth(400)  # Ensure content has minimum space
 
+        # Initialize page transition manager
+        self.page_transition_manager = PageTransitionManager(self.content_stack)
+
         # Add widgets to layout with proper stretch factors
         content_layout.addWidget(self.sidebar)  # Sidebar: fixed width (200px)
         content_layout.addWidget(self.content_stack)  # Content: expandable
@@ -694,9 +701,8 @@ class MainWindow(QMainWindow):
         if not isinstance(layout, QVBoxLayout):
             return
 
-        # Create header
-        self.header = HeaderWidget(container=self.container, state_manager=self.state_manager)
-        self.header.emergency_stop_requested.connect(self._on_emergency_stop_requested)
+        # Create modern header
+        self.header = ModernHeaderWidget(container=self.container, state_manager=self.state_manager)
         self.header.notifications_requested.connect(self._on_header_notifications_clicked)
 
         # Insert header at the beginning
@@ -725,16 +731,25 @@ class MainWindow(QMainWindow):
                     break
 
         if content_widget is None:
+            # Third-party imports
+            from loguru import logger
+
             logger.error("Could not find content widget for sidebar initialization")
             return
 
         layout = content_widget.layout()
         if layout is None:
+            # Third-party imports
+            from loguru import logger
+
             logger.error("Content widget has no layout for sidebar initialization")
             return
 
         # Ensure it's a QHBoxLayout (should be based on setup_basic_ui)
         if not isinstance(layout, QHBoxLayout):
+            # Third-party imports
+            from loguru import logger
+
             logger.error("Content layout is not QHBoxLayout for sidebar initialization")
             return
 
@@ -824,12 +839,12 @@ class MainWindow(QMainWindow):
         self.content_widgets["results"] = self.results_page
 
     def init_statistics_tab(self) -> None:
-        """Initialize all 6 statistics sub-pages with shared header"""
+        """Initialize 3 statistics pages with enhanced shared header"""
         # Third-party imports
         from loguru import logger
 
         if "statistics_overview" in self.content_widgets:
-            logger.info("⚠️ Statistics sub-pages already initialized")
+            logger.info("⚠️ Statistics pages already initialized")
             return  # Already initialized
 
         if self.content_stack is None:
@@ -837,64 +852,105 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            logger.info("🔧 Initializing 6 statistics sub-pages...")
+            logger.info("🔧 Initializing 3 enhanced statistics pages...")
 
-            # Import sub-pages
+            # Import enhanced components
             # Local application imports
-            from ui.gui.widgets.content.statistics.header_controls import (
-                StatisticsHeaderControls,
+            from ui.gui.widgets.content.statistics.enhanced_header_controls import (
+                EnhancedStatisticsHeaderControls,
             )
-            from ui.gui.widgets.content.statistics.pages import (
-                Analysis4DPage,
-                Charts2DPage,
-                ExportPage,
-                OverviewPage,
-                PerformancePage,
-                Visualizations3DPage,
+            from ui.gui.widgets.content.statistics.pages.new_overview_page import (
+                NewOverviewPage,
             )
-
-            # Create shared header controls (one instance for all sub-pages)
-            self.statistics_header = StatisticsHeaderControls(
-                container=self.container,
-                state_manager=self.state_manager,
+            from ui.gui.widgets.content.statistics.pages.new_analysis_page import (
+                NewAnalysisPage,
             )
-            logger.info("✅ Shared statistics header created")
+            from ui.gui.widgets.content.statistics.pages.new_advanced_page import (
+                NewAdvancedPage,
+            )
+            from PySide6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 
             # Get statistics service
             statistics_service = self.container.eol_statistics_service()
             logger.info("✅ Statistics service obtained")
 
-            # Define 6 sub-pages with their titles
-            sub_pages = {
-                "statistics_overview": (OverviewPage, "EOL Statistics - Overview"),
-                "statistics_2d": (Charts2DPage, "EOL Statistics - 2D Charts"),
-                "statistics_3d": (Visualizations3DPage, "EOL Statistics - 3D Visualizations"),
-                "statistics_4d": (Analysis4DPage, "EOL Statistics - 4D Analysis"),
-                "statistics_performance": (PerformancePage, "EOL Statistics - Performance"),
-                "statistics_export": (ExportPage, "EOL Statistics - Export"),
-            }
+            # Create main statistics container with shared header
+            statistics_container = QWidget()
+            container_layout = QVBoxLayout(statistics_container)
+            container_layout.setSpacing(12)
+            container_layout.setContentsMargins(12, 12, 12, 12)
 
-            # Create all 6 sub-pages
-            for page_id, (PageClass, title) in sub_pages.items():
-                logger.info(f"  Creating {page_id}...")
+            # Create enhanced shared header (sticky)
+            self.statistics_header = EnhancedStatisticsHeaderControls(
+                data_folder="logs/test_results/json"
+            )
+            container_layout.addWidget(self.statistics_header)
+            logger.info("✅ Enhanced statistics header created with data scanning")
 
-                # Create page instance with shared header
-                page = PageClass(
-                    header_controls=self.statistics_header,
-                    statistics_service=statistics_service,
-                )
+            # Create tab widget for 3 pages
+            tab_widget = QTabWidget()
+            tab_widget.setStyleSheet("""
+                QTabWidget::pane {
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 8px;
+                    background-color: #1e1e1e;
+                }
+                QTabBar::tab {
+                    background-color: rgba(45, 45, 45, 0.8);
+                    color: #cccccc;
+                    padding: 10px 20px;
+                    margin-right: 4px;
+                    border-top-left-radius: 8px;
+                    border-top-right-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QTabBar::tab:selected {
+                    background-color: rgba(33, 150, 243, 0.3);
+                    color: #ffffff;
+                    border-bottom: 2px solid #2196F3;
+                }
+                QTabBar::tab:hover {
+                    background-color: rgba(255, 255, 255, 0.05);
+                }
+            """)
 
-                # Add to content stack and pages dict
-                self.content_stack.addWidget(page)
-                self.pages[page_id] = page
-                self.content_widgets[page_id] = page
+            # Create 3 pages
+            self.overview_page = NewOverviewPage(statistics_service=statistics_service)
+            self.analysis_page = NewAnalysisPage(statistics_service=statistics_service)
+            self.advanced_page = NewAdvancedPage(statistics_service=statistics_service)
 
-                logger.info(f"  ✅ {page_id} created")
+            # Add pages to tab widget
+            tab_widget.addTab(self.overview_page, "📊 Overview")
+            tab_widget.addTab(self.analysis_page, "📈 Analysis")
+            tab_widget.addTab(self.advanced_page, "🔬 Advanced")
 
-            logger.info("✅ All 6 statistics sub-pages initialized successfully")
+            container_layout.addWidget(tab_widget)
+
+            # Connect header filter changes to all pages
+            def on_filters_changed(filters):
+                logger.info(f"Filters changed: {filters}")
+                # Update all 3 pages with new filters
+                import asyncio
+                asyncio.create_task(self.overview_page.update_data(filters))
+                asyncio.create_task(self.analysis_page.update_data(filters))
+                asyncio.create_task(self.advanced_page.update_data(filters))
+
+            self.statistics_header.filter_changed.connect(on_filters_changed)
+            logger.info("✅ Filter change handler connected to all pages")
+
+            # Add to content stack
+            self.content_stack.addWidget(statistics_container)
+            self.pages["statistics_overview"] = statistics_container
+            self.content_widgets["statistics_overview"] = statistics_container
+
+            logger.info("✅ All 3 statistics pages initialized successfully")
+            logger.info("   📊 Overview: Quick Insights + Key Metrics + Performance")
+            logger.info("   📈 Analysis: Charts + Heatmaps + Statistics Tables")
+            logger.info("   🔬 Advanced: 3D/4D Visualizations")
 
         except Exception as e:
-            logger.error(f"❌ Failed to initialize statistics sub-pages: {e}")
+            logger.error(f"❌ Failed to initialize statistics pages: {e}")
             # Standard library imports
             import traceback
 
@@ -993,9 +1049,8 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Header
-        self.header = HeaderWidget(container=self.container, state_manager=self.state_manager)
-        self.header.emergency_stop_requested.connect(self._on_emergency_stop_requested)
+        # Modern Header
+        self.header = ModernHeaderWidget(container=self.container, state_manager=self.state_manager)
         self.header.notifications_requested.connect(self._on_header_notifications_clicked)
         main_layout.addWidget(self.header)
 
@@ -1019,8 +1074,8 @@ class MainWindow(QMainWindow):
         sidebar_layout.addWidget(self.sidebar, 0, Qt.AlignmentFlag.AlignTop)
         sidebar_layout.addStretch(1)  # Push sidebar to top
 
-        # Set container width to match sidebar
-        sidebar_container.setFixedWidth(200)
+        # Set container width to match sidebar (increased to 220px for modern design)
+        sidebar_container.setFixedWidth(220)
 
         # Content stack with explicit sizing constraints
         self.content_stack = QStackedWidget()
@@ -1171,18 +1226,31 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self._create_separator())
         self.status_bar.addPermanentWidget(self.progress_label)
 
-        # Style status bar
+        # Style status bar - Modern Material Design 3
         self.status_bar.setStyleSheet(
             """
             QStatusBar {
-                background-color: #2d2d2d;
-                color: #cccccc;
-                border-top: 1px solid #404040;
-                padding: 2px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(45, 45, 45, 0.95),
+                    stop:1 rgba(35, 35, 35, 0.95));
+                color: #ffffff;
+                border-top: 1px solid rgba(33, 150, 243, 0.3);
+                padding: 8px 12px;
+                min-height: 32px;
+            }
+            QStatusBar::item {
+                border: none;
             }
             QLabel {
-                padding: 2px 8px;
-                font-size: 14px;
+                padding: 4px 12px;
+                font-size: 13px;
+                font-weight: 500;
+                color: #cccccc;
+                background-color: transparent;
+                border-radius: 8px;
+            }
+            QLabel:hover {
+                background-color: rgba(255, 255, 255, 0.05);
             }
         """
         )
@@ -1194,11 +1262,18 @@ class MainWindow(QMainWindow):
         self.update_timer.start(1000)  # Update every second
 
     def _create_separator(self) -> QFrame:
-        """Create a status bar separator"""
+        """Create a modern status bar separator"""
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.VLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        separator.setStyleSheet("color: #404040;")
+        separator.setFrameShadow(QFrame.Shadow.Plain)
+        separator.setStyleSheet("""
+            QFrame {
+                color: rgba(255, 255, 255, 0.1);
+                background-color: rgba(255, 255, 255, 0.1);
+                max-width: 1px;
+                margin: 4px 8px;
+            }
+        """)
         return separator
 
     def change_page(self, page_id: str) -> None:
@@ -1224,14 +1299,15 @@ class MainWindow(QMainWindow):
             logger.info(f"✅ Found page widget: {type(page_widget).__name__}")
 
             if self.content_stack is not None:
-                self.content_stack.setCurrentWidget(page_widget)
+                # Use smooth transition if manager is available
+                if self.page_transition_manager:
+                    self.page_transition_manager.transition_to(page_widget)
+                else:
+                    self.content_stack.setCurrentWidget(page_widget)
 
             # Update sidebar
             if self.sidebar is not None:
-                if page_id.startswith("statistics"):
-                    self.sidebar.set_statistics_submenu_visible(True)
-                else:
-                    self.sidebar.set_statistics_submenu_visible(False)
+                # No need to toggle submenu - Statistics now has 3 tabs inside
                 self.sidebar.set_current_page(page_id)
 
             # Auto-select serial number when navigating to test control
@@ -1760,6 +1836,7 @@ class MainWindow(QMainWindow):
 
             # Verify GUI State Manager is still connected in main container
             hardware_facade = self.container.hardware_service_facade()
+            # pylint: disable=protected-access  # Intentional access for verification
             gui_manager_connected = (
                 hasattr(hardware_facade, "_gui_state_manager")
                 and hardware_facade._gui_state_manager is not None
@@ -1772,6 +1849,7 @@ class MainWindow(QMainWindow):
                 )
                 hardware_facade._gui_state_manager = self.state_manager
                 logger.info("Runtime GUI State Manager injection applied to main container")
+            # pylint: enable=protected-access
 
             # Create and configure test executor thread with main container (preserves GUI State Manager)
             self.test_executor_thread = TestExecutorThread(

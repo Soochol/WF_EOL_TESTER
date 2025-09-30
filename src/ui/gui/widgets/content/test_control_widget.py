@@ -1,16 +1,13 @@
 """
 Test Control Widget
 
-Refactored test control page with modular architecture.
-Imports the new modular TestControlWidget implementation.
+Modern test control page with Material Design 3.
 """
 
 # Local folder imports
-# Re-export the refactored TestControlWidget from the new modular structure
-from .test_control.test_control_widget import TestControlWidget
+from .test_control.modern_test_control_widget import ModernTestControlWidget as TestControlWidget
 
 
 __all__ = ["TestControlWidget"]
 
-# This file now imports from the refactored modular structure
-# All functionality has been moved to the test_control package
+# Uses ModernTestControlWidget for consistent Material Design 3 styling

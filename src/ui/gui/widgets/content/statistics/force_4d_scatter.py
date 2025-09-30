@@ -37,6 +37,10 @@ class Force4DScatter(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
+        if MATPLOTLIB_AVAILABLE:
+            self.figure: Figure
+            self.canvas: FigureCanvas
+            self.ax: Any  # 3D axes type (mpl_toolkits.mplot3d.axes3d.Axes3D)
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -75,7 +79,7 @@ class Force4DScatter(QWidget):
         else:
             # Fallback if matplotlib is not available
             error_label = QLabel(
-                "⚠️ matplotlib and numpy not installed\n\n" "Install with: uv add matplotlib numpy"
+                "⚠️ matplotlib and numpy not installed\n\nInstall with: uv add matplotlib numpy"
             )
             error_label.setStyleSheet("color: #f59e0b; font-size: 11pt; padding: 20px;")
             main_layout.addWidget(error_label)

@@ -88,7 +88,7 @@ class AboutWidget(QWidget):
         layout.addWidget(version_label)
 
         # Description
-        description_label = QLabel("End-of-Line Testing Application for Wafer Fabrication")
+        description_label = QLabel("End-of-Line Testing Application")
         description_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         description_label.setStyleSheet("""
             font-size: 16px;

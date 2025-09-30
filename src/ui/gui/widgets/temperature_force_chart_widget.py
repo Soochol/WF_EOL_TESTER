@@ -64,18 +64,9 @@ class TemperatureForceChartWidget(QWidget):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create chart group
-        self.chart_group = QGroupBox("Temperature vs Force Analysis")
-        self.chart_group.setFont(self._get_group_font())
-        main_layout.addWidget(self.chart_group)
-
-        # Chart content layout
-        content_layout = QVBoxLayout(self.chart_group)
-        content_layout.setContentsMargins(15, 20, 15, 15)
-
-        # Chart area (custom paint widget)
+        # Chart area (custom paint widget) - no group box
         self.chart_area = ChartArea(self.cycle_data, self.cycle_colors)
-        content_layout.addWidget(self.chart_area)
+        main_layout.addWidget(self.chart_area)
 
         # Apply styling
         self.setStyleSheet(self._get_widget_style())
@@ -109,21 +100,8 @@ class TemperatureForceChartWidget(QWidget):
         """Get widget stylesheet"""
         return """
         TemperatureForceChartWidget {
-            background-color: #1e1e1e;
+            background-color: transparent;
             color: #cccccc;
-        }
-        QGroupBox {
-            font-weight: bold;
-            border: 2px solid #404040;
-            border-radius: 5px;
-            margin-top: 10px;
-            padding-top: 10px;
-            color: #ffffff;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 5px 0 5px;
         }
         """
 
@@ -143,7 +121,13 @@ class ChartArea(QWidget):
         self.cycle_data = cycle_data
         self.cycle_colors = cycle_colors
         self.setMinimumHeight(300)
-        self.setStyleSheet("background-color: #1a1a1a; border: 1px solid #404040;")
+        self.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(45, 45, 45, 0.95),
+                stop:1 rgba(35, 35, 35, 0.95));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+        """)
 
     def paintEvent(self, event) -> None:
         """Paint the chart"""
@@ -155,8 +139,8 @@ class ChartArea(QWidget):
         margin = 60
         chart_rect = QRect(margin, margin, rect.width() - 2 * margin, rect.height() - 2 * margin)
 
-        # Clear background
-        painter.fillRect(rect, QColor("#1a1a1a"))
+        # Clear background (transparent for glassmorphism)
+        painter.fillRect(rect, QColor(0, 0, 0, 0))
 
         if not self.cycle_data:
             # Draw empty chart with axes
@@ -221,15 +205,15 @@ class ChartArea(QWidget):
         force_range: tuple[float, float],
     ) -> None:
         """Draw chart axes, grid, and labels"""
-        pen = QPen(QColor("#666666"), 2)
+        pen = QPen(QColor("#555555"), 2)
         painter.setPen(pen)
 
         # Draw main axes
         painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())  # X-axis
         painter.drawLine(rect.left(), rect.top(), rect.left(), rect.bottom())  # Y-axis
 
-        # Draw grid lines
-        grid_pen = QPen(QColor("#333333"), 1)
+        # Draw grid lines (modern subtle style)
+        grid_pen = QPen(QColor("#3a3a3a"), 1)
         grid_pen.setStyle(Qt.PenStyle.DotLine)
         painter.setPen(grid_pen)
 
@@ -243,10 +227,10 @@ class ChartArea(QWidget):
             x = rect.left() + (i * rect.width() // 8)
             painter.drawLine(x, rect.top(), x, rect.bottom())
 
-        # Draw axis labels
-        painter.setPen(QColor("#cccccc"))
+        # Draw axis labels (modern style)
+        painter.setPen(QColor("#999999"))
         font = QFont()
-        font.setPointSize(12)
+        font.setPointSize(11)
         painter.setFont(font)
 
         # Y-axis labels (Force)
@@ -264,8 +248,9 @@ class ChartArea(QWidget):
             x = rect.left() + (i * rect.width() // 8)
             painter.drawText(x - 15, rect.height() + 85, f"{temp_val:.1f}")
 
-        # Axis titles
-        font.setPointSize(14)
+        # Axis titles (modern bold)
+        painter.setPen(QColor("#ffffff"))
+        font.setPointSize(13)
         font.setWeight(QFont.Weight.Bold)
         painter.setFont(font)
 

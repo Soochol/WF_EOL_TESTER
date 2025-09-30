@@ -47,13 +47,20 @@ class OverviewPanel(QWidget):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Title
-        title_label = QLabel("Test Overview Summary")
+        # Modern title
+        title_label = QLabel("📊 Test Overview Summary")
         title_font = QFont()
-        title_font.setPointSize(12)
+        title_font.setPointSize(14)
         title_font.setBold(True)
         title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #ffffff; margin-bottom: 10px;")
+        title_label.setStyleSheet("""
+            color: #ffffff;
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid #2196F3;
+            border-radius: 8px;
+        """)
         main_layout.addWidget(title_label)
 
         # Statistics grid
@@ -61,11 +68,11 @@ class OverviewPanel(QWidget):
         stats_layout.setSpacing(20)
         stats_layout.setHorizontalSpacing(40)
 
-        # Create stat cards
-        self.total_tests_label = self.create_stat_card("Total Tests", "0", "#0078d4")
-        self.pass_rate_label = self.create_stat_card("Pass Rate", "0%", "#10b981")
-        self.avg_duration_label = self.create_stat_card("Avg Duration", "0.0s", "#f59e0b")
-        self.avg_force_label = self.create_stat_card("Avg Force", "0.0N", "#8b5cf6")
+        # Create modern stat cards with Material Design 3 colors
+        self.total_tests_label = self.create_stat_card("Total Tests", "0", "#2196F3")
+        self.pass_rate_label = self.create_stat_card("Pass Rate", "0%", "#00D9A5")
+        self.avg_duration_label = self.create_stat_card("Avg Duration", "0.0s", "#FF9800")
+        self.avg_force_label = self.create_stat_card("Avg Force", "0.0N", "#9C27B0")
 
         # Add to grid (2x2)
         stats_layout.addWidget(self.total_tests_label, 0, 0)
@@ -91,10 +98,13 @@ class OverviewPanel(QWidget):
         card.setStyleSheet(
             f"""
             QWidget {{
-                background-color: #2d2d2d;
-                border: 2px solid {color};
-                border-radius: 8px;
-                padding: 15px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(45, 45, 45, 0.95),
+                    stop:1 rgba(35, 35, 35, 0.95));
+                border-left: 4px solid {color};
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 20px;
             }}
         """
         )

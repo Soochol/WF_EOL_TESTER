@@ -52,19 +52,10 @@ class ResultsTableWidget(QWidget):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create table group
-        self.table_group = QGroupBox("Live Test Results")
-        self.table_group.setFont(self._get_group_font())
-        main_layout.addWidget(self.table_group)
-
-        # Content layout
-        content_layout = QVBoxLayout(self.table_group)
-        content_layout.setContentsMargins(15, 20, 15, 15)
-
-        # Create table
+        # Create table (no group box for modern style)
         self.results_table = QTableWidget()
         self.setup_table()
-        content_layout.addWidget(self.results_table)
+        main_layout.addWidget(self.results_table)
 
         # Apply styling
         self.setStyleSheet(self._get_widget_style())
@@ -200,18 +191,15 @@ class ResultsTableWidget(QWidget):
         for col, item in enumerate(items):
             item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
 
-            # Color coding for status
+            # Color coding for status - modern colors
             if col == 6:  # Status column
                 status_value = item.text()
                 if status_value == "PASS":
-                    item.setBackground(QColor("#004d00"))
-                    item.setForeground(QColor("#00ff00"))
+                    item.setForeground(QColor("#00D9A5"))
                 elif status_value in ["FAIL", "ERROR"]:
-                    item.setBackground(QColor("#4d0000"))
-                    item.setForeground(QColor("#ff4444"))
+                    item.setForeground(QColor("#F44336"))
                 elif status_value == "PENDING":
-                    item.setBackground(QColor("#4d4d00"))
-                    item.setForeground(QColor("#ffff00"))
+                    item.setForeground(QColor("#FF9800"))
 
             self.results_table.setItem(row, col, item)
 
@@ -244,18 +232,15 @@ class ResultsTableWidget(QWidget):
         for col, item in enumerate(items):
             item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
 
-            # Color coding for status
+            # Color coding for status - modern colors
             if col == 6:  # Status column
                 status_value = item.text()
                 if status_value == "PASS":
-                    item.setBackground(QColor("#004d00"))
-                    item.setForeground(QColor("#00ff00"))
+                    item.setForeground(QColor("#00D9A5"))
                 elif status_value in ["FAIL", "ERROR"]:
-                    item.setBackground(QColor("#4d0000"))
-                    item.setForeground(QColor("#ff4444"))
+                    item.setForeground(QColor("#F44336"))
                 elif status_value == "PENDING":
-                    item.setBackground(QColor("#4d4d00"))
-                    item.setForeground(QColor("#ffff00"))
+                    item.setForeground(QColor("#FF9800"))
 
             self.results_table.setItem(row, col, item)
 
@@ -296,56 +281,52 @@ class ResultsTableWidget(QWidget):
         """Get widget stylesheet"""
         return """
         ResultsTableWidget {
-            background-color: #1e1e1e;
+            background-color: transparent;
             color: #cccccc;
-        }
-        QGroupBox {
-            font-weight: bold;
-            border: 2px solid #404040;
-            border-radius: 5px;
-            margin-top: 10px;
-            padding-top: 10px;
-            color: #ffffff;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 5px 0 5px;
         }
         QTableWidget {
-            background-color: #1a1a1a;
-            alternate-background-color: #2a2a2a;
-            color: #cccccc;
-            border: 1px solid #404040;
-            selection-background-color: #0078d4;
+            background-color: transparent;
+            alternate-background-color: rgba(255, 255, 255, 0.02);
+            color: #ffffff;
+            border: none;
+            selection-background-color: rgba(33, 150, 243, 0.3);
             selection-color: #ffffff;
-            gridline-color: #404040;
+            gridline-color: rgba(255, 255, 255, 0.1);
         }
         QTableWidget::item {
-            padding: 5px;
-            border-bottom: 1px solid #404040;
+            padding: 12px 8px;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        QTableWidget::item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
         }
         QHeaderView::section {
-            background-color: #2d2d2d;
-            color: #ffffff;
-            padding: 8px;
-            border: 1px solid #404040;
-            border-left: 1px solid #666666;
-            border-right: 1px solid #666666;
-            font-weight: bold;
-            font-size: 14px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #cccccc;
+            padding: 14px 8px;
+            border: none;
+            border-bottom: 2px solid #2196F3;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        QHeaderView::section:hover {
+            background-color: rgba(255, 255, 255, 0.08);
         }
         QScrollBar:vertical {
-            background-color: #2d2d2d;
-            width: 15px;
-            border-radius: 7px;
+            background-color: transparent;
+            width: 12px;
+            border-radius: 6px;
         }
         QScrollBar::handle:vertical {
-            background-color: #555555;
-            border-radius: 7px;
-            min-height: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            min-height: 30px;
         }
         QScrollBar::handle:vertical:hover {
-            background-color: #666666;
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
         }
         """

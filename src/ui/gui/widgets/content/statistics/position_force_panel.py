@@ -36,24 +36,24 @@ class PositionForcePanel(QWidget):
     def setup_ui(self) -> None:
         """Setup the position force panel UI."""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(12)
+        main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Title
-        title_label = QLabel("Force Statistics by Position")
+        # Modern title
+        title_label = QLabel("📍 Force Statistics by Position")
         title_font = QFont()
-        title_font.setPointSize(12)
+        title_font.setPointSize(14)
         title_font.setBold(True)
         title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #ffffff; margin-bottom: 5px;")
+        title_label.setStyleSheet("""
+            color: #ffffff;
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: rgba(156, 39, 176, 0.1);
+            border-left: 4px solid #9C27B0;
+            border-radius: 8px;
+        """)
         main_layout.addWidget(title_label)
-
-        # Description
-        desc_label = QLabel(
-            "Force measurements grouped by position levels (displayed in mm)"
-        )
-        desc_label.setStyleSheet("color: #aaaaaa; font-size: 10pt;")
-        main_layout.addWidget(desc_label)
 
         # Statistics table
         self.table = QTableWidget()
@@ -66,27 +66,37 @@ class PositionForcePanel(QWidget):
             "Max Force (N)",
         ])
 
-        # Table styling
+        # Modern table styling
         self.table.setStyleSheet("""
             QTableWidget {
-                background-color: #2d2d2d;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(45, 45, 45, 0.95),
+                    stop:1 rgba(35, 35, 35, 0.95));
                 color: #ffffff;
-                border: 1px solid #404040;
-                border-radius: 6px;
-                gridline-color: #404040;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                gridline-color: rgba(255, 255, 255, 0.05);
+                font-size: 13px;
             }
             QTableWidget::item {
-                padding: 8px;
+                padding: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
             QTableWidget::item:selected {
-                background-color: #0078d4;
+                background-color: rgba(156, 39, 176, 0.3);
+                color: #ffffff;
+            }
+            QTableWidget::item:hover {
+                background-color: rgba(255, 255, 255, 0.05);
             }
             QHeaderView::section {
-                background-color: #1e1e1e;
+                background-color: rgba(156, 39, 176, 0.2);
                 color: #ffffff;
-                padding: 8px;
-                border: 1px solid #404040;
-                font-weight: bold;
+                padding: 12px;
+                border: none;
+                border-bottom: 2px solid #9C27B0;
+                font-weight: 600;
+                font-size: 12px;
             }
         """)
 

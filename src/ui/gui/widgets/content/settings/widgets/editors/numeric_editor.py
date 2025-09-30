@@ -35,7 +35,7 @@ class NumericEditorWidget(BaseEditorWidget):
         else:  # float
             self.spin_box = QDoubleSpinBox()
             self.spin_box.setRange(-1e308, 1e308)
-            self.spin_box.setDecimals(6)
+            self.spin_box.setDecimals(2)  # Changed from 6 to 2 decimal places
             self.spin_box.setValue(float(self.config_value.value))
 
         # Apply constraints if available
@@ -50,20 +50,22 @@ class NumericEditorWidget(BaseEditorWidget):
             else:
                 self.spin_box.setMaximum(self.config_value.max_value)
 
-        # Styling
+        # Modern styling
         self.spin_box.setStyleSheet(
             f"""
             QSpinBox, QDoubleSpinBox {{
-                border: 2px solid {Colors.BORDER};
-                border-radius: 4px;
-                padding: 8px;
+                border: 1px solid {Colors.BORDER};
+                border-radius: 8px;
+                padding: 10px 12px;
                 font-size: 13px;
-                background-color: {Colors.BACKGROUND_SECONDARY};
+                background-color: rgba(255, 255, 255, 0.05);
                 color: {Colors.TEXT_PRIMARY};
-                min-width: 120px;
+                min-width: 150px;
+                font-weight: 500;
             }}
             QSpinBox:focus, QDoubleSpinBox:focus {{
                 border-color: {Colors.PRIMARY_ACCENT};
+                background-color: rgba(33, 150, 243, 0.1);
             }}
             QSpinBox:hover, QDoubleSpinBox:hover {{
                 border-color: {Colors.BORDER_HOVER};
@@ -71,20 +73,22 @@ class NumericEditorWidget(BaseEditorWidget):
             QSpinBox::up-button, QDoubleSpinBox::up-button {{
                 subcontrol-origin: border;
                 subcontrol-position: top right;
-                width: 20px;
+                width: 24px;
                 border-left: 1px solid {Colors.BORDER};
-                background-color: {Colors.TERTIARY_BACKGROUND};
+                background-color: rgba(255, 255, 255, 0.05);
+                border-top-right-radius: 8px;
             }}
             QSpinBox::down-button, QDoubleSpinBox::down-button {{
                 subcontrol-origin: border;
                 subcontrol-position: bottom right;
-                width: 20px;
+                width: 24px;
                 border-left: 1px solid {Colors.BORDER};
-                background-color: {Colors.TERTIARY_BACKGROUND};
+                background-color: rgba(255, 255, 255, 0.05);
+                border-bottom-right-radius: 8px;
             }}
             QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
             QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
-                background-color: {Colors.BACKGROUND_HOVER};
+                background-color: rgba(33, 150, 243, 0.2);
             }}
         """
         )
