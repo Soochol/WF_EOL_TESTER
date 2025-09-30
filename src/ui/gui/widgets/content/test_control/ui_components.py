@@ -44,7 +44,7 @@ class UIComponentFactory:
         font.setWeight(QFont.Weight.Bold)
         return font
 
-    def create_button_with_icon(self, text: str, icon_name: str, height: int = 45) -> QPushButton:
+    def create_button_with_icon(self, text: str, icon_name: str, height: int = 38) -> QPushButton:
         """Create button with icon or emoji fallback"""
         button = QPushButton(text)
 
@@ -59,12 +59,14 @@ class UIComponentFactory:
                 button.setText(f"{emoji} {text}")
 
         button.setMinimumHeight(height)
+        button.setMaximumHeight(height + 10)  # Allow some flexibility
         return button
 
     def create_emergency_button(self) -> QPushButton:
         """Create emergency stop button with special styling"""
         button = QPushButton("EMERGENCY STOP")
-        button.setMinimumHeight(50)
+        button.setMinimumHeight(45)
+        button.setMaximumHeight(55)  # Allow some flexibility
 
         # Emergency button specific styling
         emergency_style = f"""
@@ -92,7 +94,8 @@ class UIComponentFactory:
         progress_bar.setMinimum(0)
         progress_bar.setMaximum(100)
         progress_bar.setValue(0)
-        progress_bar.setMinimumHeight(25)
+        progress_bar.setMinimumHeight(22)
+        progress_bar.setMaximumHeight(28)
         progress_bar.setTextVisible(True)
         progress_bar.setFormat("%p% - %v/%m")
         return progress_bar
@@ -130,8 +133,11 @@ class TestSequenceGroup:
 
     def create(self) -> QGroupBox:
         """Create test sequence selection group"""
+        from PySide6.QtWidgets import QSizePolicy
+
         group = QGroupBox("Test Sequence")
         group.setFont(self.factory.create_group_font())
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(group)
 
         self.sequence_combo = QComboBox()
@@ -143,7 +149,8 @@ class TestSequenceGroup:
                 "Custom Test Sequence",
             ]
         )
-        self.sequence_combo.setMinimumHeight(35)
+        self.sequence_combo.setMinimumHeight(30)
+        self.sequence_combo.setMaximumHeight(40)
 
         # Connect signal
         self.sequence_combo.currentTextChanged.connect(
@@ -168,18 +175,22 @@ class TestParametersGroup:
 
     def create(self) -> QGroupBox:
         """Create test parameters group"""
+        from PySide6.QtWidgets import QSizePolicy
+
         group = QGroupBox("Test Parameters")
         group.setFont(self.factory.create_group_font())
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout = QHBoxLayout(group)
         layout.setSpacing(10)
-        layout.setContentsMargins(15, 20, 15, 15)
+        layout.setContentsMargins(15, 15, 15, 15)  # Reduced top margin from 20 to 15
 
         # Serial Number
         layout.addWidget(QLabel("Serial Number:"))
         self.serial_edit = QLineEdit()
         self.serial_edit.setPlaceholderText("Enter serial number...")
         self.serial_edit.setText("SN123456789")
-        self.serial_edit.setMinimumHeight(30)
+        self.serial_edit.setMinimumHeight(28)
+        self.serial_edit.setMaximumHeight(38)
 
         # Connect signal
         self.serial_edit.textChanged.connect(
@@ -210,10 +221,13 @@ class TestControlsGroup:
 
     def create(self) -> QGroupBox:
         """Create control buttons group"""
+        from PySide6.QtWidgets import QSizePolicy
+
         group = QGroupBox("Test Controls")
         group.setFont(self.factory.create_group_font())
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(group)
-        layout.setSpacing(10)
+        layout.setSpacing(8)  # Reduced from 10 to 8
 
         # Main control buttons row
         main_controls_layout = QHBoxLayout()
@@ -269,11 +283,14 @@ class TestStatusGroup:
 
     def create(self) -> QGroupBox:
         """Create test status display group"""
+        from PySide6.QtWidgets import QSizePolicy
+
         group = QGroupBox("Test Status")
         group.setFont(self.factory.create_group_font())
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(15, 20, 15, 15)
-        layout.setSpacing(10)
+        layout.setContentsMargins(15, 15, 15, 15)  # Reduced top margin from 20 to 15
+        layout.setSpacing(8)  # Reduced from 10 to 8
 
         # Top row: Status icon and text
         top_layout = QHBoxLayout()
@@ -381,14 +398,18 @@ class TestLogsGroup:
 
     def create(self) -> QGroupBox:
         """Create live test logs group"""
+        from PySide6.QtWidgets import QSizePolicy
+
         group = QGroupBox("Live Test Logs")
         group.setFont(QFont("", 14, QFont.Weight.Bold))
-        group.setMinimumHeight(300)
+        # Remove fixed minimum height - allow flexible sizing
+        group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(15, 20, 15, 15)
+        layout.setContentsMargins(15, 15, 15, 15)  # Reduced top margin from 20 to 15
 
         # Add log viewer widget
         self.log_viewer = LogViewerWidget(self.container, self.state_manager)
+        self.log_viewer.setMinimumHeight(150)  # Set minimum on viewer, not group
         layout.addWidget(self.log_viewer)
 
         return group

@@ -82,28 +82,28 @@ class TestControlWidget(QWidget):
     def _setup_ui(self) -> None:
         """Setup the modular UI components"""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(8)  # Reduced from 15 to save vertical space
         main_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Create and add component groups
+
+        # Create and add component groups with stretch factors
         sequence_widget = self.sequence_group.create()
-        main_layout.addWidget(sequence_widget)
-        
+        main_layout.addWidget(sequence_widget, 0)  # No stretch - minimal space
+
         parameters_widget = self.parameters_group.create()
-        main_layout.addWidget(parameters_widget)
-        
+        main_layout.addWidget(parameters_widget, 0)  # No stretch - minimal space
+
         controls_widget = self.controls_group.create()
-        main_layout.addWidget(controls_widget)
-        
+        main_layout.addWidget(controls_widget, 0)  # No stretch - minimal space
+
         status_widget = self.status_group.create()
-        main_layout.addWidget(status_widget)
-        
+        main_layout.addWidget(status_widget, 0)  # No stretch - minimal space
+
         logs_widget = self.logs_group.create()
-        main_layout.addWidget(logs_widget, 1)  # Give logs section stretch factor
-        
+        main_layout.addWidget(logs_widget, 1)  # Stretch factor 1 - takes remaining space
+
         # Store button references for API compatibility
         self._button_refs = self.controls_group.get_buttons()
-        
+
         # Apply theme
         self.theme_manager.apply_industrial_theme(self)
     
