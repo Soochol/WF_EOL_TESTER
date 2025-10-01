@@ -36,13 +36,13 @@ class ModernCard(QFrame):
                     stop:1 rgba(35, 35, 35, 0.95));
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 16px;
-                padding: 20px;
+                padding: 12px;
             }
         """)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)  # Reduced from 15 to 10
+        layout.setContentsMargins(15, 15, 15, 15)  # Reduced from 20 to 15
 
         if title:
             # Card title
@@ -117,11 +117,11 @@ class ModernButton(QPushButton):
                 background: {color_scheme["bg"]};
                 color: #ffffff;
                 border: none;
-                border-radius: 12px;
-                padding: 12px 24px;
-                font-size: 14px;
+                border-radius: 10px;
+                padding: 10px 20px;
+                font-size: 13px;
                 font-weight: 600;
-                min-height: 45px;
+                min-height: 40px;
             }}
             QPushButton:hover {{
                 background: {color_scheme["hover"]};
@@ -231,8 +231,8 @@ class ModernTestControlWidget(QWidget):
     def setup_ui(self):
         """Setup modern UI"""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(12)  # Reduced from 20 to 12 to save vertical space
+        main_layout.setContentsMargins(15, 15, 15, 15)  # Reduced from 20 to 15
 
         # Apply dark background
         self.setStyleSheet("""
@@ -241,19 +241,19 @@ class ModernTestControlWidget(QWidget):
             }
         """)
 
-        # Configuration Card
+        # Configuration Card (no stretch - fixed size)
         config_card = self.create_configuration_card()
-        main_layout.addWidget(config_card)
+        main_layout.addWidget(config_card, stretch=0)
 
-        # Controls Card
+        # Controls Card (no stretch - fixed size)
         controls_card = self.create_controls_card()
-        main_layout.addWidget(controls_card)
+        main_layout.addWidget(controls_card, stretch=0)
 
-        # Status & Progress Card
+        # Status & Progress Card (no stretch - fixed size)
         status_card = self.create_status_card()
-        main_layout.addWidget(status_card)
+        main_layout.addWidget(status_card, stretch=0)
 
-        # Log Viewer Card
+        # Log Viewer Card (stretch=1 - takes all remaining space)
         log_card = self.create_log_card()
         main_layout.addWidget(log_card, stretch=1)
 

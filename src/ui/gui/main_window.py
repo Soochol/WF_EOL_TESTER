@@ -62,6 +62,64 @@ class TestExecutorThread(QThread):
         """Request test to stop"""
         self.should_stop = True
 
+    async def _ensure_hardware_connected(self):
+        """
+        Ensure hardware is connected in this thread's event loop.
+
+        Only connects if not already connected. If already connected in a
+        different event loop, reconnects in the current loop.
+        """
+        # Third-party imports
+        import asyncio
+
+        from loguru import logger
+
+        try:
+            hardware_facade = self.container.hardware_service_facade()
+            loadcell = hardware_facade.get_loadcell_service()
+
+            if not loadcell:
+                return
+
+            is_connected = await loadcell.is_connected()
+
+            if not is_connected:
+                # Not connected - connect in this thread's event loop
+                self.log_message.emit(
+                    "INFO", "HARDWARE",
+                    "Connecting BS205 loadcell in test thread's event loop"
+                )
+                await loadcell.connect()
+                self.log_message.emit(
+                    "INFO", "HARDWARE",
+                    "BS205 loadcell connected successfully"
+                )
+            else:
+                # Already connected - but might be in wrong loop
+                # Reconnect to ensure it's in the correct event loop
+                self.log_message.emit(
+                    "INFO", "HARDWARE",
+                    "Reconnecting BS205 loadcell to test thread's event loop"
+                )
+
+                try:
+                    await loadcell.disconnect()
+                except Exception as e:
+                    logger.warning(f"Disconnect error (expected if from different loop): {e}")
+
+                await loadcell.connect()
+                self.log_message.emit(
+                    "INFO", "HARDWARE",
+                    "BS205 loadcell reconnected successfully"
+                )
+
+        except Exception as e:
+            logger.error(f"Error ensuring hardware connection: {e}")
+            self.log_message.emit(
+                "WARNING", "HARDWARE",
+                f"Failed to ensure hardware connection: {e}"
+            )
+
     def _evaluate_test_result(self, result):
         """
         Evaluate test result to determine actual success/failure status.
@@ -258,6 +316,10 @@ class TestExecutorThread(QThread):
             self.log_message.emit("WARNING", "EOL_TEST", "EOL Force Test cancelled before start")
             return None
 
+        # CRITICAL FIX: Ensure hardware is connected in this thread's event loop
+        # This ensures all asyncio tasks use the correct event loop
+        await self._ensure_hardware_connected()
+
         # Create test input
         test_input = EOLForceTestInput(dut_info=dut_info, operator_id="GUI_USER")
 
@@ -362,6 +424,9 @@ class TestExecutorThread(QThread):
             )
             return None
 
+        # CRITICAL FIX: Ensure hardware is connected in this thread's event loop
+        await self._ensure_hardware_connected()
+
         # Create test input
         test_input = HeatingCoolingTimeTestInput(dut_info=dut_info, operator_id="GUI_USER")
 
@@ -429,6 +494,9 @@ class TestExecutorThread(QThread):
         if self.should_stop:
             self.log_message.emit("WARNING", "MCU_TEST", "Simple MCU Test cancelled before start")
             return None
+
+        # CRITICAL FIX: Ensure hardware is connected in this thread's event loop
+        await self._ensure_hardware_connected()
 
         self.log_message.emit("INFO", "MCU_TEST", "Executing Simple MCU Test (placeholder)...")
 
