@@ -336,18 +336,17 @@ class EOLTesterGUIApplication:
         try:
             # Try to load configuration for UI scaling
             # This must be done before QApplication is created
-            settings_manager = None
+            container = None
             try:
                 # Create a minimal container to access configuration
                 SimpleReloadableContainer.ensure_config_exists()
-                temp_container = SimpleReloadableContainer.create()
-                settings_manager = temp_container.configuration_service()
+                container = SimpleReloadableContainer.create()
             except Exception as e:
                 logger.warning(f"Could not load configuration for UI scaling: {e}")
                 logger.info("Using default UI scaling settings")
 
-            # Setup UI scaling with or without settings manager
-            scale_factor = setup_ui_scaling(settings_manager)
+            # Setup UI scaling with container (not configuration_service)
+            scale_factor = setup_ui_scaling(container)
             logger.info(f"UI scaling applied with factor: {scale_factor}")
 
         except (ImportError, AttributeError, OSError) as e:

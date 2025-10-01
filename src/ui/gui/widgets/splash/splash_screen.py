@@ -133,7 +133,7 @@ class WFEOLSplashScreen(QSplashScreen):
         layout.addWidget(self.progress_bar)
 
         # Version label
-        self.version_label = QLabel("Version 2.0.0")
+        self.version_label = QLabel("Version 1.0.0")
         self.version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.version_label.setStyleSheet(
             """

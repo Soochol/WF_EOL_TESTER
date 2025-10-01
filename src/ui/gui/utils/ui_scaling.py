@@ -27,43 +27,32 @@ def setup_ui_scaling(settings_manager=None) -> float:
     """
     try:
         # Get scaling settings from configuration if available
-        ui_settings = {}
+        custom_scale_factor = None
+
         if settings_manager is not None:
             try:
-                # Try to get UI settings from the settings manager
-                if hasattr(settings_manager, 'get_application_config'):
-                    app_config = settings_manager.get_application_config()
-                    if hasattr(app_config, 'gui') and hasattr(app_config.gui, 'ui'):
-                        ui_settings = app_config.gui.ui
-                    elif hasattr(app_config, 'ui'):
-                        ui_settings = app_config.ui
-                elif hasattr(settings_manager, 'settings'):
-                    ui_settings = settings_manager.settings.get("ui", {})
-                else:
-                    # Try direct attribute access
-                    ui_settings = getattr(settings_manager, 'ui', {})
+                # settings_manager is actually the container passed from main_gui.py
+                # Access container.config.gui() to get GUI configuration
+                if hasattr(settings_manager, 'config'):
+                    config = settings_manager.config
+                    if hasattr(config, 'gui'):
+                        gui_config_dict = config.gui()
+                        if 'scaling_factor' in gui_config_dict:
+                            custom_scale_factor = gui_config_dict['scaling_factor']
+                            logger.info(f"Loaded scaling_factor from container config: {custom_scale_factor}")
             except Exception as e:
-                logger.warning(f"Could not load UI settings from settings manager: {e}")
-                ui_settings = {}
+                logger.warning(f"Could not load scaling_factor from container: {e}")
+                custom_scale_factor = None
 
-        # Extract scaling configuration
-        auto_platform_scale = ui_settings.get("auto_platform_scale", True)
-        custom_scale_factor = ui_settings.get("scale_factor", None)
-
-        # Determine scale factor
+        # Determine scale factor (only from configuration file, no auto platform scaling)
         if custom_scale_factor is not None:
-            # Use custom scale factor
+            # Use custom scale factor from GUIConfig
             scale_factor = float(custom_scale_factor)
-            logger.info(f"Using custom scale factor: {scale_factor}")
-        elif auto_platform_scale:
-            # Auto platform scaling
-            platform_type = detect_platform()
-            scale_factor = get_default_scale_factor(platform_type)
-            logger.info(f"Using auto platform scaling for {platform_type}: {scale_factor}")
+            logger.info(f"Using scale factor from configuration: {scale_factor}")
         else:
-            # Use default scale factor
+            # Use default scale factor (1.0) if not specified in config
             scale_factor = 1.0
-            logger.info("Using default scale factor: 1.0")
+            logger.info("Using default scale factor: 1.0 (not specified in configuration)")
 
         # Validate scale factor range
         scale_factor = max(0.5, min(3.0, scale_factor))  # Clamp between 0.5x and 3.0x

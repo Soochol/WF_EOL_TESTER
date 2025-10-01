@@ -321,7 +321,7 @@ class ModernHeaderWidget(QWidget):
         )
         branding_layout.addWidget(title_label)
 
-        subtitle_label = QLabel("v2.0.0 • Withforce")
+        subtitle_label = QLabel("v1.0.0 • Withforce")
         subtitle_label.setStyleSheet(
             """
             font-size: 11px;

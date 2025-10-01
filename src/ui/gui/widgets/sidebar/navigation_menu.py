@@ -93,6 +93,8 @@ class NavigationMenu(QWidget):
 
         # Statistics button (now directly navigates to Overview with 3 tabs)
         stats_btn = self.create_nav_button("statistics_overview", "statistics", "Statistics")
+        stats_btn.setEnabled(False)  # Disable statistics button
+        stats_btn.setToolTip("Statistics feature coming soon")
         layout.addWidget(stats_btn)
         self.nav_buttons.addButton(stats_btn)
         self.all_buttons.append(stats_btn)

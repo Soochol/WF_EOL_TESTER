@@ -109,6 +109,12 @@ class GUIConfig:
     """GUI configuration settings"""
 
     require_serial_number_popup: bool = True
+    scaling_factor: float = 1.0  # UI scaling factor (0.5 ~ 2.0)
+
+    def __post_init__(self) -> None:
+        """Validate GUI configuration"""
+        if not 0.5 <= self.scaling_factor <= 2.0:
+            raise ValueError("scaling_factor must be between 0.5 and 2.0")
 
 
 @dataclass(frozen=True)
@@ -145,7 +151,10 @@ class ApplicationConfig:
                 },
             },
             "logging": {"level": self.logging.level},
-            "gui": {"require_serial_number_popup": self.gui.require_serial_number_popup},
+            "gui": {
+                "require_serial_number_popup": self.gui.require_serial_number_popup,
+                "scaling_factor": self.gui.scaling_factor,
+            },
         }
 
         # created_at은 있을 때만 포함
@@ -215,6 +224,7 @@ class ApplicationConfig:
             ),
             logging=LoggingConfig(level=logging_data.get("level", "INFO")),
             gui=GUIConfig(
-                require_serial_number_popup=gui_data.get("require_serial_number_popup", True)
+                require_serial_number_popup=gui_data.get("require_serial_number_popup", True),
+                scaling_factor=gui_data.get("scaling_factor", 1.0),
             ),
         )
