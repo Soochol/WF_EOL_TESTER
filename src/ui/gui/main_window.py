@@ -76,7 +76,8 @@ class TestExecutorThread(QThread):
 
         try:
             hardware_facade = self.container.hardware_service_facade()
-            loadcell = hardware_facade.get_loadcell_service()
+            # Access loadcell_service as a property, not a method
+            loadcell = hardware_facade.loadcell_service
 
             if not loadcell:
                 return
