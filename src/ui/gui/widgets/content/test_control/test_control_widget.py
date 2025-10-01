@@ -4,11 +4,12 @@ Main test control widget with modular architecture and separation of concerns.
 """
 
 # Standard library imports
+import logging
 from typing import Dict, Optional
 
 # Third-party imports
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import QTimer, Signal
+from PySide6.QtWidgets import QApplication, QComboBox, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 # Local application imports
 from application.containers.application_container import ApplicationContainer
@@ -30,7 +31,7 @@ from .ui_components import (
 class TestControlWidget(QWidget):
     """
     Refactored test control widget with modular architecture.
-    
+
     Features:
     - Separation of concerns with dedicated classes for state, events, and UI
     - Centralized state management
@@ -38,13 +39,16 @@ class TestControlWidget(QWidget):
     - Consistent styling through theme manager
     - Maintainable and testable code structure
     """
-    
+
     # Signals (maintain API compatibility)
     test_started = Signal()
     test_stopped = Signal()
     test_paused = Signal()
     robot_home_requested = Signal()
     emergency_stop_requested = Signal()
+
+    # Logger
+    logger = logging.getLogger(__name__)
     
     def __init__(
         self,
@@ -78,6 +82,9 @@ class TestControlWidget(QWidget):
         self._setup_ui()
         self._setup_connections()
         self._setup_state_connections()
+
+        # Schedule geometry logging after widget is fully rendered
+        QTimer.singleShot(500, self._log_geometry_info)
     
     def _setup_ui(self) -> None:
         """Setup the modular UI components"""
@@ -261,3 +268,100 @@ class TestControlWidget(QWidget):
     def reset_to_ready_state(self) -> None:
         """Reset widget to ready state for new test"""
         self.test_state.reset_to_ready()
+
+    def _log_geometry_info(self) -> None:
+        """Log screen resolution and widget geometry information for debugging"""
+        try:
+            # Get screen information
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geometry = screen.geometry()
+                screen_size = screen.size()
+                available_geometry = screen.availableGeometry()
+
+                self.logger.info("=" * 80)
+                self.logger.info("SCREEN & WIDGET GEOMETRY DEBUG INFO")
+                self.logger.info("=" * 80)
+                self.logger.info(f"Screen Resolution: {screen_size.width()}x{screen_size.height()}")
+                self.logger.info(f"Screen Geometry: {screen_geometry}")
+                self.logger.info(f"Available Geometry (excluding taskbar): {available_geometry}")
+
+            # Get main window information
+            main_window = self.window()
+            if main_window:
+                self.logger.info(f"\nMain Window Size: {main_window.size().width()}x{main_window.size().height()}")
+                self.logger.info(f"Main Window Geometry: {main_window.geometry()}")
+                self.logger.info(f"Main Window Position: ({main_window.x()}, {main_window.y()})")
+
+            # Get Test Control Widget information
+            self.logger.info(f"\nTest Control Widget Size: {self.size().width()}x{self.size().height()}")
+            self.logger.info(f"Test Control Widget Geometry: {self.geometry()}")
+            self.logger.info(f"Test Control Widget Visible: {self.isVisible()}")
+
+            # Log each component group geometry
+            self.logger.info("\n" + "-" * 80)
+            self.logger.info("COMPONENT GROUPS GEOMETRY:")
+            self.logger.info("-" * 80)
+
+            # Sequence group
+            if hasattr(self.sequence_group, 'sequence_combo') and self.sequence_group.sequence_combo:
+                parent = self.sequence_group.sequence_combo.parent()
+                if parent:
+                    self.logger.info(f"\n[Test Sequence Group]")
+                    self.logger.info(f"  Size: {parent.size().width()}x{parent.size().height()}")
+                    self.logger.info(f"  Geometry: {parent.geometry()}")
+                    self.logger.info(f"  Minimum Size: {parent.minimumSize().width()}x{parent.minimumSize().height()}")
+                    self.logger.info(f"  ComboBox Size: {self.sequence_group.sequence_combo.size().width()}x{self.sequence_group.sequence_combo.size().height()}")
+
+            # Parameters group
+            if hasattr(self.parameters_group, 'serial_edit') and self.parameters_group.serial_edit:
+                parent = self.parameters_group.serial_edit.parent()
+                if parent:
+                    self.logger.info(f"\n[Test Parameters Group]")
+                    self.logger.info(f"  Size: {parent.size().width()}x{parent.size().height()}")
+                    self.logger.info(f"  Geometry: {parent.geometry()}")
+                    self.logger.info(f"  Serial Edit Size: {self.parameters_group.serial_edit.size().width()}x{self.parameters_group.serial_edit.size().height()}")
+
+            # Controls group
+            if self.start_btn:
+                parent = self.start_btn.parent()
+                if parent:
+                    self.logger.info(f"\n[Test Controls Group]")
+                    self.logger.info(f"  Size: {parent.size().width()}x{parent.size().height()}")
+                    self.logger.info(f"  Geometry: {parent.geometry()}")
+
+                    # Log individual button sizes
+                    if self.start_btn:
+                        self.logger.info(f"  START Button Size: {self.start_btn.size().width()}x{self.start_btn.size().height()}")
+                    if self.home_btn:
+                        self.logger.info(f"  HOME Button Size: {self.home_btn.size().width()}x{self.home_btn.size().height()}")
+                    if self.pause_btn:
+                        self.logger.info(f"  PAUSE Button Size: {self.pause_btn.size().width()}x{self.pause_btn.size().height()}")
+                    if self.stop_btn:
+                        self.logger.info(f"  STOP Button Size: {self.stop_btn.size().width()}x{self.stop_btn.size().height()}")
+                    if self.emergency_btn:
+                        self.logger.info(f"  EMERGENCY Button Size: {self.emergency_btn.size().width()}x{self.emergency_btn.size().height()}")
+
+            # Status group
+            if self.status_label:
+                parent = self.status_label.parent()
+                if parent:
+                    self.logger.info(f"\n[Test Status Group]")
+                    self.logger.info(f"  Size: {parent.size().width()}x{parent.size().height()}")
+                    self.logger.info(f"  Geometry: {parent.geometry()}")
+                    if self.progress_bar:
+                        self.logger.info(f"  Progress Bar Size: {self.progress_bar.size().width()}x{self.progress_bar.size().height()}")
+
+            # Logs group
+            if self.log_viewer:
+                parent = self.log_viewer.parent()
+                if parent:
+                    self.logger.info(f"\n[Test Logs Group]")
+                    self.logger.info(f"  Size: {parent.size().width()}x{parent.size().height()}")
+                    self.logger.info(f"  Geometry: {parent.geometry()}")
+                    self.logger.info(f"  Log Viewer Size: {self.log_viewer.size().width()}x{self.log_viewer.size().height()}")
+
+            self.logger.info("\n" + "=" * 80)
+
+        except Exception as e:
+            self.logger.error(f"Error logging geometry info: {e}", exc_info=True)
