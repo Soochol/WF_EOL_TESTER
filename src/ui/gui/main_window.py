@@ -1563,9 +1563,21 @@ class MainWindow(QMainWindow):
             test_sequence = self.test_control_page.sequence_combo.currentText()
 
             if not serial_number:
+                # Show popup warning
+                QMessageBox.warning(
+                    self,
+                    "Serial Number Required",
+                    "Please enter a serial number before starting the test.\n\n"
+                    "The serial number is required to identify and track the test results.",
+                    QMessageBox.StandardButton.Ok
+                )
+                # Also update status bar
                 self.test_control_page.update_test_status(
                     "Please enter a serial number", "status_warning"
                 )
+                # Focus on serial number input field
+                if self.test_control_page.serial_edit:
+                    self.test_control_page.serial_edit.setFocus()
                 return
 
             logger.info(f"Starting {test_sequence} for serial number: {serial_number}")

@@ -11,7 +11,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QLineEdit, QComboBox, QSpinBox,
-    QProgressBar, QFrame, QGroupBox, QApplication
+    QProgressBar, QFrame, QGroupBox, QApplication, QMessageBox
 )
 
 from application.containers.application_container import ApplicationContainer
@@ -474,6 +474,24 @@ class ModernTestControlWidget(QWidget):
 
     def _on_start_clicked(self):
         """Handle start button click"""
+        # Validate serial number before starting
+        if not self.serial_edit:
+            return
+
+        serial_number = self.serial_edit.text().strip()
+        if not serial_number:
+            # Show popup warning
+            QMessageBox.warning(
+                self,
+                "Serial Number Required",
+                "Please enter a serial number before starting the test.\n\n"
+                "The serial number is required to identify and track the test results.",
+                QMessageBox.StandardButton.Ok
+            )
+            # Focus on serial number input field
+            self.serial_edit.setFocus()
+            return
+
         self.start_indeterminate_progress()
         self.test_started.emit()
 
