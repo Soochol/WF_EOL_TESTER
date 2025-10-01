@@ -550,6 +550,9 @@ class ModernTestControlWidget(QWidget):
     def _log_geometry_info(self) -> None:
         """Log screen resolution and widget geometry information for debugging"""
         try:
+            # Use loguru for consistency with other GUI logs
+            from loguru import logger
+
             # Get screen information
             screen = QApplication.primaryScreen()
             if screen:
@@ -557,81 +560,82 @@ class ModernTestControlWidget(QWidget):
                 screen_size = screen.size()
                 available_geometry = screen.availableGeometry()
 
-                self.logger.info("=" * 80)
-                self.logger.info("MODERN TEST CONTROL - SCREEN & WIDGET GEOMETRY DEBUG")
-                self.logger.info("=" * 80)
-                self.logger.info(f"Screen Resolution: {screen_size.width()}x{screen_size.height()}")
-                self.logger.info(f"Screen Geometry: {screen_geometry}")
-                self.logger.info(f"Available Geometry (excluding taskbar): {available_geometry}")
+                logger.info("=" * 80)
+                logger.info("MODERN TEST CONTROL - SCREEN & WIDGET GEOMETRY DEBUG")
+                logger.info("=" * 80)
+                logger.info(f"Screen Resolution: {screen_size.width()}x{screen_size.height()}")
+                logger.info(f"Screen Geometry: {screen_geometry}")
+                logger.info(f"Available Geometry (excluding taskbar): {available_geometry}")
 
             # Get main window information
             main_window = self.window()
             if main_window:
-                self.logger.info(f"\nMain Window Size: {main_window.size().width()}x{main_window.size().height()}")
-                self.logger.info(f"Main Window Geometry: {main_window.geometry()}")
-                self.logger.info(f"Main Window Position: ({main_window.x()}, {main_window.y()})")
+                logger.info(f"\nMain Window Size: {main_window.size().width()}x{main_window.size().height()}")
+                logger.info(f"Main Window Geometry: {main_window.geometry()}")
+                logger.info(f"Main Window Position: ({main_window.x()}, {main_window.y()})")
 
             # Get Modern Test Control Widget information
-            self.logger.info(f"\nModern Test Control Widget Size: {self.size().width()}x{self.size().height()}")
-            self.logger.info(f"Modern Test Control Widget Geometry: {self.geometry()}")
-            self.logger.info(f"Modern Test Control Widget Visible: {self.isVisible()}")
+            logger.info(f"\nModern Test Control Widget Size: {self.size().width()}x{self.size().height()}")
+            logger.info(f"Modern Test Control Widget Geometry: {self.geometry()}")
+            logger.info(f"Modern Test Control Widget Visible: {self.isVisible()}")
 
             # Log each card geometry
-            self.logger.info("\n" + "-" * 80)
-            self.logger.info("CARDS GEOMETRY:")
-            self.logger.info("-" * 80)
+            logger.info("\n" + "-" * 80)
+            logger.info("CARDS GEOMETRY:")
+            logger.info("-" * 80)
 
             # Serial edit (Configuration Card)
             if hasattr(self, 'serial_edit') and self.serial_edit:
                 parent = self.serial_edit.parent()
                 if parent:
                     config_card = parent.parent() if parent.parent() else parent
-                    self.logger.info(f"\n[Configuration Card]")
-                    self.logger.info(f"  Card Size: {config_card.size().width()}x{config_card.size().height()}")
-                    self.logger.info(f"  Card Geometry: {config_card.geometry()}")
-                    self.logger.info(f"  Serial Edit Size: {self.serial_edit.size().width()}x{self.serial_edit.size().height()}")
+                    logger.info(f"\n[Configuration Card]")
+                    logger.info(f"  Card Size: {config_card.size().width()}x{config_card.size().height()}")
+                    logger.info(f"  Card Geometry: {config_card.geometry()}")
+                    logger.info(f"  Serial Edit Size: {self.serial_edit.size().width()}x{self.serial_edit.size().height()}")
 
             # Buttons (Controls Card)
             if hasattr(self, 'start_btn') and self.start_btn:
                 parent = self.start_btn.parent()
                 if parent:
                     controls_card = parent.parent() if parent.parent() else parent
-                    self.logger.info(f"\n[Controls Card]")
-                    self.logger.info(f"  Card Size: {controls_card.size().width()}x{controls_card.size().height()}")
-                    self.logger.info(f"  Card Geometry: {controls_card.geometry()}")
+                    logger.info(f"\n[Controls Card]")
+                    logger.info(f"  Card Size: {controls_card.size().width()}x{controls_card.size().height()}")
+                    logger.info(f"  Card Geometry: {controls_card.geometry()}")
 
                     # Log individual button sizes
                     if self.start_btn:
-                        self.logger.info(f"  START Button Size: {self.start_btn.size().width()}x{self.start_btn.size().height()}")
+                        logger.info(f"  START Button Size: {self.start_btn.size().width()}x{self.start_btn.size().height()}")
                     if self.pause_btn:
-                        self.logger.info(f"  PAUSE Button Size: {self.pause_btn.size().width()}x{self.pause_btn.size().height()}")
+                        logger.info(f"  PAUSE Button Size: {self.pause_btn.size().width()}x{self.pause_btn.size().height()}")
                     if self.stop_btn:
-                        self.logger.info(f"  STOP Button Size: {self.stop_btn.size().width()}x{self.stop_btn.size().height()}")
+                        logger.info(f"  STOP Button Size: {self.stop_btn.size().width()}x{self.stop_btn.size().height()}")
                     if self.home_btn:
-                        self.logger.info(f"  HOME Button Size: {self.home_btn.size().width()}x{self.home_btn.size().height()}")
+                        logger.info(f"  HOME Button Size: {self.home_btn.size().width()}x{self.home_btn.size().height()}")
                     if self.emergency_btn:
-                        self.logger.info(f"  EMERGENCY Button Size: {self.emergency_btn.size().width()}x{self.emergency_btn.size().height()}")
+                        logger.info(f"  EMERGENCY Button Size: {self.emergency_btn.size().width()}x{self.emergency_btn.size().height()}")
 
             # Status card
             if hasattr(self, 'status_pill') and self.status_pill:
                 parent = self.status_pill.parent()
                 if parent:
-                    self.logger.info(f"\n[Status & Progress Card]")
-                    self.logger.info(f"  Card Size: {parent.size().width()}x{parent.size().height()}")
-                    self.logger.info(f"  Card Geometry: {parent.geometry()}")
+                    logger.info(f"\n[Status & Progress Card]")
+                    logger.info(f"  Card Size: {parent.size().width()}x{parent.size().height()}")
+                    logger.info(f"  Card Geometry: {parent.geometry()}")
                     if self.progress_bar:
-                        self.logger.info(f"  Progress Bar Size: {self.progress_bar.size().width()}x{self.progress_bar.size().height()}")
+                        logger.info(f"  Progress Bar Size: {self.progress_bar.size().width()}x{self.progress_bar.size().height()}")
 
             # Log viewer card
             if hasattr(self, 'log_viewer') and self.log_viewer:
                 parent = self.log_viewer.parent()
                 if parent:
-                    self.logger.info(f"\n[Test Logs Card]")
-                    self.logger.info(f"  Card Size: {parent.size().width()}x{parent.size().height()}")
-                    self.logger.info(f"  Card Geometry: {parent.geometry()}")
-                    self.logger.info(f"  Log Viewer Size: {self.log_viewer.size().width()}x{self.log_viewer.size().height()}")
+                    logger.info(f"\n[Test Logs Card]")
+                    logger.info(f"  Card Size: {parent.size().width()}x{parent.size().height()}")
+                    logger.info(f"  Card Geometry: {parent.geometry()}")
+                    logger.info(f"  Log Viewer Size: {self.log_viewer.size().width()}x{self.log_viewer.size().height()}")
 
-            self.logger.info("\n" + "=" * 80)
+            logger.info("\n" + "=" * 80)
 
         except Exception as e:
-            self.logger.error(f"Error logging geometry info: {e}", exc_info=True)
+            from loguru import logger
+            logger.error(f"Error logging geometry info: {e}", exc_info=True)
