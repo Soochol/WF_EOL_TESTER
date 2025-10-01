@@ -218,8 +218,15 @@ class ModernTestControlWidget(QWidget):
         self.setup_ui()
         self.setup_connections()
 
-        # Schedule geometry logging after widget is fully rendered
-        QTimer.singleShot(500, self._log_geometry_info)
+        # Log geometry info immediately and after render
+        QTimer.singleShot(100, self._log_geometry_info)  # Faster initial log
+        QTimer.singleShot(1000, self._log_geometry_info)  # Second log after full render
+
+    def showEvent(self, event):
+        """Override showEvent to log geometry when widget is shown"""
+        super().showEvent(event)
+        # Log geometry after widget is fully shown
+        QTimer.singleShot(200, self._log_geometry_info)
 
     def setup_ui(self):
         """Setup modern UI"""
