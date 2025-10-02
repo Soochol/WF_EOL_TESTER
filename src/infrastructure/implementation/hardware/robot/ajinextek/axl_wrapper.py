@@ -1975,10 +1975,15 @@ class AXLWrapper:
             Return code (0x0000 = success)
 
         Raises:
-            AXLError: If DLL is not loaded
+            AXLError: If DLL is not loaded or function not available
         """
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
+
+        # Check if function is available
+        if not hasattr(self.dll, "AxmStatusSetReadServoLoadRatio"):
+            raise AXLError("AxmStatusSetReadServoLoadRatio function not available in this AXL version")
+
         result = self.dll.AxmStatusSetReadServoLoadRatio(axis_no, sel_mon)
         return result  # type: ignore[no-any-return]
 
@@ -1993,11 +1998,15 @@ class AXLWrapper:
             Load ratio in percentage
 
         Raises:
-            AXLError: If DLL is not loaded
+            AXLError: If DLL is not loaded or function not available
             AXLMotionError: If read operation fails
         """
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
+
+        # Check if function is available
+        if not hasattr(self.dll, "AxmStatusReadServoLoadRatio"):
+            raise AXLError("AxmStatusReadServoLoadRatio function not available in this AXL version")
 
         ratio_value = c_double()
         result = self.dll.AxmStatusReadServoLoadRatio(axis_no, ctypes.byref(ratio_value))
@@ -2019,11 +2028,15 @@ class AXLWrapper:
             Current torque value
 
         Raises:
-            AXLError: If DLL is not loaded
+            AXLError: If DLL is not loaded or function not available
             AXLMotionError: If read operation fails
         """
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
+
+        # Check if function is available
+        if not hasattr(self.dll, "AxmStatusReadTorque"):
+            raise AXLError("AxmStatusReadTorque function not available in this AXL version")
 
         torque_value = c_double()
         result = self.dll.AxmStatusReadTorque(axis_no, ctypes.byref(torque_value))

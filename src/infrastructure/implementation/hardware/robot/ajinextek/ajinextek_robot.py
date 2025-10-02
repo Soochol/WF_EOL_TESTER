@@ -783,11 +783,11 @@ class AjinextekRobot(RobotService):
             result = self._axl.status_set_read_servo_load_ratio(axis, ratio_type)
             if result != AXT_RT_SUCCESS:
                 error_msg = get_error_message(result)
-                logger.error(f"Failed to set load ratio monitoring: {error_msg}")
+                logger.warning(f"Load ratio monitoring not supported: {error_msg}")
                 raise HardwareException(
                     "ajinextek_robot",
                     "get_load_ratio_set",
-                    {"axis": axis, "ratio_type": ratio_type, "error": error_msg},
+                    {"axis": axis, "ratio_type": ratio_type, "error": f"Not supported: {error_msg}"},
                 )
 
             # Read load ratio
@@ -796,12 +796,22 @@ class AjinextekRobot(RobotService):
             return load_ratio
 
         except Exception as e:
-            logger.error(f"Failed to read load ratio for axis {axis}: {e}")
-            raise HardwareException(
-                "ajinextek_robot",
-                "get_load_ratio",
-                {"axis": axis, "ratio_type": ratio_type, "error": str(e)},
-            ) from e
+            # Check if it's an AXLError (function not available)
+            error_str = str(e)
+            if "not available" in error_str.lower():
+                logger.warning(f"Load ratio feature not available: {e}")
+                raise HardwareException(
+                    "ajinextek_robot",
+                    "get_load_ratio",
+                    {"axis": axis, "ratio_type": ratio_type, "error": "Feature not available in AXL version"},
+                ) from e
+            else:
+                logger.error(f"Failed to read load ratio for axis {axis}: {e}")
+                raise HardwareException(
+                    "ajinextek_robot",
+                    "get_load_ratio",
+                    {"axis": axis, "ratio_type": ratio_type, "error": str(e)},
+                ) from e
 
     async def get_torque(self, axis: int) -> float:
         """
@@ -825,12 +835,22 @@ class AjinextekRobot(RobotService):
             return torque
 
         except Exception as e:
-            logger.error(f"Failed to read torque for axis {axis}: {e}")
-            raise HardwareException(
-                "ajinextek_robot",
-                "get_torque",
-                {"axis": axis, "error": str(e)},
-            ) from e
+            # Check if it's an AXLError (function not available)
+            error_str = str(e)
+            if "not available" in error_str.lower():
+                logger.warning(f"Torque reading feature not available: {e}")
+                raise HardwareException(
+                    "ajinextek_robot",
+                    "get_torque",
+                    {"axis": axis, "error": "Feature not available in AXL version"},
+                ) from e
+            else:
+                logger.error(f"Failed to read torque for axis {axis}: {e}")
+                raise HardwareException(
+                    "ajinextek_robot",
+                    "get_torque",
+                    {"axis": axis, "error": str(e)},
+                ) from e
 
     # === Helper Methods ===
 
