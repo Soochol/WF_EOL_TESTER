@@ -8,6 +8,7 @@ Uses Material Design 3 components for consistent styling.
 from typing import Dict, Optional
 
 # Third-party imports
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QGridLayout,
@@ -184,12 +185,18 @@ class MotionControlGroup:
         self.rel_move_btn: Optional[QPushButton] = None
         self.get_pos_btn: Optional[QPushButton] = None
         self.stop_btn: Optional[QPushButton] = None
+        self.get_load_ratio_btn: Optional[QPushButton] = None
+        self.get_torque_btn: Optional[QPushButton] = None
 
         # Input fields
         self.abs_pos_input: Optional[QDoubleSpinBox] = None
         self.abs_vel_input: Optional[QDoubleSpinBox] = None
         self.rel_pos_input: Optional[QDoubleSpinBox] = None
         self.rel_vel_input: Optional[QDoubleSpinBox] = None
+
+        # Result labels
+        self.load_ratio_label: Optional[QLabel] = None
+        self.torque_label: Optional[QLabel] = None
 
     def create(self) -> ModernCard:
         """Create motion control card"""
@@ -235,6 +242,64 @@ class MotionControlGroup:
         control_widget = QWidget()
         control_widget.setLayout(control_layout)
         main_layout.addWidget(control_widget)
+
+        # Diagnostic controls
+        diagnostic_layout = QVBoxLayout()
+        diagnostic_layout.setSpacing(8)
+
+        # Buttons layout
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(12)
+
+        self.get_load_ratio_btn = ModernButton("Get Load Ratio", "chart-line", "info")
+        self.get_torque_btn = ModernButton("Get Torque", "bolt", "info")
+
+        self.get_load_ratio_btn.clicked.connect(self.event_handlers.on_get_load_ratio_clicked)
+        self.get_torque_btn.clicked.connect(self.event_handlers.on_get_torque_clicked)
+
+        buttons_layout.addWidget(self.get_load_ratio_btn)
+        buttons_layout.addWidget(self.get_torque_btn)
+
+        diagnostic_layout.addLayout(buttons_layout)
+
+        # Result labels layout
+        labels_layout = QHBoxLayout()
+        labels_layout.setSpacing(12)
+
+        self.load_ratio_label = QLabel("--")
+        self.load_ratio_label.setStyleSheet("""
+            QLabel {
+                color: #cccccc;
+                font-size: 13px;
+                padding: 8px;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        """)
+        self.load_ratio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.torque_label = QLabel("--")
+        self.torque_label.setStyleSheet("""
+            QLabel {
+                color: #cccccc;
+                font-size: 13px;
+                padding: 8px;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        """)
+        self.torque_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        labels_layout.addWidget(self.load_ratio_label)
+        labels_layout.addWidget(self.torque_label)
+
+        diagnostic_layout.addLayout(labels_layout)
+
+        diagnostic_widget = QWidget()
+        diagnostic_widget.setLayout(diagnostic_layout)
+        main_layout.addWidget(diagnostic_widget)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -360,6 +425,8 @@ class MotionControlGroup:
             "move_rel": self.rel_move_btn,
             "get_position": self.get_pos_btn,
             "stop": self.stop_btn,
+            "get_load_ratio": self.get_load_ratio_btn,
+            "get_torque": self.get_torque_btn,
         }
 
 

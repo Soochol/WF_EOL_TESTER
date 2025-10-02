@@ -118,7 +118,7 @@ class NavigationMenu(QWidget):
         self.all_buttons.append(self.hardware_button)
 
         # Hardware submenu - Robot
-        self.robot_button = self.create_submenu_button("robot", "robot", "Robot")
+        self.robot_button = self.create_submenu_button("robot", "motor", "Robot")
         layout.addWidget(self.robot_button)
         self.nav_buttons.addButton(self.robot_button)
         self.all_buttons.append(self.robot_button)

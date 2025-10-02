@@ -529,6 +529,63 @@ class MockRobot(RobotService):
             "irq_no": self._irq_no,
         }
 
+    async def get_load_ratio(self, axis: int, ratio_type: int = 0) -> float:
+        """
+        Get servo load ratio (mock implementation)
+
+        Args:
+            axis: Axis number
+            ratio_type: Monitor selection (0=Accumulated, 1=Regenerative, 2=Reference Torque)
+
+        Returns:
+            Simulated load ratio in percentage (20-80%)
+        """
+        # Standard library imports
+        import random
+
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+
+        # Simulate different load ratios based on type
+        if ratio_type == 0:  # Accumulated
+            load_ratio = random.uniform(30.0, 70.0)
+        elif ratio_type == 1:  # Regenerative
+            load_ratio = random.uniform(20.0, 50.0)
+        elif ratio_type == 2:  # Reference Torque
+            load_ratio = random.uniform(40.0, 80.0)
+        else:
+            load_ratio = random.uniform(25.0, 75.0)
+
+        logger.debug(
+            f"Mock load ratio (type {ratio_type}) for axis {axis}: {load_ratio:.2f}%"
+        )
+        return load_ratio
+
+    async def get_torque(self, axis: int) -> float:
+        """
+        Get current torque value (mock implementation)
+
+        Args:
+            axis: Axis number
+
+        Returns:
+            Simulated torque value (100-1500 N·m)
+        """
+        # Standard library imports
+        import random
+
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+
+        # Simulate torque value (higher when moving)
+        if self._motion_status == MotionStatus.MOVING:
+            torque = random.uniform(800.0, 1500.0)
+        else:
+            torque = random.uniform(100.0, 500.0)
+
+        logger.debug(f"Mock torque for axis {axis}: {torque:.2f}")
+        return torque
+
     async def _simulate_motion(self, target_position: float, velocity: float) -> None:
         """
         Simulate motion in background for realistic motion timing

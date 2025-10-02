@@ -36,6 +36,8 @@ class RobotEventHandlers(QObject):
     position_read = Signal(float)  # position
     stop_completed = Signal(bool, str)  # success, message
     emergency_stop_completed = Signal(bool, str)  # success, message
+    load_ratio_read = Signal(float)  # load_ratio
+    torque_read = Signal(float)  # torque
 
     def __init__(
         self,
@@ -277,3 +279,38 @@ class RobotEventHandlers(QObject):
         except Exception as e:
             logger.error(f"Emergency stop failed: {e}")
             self.emergency_stop_completed.emit(False, f"Emergency stop failed: {str(e)}")
+
+    # Diagnostic operations
+    def on_get_load_ratio_clicked(self, ratio_type: int = 0) -> None:
+        """Handle get load ratio button click"""
+        self.state.show_progress("Reading load ratio...")
+        self._run_async(self._async_get_load_ratio(ratio_type))
+
+    async def _async_get_load_ratio(self, ratio_type: int) -> None:
+        """Async get load ratio operation"""
+        try:
+            load_ratio = await self.robot_service.get_load_ratio(self.axis_id, ratio_type)
+            self.load_ratio_read.emit(load_ratio)
+            logger.info(f"Load ratio (type {ratio_type}): {load_ratio:.2f}%")
+        except Exception as e:
+            logger.error(f"Load ratio read failed: {e}")
+            self.load_ratio_read.emit(-1.0)  # Error indicator
+        finally:
+            self.state.hide_progress()
+
+    def on_get_torque_clicked(self) -> None:
+        """Handle get torque button click"""
+        self.state.show_progress("Reading torque...")
+        self._run_async(self._async_get_torque())
+
+    async def _async_get_torque(self) -> None:
+        """Async get torque operation"""
+        try:
+            torque = await self.robot_service.get_torque(self.axis_id)
+            self.torque_read.emit(torque)
+            logger.info(f"Torque: {torque:.2f}")
+        except Exception as e:
+            logger.error(f"Torque read failed: {e}")
+            self.torque_read.emit(-1.0)  # Error indicator
+        finally:
+            self.state.hide_progress()

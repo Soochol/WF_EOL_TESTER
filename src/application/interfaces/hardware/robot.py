@@ -232,3 +232,39 @@ class RobotService(ABC):
             Dictionary containing robot status
         """
         ...
+
+    @abstractmethod
+    async def get_load_ratio(self, axis: int, ratio_type: int = 0) -> float:
+        """
+        Get servo load ratio
+
+        Args:
+            axis: Axis number
+            ratio_type: Monitor selection
+                0x00 - Accumulated load ratio (default)
+                0x01 - Regenerative load ratio
+                0x02 - Reference Torque load ratio
+
+        Returns:
+            Load ratio in percentage
+
+        Raises:
+            HardwareOperationError: If read operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def get_torque(self, axis: int) -> float:
+        """
+        Get current torque value
+
+        Args:
+            axis: Axis number
+
+        Returns:
+            Current torque value
+
+        Raises:
+            HardwareOperationError: If read operation fails
+        """
+        ...

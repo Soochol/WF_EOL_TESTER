@@ -6,10 +6,11 @@ Optimized for request-response patterns like BS205 LoadCell.
 """
 
 # Standard library imports
-from typing import Optional
-
+# Standard library imports
 # Third-party imports
 import asyncio
+from typing import Optional
+
 from loguru import logger
 
 # Local application imports
@@ -26,7 +27,6 @@ from driver.serial.exceptions import (
     SerialConnectionError,
     SerialTimeoutError,
 )
-
 
 try:
     # Third-party imports
@@ -146,7 +146,9 @@ class SerialConnection:
                             serial_instance.close()
                             logger.debug("Underlying serial port closed explicitly")
                         except Exception as serial_close_error:
-                            logger.warning(f"Failed to close underlying serial port: {serial_close_error}")
+                            logger.warning(
+                                f"Failed to close underlying serial port: {serial_close_error}"
+                            )
 
             # Then close the writer (stream layer)
             if self._writer and not self._writer.is_closing():

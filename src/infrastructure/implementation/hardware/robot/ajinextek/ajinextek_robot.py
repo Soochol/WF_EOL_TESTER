@@ -759,6 +759,79 @@ class AjinextekRobot(RobotService):
 
         return status
 
+    async def get_load_ratio(self, axis: int, ratio_type: int = 0) -> float:
+        """
+        Get servo load ratio
+
+        Args:
+            axis: Axis number
+            ratio_type: Monitor selection
+                0x00 - Accumulated load ratio (default)
+                0x01 - Regenerative load ratio
+                0x02 - Reference Torque load ratio
+
+        Returns:
+            Load ratio in percentage
+
+        Raises:
+            HardwareOperationError: If read operation fails
+        """
+        self._ensure_connected()
+
+        try:
+            # Set load ratio monitoring type
+            result = self._axl.status_set_read_servo_load_ratio(axis, ratio_type)
+            if result != AXT_RT_SUCCESS:
+                error_msg = get_error_message(result)
+                logger.error(f"Failed to set load ratio monitoring: {error_msg}")
+                raise HardwareException(
+                    "ajinextek_robot",
+                    "get_load_ratio_set",
+                    {"axis": axis, "ratio_type": ratio_type, "error": error_msg},
+                )
+
+            # Read load ratio
+            load_ratio = self._axl.status_read_servo_load_ratio(axis)
+            logger.debug(f"Load ratio (type {ratio_type}) for axis {axis}: {load_ratio}%")
+            return load_ratio
+
+        except Exception as e:
+            logger.error(f"Failed to read load ratio for axis {axis}: {e}")
+            raise HardwareException(
+                "ajinextek_robot",
+                "get_load_ratio",
+                {"axis": axis, "ratio_type": ratio_type, "error": str(e)},
+            ) from e
+
+    async def get_torque(self, axis: int) -> float:
+        """
+        Get current torque value
+
+        Args:
+            axis: Axis number
+
+        Returns:
+            Current torque value
+
+        Raises:
+            HardwareOperationError: If read operation fails
+        """
+        self._ensure_connected()
+
+        try:
+            # Read torque value
+            torque = self._axl.status_read_torque(axis)
+            logger.debug(f"Torque for axis {axis}: {torque}")
+            return torque
+
+        except Exception as e:
+            logger.error(f"Failed to read torque for axis {axis}: {e}")
+            raise HardwareException(
+                "ajinextek_robot",
+                "get_torque",
+                {"axis": axis, "error": str(e)},
+            ) from e
+
     # === Helper Methods ===
 
     def _ensure_connected(self) -> None:

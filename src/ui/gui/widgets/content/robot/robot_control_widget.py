@@ -159,6 +159,8 @@ class RobotControlWidget(QWidget):
         self.event_handlers.position_read.connect(self._on_position_read)
         self.event_handlers.stop_completed.connect(self._on_stop_completed)
         self.event_handlers.emergency_stop_completed.connect(self._on_emergency_stop_completed)
+        self.event_handlers.load_ratio_read.connect(self._on_load_ratio_read)
+        self.event_handlers.torque_read.connect(self._on_torque_read)
 
     def _setup_state_connections(self) -> None:
         """Setup connections between state manager and UI components"""
@@ -261,3 +263,83 @@ class RobotControlWidget(QWidget):
             QMessageBox.critical(self, "EMERGENCY STOP", message)
         else:
             QMessageBox.critical(self, "Emergency Stop Error", message)
+
+    def _on_load_ratio_read(self, load_ratio: float) -> None:
+        """Handle load ratio read result"""
+        if load_ratio < 0:
+            self.gui_state_manager.add_log_message(
+                "ERROR",
+                "ROBOT",
+                "Failed to read load ratio"
+            )
+            if self.motion_group.load_ratio_label:
+                self.motion_group.load_ratio_label.setText("Error")
+                self.motion_group.load_ratio_label.setStyleSheet("""
+                    QLabel {
+                        color: #FF5722;
+                        font-size: 13px;
+                        padding: 8px;
+                        background-color: rgba(255, 87, 34, 0.1);
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 87, 34, 0.3);
+                    }
+                """)
+        else:
+            self.gui_state_manager.add_log_message(
+                "INFO",
+                "ROBOT",
+                f"Load ratio: {load_ratio:.2f}%"
+            )
+            if self.motion_group.load_ratio_label:
+                self.motion_group.load_ratio_label.setText(f"{load_ratio:.2f}%")
+                self.motion_group.load_ratio_label.setStyleSheet("""
+                    QLabel {
+                        color: #00D9A5;
+                        font-size: 13px;
+                        font-weight: 600;
+                        padding: 8px;
+                        background-color: rgba(0, 217, 165, 0.1);
+                        border-radius: 6px;
+                        border: 1px solid rgba(0, 217, 165, 0.3);
+                    }
+                """)
+
+    def _on_torque_read(self, torque: float) -> None:
+        """Handle torque read result"""
+        if torque < 0:
+            self.gui_state_manager.add_log_message(
+                "ERROR",
+                "ROBOT",
+                "Failed to read torque"
+            )
+            if self.motion_group.torque_label:
+                self.motion_group.torque_label.setText("Error")
+                self.motion_group.torque_label.setStyleSheet("""
+                    QLabel {
+                        color: #FF5722;
+                        font-size: 13px;
+                        padding: 8px;
+                        background-color: rgba(255, 87, 34, 0.1);
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 87, 34, 0.3);
+                    }
+                """)
+        else:
+            self.gui_state_manager.add_log_message(
+                "INFO",
+                "ROBOT",
+                f"Torque: {torque:.2f}"
+            )
+            if self.motion_group.torque_label:
+                self.motion_group.torque_label.setText(f"{torque:.2f}")
+                self.motion_group.torque_label.setStyleSheet("""
+                    QLabel {
+                        color: #00D9A5;
+                        font-size: 13px;
+                        font-weight: 600;
+                        padding: 8px;
+                        background-color: rgba(0, 217, 165, 0.1);
+                        border-radius: 6px;
+                        border: 1px solid rgba(0, 217, 165, 0.3);
+                    }
+                """)

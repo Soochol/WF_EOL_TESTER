@@ -761,6 +761,28 @@ class AXLWrapper:
         except AttributeError:
             missing_functions.append("AxdiInterruptRead")
 
+        # === Servo Monitoring Functions ===
+        # AxmStatusSetReadServoLoadRatio
+        try:
+            self.dll.AxmStatusSetReadServoLoadRatio.argtypes = [c_long, wintypes.DWORD]
+            self.dll.AxmStatusSetReadServoLoadRatio.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxmStatusSetReadServoLoadRatio")
+
+        # AxmStatusReadServoLoadRatio
+        try:
+            self.dll.AxmStatusReadServoLoadRatio.argtypes = [c_long, POINTER(c_double)]
+            self.dll.AxmStatusReadServoLoadRatio.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxmStatusReadServoLoadRatio")
+
+        # AxmStatusReadTorque
+        try:
+            self.dll.AxmStatusReadTorque.argtypes = [c_long, POINTER(c_double)]
+            self.dll.AxmStatusReadTorque.restype = wintypes.DWORD
+        except AttributeError:
+            missing_functions.append("AxmStatusReadTorque")
+
         # Log all missing functions at once
         if missing_functions:
             # Third-party imports
@@ -1936,6 +1958,81 @@ class AXLWrapper:
                     results.append(False)
 
         return results[:count]
+
+    # === Servo Monitoring Functions ===
+    def status_set_read_servo_load_ratio(self, axis_no: int, sel_mon: int) -> int:
+        """
+        Set servo load ratio monitoring.
+
+        Args:
+            axis_no: Axis number
+            sel_mon: Monitor selection
+                0x00 - Accumulated load ratio
+                0x01 - Regenerative load ratio
+                0x02 - Reference Torque load ratio
+
+        Returns:
+            Return code (0x0000 = success)
+
+        Raises:
+            AXLError: If DLL is not loaded
+        """
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+        result = self.dll.AxmStatusSetReadServoLoadRatio(axis_no, sel_mon)
+        return result  # type: ignore[no-any-return]
+
+    def status_read_servo_load_ratio(self, axis_no: int) -> float:
+        """
+        Read servo load ratio.
+
+        Args:
+            axis_no: Axis number
+
+        Returns:
+            Load ratio in percentage
+
+        Raises:
+            AXLError: If DLL is not loaded
+            AXLMotionError: If read operation fails
+        """
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        ratio_value = c_double()
+        result = self.dll.AxmStatusReadServoLoadRatio(axis_no, ctypes.byref(ratio_value))
+
+        if result != AXT_RT_SUCCESS:
+            error_msg = get_error_message(result)
+            raise AXLMotionError(f"Failed to read load ratio: {error_msg} (Code: {result})")
+
+        return float(ratio_value.value)
+
+    def status_read_torque(self, axis_no: int) -> float:
+        """
+        Read current torque value.
+
+        Args:
+            axis_no: Axis number
+
+        Returns:
+            Current torque value
+
+        Raises:
+            AXLError: If DLL is not loaded
+            AXLMotionError: If read operation fails
+        """
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        torque_value = c_double()
+        result = self.dll.AxmStatusReadTorque(axis_no, ctypes.byref(torque_value))
+
+        if result != AXT_RT_SUCCESS:
+            error_msg = get_error_message(result)
+            raise AXLMotionError(f"Failed to read torque: {error_msg} (Code: {result})")
+
+        return float(torque_value.value)
 
     @classmethod
     def get_instance(cls) -> "AXLWrapper":

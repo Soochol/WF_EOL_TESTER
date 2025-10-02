@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Motor body/casing -->
+  <rect x="4" y="8" width="16" height="8" rx="1" ry="1"/>
+
+  <!-- Motor shaft -->
+  <line x1="20" y1="12" x2="23" y2="12"/>
+  <circle cx="23" cy="12" r="0.5"/>
+
+  <!-- Cooling fins/vents -->
+  <line x1="6" y1="10" x2="6" y2="14"/>
+  <line x1="8" y1="10" x2="8" y2="14"/>
+  <line x1="10" y1="10" x2="10" y2="14"/>
+  <line x1="12" y1="10" x2="12" y2="14"/>
+  <line x1="14" y1="10" x2="14" y2="14"/>
+  <line x1="16" y1="10" x2="16" y2="14"/>
+  <line x1="18" y1="10" x2="18" y2="14"/>
+
+  <!-- Connection terminals -->
+  <rect x="1" y="10" width="3" height="1" rx="0.5" ry="0.5"/>
+  <rect x="1" y="13" width="3" height="1" rx="0.5" ry="0.5"/>
+
+  <!-- Rotation indicator -->
+  <circle cx="12" cy="4" r="2"/>
+  <path d="M 12 2 L 13 4 L 11 4 Z"/>
+</svg>
