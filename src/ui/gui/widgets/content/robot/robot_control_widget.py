@@ -9,7 +9,6 @@ from typing import Dict, Optional
 
 # Third-party imports
 from PySide6.QtWidgets import (
-    QGridLayout,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -27,9 +26,8 @@ from .event_handlers import RobotEventHandlers
 from .state_manager import RobotControlState
 from .ui_components import (
     ConnectionGroup,
-    EmergencyControlGroup,
+    DiagnosticsGroup,
     MotionControlGroup,
-    ServoControlGroup,
     StatusDisplayGroup,
     create_modern_progress_bar,
 )
@@ -77,10 +75,9 @@ class RobotControlWidget(QWidget):
 
         # UI component groups
         self.status_group = StatusDisplayGroup(self.robot_state)
-        self.connection_group = ConnectionGroup(self.event_handlers)
-        self.servo_group = ServoControlGroup(self.event_handlers)
+        self.connection_group = ConnectionGroup(self.event_handlers)  # Includes Connection+Servo+Home+Emergency
         self.motion_group = MotionControlGroup(self.event_handlers, self.theme_manager)
-        self.emergency_group = EmergencyControlGroup(self.event_handlers)
+        self.diagnostics_group = DiagnosticsGroup(self.event_handlers)  # Position + Load Ratio + Torque
 
         # Button references for state management
         self._button_refs: Dict[str, Optional[QPushButton]] = {}
@@ -94,7 +91,7 @@ class RobotControlWidget(QWidget):
         self._setup_state_connections()
 
     def _setup_ui(self) -> None:
-        """Setup modern UI with 2-column grid layout"""
+        """Setup modern UI with 1-column layout"""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(12)
         main_layout.setContentsMargins(15, 15, 15, 15)
@@ -108,30 +105,18 @@ class RobotControlWidget(QWidget):
         """
         )
 
-        # Grid layout for cards
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(12)
-
-        # Row 1: Status Card (full width)
+        # Create all cards in vertical layout
         status_widget = self.status_group.create()
-        grid_layout.addWidget(status_widget, 0, 0, 1, 2)  # row 0, col 0, span 1 row, 2 cols
+        main_layout.addWidget(status_widget)
 
-        # Row 2: Connection (left) | Servo Control (right)
-        connection_widget = self.connection_group.create()
-        grid_layout.addWidget(connection_widget, 1, 0)  # row 1, col 0
+        connection_widget = self.connection_group.create()  # Control card (Connection+Servo+Home+Emergency)
+        main_layout.addWidget(connection_widget)
 
-        servo_widget = self.servo_group.create()
-        grid_layout.addWidget(servo_widget, 1, 1)  # row 1, col 1
+        motion_widget = self.motion_group.create()  # Motion Control card
+        main_layout.addWidget(motion_widget)
 
-        # Row 3: Motion Control (full width)
-        motion_widget = self.motion_group.create()
-        grid_layout.addWidget(motion_widget, 2, 0, 1, 2)  # row 2, col 0, span 1 row, 2 cols
-
-        # Row 4: Emergency (full width)
-        emergency_widget = self.emergency_group.create()
-        grid_layout.addWidget(emergency_widget, 3, 0, 1, 2)  # row 3, col 0, span 1 row, 2 cols
-
-        main_layout.addLayout(grid_layout)
+        diagnostics_widget = self.diagnostics_group.create()  # Diagnostics card
+        main_layout.addWidget(diagnostics_widget)
 
         # Progress bar
         self.progress_bar = create_modern_progress_bar()
@@ -142,10 +127,9 @@ class RobotControlWidget(QWidget):
         main_layout.addStretch()
 
         # Store button references for state management
-        self._button_refs.update(self.connection_group.get_buttons())
-        self._button_refs.update(self.servo_group.get_buttons())
-        self._button_refs.update(self.motion_group.get_buttons())
-        self._button_refs.update(self.emergency_group.get_buttons())
+        self._button_refs.update(self.connection_group.get_buttons())  # connection, servo, home, emergency
+        self._button_refs.update(self.motion_group.get_buttons())  # move_abs, move_rel, stop
+        self._button_refs.update(self.diagnostics_group.get_buttons())  # get_position, get_load_ratio, get_torque
 
     def _setup_connections(self) -> None:
         """Setup signal connections between components"""
@@ -249,6 +233,20 @@ class RobotControlWidget(QWidget):
             "ROBOT",
             f"Current position: {position:.2f} μm"
         )
+        if self.diagnostics_group.position_label:
+            self.diagnostics_group.position_label.setText(f"{position:.2f} μm")
+            self.diagnostics_group.position_label.setStyleSheet("""
+                QLabel {
+                    color: #00D9A5;
+                    font-size: 13px;
+                    font-weight: 600;
+                    padding: 8px;
+                    background-color: rgba(0, 217, 165, 0.1);
+                    border-radius: 6px;
+                    border: 1px solid rgba(0, 217, 165, 0.3);
+                    min-height: 30px;
+                }
+            """)
 
     def _on_stop_completed(self, success: bool, message: str) -> None:
         """Handle stop operation result"""
@@ -272,9 +270,9 @@ class RobotControlWidget(QWidget):
                 "ROBOT",
                 "Failed to read load ratio"
             )
-            if self.motion_group.load_ratio_label:
-                self.motion_group.load_ratio_label.setText("Error")
-                self.motion_group.load_ratio_label.setStyleSheet("""
+            if self.diagnostics_group.load_ratio_label:
+                self.diagnostics_group.load_ratio_label.setText("Error")
+                self.diagnostics_group.load_ratio_label.setStyleSheet("""
                     QLabel {
                         color: #FF5722;
                         font-size: 13px;
@@ -282,6 +280,7 @@ class RobotControlWidget(QWidget):
                         background-color: rgba(255, 87, 34, 0.1);
                         border-radius: 6px;
                         border: 1px solid rgba(255, 87, 34, 0.3);
+                        min-height: 30px;
                     }
                 """)
         else:
@@ -290,9 +289,9 @@ class RobotControlWidget(QWidget):
                 "ROBOT",
                 f"Load ratio: {load_ratio:.2f}%"
             )
-            if self.motion_group.load_ratio_label:
-                self.motion_group.load_ratio_label.setText(f"{load_ratio:.2f}%")
-                self.motion_group.load_ratio_label.setStyleSheet("""
+            if self.diagnostics_group.load_ratio_label:
+                self.diagnostics_group.load_ratio_label.setText(f"{load_ratio:.2f}%")
+                self.diagnostics_group.load_ratio_label.setStyleSheet("""
                     QLabel {
                         color: #00D9A5;
                         font-size: 13px;
@@ -301,6 +300,7 @@ class RobotControlWidget(QWidget):
                         background-color: rgba(0, 217, 165, 0.1);
                         border-radius: 6px;
                         border: 1px solid rgba(0, 217, 165, 0.3);
+                        min-height: 30px;
                     }
                 """)
 
@@ -312,9 +312,9 @@ class RobotControlWidget(QWidget):
                 "ROBOT",
                 "Failed to read torque"
             )
-            if self.motion_group.torque_label:
-                self.motion_group.torque_label.setText("Error")
-                self.motion_group.torque_label.setStyleSheet("""
+            if self.diagnostics_group.torque_label:
+                self.diagnostics_group.torque_label.setText("Error")
+                self.diagnostics_group.torque_label.setStyleSheet("""
                     QLabel {
                         color: #FF5722;
                         font-size: 13px;
@@ -322,6 +322,7 @@ class RobotControlWidget(QWidget):
                         background-color: rgba(255, 87, 34, 0.1);
                         border-radius: 6px;
                         border: 1px solid rgba(255, 87, 34, 0.3);
+                        min-height: 30px;
                     }
                 """)
         else:
@@ -330,9 +331,9 @@ class RobotControlWidget(QWidget):
                 "ROBOT",
                 f"Torque: {torque:.2f}"
             )
-            if self.motion_group.torque_label:
-                self.motion_group.torque_label.setText(f"{torque:.2f}")
-                self.motion_group.torque_label.setStyleSheet("""
+            if self.diagnostics_group.torque_label:
+                self.diagnostics_group.torque_label.setText(f"{torque:.2f}")
+                self.diagnostics_group.torque_label.setStyleSheet("""
                     QLabel {
                         color: #00D9A5;
                         font-size: 13px;
@@ -341,5 +342,6 @@ class RobotControlWidget(QWidget):
                         background-color: rgba(0, 217, 165, 0.1);
                         border-radius: 6px;
                         border: 1px solid rgba(0, 217, 165, 0.3);
+                        min-height: 30px;
                     }
                 """)

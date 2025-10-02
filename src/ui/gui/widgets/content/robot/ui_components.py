@@ -95,20 +95,27 @@ class StatusDisplayGroup:
 
 
 class ConnectionGroup:
-    """Connection control group"""
+    """Combined Connection + Servo + Home + Emergency control group"""
 
     def __init__(self, event_handlers: RobotEventHandlers):
         self.event_handlers = event_handlers
         self.connect_btn: Optional[QPushButton] = None
         self.disconnect_btn: Optional[QPushButton] = None
+        self.servo_on_btn: Optional[QPushButton] = None
+        self.servo_off_btn: Optional[QPushButton] = None
+        self.home_btn: Optional[QPushButton] = None
+        self.emergency_btn: Optional[QPushButton] = None
 
     def create(self) -> ModernCard:
-        """Create connection card with modern buttons"""
-        card = ModernCard("🔌 Connection")
+        """Create combined connection+servo+home card"""
+        card = ModernCard("🏠 Control")
 
-        # Buttons layout
-        layout = QHBoxLayout()
-        layout.setSpacing(12)
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+
+        # Connection buttons
+        conn_layout = QHBoxLayout()
+        conn_layout.setSpacing(8)
 
         self.connect_btn = ModernButton("Connect", "play", "success")
         self.disconnect_btn = ModernButton("Disconnect", "stop", "danger")
@@ -116,12 +123,38 @@ class ConnectionGroup:
         self.connect_btn.clicked.connect(self.event_handlers.on_connect_clicked)
         self.disconnect_btn.clicked.connect(self.event_handlers.on_disconnect_clicked)
 
-        layout.addWidget(self.connect_btn)
-        layout.addWidget(self.disconnect_btn)
+        conn_layout.addWidget(self.connect_btn)
+        conn_layout.addWidget(self.disconnect_btn)
+        main_layout.addLayout(conn_layout)
 
-        buttons_widget = QWidget()
-        buttons_widget.setLayout(layout)
-        card.add_widget(buttons_widget)
+        # Servo buttons
+        servo_layout = QHBoxLayout()
+        servo_layout.setSpacing(8)
+
+        self.servo_on_btn = ModernButton("Servo ON", "play", "success")
+        self.servo_off_btn = ModernButton("Servo OFF", "pause", "warning")
+
+        self.servo_on_btn.clicked.connect(self.event_handlers.on_servo_on_clicked)
+        self.servo_off_btn.clicked.connect(self.event_handlers.on_servo_off_clicked)
+
+        servo_layout.addWidget(self.servo_on_btn)
+        servo_layout.addWidget(self.servo_off_btn)
+        main_layout.addLayout(servo_layout)
+
+        # Home button
+        self.home_btn = ModernButton("Home", "home", "primary")
+        self.home_btn.clicked.connect(self.event_handlers.on_home_clicked)
+        main_layout.addWidget(self.home_btn)
+
+        # Emergency Stop button (large, prominent)
+        self.emergency_btn = ModernButton("EMERGENCY STOP", "alert-circle", "danger")
+        self.emergency_btn.setMinimumHeight(50)
+        self.emergency_btn.clicked.connect(self.event_handlers.on_emergency_stop_clicked)
+        main_layout.addWidget(self.emergency_btn)
+
+        container = QWidget()
+        container.setLayout(main_layout)
+        card.add_widget(container)
 
         return card
 
@@ -130,45 +163,10 @@ class ConnectionGroup:
         return {
             "connect": self.connect_btn,
             "disconnect": self.disconnect_btn,
-        }
-
-
-class ServoControlGroup:
-    """Servo control group"""
-
-    def __init__(self, event_handlers: RobotEventHandlers):
-        self.event_handlers = event_handlers
-        self.servo_on_btn: Optional[QPushButton] = None
-        self.servo_off_btn: Optional[QPushButton] = None
-
-    def create(self) -> ModernCard:
-        """Create servo control card"""
-        card = ModernCard("⚙️ Servo Control")
-
-        # Buttons layout
-        layout = QHBoxLayout()
-        layout.setSpacing(12)
-
-        self.servo_on_btn = ModernButton("Servo ON", "play", "success")
-        self.servo_off_btn = ModernButton("Servo OFF", "pause", "warning")
-
-        self.servo_on_btn.clicked.connect(self.event_handlers.on_servo_on_clicked)
-        self.servo_off_btn.clicked.connect(self.event_handlers.on_servo_off_clicked)
-
-        layout.addWidget(self.servo_on_btn)
-        layout.addWidget(self.servo_off_btn)
-
-        buttons_widget = QWidget()
-        buttons_widget.setLayout(layout)
-        card.add_widget(buttons_widget)
-
-        return card
-
-    def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
-        """Get button references"""
-        return {
             "servo_on": self.servo_on_btn,
             "servo_off": self.servo_off_btn,
+            "home": self.home_btn,
+            "emergency": self.emergency_btn,
         }
 
 
@@ -180,23 +178,19 @@ class MotionControlGroup:
         self.theme_manager = theme_manager
 
         # Buttons
-        self.home_btn: Optional[QPushButton] = None
         self.abs_move_btn: Optional[QPushButton] = None
         self.rel_move_btn: Optional[QPushButton] = None
-        self.get_pos_btn: Optional[QPushButton] = None
         self.stop_btn: Optional[QPushButton] = None
-        self.get_load_ratio_btn: Optional[QPushButton] = None
-        self.get_torque_btn: Optional[QPushButton] = None
 
         # Input fields
         self.abs_pos_input: Optional[QDoubleSpinBox] = None
         self.abs_vel_input: Optional[QDoubleSpinBox] = None
+        self.abs_acc_input: Optional[QDoubleSpinBox] = None
+        self.abs_dec_input: Optional[QDoubleSpinBox] = None
         self.rel_pos_input: Optional[QDoubleSpinBox] = None
         self.rel_vel_input: Optional[QDoubleSpinBox] = None
-
-        # Result labels
-        self.load_ratio_label: Optional[QLabel] = None
-        self.torque_label: Optional[QLabel] = None
+        self.rel_acc_input: Optional[QDoubleSpinBox] = None
+        self.rel_dec_input: Optional[QDoubleSpinBox] = None
 
     def create(self) -> ModernCard:
         """Create motion control card"""
@@ -204,11 +198,6 @@ class MotionControlGroup:
 
         main_layout = QVBoxLayout()
         main_layout.setSpacing(12)
-
-        # Home button
-        self.home_btn = ModernButton("Home Axis", "home", "primary")
-        self.home_btn.clicked.connect(self.event_handlers.on_home_clicked)
-        main_layout.addWidget(self.home_btn)
 
         # Absolute and Relative move in 2 columns
         move_grid = QGridLayout()
@@ -226,80 +215,10 @@ class MotionControlGroup:
         move_container.setLayout(move_grid)
         main_layout.addWidget(move_container)
 
-        # Position and Stop controls
-        control_layout = QHBoxLayout()
-        control_layout.setSpacing(12)
-
-        self.get_pos_btn = ModernButton("Get Position", "target", "secondary")
+        # Stop control
         self.stop_btn = ModernButton("Stop Motion", "stop", "danger")
-
-        self.get_pos_btn.clicked.connect(self.event_handlers.on_get_position_clicked)
         self.stop_btn.clicked.connect(self.event_handlers.on_stop_clicked)
-
-        control_layout.addWidget(self.get_pos_btn)
-        control_layout.addWidget(self.stop_btn)
-
-        control_widget = QWidget()
-        control_widget.setLayout(control_layout)
-        main_layout.addWidget(control_widget)
-
-        # Diagnostic controls
-        diagnostic_layout = QVBoxLayout()
-        diagnostic_layout.setSpacing(8)
-
-        # Buttons layout
-        buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(12)
-
-        self.get_load_ratio_btn = ModernButton("Get Load Ratio", "chart-line", "info")
-        self.get_torque_btn = ModernButton("Get Torque", "bolt", "info")
-
-        self.get_load_ratio_btn.clicked.connect(self.event_handlers.on_get_load_ratio_clicked)
-        self.get_torque_btn.clicked.connect(self.event_handlers.on_get_torque_clicked)
-
-        buttons_layout.addWidget(self.get_load_ratio_btn)
-        buttons_layout.addWidget(self.get_torque_btn)
-
-        diagnostic_layout.addLayout(buttons_layout)
-
-        # Result labels layout
-        labels_layout = QHBoxLayout()
-        labels_layout.setSpacing(12)
-
-        self.load_ratio_label = QLabel("--")
-        self.load_ratio_label.setStyleSheet("""
-            QLabel {
-                color: #cccccc;
-                font-size: 13px;
-                padding: 8px;
-                background-color: rgba(255, 255, 255, 0.05);
-                border-radius: 6px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-        """)
-        self.load_ratio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.torque_label = QLabel("--")
-        self.torque_label.setStyleSheet("""
-            QLabel {
-                color: #cccccc;
-                font-size: 13px;
-                padding: 8px;
-                background-color: rgba(255, 255, 255, 0.05);
-                border-radius: 6px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-        """)
-        self.torque_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        labels_layout.addWidget(self.load_ratio_label)
-        labels_layout.addWidget(self.torque_label)
-
-        diagnostic_layout.addLayout(labels_layout)
-
-        diagnostic_widget = QWidget()
-        diagnostic_widget.setLayout(diagnostic_layout)
-        main_layout.addWidget(diagnostic_widget)
+        main_layout.addWidget(self.stop_btn)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -351,17 +270,31 @@ class MotionControlGroup:
         vel_label.setStyleSheet("color: #999999; font-size: 12px;")
         vel_input = self._create_input_spinbox(min_val=1.0, max_val=100000.0, default=1000.0, decimals=1)
 
+        # Acceleration input
+        acc_label = QLabel("Accel (μm/s²):")
+        acc_label.setStyleSheet("color: #999999; font-size: 12px;")
+        acc_input = self._create_input_spinbox(min_val=1.0, max_val=100000.0, default=5000.0, decimals=1)
+
+        # Deceleration input
+        dec_label = QLabel("Decel (μm/s²):")
+        dec_label.setStyleSheet("color: #999999; font-size: 12px;")
+        dec_input = self._create_input_spinbox(min_val=1.0, max_val=100000.0, default=5000.0, decimals=1)
+
         # Move button
         move_btn = ModernButton(f"Move {move_type.upper()}", "arrow-right", "secondary")
 
         if move_type == "abs":
             self.abs_pos_input = pos_input
             self.abs_vel_input = vel_input
+            self.abs_acc_input = acc_input
+            self.abs_dec_input = dec_input
             self.abs_move_btn = move_btn
             move_btn.clicked.connect(self._on_abs_move_clicked)
         else:
             self.rel_pos_input = pos_input
             self.rel_vel_input = vel_input
+            self.rel_acc_input = acc_input
+            self.rel_dec_input = dec_input
             self.rel_move_btn = move_btn
             move_btn.clicked.connect(self._on_rel_move_clicked)
 
@@ -369,6 +302,10 @@ class MotionControlGroup:
         grid.addWidget(pos_input, 0, 1)
         grid.addWidget(vel_label, 1, 0)
         grid.addWidget(vel_input, 1, 1)
+        grid.addWidget(acc_label, 2, 0)
+        grid.addWidget(acc_input, 2, 1)
+        grid.addWidget(dec_label, 3, 0)
+        grid.addWidget(dec_input, 3, 1)
 
         layout.addLayout(grid)
         layout.addWidget(move_btn)
@@ -420,13 +357,9 @@ class MotionControlGroup:
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references"""
         return {
-            "home": self.home_btn,
             "move_abs": self.abs_move_btn,
             "move_rel": self.rel_move_btn,
-            "get_position": self.get_pos_btn,
             "stop": self.stop_btn,
-            "get_load_ratio": self.get_load_ratio_btn,
-            "get_torque": self.get_torque_btn,
         }
 
 
@@ -453,6 +386,113 @@ class EmergencyControlGroup:
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references"""
         return {"emergency": self.emergency_btn}
+
+
+class DiagnosticsGroup:
+    """Diagnostics group for Position, Load Ratio, and Torque"""
+
+    def __init__(self, event_handlers: RobotEventHandlers):
+        self.event_handlers = event_handlers
+        self.get_pos_btn: Optional[QPushButton] = None
+        self.get_load_ratio_btn: Optional[QPushButton] = None
+        self.get_torque_btn: Optional[QPushButton] = None
+        self.position_label: Optional[QLabel] = None
+        self.load_ratio_label: Optional[QLabel] = None
+        self.torque_label: Optional[QLabel] = None
+
+    def create(self) -> ModernCard:
+        """Create diagnostics card"""
+        card = ModernCard("📊 Diagnostics")
+
+        main_layout = QHBoxLayout()
+        main_layout.setSpacing(12)
+
+        # Get Position section
+        pos_section = self._create_diagnostic_section(
+            "Get Position",
+            "target",
+            "secondary",
+            self.event_handlers.on_get_position_clicked
+        )
+        self.get_pos_btn = pos_section["button"]
+        self.position_label = pos_section["label"]
+        main_layout.addWidget(pos_section["widget"])
+
+        # Get Load Ratio section
+        load_section = self._create_diagnostic_section(
+            "Get Load Ratio",
+            "chart-line",
+            "info",
+            self.event_handlers.on_get_load_ratio_clicked
+        )
+        self.get_load_ratio_btn = load_section["button"]
+        self.load_ratio_label = load_section["label"]
+        main_layout.addWidget(load_section["widget"])
+
+        # Get Torque section
+        torque_section = self._create_diagnostic_section(
+            "Get Torque",
+            "bolt",
+            "info",
+            self.event_handlers.on_get_torque_clicked
+        )
+        self.get_torque_btn = torque_section["button"]
+        self.torque_label = torque_section["label"]
+        main_layout.addWidget(torque_section["widget"])
+
+        container = QWidget()
+        container.setLayout(main_layout)
+        card.add_widget(container)
+
+        return card
+
+    def _create_diagnostic_section(
+        self,
+        button_text: str,
+        icon_name: str,
+        color: str,
+        click_handler
+    ) -> Dict:
+        """Create a diagnostic section with button and label"""
+        section_widget = QWidget()
+        section_layout = QVBoxLayout(section_widget)
+        section_layout.setSpacing(8)
+        section_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Button
+        button = ModernButton(button_text, icon_name, color)
+        button.clicked.connect(click_handler)
+        section_layout.addWidget(button)
+
+        # Result label
+        label = QLabel("--")
+        label.setStyleSheet("""
+            QLabel {
+                color: #cccccc;
+                font-size: 13px;
+                padding: 8px;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 6px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                min-height: 30px;
+            }
+        """)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        section_layout.addWidget(label)
+
+        return {
+            "widget": section_widget,
+            "button": button,
+            "label": label
+        }
+
+    def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
+        """Get button references"""
+        return {
+            "get_position": self.get_pos_btn,
+            "get_load_ratio": self.get_load_ratio_btn,
+            "get_torque": self.get_torque_btn,
+        }
 
 
 def create_modern_progress_bar() -> QProgressBar:
