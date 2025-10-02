@@ -88,8 +88,16 @@ class RobotEventHandlers(QObject):
         self._run_async(self._async_disconnect())
 
     async def _async_disconnect(self) -> None:
-        """Async disconnect operation"""
+        """Async disconnect operation with servo off"""
         try:
+            # Turn off servo before disconnect if it's on
+            if self.state.servo_enabled:
+                logger.info("Disconnect: Turning off servo first...")
+                await self.robot_service.disable_servo(self.axis_id)
+                self.state.set_servo_enabled(False)
+                logger.info("Disconnect: Servo disabled")
+
+            # Disconnect from robot
             await self.robot_service.disconnect()
             self.state.set_connected(False)
             self.disconnect_completed.emit(True, "Robot disconnected")
@@ -143,6 +151,8 @@ class RobotEventHandlers(QObject):
     async def _async_home(self) -> None:
         """Async home operation"""
         try:
+            self.state.set_homing_in_progress(True)  # Disable buttons during homing
+
             await self.robot_service.home_axis(self.axis_id)
             # Update position after homing
             position = await self.robot_service.get_position(self.axis_id)
@@ -152,6 +162,7 @@ class RobotEventHandlers(QObject):
             logger.error(f"Homing failed: {e}")
             self.home_completed.emit(False, f"Homing failed: {str(e)}")
         finally:
+            self.state.set_homing_in_progress(False)  # Restore buttons after homing
             self.state.hide_progress()
 
     def on_move_absolute(
@@ -176,6 +187,8 @@ class RobotEventHandlers(QObject):
     ) -> None:
         """Async absolute move operation"""
         try:
+            self.state.set_motion_in_progress(True)  # Disable buttons during motion
+
             await self.robot_service.move_absolute(
                 position=position,
                 axis_id=self.axis_id,
@@ -191,6 +204,7 @@ class RobotEventHandlers(QObject):
             logger.error(f"Absolute move failed: {e}")
             self.move_completed.emit(False, f"Move failed: {str(e)}")
         finally:
+            self.state.set_motion_in_progress(False)  # Restore buttons after motion
             self.state.hide_progress()
 
     def on_move_relative(
@@ -215,6 +229,8 @@ class RobotEventHandlers(QObject):
     ) -> None:
         """Async relative move operation"""
         try:
+            self.state.set_motion_in_progress(True)  # Disable buttons during motion
+
             await self.robot_service.move_relative(
                 distance=distance,
                 axis_id=self.axis_id,
@@ -230,6 +246,7 @@ class RobotEventHandlers(QObject):
             logger.error(f"Relative move failed: {e}")
             self.move_completed.emit(False, f"Move failed: {str(e)}")
         finally:
+            self.state.set_motion_in_progress(False)  # Restore buttons after motion
             self.state.hide_progress()
 
     def on_get_position_clicked(self) -> None:
@@ -271,11 +288,28 @@ class RobotEventHandlers(QObject):
         self._run_async(self._async_emergency_stop())
 
     async def _async_emergency_stop(self) -> None:
-        """Async emergency stop operation"""
+        """Async emergency stop operation with auto-connect and servo off"""
         try:
+            # Auto-connect if not connected
+            if not self.state.is_connected:
+                logger.info("Emergency stop: Auto-connecting to robot...")
+                await self.robot_service.connect()
+                self.state.set_connected(True)
+                logger.info("Emergency stop: Connected successfully")
+
+            # Turn off servo if it's on
+            if self.state.servo_enabled:
+                logger.info("Emergency stop: Turning off servo...")
+                await self.robot_service.disable_servo(self.axis_id)
+                logger.info("Emergency stop: Servo disabled")
+
+            # Execute emergency stop
             await self.robot_service.emergency_stop(self.axis_id)
-            self.state.set_connected(False)  # Emergency stop disconnects
-            self.emergency_stop_completed.emit(True, "EMERGENCY STOP ACTIVATED")
+
+            # Emergency stop: keep connected but set emergency state
+            # This allows Servo ON and Home button to be enabled for recovery
+            self.state.set_emergency_stopped()
+            self.emergency_stop_completed.emit(True, "EMERGENCY STOP ACTIVATED - Servo ON or Home to recover")
         except Exception as e:
             logger.error(f"Emergency stop failed: {e}")
             self.emergency_stop_completed.emit(False, f"Emergency stop failed: {str(e)}")
