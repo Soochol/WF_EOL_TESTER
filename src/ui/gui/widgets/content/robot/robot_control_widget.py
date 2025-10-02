@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -91,10 +92,11 @@ class RobotControlWidget(QWidget):
         self._setup_state_connections()
 
     def _setup_ui(self) -> None:
-        """Setup modern UI with 1-column layout"""
+        """Setup modern UI with 1-column layout and scroll area"""
+        # Main widget layout
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(12)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         # Apply dark background
         self.setStyleSheet(
@@ -105,26 +107,62 @@ class RobotControlWidget(QWidget):
         """
         )
 
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: #1e1e1e;
+            }
+            QScrollBar:vertical {
+                background-color: #2d2d2d;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #555555;
+                border-radius: 6px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #666666;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+
+        # Create content widget for scroll area
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(12)
+        content_layout.setContentsMargins(15, 15, 15, 15)
+
         # Create all cards in vertical layout
         status_widget = self.status_group.create()
-        main_layout.addWidget(status_widget)
+        content_layout.addWidget(status_widget)
 
         connection_widget = self.connection_group.create()  # Control card (Connection+Servo+Home+Emergency)
-        main_layout.addWidget(connection_widget)
+        content_layout.addWidget(connection_widget)
 
         motion_widget = self.motion_group.create()  # Motion Control card
-        main_layout.addWidget(motion_widget)
+        content_layout.addWidget(motion_widget)
 
         diagnostics_widget = self.diagnostics_group.create()  # Diagnostics card
-        main_layout.addWidget(diagnostics_widget)
+        content_layout.addWidget(diagnostics_widget)
 
         # Progress bar
         self.progress_bar = create_modern_progress_bar()
         self.progress_bar.setVisible(False)
-        main_layout.addWidget(self.progress_bar)
+        content_layout.addWidget(self.progress_bar)
 
         # Add stretch to push content to top
-        main_layout.addStretch()
+        content_layout.addStretch()
+
+        # Set content widget to scroll area
+        scroll_area.setWidget(content_widget)
+        main_layout.addWidget(scroll_area)
 
         # Store button references for state management
         self._button_refs.update(self.connection_group.get_buttons())  # connection, servo, home, emergency
