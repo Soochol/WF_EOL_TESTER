@@ -1,5 +1,4 @@
 # Splash screen widgets
-from .splash_screen import WFEOLSplashScreen, LoadingSteps
-from .modern_splash_screen import ModernSplashScreen
+from .modern_splash_screen import ModernSplashScreen, LoadingSteps
 
-__all__ = ["WFEOLSplashScreen", "ModernSplashScreen", "LoadingSteps"]
+__all__ = ["ModernSplashScreen", "LoadingSteps"]

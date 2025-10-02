@@ -288,8 +288,7 @@ from ui.gui.main_window import MainWindow
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.styling import ThemeManager
 from ui.gui.utils.ui_scaling import setup_ui_scaling
-from ui.gui.widgets.splash.modern_splash_screen import ModernSplashScreen
-from ui.gui.widgets.splash.splash_screen import LoadingSteps
+from ui.gui.widgets.splash.modern_splash_screen import ModernSplashScreen, LoadingSteps
 
 # pylint: enable=wrong-import-position
 
