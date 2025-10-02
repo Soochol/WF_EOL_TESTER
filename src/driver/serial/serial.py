@@ -134,13 +134,34 @@ class SerialConnection:
             ) from e
 
     async def disconnect(self) -> None:
-        """Disconnect from serial port"""
-        if self._writer and not self._writer.is_closing():
-            self._writer.close()
-            await self._writer.wait_closed()
+        """Disconnect from serial port with explicit serial handle cleanup"""
+        try:
+            # First, explicitly close the underlying pyserial Serial object
+            if self._writer and hasattr(self._writer, "transport"):
+                transport = self._writer.transport
+                if transport and hasattr(transport, "serial"):
+                    serial_instance = transport.serial
+                    if serial_instance and hasattr(serial_instance, "close"):
+                        try:
+                            serial_instance.close()
+                            logger.debug("Underlying serial port closed explicitly")
+                        except Exception as serial_close_error:
+                            logger.warning(f"Failed to close underlying serial port: {serial_close_error}")
 
-        self._is_connected = False
-        logger.info("Serial connection closed")
+            # Then close the writer (stream layer)
+            if self._writer and not self._writer.is_closing():
+                self._writer.close()
+                try:
+                    await self._writer.wait_closed()
+                except Exception as wait_error:
+                    logger.warning(f"Error waiting for writer to close: {wait_error}")
+
+        except Exception as e:
+            logger.error(f"Error during serial disconnect: {e}")
+        finally:
+            # Always mark as disconnected to prevent resource leaks
+            self._is_connected = False
+            logger.info("Serial connection closed")
 
     def is_connected(self) -> bool:
         """Check if connection is active"""

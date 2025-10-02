@@ -178,19 +178,36 @@ class AjinextekDIO(DigitalIOService):
 
     async def disconnect(self) -> None:
         """
-        DIO 하드웨어 연결 해제
+        DIO 하드웨어 연결 해제 with guaranteed cleanup
+
+        Note:
+            Always completes cleanup even if errors occur to prevent resource leaks
         """
+        disconnect_error = None
+
         try:
             if self._is_connected:
-                # 중앙화된 연결 해제 사용
-                self._axl_lib.disconnect()
-
-            self._is_connected = False
-            logger.info("AJINEXTEK DIO hardware disconnected")
+                try:
+                    # 중앙화된 연결 해제 사용
+                    self._axl_lib.disconnect()
+                    logger.debug("Ajinextek DIO AXL disconnect completed")
+                except Exception as axl_error:
+                    disconnect_error = axl_error
+                    logger.warning(f"Error during Ajinextek DIO AXL disconnect: {axl_error}")
+                    # Continue with cleanup even if AXL disconnect fails
 
         except Exception as e:
-            logger.error(f"Error disconnecting DIO hardware: {e}")
-            raise
+            logger.error(f"Unexpected error disconnecting Ajinextek DIO: {e}")
+            disconnect_error = e
+
+        finally:
+            # Always perform cleanup to prevent resource leaks
+            self._is_connected = False
+
+            if disconnect_error:
+                logger.warning(f"Ajinextek DIO disconnected with errors: {disconnect_error}")
+            else:
+                logger.info("Ajinextek DIO hardware disconnected successfully")
 
     async def is_connected(self) -> bool:
         """

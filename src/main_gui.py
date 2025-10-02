@@ -710,27 +710,11 @@ class EOLTesterGUIApplication:
         if self.splash_screen and self.main_window:
             self.splash_screen.finish_with_fade(self.main_window)
             logger.info("Main window displayed")
-            # Start debug timer for post-render geometry analysis
-            self._start_debug_timer()
         elif self.main_window:
             self.main_window.show()
             logger.info("Main window displayed (no splash)")
-            # Start debug timer for post-render geometry analysis
-            self._start_debug_timer()
         else:
             logger.error("Main window not available")
-
-        # Also trigger immediate debug for quick analysis
-        if self.main_window and hasattr(self.main_window, "debug_widget_geometry"):
-            # Use QTimer.singleShot for immediate execution after event loop processes
-            QTimer.singleShot(100, self.main_window.debug_widget_geometry)
-
-    def _start_debug_timer(self) -> None:
-        """Start debug timer to log widget geometry after layout is settled"""
-        if self.main_window and hasattr(self.main_window, "debug_timer"):
-            # Start timer to capture geometry 2 seconds after window is shown
-            self.main_window.debug_timer.start(2000)
-            logger.info("🔍 Debug timer started - geometry will be logged in 2 seconds")
 
     def _setup_asyncio_integration(self) -> None:
         """Setup asyncio integration with Qt event loop"""

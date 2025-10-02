@@ -41,6 +41,8 @@ class NavigationMenu(QWidget):
         self.current_page = "dashboard"
         self.statistics_submenu_visible = False  # Track submenu visibility
         self.statistics_submenu_buttons = []  # Store submenu buttons
+        self.hardware_submenu_visible = False  # Track hardware submenu visibility
+        self.hardware_submenu_buttons = []  # Store hardware submenu buttons
         self.is_collapsed = False  # Track collapse state
         self.expanded_width = 220  # Increased from 200px
         self.collapsed_width = 70  # Icon-only mode
@@ -108,8 +110,23 @@ class NavigationMenu(QWidget):
         layout.addWidget(header)
         self.category_headers.append(header)
 
+        # Hardware parent button (toggles submenu)
+        self.hardware_button = self.create_nav_button("hardware", "hardware", "Hardware")
+        self.hardware_button.clicked.connect(self._on_hardware_clicked)
+        layout.addWidget(self.hardware_button)
+        self.nav_buttons.addButton(self.hardware_button)
+        self.all_buttons.append(self.hardware_button)
+
+        # Hardware submenu - Robot
+        self.robot_button = self.create_submenu_button("robot", "robot", "Robot")
+        layout.addWidget(self.robot_button)
+        self.nav_buttons.addButton(self.robot_button)
+        self.all_buttons.append(self.robot_button)
+        self.hardware_submenu_buttons.append(self.robot_button)
+        self.robot_button.setVisible(False)  # Hidden by default
+
+        # Other system items
         system_items = [
-            ("hardware", "hardware", "Hardware"),
             ("settings", "settings", "Settings"),
             ("about", "status_info", "About"),
         ]
@@ -362,11 +379,21 @@ class NavigationMenu(QWidget):
         }
         """
 
+    def _on_hardware_clicked(self) -> None:
+        """Toggle hardware submenu visibility"""
+        self.hardware_submenu_visible = not self.hardware_submenu_visible
+        for btn in self.hardware_submenu_buttons:
+            btn.setVisible(self.hardware_submenu_visible)
+
     def _on_button_clicked(self, button: QPushButton) -> None:
         """Handle navigation button click"""
         page_id = button.property("page_id")
 
-        # Normal page navigation (Statistics now directly navigates to Overview)
+        # Hardware button only toggles submenu, doesn't navigate
+        if page_id == "hardware":
+            return
+
+        # Normal page navigation
         if page_id and page_id != self.current_page:
             self.current_page = page_id
             self.page_changed.emit(page_id)
@@ -404,6 +431,12 @@ class NavigationMenu(QWidget):
                 btn.setText("")  # Remove text, keep only icon
                 btn.setToolTip(label)  # Show label as tooltip
 
+        for btn in self.hardware_submenu_buttons:
+            label = btn.property("label")
+            if label:
+                btn.setText("")  # Remove text, keep only icon
+                btn.setToolTip(label)  # Show label as tooltip
+
         # Adjust width
         self.setMinimumWidth(self.collapsed_width)
         self.setMaximumWidth(self.collapsed_width)
@@ -431,6 +464,12 @@ class NavigationMenu(QWidget):
 
         # Update submenu buttons (show text mode)
         for btn in self.statistics_submenu_buttons:
+            label = btn.property("label")
+            if label:
+                btn.setText(f"  {label}")  # Extra space for icon
+                btn.setToolTip("")  # Clear tooltip
+
+        for btn in self.hardware_submenu_buttons:
             label = btn.property("label")
             if label:
                 btn.setText(f"  {label}")  # Extra space for icon

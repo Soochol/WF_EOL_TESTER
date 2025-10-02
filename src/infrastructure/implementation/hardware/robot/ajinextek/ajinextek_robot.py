@@ -172,29 +172,38 @@ class AjinextekRobot(RobotService):
 
     async def disconnect(self) -> None:
         """
-        하드웨어 연결 해제
+        하드웨어 연결 해제 with guaranteed cleanup
 
-        Returns:
-            연결 해제 성공 여부
+        Note:
+            Always completes cleanup even if errors occur to prevent resource leaks
         """
+        disconnect_error = None
+
         try:
             if self._is_connected:
-                # 중앙화된 연결 해제 사용
-                self._axl.disconnect()
-
-                self._is_connected = False
-                self._servo_state = False
-                self._motion_status = MotionStatus.IDLE
-
-                logger.info("AJINEXTEK robot controller disconnected")
+                try:
+                    # 중앙화된 연결 해제 사용
+                    self._axl.disconnect()
+                    logger.debug("Ajinextek robot AXL disconnect completed")
+                except Exception as axl_error:
+                    disconnect_error = axl_error
+                    logger.warning(f"Error during Ajinextek robot AXL disconnect: {axl_error}")
+                    # Continue with cleanup even if AXL disconnect fails
 
         except Exception as e:
-            logger.error(f"Error disconnecting AJINEXTEK robot: {e}")
-            raise HardwareException(
-                "ajinextek_robot",
-                "disconnect",
-                {"error": f"Error disconnecting AJINEXTEK robot: {e}"},
-            ) from e
+            logger.error(f"Unexpected error disconnecting Ajinextek robot: {e}")
+            disconnect_error = e
+
+        finally:
+            # Always perform cleanup to prevent resource leaks
+            self._is_connected = False
+            self._servo_state = False
+            self._motion_status = MotionStatus.IDLE
+
+            if disconnect_error:
+                logger.warning(f"Ajinextek robot disconnected with errors: {disconnect_error}")
+            else:
+                logger.info("Ajinextek robot controller disconnected successfully")
 
     async def is_connected(self) -> bool:
         """

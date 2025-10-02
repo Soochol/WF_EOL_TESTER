@@ -103,24 +103,37 @@ class OdaPower(PowerService):
 
     async def disconnect(self) -> None:
         """
-        Disconnect from power supply hardware
+        Disconnect from power supply hardware with guaranteed cleanup
 
-        Raises:
-            HardwareOperationError: If disconnection fails
+        Note:
+            Always completes cleanup even if errors occur to prevent resource leaks
         """
+        disconnect_error = None
+
         try:
             if self._tcp_comm:
-                await self._tcp_comm.disconnect()
+                try:
+                    await self._tcp_comm.disconnect()
+                    logger.debug("ODA Power TCP connection disconnect completed")
+                except Exception as tcp_error:
+                    disconnect_error = tcp_error
+                    logger.warning(f"Error during ODA Power TCP disconnect: {tcp_error}")
+                    # Continue with cleanup even if TCP disconnect fails
 
+        except Exception as e:
+            logger.error(f"Unexpected error disconnecting ODA Power Supply: {e}")
+            disconnect_error = e
+
+        finally:
+            # Always perform cleanup to prevent resource leaks
             self._tcp_comm = None
             self._is_connected = False
             self._output_enabled = False
 
-            logger.info("ODA Power Supply disconnected")
-
-        except Exception as e:
-            logger.error(f"Error disconnecting ODA Power Supply: {e}")
-            raise HardwareOperationError("oda_power", "disconnect", str(e)) from e
+            if disconnect_error:
+                logger.warning(f"ODA Power Supply disconnected with errors: {disconnect_error}")
+            else:
+                logger.info("ODA Power Supply disconnected successfully")
 
     async def is_connected(self) -> bool:
         """

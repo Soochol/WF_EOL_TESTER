@@ -9,12 +9,14 @@ from typing import Any, Dict, Optional
 
 # Third-party imports
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget, QLabel
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+
+# Local folder imports
+from ..force_3d_scatter import Force3DScatter
 
 # Local imports
 from ..force_3d_surface import Force3DSurface
-from ..force_3d_scatter import Force3DScatter
 from ..force_4d_scatter import Force4DScatter
 from ..force_contour_plot import ForceContourPlot
 
@@ -52,14 +54,16 @@ class NewAdvancedPage(QWidget):
         info_font.setPointSize(14)
         info_font.setBold(True)
         info_label.setFont(info_font)
-        info_label.setStyleSheet("""
+        info_label.setStyleSheet(
+            """
             color: #ffffff;
             padding: 12px;
             background-color: rgba(156, 39, 176, 0.1);
             border-left: 4px solid #9C27B0;
             border-radius: 8px;
             margin-bottom: 10px;
-        """)
+        """
+        )
         main_layout.addWidget(info_label)
 
         desc_label = QLabel(
@@ -75,7 +79,8 @@ class NewAdvancedPage(QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setStyleSheet("""
+        scroll_area.setStyleSheet(
+            """
             QScrollArea {
                 border: none;
                 background-color: #1e1e1e;
@@ -93,7 +98,8 @@ class NewAdvancedPage(QWidget):
             QScrollBar::handle:vertical:hover {
                 background-color: rgba(255, 255, 255, 0.3);
             }
-        """)
+        """
+        )
 
         # Content widget
         content_widget = QWidget()
@@ -144,8 +150,8 @@ class NewAdvancedPage(QWidget):
             # Prepare 3D data
             plot_3d_data = []
             for result in filtered_tests:
-                measurements = result.get("test_result", {}).get("actual_results", {}).get(
-                    "measurements", {}
+                measurements = (
+                    result.get("test_result", {}).get("actual_results", {}).get("measurements", {})
                 )
                 timestamp = result.get("start_time")
 
@@ -155,32 +161,54 @@ class NewAdvancedPage(QWidget):
                         position_mm = float(position_str) / 1000.0
                         force = data.get("force", 0.0)
 
-                        plot_3d_data.append({
-                            "temperature": temp,
-                            "position_mm": position_mm,
-                            "force": force,
-                            "timestamp": timestamp,
-                        })
+                        plot_3d_data.append(
+                            {
+                                "temperature": temp,
+                                "position_mm": position_mm,
+                                "force": force,
+                                "timestamp": timestamp,
+                            }
+                        )
 
-            # Update 3D surface plot
+            # Update 3D surface plot (convert list to dict format)
             if hasattr(self.surface_plot, "update_surface"):
-                self.surface_plot.update_surface(plot_3d_data)
+                # Convert list format to dict format: {(temp, pos): avg_force}
+                surface_dict: Dict[tuple[float, float], float] = {}
+                for data_point in plot_3d_data:
+                    key = (data_point["temperature"], data_point["position_mm"])
+                    if key in surface_dict:
+                        # Average if multiple measurements at same temp/position
+                        surface_dict[key] = (surface_dict[key] + data_point["force"]) / 2
+                    else:
+                        surface_dict[key] = data_point["force"]
+                self.surface_plot.update_surface(surface_dict)
 
             # Update 3D scatter plot
             if hasattr(self.scatter_plot, "update_scatter"):
                 self.scatter_plot.update_scatter(plot_3d_data)
 
             # Update 4D analysis (includes time dimension)
-            if hasattr(self.analysis_4d, "update_4d_scatter"):
-                self.analysis_4d.update_4d_scatter(plot_3d_data)
+            if hasattr(self.analysis_4d, "update_scatter"):
+                self.analysis_4d.update_scatter(plot_3d_data)
 
-            # Update contour plot
+            # Update contour plot (reuse surface dict or create new)
             if hasattr(self.contour_plot, "update_contour"):
-                self.contour_plot.update_contour(plot_3d_data)
+                # Convert list format to dict format: {(temp, pos): avg_force}
+                contour_dict: Dict[tuple[float, float], float] = {}
+                for data_point in plot_3d_data:
+                    key = (data_point["temperature"], data_point["position_mm"])
+                    if key in contour_dict:
+                        # Average if multiple measurements at same temp/position
+                        contour_dict[key] = (contour_dict[key] + data_point["force"]) / 2
+                    else:
+                        contour_dict[key] = data_point["force"]
+                self.contour_plot.update_contour(contour_dict)
 
         except Exception as e:
             print(f"Error updating advanced page: {e}")
+            # Standard library imports
             import traceback
+
             traceback.print_exc()
 
     def clear_data(self) -> None:

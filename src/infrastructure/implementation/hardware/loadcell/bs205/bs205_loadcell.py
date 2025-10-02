@@ -88,82 +88,114 @@ class BS205LoadCell(LoadCellService):
 
     async def connect(self) -> None:
         """
-        하드웨어 연결
+        하드웨어 연결 with defensive cleanup for busy ports
 
         Raises:
-            HardwareConnectionError: If connection fails
+            HardwareConnectionError: If connection fails after retries
         """
 
-        try:
-            # 사용 가능한 COM 포트 체크
+        # Close any existing connection first (defensive cleanup)
+        if self._connection or self._is_connected:
+            logger.debug("Cleaning up existing connection before reconnect")
+            await self.disconnect()
+            await asyncio.sleep(0.1)  # Brief delay to ensure port release
+
+        max_retries = 2
+        retry_delay = 0.5  # 500ms between retries
+
+        for attempt in range(max_retries):
             try:
-                # Third-party imports
-                import serial.tools.list_ports
+                # 사용 가능한 COM 포트 체크 (first attempt only)
+                if attempt == 0:
+                    try:
+                        # Third-party imports
+                        import serial.tools.list_ports
 
-                available_ports = [port.device for port in serial.tools.list_ports.comports()]
-                logger.info(f"Available COM ports: {available_ports}")
-            except ImportError:
-                logger.warning("Cannot check available ports - pyserial not fully installed")
+                        available_ports = [port.device for port in serial.tools.list_ports.comports()]
+                        logger.info(f"Available COM ports: {available_ports}")
+                    except ImportError:
+                        logger.warning("Cannot check available ports - pyserial not fully installed")
 
-            logger.info(
-                f"Connecting to BS205 LoadCell - Port: {self._port}, Baud: {self._baudrate}, Timeout: {self._timeout}, "
-                f"ByteSize: {self._bytesize}, StopBits: {self._stopbits}, Parity: {self._parity}, ID: {self._indicator_id}"
-            )
+                    logger.info(
+                        f"Connecting to BS205 LoadCell - Port: {self._port}, Baud: {self._baudrate}, Timeout: {self._timeout}, "
+                        f"ByteSize: {self._bytesize}, StopBits: {self._stopbits}, Parity: {self._parity}, ID: {self._indicator_id}"
+                    )
 
-            self._connection = await SerialManager.create_connection(
-                port=self._port,
-                baudrate=self._baudrate,
-                timeout=self._timeout,
-                bytesize=self._bytesize,
-                stopbits=self._stopbits,
-                parity=self._parity,
-            )
+                self._connection = await SerialManager.create_connection(
+                    port=self._port,
+                    baudrate=self._baudrate,
+                    timeout=self._timeout,
+                    bytesize=self._bytesize,
+                    stopbits=self._stopbits,
+                    parity=self._parity,
+                )
 
-            # Serial 연결 성공하면 바로 연결된 것으로 간주
-            self._is_connected = True
-            logger.info(STATUS_MESSAGES["connected"])
+                # Serial 연결 성공하면 바로 연결된 것으로 간주
+                self._is_connected = True
+                if attempt > 0:
+                    logger.info(f"BS205 LoadCell connected successfully on retry {attempt + 1}")
+                else:
+                    logger.info(STATUS_MESSAGES["connected"])
+                return
 
-        except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
-            error_msg = (
-                f"Failed to connect to BS205 LoadCell: {e}\n"
-                f"(Port: {self._port} @ {self._baudrate} baud)"
-            )
-            logger.error(
-                f"BS205 LoadCell connection failed - Port: {self._port}, Baud: {self._baudrate}, Error: {e}"
-            )
-            self._is_connected = False
-            raise BS205CommunicationError(
-                error_msg,
-                error_code=int(BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED),
-            ) from e
+            except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
+                # Check if this is a port busy/permission error
+                is_permission_error = "PermissionError" in str(e) or "액세스가 거부" in str(e)
+
+                if is_permission_error and attempt < max_retries - 1:
+                    logger.warning(
+                        f"Port {self._port} busy on attempt {attempt + 1}/{max_retries}, "
+                        f"retrying in {retry_delay}s..."
+                    )
+                    await asyncio.sleep(retry_delay)
+                    continue
+                else:
+                    # Final failure or non-recoverable error
+                    error_msg = (
+                        f"Failed to connect to BS205 LoadCell: {e}\n"
+                        f"(Port: {self._port} @ {self._baudrate} baud)"
+                    )
+                    logger.error(
+                        f"BS205 LoadCell connection failed - Port: {self._port}, Baud: {self._baudrate}, Error: {e}"
+                    )
+                    self._is_connected = False
+                    raise BS205CommunicationError(
+                        error_msg,
+                        error_code=int(BS205ErrorCode.HARDWARE_INITIALIZATION_FAILED),
+                    ) from e
 
     async def disconnect(self) -> None:
         """
-        하드웨어 연결 해제
+        하드웨어 연결 해제 with robust cleanup guarantee
 
-        Raises:
-            HardwareOperationError: If disconnection fails
+        Note:
+            Always completes cleanup even if errors occur to prevent resource leaks
         """
+        disconnect_error = None
+
         try:
             if self._connection:
-                await self._connection.disconnect()
-                self._connection = None
-
-            self._is_connected = False
-            logger.info(STATUS_MESSAGES["disconnected"])
+                try:
+                    await self._connection.disconnect()
+                    logger.debug("BS205 LoadCell connection disconnect completed")
+                except Exception as conn_error:
+                    disconnect_error = conn_error
+                    logger.warning(f"Error during BS205 connection disconnect: {conn_error}")
+                    # Continue with cleanup even if disconnect fails
 
         except Exception as e:
-            logger.error(f"Error disconnecting BS205 LoadCell: {e}")
-            # Local application imports
-            from domain.exceptions.eol_exceptions import (
-                HardwareOperationError,
-            )
+            logger.error(f"Unexpected error disconnecting BS205 LoadCell: {e}")
+            disconnect_error = e
 
-            raise HardwareOperationError(
-                "bs205_loadcell",
-                "disconnect",
-                f"Disconnection failed: {e}",
-            ) from e
+        finally:
+            # Always perform cleanup to prevent resource leaks
+            self._connection = None
+            self._is_connected = False
+
+            if disconnect_error:
+                logger.warning(f"BS205 LoadCell disconnected with errors: {disconnect_error}")
+            else:
+                logger.info(STATUS_MESSAGES["disconnected"])
 
     async def is_connected(self) -> bool:
         """

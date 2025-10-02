@@ -111,18 +111,32 @@ class LMAMCU(MCUService):
             raise HardwareConnectionError("fast_lma_mcu", "connect", error_msg) from e
 
     async def disconnect(self) -> None:
-        """Disconnect from MCU hardware"""
+        """Disconnect from MCU hardware with guaranteed cleanup"""
+        disconnect_error = None
+
         try:
             if self.serial_conn and self.serial_conn.is_open:
-                self.serial_conn.close()
-                logger.info("Fast MCU disconnected")
-
-            self._is_connected = False
+                try:
+                    self.serial_conn.close()
+                    logger.debug("LMA MCU serial connection closed")
+                except Exception as serial_error:
+                    disconnect_error = serial_error
+                    logger.warning(f"Error closing LMA MCU serial connection: {serial_error}")
+                    # Continue with cleanup even if close fails
 
         except Exception as e:
-            error_msg = f"Fast MCU disconnect error: {e}"
-            logger.warning(error_msg)
-            raise HardwareOperationError("fast_lma_mcu", "disconnect", error_msg) from e
+            logger.error(f"Unexpected error disconnecting LMA MCU: {e}")
+            disconnect_error = e
+
+        finally:
+            # Always perform cleanup to prevent resource leaks
+            self.serial_conn = None
+            self._is_connected = False
+
+            if disconnect_error:
+                logger.warning(f"LMA MCU disconnected with errors: {disconnect_error}")
+            else:
+                logger.info("LMA MCU disconnected successfully")
 
     async def is_connected(self) -> bool:
         """Check connection status"""

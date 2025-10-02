@@ -265,6 +265,8 @@ class SettingsWidget(QWidget):
 
     def on_value_changed(self, key: str, new_value) -> None:
         """Handle configuration value changes"""
+        from loguru import logger
+
         try:
             if self.current_config_value:
                 # Save the change
@@ -277,12 +279,23 @@ class SettingsWidget(QWidget):
                     if self.tree_widget:
                         self.tree_widget.update_item_text(key, new_value)
 
+                    # Reload configuration in container to apply changes immediately
+                    if self.container and hasattr(self.container, 'reload_configuration'):
+                        try:
+                            reload_success = self.container.reload_configuration()
+                            if reload_success:
+                                logger.info(f"✅ Configuration reloaded after changing {key}")
+                            else:
+                                logger.warning(f"⚠️ Configuration reload failed for {key}")
+                        except Exception as e:
+                            logger.error(f"Failed to reload configuration: {e}")
+
                     # Emit change signal
                     self.settings_changed.emit()
 
                     # Update status
                     if self.status_label:
-                        self.status_label.setText(f"Saved: {key} = {new_value}")
+                        self.status_label.setText(f"Saved & Applied: {key} = {new_value}")
                 else:
                     UIHelpers.show_error_message(
                         self, "Save Error", f"Failed to save changes for: {key}"

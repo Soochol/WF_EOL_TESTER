@@ -4,12 +4,13 @@ Dashboard-style overview with Quick Insights, key metrics, and performance summa
 """
 
 # Standard library imports
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # Third-party imports
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
+# Local folder imports
 # Local imports
 from ..overview_panel import OverviewPanel
 from ..quick_insights_panel import QuickInsightsPanel
@@ -43,7 +44,8 @@ class NewOverviewPage(QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setStyleSheet("""
+        scroll_area.setStyleSheet(
+            """
             QScrollArea {
                 border: none;
                 background-color: #1e1e1e;
@@ -61,7 +63,8 @@ class NewOverviewPage(QWidget):
             QScrollBar::handle:vertical:hover {
                 background-color: rgba(255, 255, 255, 0.3);
             }
-        """)
+        """
+        )
 
         # Content widget
         content_widget = QWidget()
@@ -107,7 +110,9 @@ class NewOverviewPage(QWidget):
 
         except Exception as e:
             print(f"Error updating overview page: {e}")
+            # Standard library imports
             import traceback
+
             traceback.print_exc()
 
     def clear_data(self) -> None:

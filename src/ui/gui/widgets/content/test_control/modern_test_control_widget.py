@@ -4,16 +4,26 @@ Modern Test Control Widget
 Beautiful card-based test control interface with Material Design 3.
 """
 
+# Standard library imports
 import logging
 from typing import Optional
-from PySide6.QtCore import Qt, Signal, QTimer, QSize, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont
+
+# Third-party imports
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QLineEdit, QComboBox, QSpinBox,
-    QProgressBar, QFrame, QGroupBox, QApplication, QMessageBox
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
+# Local application imports
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.svg_icon_provider import get_svg_icon_provider
@@ -29,7 +39,8 @@ class ModernCard(QFrame):
 
     def setup_ui(self, title: str):
         """Setup card UI"""
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             ModernCard {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 rgba(45, 45, 45, 0.95),
@@ -38,7 +49,8 @@ class ModernCard(QFrame):
                 border-radius: 16px;
                 padding: 12px;
             }
-        """)
+        """
+        )
 
         layout = QVBoxLayout(self)
         layout.setSpacing(10)  # Reduced from 15 to 10
@@ -47,12 +59,14 @@ class ModernCard(QFrame):
         if title:
             # Card title
             title_label = QLabel(title)
-            title_label.setStyleSheet("""
+            title_label.setStyleSheet(
+                """
                 font-size: 16px;
                 font-weight: 600;
                 color: #ffffff;
                 margin-bottom: 10px;
-            """)
+            """
+            )
             layout.addWidget(title_label)
 
         self.content_layout = layout
@@ -112,7 +126,8 @@ class ModernButton(QPushButton):
 
         color_scheme = colors.get(self.color_type, colors["primary"])
 
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
             QPushButton {{
                 background: {color_scheme["bg"]};
                 color: #ffffff;
@@ -133,7 +148,8 @@ class ModernButton(QPushButton):
                 background-color: rgba(255, 255, 255, 0.1);
                 color: rgba(255, 255, 255, 0.3);
             }}
-        """)
+        """
+        )
 
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -160,11 +176,13 @@ class StatusPill(QWidget):
 
         # Status text
         self.text_label = QLabel(self.status_text)
-        self.text_label.setStyleSheet("""
+        self.text_label.setStyleSheet(
+            """
             font-size: 13px;
             font-weight: 600;
             color: #ffffff;
-        """)
+        """
+        )
         layout.addWidget(self.text_label)
 
         self.update_style()
@@ -179,7 +197,8 @@ class StatusPill(QWidget):
 
     def update_style(self):
         """Update pill background"""
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
             StatusPill {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 {self.status_color}20,
@@ -187,7 +206,8 @@ class StatusPill(QWidget):
                 border: 1px solid {self.status_color}60;
                 border-radius: 20px;
             }}
-        """)
+        """
+        )
 
 
 class ModernTestControlWidget(QWidget):
@@ -215,6 +235,22 @@ class ModernTestControlWidget(QWidget):
         self.container = container
         self.state_manager = state_manager
 
+        # Initialize widget attributes (defined before setup_ui)
+        self.serial_edit: QLineEdit
+        self.test_type_combo: QComboBox
+        self.start_btn: ModernButton
+        self.pause_btn: ModernButton
+        self.stop_btn: ModernButton
+        self.home_btn: ModernButton
+        self.emergency_btn: ModernButton
+        self.status_pill: StatusPill
+        self.progress_bar: QProgressBar
+        self.progress_animation: Optional[int] = None
+        self.progress_timer: QTimer
+        self.is_indeterminate: bool = False
+        self._anim_value: int = 0
+        self.log_viewer: LogViewerWidget
+
         self.setup_ui()
         self.setup_connections()
 
@@ -235,11 +271,13 @@ class ModernTestControlWidget(QWidget):
         main_layout.setContentsMargins(15, 15, 15, 15)  # Reduced from 20 to 15
 
         # Apply dark background
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             ModernTestControlWidget {
                 background-color: #1e1e1e;
             }
-        """)
+        """
+        )
 
         # Configuration Card (no stretch - fixed size)
         config_card = self.create_configuration_card()
@@ -267,7 +305,8 @@ class ModernTestControlWidget(QWidget):
         serial_label.setStyleSheet("color: #cccccc; font-size: 13px;")
         self.serial_edit = QLineEdit()
         self.serial_edit.setPlaceholderText("Enter serial number...")
-        self.serial_edit.setStyleSheet("""
+        self.serial_edit.setStyleSheet(
+            """
             QLineEdit {
                 background-color: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -280,7 +319,8 @@ class ModernTestControlWidget(QWidget):
                 border-color: #2196F3;
                 background-color: rgba(33, 150, 243, 0.1);
             }
-        """)
+        """
+        )
 
         search_btn = QPushButton()
         svg_provider = get_svg_icon_provider()
@@ -289,7 +329,8 @@ class ModernTestControlWidget(QWidget):
             search_btn.setIcon(search_icon)
             search_btn.setIconSize(QSize(18, 18))
         search_btn.setFixedSize(40, 40)
-        search_btn.setStyleSheet("""
+        search_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: rgba(33, 150, 243, 0.2);
                 border: 1px solid rgba(33, 150, 243, 0.3);
@@ -298,7 +339,8 @@ class ModernTestControlWidget(QWidget):
             QPushButton:hover {
                 background-color: rgba(33, 150, 243, 0.3);
             }
-        """)
+        """
+        )
 
         serial_layout.addWidget(serial_label)
         serial_layout.addWidget(self.serial_edit)
@@ -312,12 +354,11 @@ class ModernTestControlWidget(QWidget):
         type_label = QLabel("Test Sequence:")
         type_label.setStyleSheet("color: #cccccc; font-size: 13px;")
         self.test_type_combo = QComboBox()
-        self.test_type_combo.addItems([
-            "EOL Force Test",
-            "Heating Cooling Time Test",
-            "Simple MCU Test"
-        ])
-        self.test_type_combo.setStyleSheet("""
+        self.test_type_combo.addItems(
+            ["EOL Force Test", "Heating Cooling Time Test", "Simple MCU Test"]
+        )
+        self.test_type_combo.setStyleSheet(
+            """
             QComboBox {
                 background-color: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -332,7 +373,8 @@ class ModernTestControlWidget(QWidget):
             QComboBox::drop-down {
                 border: none;
             }
-        """)
+        """
+        )
 
         params_layout.addWidget(type_label)
         params_layout.addWidget(self.test_type_combo)
@@ -396,7 +438,8 @@ class ModernTestControlWidget(QWidget):
         self.progress_timer.timeout.connect(self._update_progress_animation)
         self.is_indeterminate = False
 
-        self.progress_bar.setStyleSheet("""
+        self.progress_bar.setStyleSheet(
+            """
             QProgressBar {
                 background-color: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -413,7 +456,8 @@ class ModernTestControlWidget(QWidget):
                     stop:1 #2196F3);
                 border-radius: 17px;
             }
-        """)
+        """
+        )
         card.add_widget(self.progress_bar)
 
         return card
@@ -422,9 +466,6 @@ class ModernTestControlWidget(QWidget):
         """Update indeterminate progress animation"""
         if self.is_indeterminate:
             # Pulse animation for indeterminate state
-            if not hasattr(self, '_anim_value'):
-                self._anim_value = 0
-
             self._anim_value = (self._anim_value + 1) % 40
 
             # Show pulsing effect by updating format
@@ -486,7 +527,7 @@ class ModernTestControlWidget(QWidget):
                 "Serial Number Required",
                 "Please enter a serial number before starting the test.\n\n"
                 "The serial number is required to identify and track the test results.",
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
             # Focus on serial number input field
             self.serial_edit.setFocus()
@@ -569,91 +610,14 @@ class ModernTestControlWidget(QWidget):
         """Log screen resolution and widget geometry information for debugging"""
         try:
             # Use loguru for consistency with other GUI logs
+            # Third-party imports
             from loguru import logger
 
-            # Get screen information
-            screen = QApplication.primaryScreen()
-            if screen:
-                screen_geometry = screen.geometry()
-                screen_size = screen.size()
-                available_geometry = screen.availableGeometry()
-
-                logger.info("=" * 80)
-                logger.info("MODERN TEST CONTROL - SCREEN & WIDGET GEOMETRY DEBUG")
-                logger.info("=" * 80)
-                logger.info(f"Screen Resolution: {screen_size.width()}x{screen_size.height()}")
-                logger.info(f"Screen Geometry: {screen_geometry}")
-                logger.info(f"Available Geometry (excluding taskbar): {available_geometry}")
-
-            # Get main window information
-            main_window = self.window()
-            if main_window:
-                logger.info(f"\nMain Window Size: {main_window.size().width()}x{main_window.size().height()}")
-                logger.info(f"Main Window Geometry: {main_window.geometry()}")
-                logger.info(f"Main Window Position: ({main_window.x()}, {main_window.y()})")
-
-            # Get Modern Test Control Widget information
-            logger.info(f"\nModern Test Control Widget Size: {self.size().width()}x{self.size().height()}")
-            logger.info(f"Modern Test Control Widget Geometry: {self.geometry()}")
-            logger.info(f"Modern Test Control Widget Visible: {self.isVisible()}")
-
-            # Log each card geometry
-            logger.info("\n" + "-" * 80)
-            logger.info("CARDS GEOMETRY:")
-            logger.info("-" * 80)
-
-            # Serial edit (Configuration Card)
-            if hasattr(self, 'serial_edit') and self.serial_edit:
-                parent = self.serial_edit.parent()
-                if parent:
-                    config_card = parent.parent() if parent.parent() else parent
-                    logger.info(f"\n[Configuration Card]")
-                    logger.info(f"  Card Size: {config_card.size().width()}x{config_card.size().height()}")
-                    logger.info(f"  Card Geometry: {config_card.geometry()}")
-                    logger.info(f"  Serial Edit Size: {self.serial_edit.size().width()}x{self.serial_edit.size().height()}")
-
-            # Buttons (Controls Card)
-            if hasattr(self, 'start_btn') and self.start_btn:
-                parent = self.start_btn.parent()
-                if parent:
-                    controls_card = parent.parent() if parent.parent() else parent
-                    logger.info(f"\n[Controls Card]")
-                    logger.info(f"  Card Size: {controls_card.size().width()}x{controls_card.size().height()}")
-                    logger.info(f"  Card Geometry: {controls_card.geometry()}")
-
-                    # Log individual button sizes
-                    if self.start_btn:
-                        logger.info(f"  START Button Size: {self.start_btn.size().width()}x{self.start_btn.size().height()}")
-                    if self.pause_btn:
-                        logger.info(f"  PAUSE Button Size: {self.pause_btn.size().width()}x{self.pause_btn.size().height()}")
-                    if self.stop_btn:
-                        logger.info(f"  STOP Button Size: {self.stop_btn.size().width()}x{self.stop_btn.size().height()}")
-                    if self.home_btn:
-                        logger.info(f"  HOME Button Size: {self.home_btn.size().width()}x{self.home_btn.size().height()}")
-                    if self.emergency_btn:
-                        logger.info(f"  EMERGENCY Button Size: {self.emergency_btn.size().width()}x{self.emergency_btn.size().height()}")
-
-            # Status card
-            if hasattr(self, 'status_pill') and self.status_pill:
-                parent = self.status_pill.parent()
-                if parent:
-                    logger.info(f"\n[Status & Progress Card]")
-                    logger.info(f"  Card Size: {parent.size().width()}x{parent.size().height()}")
-                    logger.info(f"  Card Geometry: {parent.geometry()}")
-                    if self.progress_bar:
-                        logger.info(f"  Progress Bar Size: {self.progress_bar.size().width()}x{self.progress_bar.size().height()}")
-
-            # Log viewer card
-            if hasattr(self, 'log_viewer') and self.log_viewer:
-                parent = self.log_viewer.parent()
-                if parent:
-                    logger.info(f"\n[Test Logs Card]")
-                    logger.info(f"  Card Size: {parent.size().width()}x{parent.size().height()}")
-                    logger.info(f"  Card Geometry: {parent.geometry()}")
-                    logger.info(f"  Log Viewer Size: {self.log_viewer.size().width()}x{self.log_viewer.size().height()}")
-
-            logger.info("\n" + "=" * 80)
+            # Geometry debug logging removed for cleaner output
+            pass
 
         except Exception as e:
+            # Third-party imports
             from loguru import logger
+
             logger.error(f"Error logging geometry info: {e}", exc_info=True)

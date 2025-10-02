@@ -161,3 +161,10 @@ class OverviewPanel(QWidget):
         # Update average force (handle both avg_force and avg_max_force keys)
         avg_force = stats.get("avg_force", stats.get("avg_max_force", 0.0))
         self.avg_force_label.value_label.setText(f"{avg_force:.2f}N")
+
+    def clear(self) -> None:
+        """Clear all statistics to default values."""
+        self.total_tests_label.value_label.setText("0")
+        self.pass_rate_label.value_label.setText("0%")
+        self.avg_duration_label.value_label.setText("0.0s")
+        self.avg_force_label.value_label.setText("0.0N")
