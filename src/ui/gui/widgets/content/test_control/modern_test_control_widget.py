@@ -12,11 +12,10 @@ from typing import Optional
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QMessageBox,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
@@ -53,8 +52,8 @@ class ModernCard(QFrame):
         )
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)  # Reduced from 15 to 10
-        layout.setContentsMargins(15, 15, 15, 15)  # Reduced from 20 to 15
+        layout.setSpacing(6)  # Reduced from 10 to 6
+        layout.setContentsMargins(10, 10, 10, 10)  # Reduced from 15 to 10
 
         if title:
             # Card title
@@ -64,7 +63,7 @@ class ModernCard(QFrame):
                 font-size: 16px;
                 font-weight: 600;
                 color: #ffffff;
-                margin-bottom: 10px;
+                margin-bottom: 6px;
             """
             )
             layout.addWidget(title_label)
@@ -132,11 +131,11 @@ class ModernButton(QPushButton):
                 background: {color_scheme["bg"]};
                 color: #ffffff;
                 border: none;
-                border-radius: 10px;
-                padding: 10px 20px;
+                border-radius: 8px;
+                padding: 6px 16px;
                 font-size: 13px;
                 font-weight: 600;
-                min-height: 40px;
+                min-height: 28px;
             }}
             QPushButton:hover {{
                 background: {color_scheme["hover"]};
@@ -166,8 +165,8 @@ class StatusPill(QWidget):
     def setup_ui(self):
         """Setup status pill UI"""
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(6)
 
         # Status dot
         self.dot_label = QLabel("●")
@@ -235,8 +234,11 @@ class ModernTestControlWidget(QWidget):
         self.container = container
         self.state_manager = state_manager
 
+        # Serial number management (popup-based)
+        self.current_serial_number = ""
+        self.require_serial_popup = self._get_serial_popup_setting()
+
         # Initialize widget attributes (defined before setup_ui)
-        self.serial_edit: QLineEdit
         self.test_type_combo: QComboBox
         self.start_btn: ModernButton
         self.pause_btn: ModernButton
@@ -245,18 +247,23 @@ class ModernTestControlWidget(QWidget):
         self.emergency_btn: ModernButton
         self.status_pill: StatusPill
         self.progress_bar: QProgressBar
-        self.progress_animation: Optional[int] = None
-        self.progress_timer: QTimer
-        self.is_indeterminate: bool = False
-        self._anim_value: int = 0
         self.log_viewer: LogViewerWidget
 
         self.setup_ui()
         self.setup_connections()
 
-        # Log geometry info immediately and after render
-        QTimer.singleShot(100, self._log_geometry_info)  # Faster initial log
-        QTimer.singleShot(1000, self._log_geometry_info)  # Second log after full render
+    def _get_serial_popup_setting(self) -> bool:
+        """Get serial number popup setting from configuration"""
+        try:
+            if self.container and hasattr(self.container, "_config_dict"):
+                config = self.container._config_dict
+                if isinstance(config, dict):
+                    gui_config = config.get("gui", {})
+                    if isinstance(gui_config, dict):
+                        return gui_config.get("require_serial_number_popup", True)
+        except Exception:
+            pass
+        return True  # Default: use popup
 
     def showEvent(self, event):
         """Override showEvent to log geometry when widget is shown"""
@@ -267,8 +274,8 @@ class ModernTestControlWidget(QWidget):
     def setup_ui(self):
         """Setup modern UI"""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(12)  # Reduced from 20 to 12 to save vertical space
-        main_layout.setContentsMargins(15, 15, 15, 15)  # Reduced from 20 to 15
+        main_layout.setSpacing(8)  # Reduced from 12 to 8 to save vertical space
+        main_layout.setContentsMargins(10, 10, 10, 10)  # Reduced from 15 to 10
 
         # Apply dark background
         self.setStyleSheet(
@@ -298,54 +305,6 @@ class ModernTestControlWidget(QWidget):
     def create_configuration_card(self) -> ModernCard:
         """Create test configuration card"""
         card = ModernCard("📦 Test Configuration")
-
-        # Serial Number
-        serial_layout = QHBoxLayout()
-        serial_label = QLabel("Serial Number:")
-        serial_label.setStyleSheet("color: #cccccc; font-size: 13px;")
-        self.serial_edit = QLineEdit()
-        self.serial_edit.setPlaceholderText("Enter serial number...")
-        self.serial_edit.setStyleSheet(
-            """
-            QLineEdit {
-                background-color: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 8px;
-                padding: 10px;
-                color: #ffffff;
-                font-size: 13px;
-            }
-            QLineEdit:focus {
-                border-color: #2196F3;
-                background-color: rgba(33, 150, 243, 0.1);
-            }
-        """
-        )
-
-        search_btn = QPushButton()
-        svg_provider = get_svg_icon_provider()
-        search_icon = svg_provider.get_icon("search", size=18, color="#2196F3")
-        if not search_icon.isNull():
-            search_btn.setIcon(search_icon)
-            search_btn.setIconSize(QSize(18, 18))
-        search_btn.setFixedSize(40, 40)
-        search_btn.setStyleSheet(
-            """
-            QPushButton {
-                background-color: rgba(33, 150, 243, 0.2);
-                border: 1px solid rgba(33, 150, 243, 0.3);
-                border-radius: 20px;
-            }
-            QPushButton:hover {
-                background-color: rgba(33, 150, 243, 0.3);
-            }
-        """
-        )
-
-        serial_layout.addWidget(serial_label)
-        serial_layout.addWidget(self.serial_edit)
-        serial_layout.addWidget(search_btn)
-        card.add_widget(self.create_layout_widget(serial_layout))
 
         # Test Type & Parameters
         params_layout = QHBoxLayout()
@@ -424,26 +383,20 @@ class ModernTestControlWidget(QWidget):
         self.status_pill = StatusPill()
         card.add_widget(self.status_pill)
 
-        # Modern Progress bar with animation support
+        # Modern Progress bar with indeterminate animation (like Robot widget)
         self.progress_bar = QProgressBar()
-        self.progress_bar.setTextVisible(True)
-        self.progress_bar.setFixedHeight(35)
+        self.progress_bar.setTextVisible(False)  # Hide text inside progress bar
+        self.progress_bar.setFixedHeight(28)  # Reduced from 35 to 28
         self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
+        self.progress_bar.setMaximum(100)  # Normal mode initially (no animation)
         self.progress_bar.setValue(0)
-
-        # Indeterminate animation setup
-        self.progress_animation = None
-        self.progress_timer = QTimer()
-        self.progress_timer.timeout.connect(self._update_progress_animation)
-        self.is_indeterminate = False
 
         self.progress_bar.setStyleSheet(
             """
             QProgressBar {
                 background-color: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 17px;
+                border-radius: 14px;
                 text-align: center;
                 color: #ffffff;
                 font-weight: 600;
@@ -452,9 +405,8 @@ class ModernTestControlWidget(QWidget):
             QProgressBar::chunk {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #2196F3,
-                    stop:0.5 #00D9A5,
-                    stop:1 #2196F3);
-                border-radius: 17px;
+                    stop:1 #00D9A5);
+                border-radius: 13px;
             }
         """
         )
@@ -462,29 +414,14 @@ class ModernTestControlWidget(QWidget):
 
         return card
 
-    def _update_progress_animation(self):
-        """Update indeterminate progress animation"""
-        if self.is_indeterminate:
-            # Pulse animation for indeterminate state
-            self._anim_value = (self._anim_value + 1) % 40
-
-            # Show pulsing effect by updating format
-            dots_count = (self._anim_value // 10) % 4
-            dots = "." * dots_count if dots_count > 0 else ""
-            self.progress_bar.setFormat(f"Processing{dots}")
-
     def start_indeterminate_progress(self):
-        """Start indeterminate progress animation"""
-        self.is_indeterminate = True
-        self.progress_bar.setValue(0)
-        self.progress_bar.setFormat("Processing...")
-        self.progress_timer.start(100)  # Update every 100ms
+        """Start indeterminate progress animation (moving bar)"""
+        self.progress_bar.setMaximum(0)  # Indeterminate mode - automatic animation
 
     def stop_indeterminate_progress(self):
         """Stop indeterminate progress animation"""
-        self.is_indeterminate = False
-        self.progress_timer.stop()
-        self.progress_bar.setFormat("%p%")
+        self.progress_bar.setMaximum(100)  # Normal mode - fixed progress
+        self.progress_bar.setValue(0)
 
     def create_log_card(self) -> ModernCard:
         """Create log viewer card"""
@@ -510,29 +447,25 @@ class ModernTestControlWidget(QWidget):
         self.start_btn.clicked.connect(self._on_start_clicked)
         self.pause_btn.clicked.connect(self.test_paused.emit)
         self.stop_btn.clicked.connect(self._on_stop_clicked)
-        self.home_btn.clicked.connect(self.robot_home_requested.emit)
-        self.emergency_btn.clicked.connect(self.emergency_stop_requested.emit)
+        self.home_btn.clicked.connect(self._on_home_clicked)
+        self.emergency_btn.clicked.connect(self._on_emergency_clicked)
 
     def _on_start_clicked(self):
-        """Handle start button click"""
-        # Validate serial number before starting
-        if not self.serial_edit:
-            return
+        """Handle start button click with serial number popup"""
+        # Show serial number popup if enabled
+        if self.require_serial_popup:
+            # Local application imports
+            from ui.gui.widgets.dialogs.serial_number_dialog import SerialNumberDialog
 
-        serial_number = self.serial_edit.text().strip()
-        if not serial_number:
-            # Show popup warning
-            QMessageBox.warning(
-                self,
-                "Serial Number Required",
-                "Please enter a serial number before starting the test.\n\n"
-                "The serial number is required to identify and track the test results.",
-                QMessageBox.StandardButton.Ok,
-            )
-            # Focus on serial number input field
-            self.serial_edit.setFocus()
-            return
+            dialog = SerialNumberDialog(default_value=self.current_serial_number, parent=self)
 
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.current_serial_number = dialog.get_serial_number()
+            else:
+                # User cancelled - don't start test
+                return
+
+        # Start test animation and emit signal
         self.start_indeterminate_progress()
         self.test_started.emit()
 
@@ -541,7 +474,34 @@ class ModernTestControlWidget(QWidget):
         self.stop_indeterminate_progress()
         self.test_stopped.emit()
 
+    def _on_home_clicked(self):
+        """Handle home button click"""
+        self.start_indeterminate_progress()
+        self.robot_home_requested.emit()
+
+    def _on_emergency_clicked(self):
+        """Handle emergency stop button click"""
+        self.stop_indeterminate_progress()
+        self.emergency_stop_requested.emit()
+
+    # Public methods for external control
+    def handle_test_completed(self, success: bool = True):
+        """Handle test completion - stop animation"""
+        self.stop_indeterminate_progress()
+
+    def handle_robot_home_completed(self, success: bool = True):
+        """Handle robot home completion - stop animation"""
+        self.stop_indeterminate_progress()
+
     # API compatibility methods
+    def get_current_serial_number(self) -> str:
+        """Get current serial number (API compatibility)"""
+        return self.current_serial_number
+
+    def set_serial_number(self, serial: str) -> None:
+        """Set serial number programmatically (API compatibility)"""
+        self.current_serial_number = serial
+
     def update_status(self, status: str, color: str = "#00D9A5"):
         """Update status display"""
         self.status_pill.set_status(status, color)
@@ -620,4 +580,5 @@ class ModernTestControlWidget(QWidget):
             # Third-party imports
             from loguru import logger
 
+            logger.error(f"Error logging geometry info: {e}", exc_info=True)
             logger.error(f"Error logging geometry info: {e}", exc_info=True)
