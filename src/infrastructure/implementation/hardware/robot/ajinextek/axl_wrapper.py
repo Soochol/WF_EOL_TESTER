@@ -439,17 +439,17 @@ class AXLWrapper:
             missing_functions.append("AxmMotGetAbsRelMode")
 
         # === Velocity Motion Functions ===
-        # AxmMoveStartVel
+        # AxmMoveVel
         try:
-            self.dll.AxmMoveStartVel.argtypes = [
+            self.dll.AxmMoveVel.argtypes = [
                 c_long,
                 c_double,
                 c_double,
                 c_double,
             ]
-            self.dll.AxmMoveStartVel.restype = c_long
+            self.dll.AxmMoveVel.restype = c_long
         except AttributeError:
-            missing_functions.append("AxmMoveStartVel")
+            missing_functions.append("AxmMoveVel")
 
         # AxmMoveSignalSearch
         try:
@@ -465,19 +465,19 @@ class AXLWrapper:
             missing_functions.append("AxmMoveSignalSearch")
 
         # === Multi-axis Functions ===
-        # AxmMoveMultiStart
+        # AxmMoveMultiPos
         try:
-            self.dll.AxmMoveMultiStart.argtypes = [
+            self.dll.AxmMoveMultiPos.argtypes = [
+                c_long,
                 POINTER(c_long),
                 POINTER(c_double),
                 POINTER(c_double),
                 POINTER(c_double),
                 POINTER(c_double),
-                c_long,
             ]
-            self.dll.AxmMoveMultiStart.restype = c_long
+            self.dll.AxmMoveMultiPos.restype = c_long
         except AttributeError:
-            missing_functions.append("AxmMoveMultiStart")
+            missing_functions.append("AxmMoveMultiPos")
 
         # AxmMoveMultiStop
         try:
@@ -505,19 +505,8 @@ class AXLWrapper:
         except AttributeError:
             missing_functions.append("AxmMotSaveParaAll")
 
-        # AxmMotLoadPara
-        try:
-            self.dll.AxmMotLoadPara.argtypes = [c_long, c_char_p]
-            self.dll.AxmMotLoadPara.restype = c_long
-        except AttributeError:
-            missing_functions.append("AxmMotLoadPara")
-
-        # AxmMotSavePara
-        try:
-            self.dll.AxmMotSavePara.argtypes = [c_long, c_char_p]
-            self.dll.AxmMotSavePara.restype = c_long
-        except AttributeError:
-            missing_functions.append("AxmMotSavePara")
+        # Note: AxmMotLoadPara and AxmMotSavePara do not exist in AXL library
+        # Only AxmMotLoadParaAll and AxmMotSaveParaAll are available
 
         # === Motion Parameter Get/Set Functions ===
         # AxmMotSetMaxVel
@@ -1105,16 +1094,16 @@ class AXLWrapper:
             raise AXLError("AXL DLL not loaded")
 
         # Check if function is available
-        if not hasattr(self.dll, "AxmMoveStartVel"):
+        if not hasattr(self.dll, "AxmMoveVel"):
             # Third-party imports
             from loguru import logger
 
             logger.warning(
-                "AxmMoveStartVel function not available in AXL DLL, returning success code"
+                "AxmMoveVel function not available in AXL DLL, returning success code"
             )
             return 0  # Return success code
 
-        return self.dll.AxmMoveStartVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]
+        return self.dll.AxmMoveVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]
 
     def move_signal_search(
         self,
@@ -1144,6 +1133,16 @@ class AXLWrapper:
         if self.dll is None:
             raise AXLError("AXL DLL not loaded")
 
+        # Check if function is available
+        if not hasattr(self.dll, "AxmMoveMultiPos"):
+            # Third-party imports
+            from loguru import logger
+
+            logger.warning(
+                "AxmMoveMultiPos function not available in AXL DLL, returning success code"
+            )
+            return 0  # Return success code
+
         axis_count = len(axis_list)
         if not all(len(lst) == axis_count for lst in [positions, velocities, accels, decels]):
             raise ValueError("All parameter lists must have the same length")
@@ -1155,8 +1154,8 @@ class AXLWrapper:
         accel_array = (c_double * axis_count)(*accels)
         decel_array = (c_double * axis_count)(*decels)
 
-        return self.dll.AxmMoveMultiStart(  # type: ignore[no-any-return]
-            axis_array, pos_array, vel_array, accel_array, decel_array, axis_count
+        return self.dll.AxmMoveMultiPos(  # type: ignore[no-any-return]
+            axis_count, axis_array, pos_array, vel_array, accel_array, decel_array
         )
 
     def move_multi_stop(self, axis_list: list[int], decels: list[float]) -> int:
@@ -1191,21 +1190,8 @@ class AXLWrapper:
         file_path_bytes = file_path.encode("ascii")
         return self.dll.AxmMotSaveParaAll(file_path_bytes)  # type: ignore[no-any-return]
 
-    def load_para(self, axis_no: int, file_path: str) -> int:
-        """Load motion parameters for specific axis from file."""
-        if self.dll is None:
-            raise AXLError("AXL DLL not loaded")
-
-        file_path_bytes = file_path.encode("ascii")
-        return self.dll.AxmMotLoadPara(axis_no, file_path_bytes)  # type: ignore[no-any-return]
-
-    def save_para(self, axis_no: int, file_path: str) -> int:
-        """Save motion parameters for specific axis to file."""
-        if self.dll is None:
-            raise AXLError("AXL DLL not loaded")
-
-        file_path_bytes = file_path.encode("ascii")
-        return self.dll.AxmMotSavePara(axis_no, file_path_bytes)  # type: ignore[no-any-return]
+    # Note: AxmMotLoadPara and AxmMotSavePara do not exist in AXL library
+    # Use load_para_all() and save_para_all() instead for all axes
 
     # === Motion Parameter Get/Set Functions ===
     def set_max_vel(self, axis_no: int, max_vel: float) -> int:
@@ -2021,14 +2007,16 @@ class AXLWrapper:
         """
         Read current torque value.
 
+        Note: This function is only available in specific AXL products (MLII, SIIIH, etc.)
+
         Args:
             axis_no: Axis number
 
         Returns:
-            Current torque value
+            Current torque value (0.0 if function not available)
 
         Raises:
-            AXLError: If DLL is not loaded or function not available
+            AXLError: If DLL is not loaded
             AXLMotionError: If read operation fails
         """
         if self.dll is None:
@@ -2036,7 +2024,13 @@ class AXLWrapper:
 
         # Check if function is available
         if not hasattr(self.dll, "AxmStatusReadTorque"):
-            raise AXLError("AxmStatusReadTorque function not available in this AXL version")
+            # Third-party imports
+            from loguru import logger
+
+            logger.debug(
+                f"AxmStatusReadTorque not available for axis {axis_no}, returning 0.0 (function may not be supported by this hardware)"
+            )
+            return 0.0  # Return default value
 
         torque_value = c_double()
         result = self.dll.AxmStatusReadTorque(axis_no, ctypes.byref(torque_value))
