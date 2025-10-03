@@ -34,13 +34,23 @@ from ui.gui.widgets.content.results_widget import ResultsWidget
 from ui.gui.widgets.content.settings_widget import SettingsWidget
 from ui.gui.widgets.content.test_control_widget import TestControlWidget
 from ui.gui.widgets.content.robot import RobotControlWidget
+from ui.gui.widgets.content.mcu import MCUControlWidget
+from ui.gui.widgets.content.power_supply import PowerSupplyControlWidget
+from ui.gui.widgets.content.digital_output import DigitalOutputControlWidget
 from ui.gui.widgets.header.modern_header_widget import ModernHeaderWidget
 from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
 
 
 class TestExecutorThread(QThread):
     """
-    Thread for executing tests in background without blocking GUI.
+    Thread for executing all hardware operations in background without blocking GUI.
+
+    Handles:
+    - Test execution (EOL, Heating/Cooling, MCU tests)
+    - Robot operations (connect, move, servo, etc.)
+    - MCU operations (connect, temperature, etc.)
+
+    All operations run on a single event loop to prevent conflicts.
     """
 
     # Signals for communicating with GUI
@@ -51,16 +61,77 @@ class TestExecutorThread(QThread):
     test_error = Signal(str)  # error message
     log_message = Signal(str, str, str)  # level, component, message
 
-    def __init__(self, container, test_sequence: str, serial_number: str, parent=None):
+    # Hardware operation signals
+    operation_completed = Signal(str, object)  # operation_id, result
+    operation_failed = Signal(str, str)  # operation_id, error_message
+
+    # Hardware status signals (for syncing with Hardware pages)
+    hardware_status_changed = Signal(str, bool)  # hardware_name, is_connected
+
+    def __init__(self, container, parent=None):
         super().__init__(parent)
         self.container = container
-        self.test_sequence = test_sequence
-        self.serial_number = serial_number
+
+        # Test-specific state (for backward compatibility)
+        self.test_sequence = None
+        self.serial_number = None
         self.should_stop = False
+        self.is_test_running = False  # ✅ Track if a test is currently executing
+
+        # Task queue for operations
+        from queue import Queue
+        self.task_queue = Queue()
+        self._running = True
 
     def stop_test(self):
         """Request test to stop"""
         self.should_stop = True
+
+    def stop(self):
+        """Stop the executor thread gracefully"""
+        from loguru import logger
+        logger.info("🛑 Stopping TestExecutorThread...")
+        self._running = False
+
+    def submit_task(self, operation_id: str, coroutine):
+        """
+        Submit a hardware operation task.
+
+        Args:
+            operation_id: Unique identifier for this operation
+            coroutine: Async coroutine to execute
+        """
+        from loguru import logger
+        task_info = {
+            'id': operation_id,
+            'coroutine': coroutine,
+            'type': 'operation'
+        }
+        self.task_queue.put(task_info)
+        logger.debug(f"Task submitted: {operation_id}")
+
+    def submit_test(self, test_sequence: str, serial_number: str):
+        """
+        Submit a test execution task.
+
+        Args:
+            test_sequence: Test sequence name
+            serial_number: DUT serial number
+        """
+        from loguru import logger
+        # Set test-specific state
+        self.test_sequence = test_sequence
+        self.serial_number = serial_number
+        self.should_stop = False
+
+        task_info = {
+            'id': f'test_{test_sequence}',
+            'test_sequence': test_sequence,
+            'serial_number': serial_number,
+            'type': 'test'
+        }
+        self.task_queue.put(task_info)
+        logger.debug(f"Test submitted: {test_sequence}")
 
     async def _ensure_hardware_connected(self):
         """
@@ -120,6 +191,28 @@ class TestExecutorThread(QThread):
                 "WARNING", "HARDWARE",
                 f"Failed to ensure hardware connection: {e}"
             )
+
+    async def _emit_hardware_status(self):
+        """
+        Emit hardware status signals to update Hardware page button states.
+
+        This method checks the connection status of all hardware and emits
+        hardware_status_changed signals so that Robot/MCU pages can sync their states.
+        """
+        try:
+            hardware_facade = self.container.hardware_service_facade()
+
+            # Check Robot connection status
+            is_robot_connected = await hardware_facade.robot_service.is_connected()
+            self.hardware_status_changed.emit("robot", is_robot_connected)
+
+            # Check MCU connection status
+            is_mcu_connected = await hardware_facade.mcu_service.is_connected()
+            self.hardware_status_changed.emit("mcu", is_mcu_connected)
+
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"Failed to emit hardware status: {e}")
 
     def _evaluate_test_result(self, result):
         """
@@ -195,18 +288,17 @@ class TestExecutorThread(QThread):
         logger.warning(f"Unknown result type: {type(result)} - assuming success")
         return True, "Test completed (result type unknown)"
 
-    def run(self):
-        """Run the selected test in background thread"""
-        # Third-party imports
-        import asyncio
-
+    def _execute_test_task(self, loop, task_info):
+        """Execute a test task"""
         from loguru import logger
 
-        try:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        # Set test-specific state
+        self.test_sequence = task_info['test_sequence']
+        self.serial_number = task_info['serial_number']
+        self.should_stop = False
+        self.is_test_running = True  # ✅ Mark test as running
 
+        try:
             # Run the test
             result = loop.run_until_complete(self._execute_test())
 
@@ -222,47 +314,110 @@ class TestExecutorThread(QThread):
             logger.error(f"Test execution failed: {e}")
             self.test_error.emit(str(e))
         finally:
-            try:
-                # Gracefully cleanup all pending tasks before closing the loop
-                pending_tasks = asyncio.all_tasks(loop)
-                if pending_tasks:
-                    logger.debug(
-                        f"🧹 TEST_CLEANUP: Found {len(pending_tasks)} pending tasks to cleanup"
-                    )
+            self.is_test_running = False  # ✅ Mark test as finished
+            logger.debug("Test execution completed, is_test_running set to False")
 
-                    # Cancel all pending tasks
-                    for task in pending_tasks:
-                        if not task.done():
-                            task.cancel()
+            # ✅ Emit hardware status after test completion (hardware may be disconnected)
+            loop.run_until_complete(self._emit_hardware_status())
 
-                    # Wait for all tasks to finish cancellation (with timeout)
-                    try:
-                        loop.run_until_complete(
-                            asyncio.wait_for(
-                                asyncio.gather(*pending_tasks, return_exceptions=True),
-                                timeout=2.0,  # 2 second timeout for cleanup
-                            )
-                        )
-                        logger.debug("🧹 TEST_CLEANUP: All tasks cleaned up successfully")
-                    except asyncio.TimeoutError:
-                        logger.warning(
-                            "🧹 TEST_CLEANUP: Task cleanup timed out, some tasks may not have finished"
-                        )
-                    except Exception as cleanup_error:
-                        logger.debug(
-                            f"🧹 TEST_CLEANUP: Task cleanup completed with exceptions (expected): {cleanup_error}"
-                        )
+    def _execute_operation_task(self, loop, task_info):
+        """Execute a hardware operation task (Robot/MCU)"""
+        from loguru import logger
 
-                # Now it's safe to close the loop
-                loop.close()
-                logger.debug("🧹 TEST_CLEANUP: Event loop closed successfully")
+        operation_id = task_info['id']
+        coroutine = task_info['coroutine']
 
-            except Exception as e:
-                logger.error(f"🧹 TEST_CLEANUP: Error during cleanup: {e}")
+        try:
+            logger.debug(f"Executing operation: {operation_id}")
+            result = loop.run_until_complete(coroutine)
+            self.operation_completed.emit(operation_id, result)
+            logger.debug(f"Operation completed: {operation_id}")
+        except Exception as e:
+            logger.error(f"Operation failed: {operation_id} - {e}")
+            self.operation_failed.emit(operation_id, str(e))
+
+    def run(self):
+        """Run hardware executor thread with persistent event loop"""
+        # Third-party imports
+        import asyncio
+        import time
+
+        from loguru import logger
+
+        logger.info("🔧 TestExecutorThread started (Hardware Executor)")
+
+        loop = None
+        try:
+            # Create persistent event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # ✅ Main execution loop - runs continuously until app shutdown
+            while self._running:
                 try:
+                    # Check for tasks in queue
+                    if not self.task_queue.empty():
+                        task_info = self.task_queue.get_nowait()
+
+                        if task_info['type'] == 'test':
+                            # Test execution
+                            self._execute_test_task(loop, task_info)
+                        elif task_info['type'] == 'operation':
+                            # Hardware operation (Robot/MCU)
+                            self._execute_operation_task(loop, task_info)
+                    else:
+                        # No tasks - sleep briefly to avoid busy waiting
+                        time.sleep(0.01)
+
+                except Exception as e:
+                    logger.error(f"Task processing error: {e}")
+
+        except Exception as e:
+            logger.error(f"TestExecutorThread fatal error: {e}")
+        finally:
+            # Cleanup event loop
+            if loop:
+                try:
+                    # Gracefully cleanup all pending tasks before closing the loop
+                    pending_tasks = asyncio.all_tasks(loop)
+                    if pending_tasks:
+                        logger.debug(
+                            f"🧹 EXECUTOR_CLEANUP: Found {len(pending_tasks)} pending tasks to cleanup"
+                        )
+
+                        # Cancel all pending tasks
+                        for task in pending_tasks:
+                            if not task.done():
+                                task.cancel()
+
+                        # Wait for all tasks to finish cancellation (with timeout)
+                        try:
+                            loop.run_until_complete(
+                                asyncio.wait_for(
+                                    asyncio.gather(*pending_tasks, return_exceptions=True),
+                                    timeout=2.0,  # 2 second timeout for cleanup
+                                )
+                            )
+                            logger.debug("🧹 EXECUTOR_CLEANUP: All tasks cleaned up successfully")
+                        except asyncio.TimeoutError:
+                            logger.warning(
+                                "🧹 EXECUTOR_CLEANUP: Task cleanup timed out"
+                            )
+                        except Exception as cleanup_error:
+                            logger.debug(
+                                f"🧹 EXECUTOR_CLEANUP: Task cleanup with exceptions: {cleanup_error}"
+                            )
+
+                    # Now it's safe to close the loop
                     loop.close()
-                except Exception:
-                    pass
+                    logger.info("🔧 TestExecutorThread stopped - Event loop closed")
+
+                except Exception as e:
+                    logger.error(f"🧹 EXECUTOR_CLEANUP: Error during cleanup: {e}")
+                    try:
+                        loop.close()
+                    except Exception:
+                        pass
 
     async def _execute_test(self):
         """Execute the selected test asynchronously"""
@@ -369,6 +524,9 @@ class TestExecutorThread(QThread):
 
         self.log_message.emit("INFO", "EOL_TEST", "Executing EOL Force Test...")
 
+        # ✅ Emit hardware status changes (test connects hardware)
+        await self._emit_hardware_status()
+
         # Create Task for UseCase execution
         task = asyncio.create_task(eol_test_use_case.execute(test_input))
 
@@ -435,6 +593,9 @@ class TestExecutorThread(QThread):
         heating_cooling_use_case = self.container.heating_cooling_time_test_use_case()
 
         self.log_message.emit("INFO", "HEATING_COOLING", "Executing Heating Cooling Time Test...")
+
+        # ✅ Emit hardware status changes (test connects hardware)
+        await self._emit_hardware_status()
 
         # Create Task for UseCase execution
         task = asyncio.create_task(heating_cooling_use_case.execute(test_input))
@@ -677,9 +838,13 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.container = container
         self.state_manager = state_manager
-        self.test_executor_thread: Optional[TestExecutorThread] = (
-            None  # For background test execution
-        )
+
+        # ✅ Create persistent TestExecutorThread at startup
+        self.test_executor_thread = TestExecutorThread(container, self)
+        self.test_executor_thread.start()
+        from loguru import logger
+        logger.info("🔧 TestExecutorThread created and started at application startup")
+
         self.robot_home_thread: Optional[RobotHomeThread] = (
             None  # For background robot home execution
         )
@@ -707,9 +872,9 @@ class MainWindow(QMainWindow):
     def setup_basic_ui(self) -> None:
         """Setup basic window structure for lazy loading"""
         # Window properties
-        self.setWindowTitle("WF EOL Tester - Industrial GUI")
-        self.setMinimumSize(1200, 900)  # Increased height to ensure NavigationMenu is fully visible
-        self.resize(1400, 1000)
+        self.setWindowTitle("")
+        self.setMinimumSize(1200, 1100)  # Increased height for better content visibility
+        self.resize(1400, 1200)
 
         # Central widget
         central_widget = QWidget()
@@ -888,10 +1053,102 @@ class MainWindow(QMainWindow):
         self.robot_page = RobotControlWidget(
             container=self.container,
             state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # ✅ Pass executor
         )
         self.content_stack.addWidget(self.robot_page)
         self.content_widgets["robot"] = self.robot_page
         self.pages["robot"] = self.robot_page  # Add to pages dictionary
+
+    def init_mcu_tab(self) -> None:
+        """Initialize MCU tab"""
+        if "mcu" in self.content_widgets:
+            return  # Already initialized
+
+        if self.content_stack is None:
+            return
+
+        self.mcu_page = MCUControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # ✅ Pass executor
+        )
+        self.content_stack.addWidget(self.mcu_page)
+        self.content_widgets["mcu"] = self.mcu_page
+        self.pages["mcu"] = self.mcu_page  # Add to pages dictionary
+
+    def init_power_supply_tab(self) -> None:
+        """Initialize Power Supply tab"""
+        if "power_supply" in self.content_widgets:
+            return  # Already initialized
+
+        if self.content_stack is None:
+            return
+
+        self.power_supply_page = PowerSupplyControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # ✅ Pass executor
+        )
+        self.content_stack.addWidget(self.power_supply_page)
+        self.content_widgets["power_supply"] = self.power_supply_page
+        self.pages["power_supply"] = self.power_supply_page  # Add to pages dictionary
+
+    def init_digital_output_tab(self) -> None:
+        """Initialize Digital Output tab"""
+        if "digital_output" in self.content_widgets:
+            return  # Already initialized
+
+        if self.content_stack is None:
+            return
+
+        self.digital_output_page = DigitalOutputControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # ✅ Pass executor
+        )
+        self.content_stack.addWidget(self.digital_output_page)
+        self.content_widgets["digital_output"] = self.digital_output_page
+        self.pages["digital_output"] = self.digital_output_page  # Add to pages dictionary
+
+    def init_digital_input_tab(self) -> None:
+        """Initialize Digital Input tab"""
+        if "digital_input" in self.content_widgets:
+            return  # Already initialized
+
+        if self.content_stack is None:
+            return
+
+        # Local imports
+        from ui.gui.widgets.content.digital_input import DigitalInputControlWidget
+
+        self.digital_input_page = DigitalInputControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # ✅ Pass executor
+        )
+        self.content_stack.addWidget(self.digital_input_page)
+        self.content_widgets["digital_input"] = self.digital_input_page
+        self.pages["digital_input"] = self.digital_input_page  # Add to pages dictionary
+
+    def init_loadcell_tab(self) -> None:
+        """Initialize Loadcell tab"""
+        if "loadcell" in self.content_widgets:
+            return  # Already initialized
+
+        if self.content_stack is None:
+            return
+
+        # Local imports
+        from ui.gui.widgets.content.loadcell import LoadcellControlWidget
+
+        self.loadcell_page = LoadcellControlWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # ✅ Pass executor
+        )
+        self.content_stack.addWidget(self.loadcell_page)
+        self.content_widgets["loadcell"] = self.loadcell_page
+        self.pages["loadcell"] = self.loadcell_page  # Add to pages dictionary
 
     def init_results_tab(self) -> None:
         """Initialize results tab"""
@@ -1106,9 +1363,9 @@ class MainWindow(QMainWindow):
     def setup_ui(self) -> None:
         """Setup the main window UI"""
         # Window properties
-        self.setWindowTitle("WF EOL Tester - Industrial GUI")
-        self.setMinimumSize(1200, 900)  # Increased height to ensure NavigationMenu is fully visible
-        self.resize(1400, 1000)
+        self.setWindowTitle("")
+        self.setMinimumSize(1200, 1100)  # Increased height for better content visibility
+        self.resize(1400, 1200)
 
         # Central widget
         central_widget = QWidget()
@@ -1361,6 +1618,50 @@ class MainWindow(QMainWindow):
             if "robot" not in self.pages:
                 logger.info("⚙️ Lazy loading robot page...")
                 self.init_robot_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("robot")
+        # Lazy load MCU page if needed
+        elif page_id == "mcu":
+            if "mcu" not in self.pages:
+                logger.info("⚙️ Lazy loading MCU page...")
+                self.init_mcu_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("mcu")
+        # Lazy load Power Supply page if needed
+        elif page_id == "power_supply":
+            if "power_supply" not in self.pages:
+                logger.info("⚙️ Lazy loading Power Supply page...")
+                self.init_power_supply_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("power_supply")
+        # Lazy load Power Supply page if needed
+        elif page_id == "power_supply":
+            if "power_supply" not in self.pages:
+                logger.info("⚙️ Lazy loading Power Supply page...")
+                self.init_power_supply_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("power_supply")
+        # Lazy load Digital Output page if needed
+        elif page_id == "digital_output":
+            if "digital_output" not in self.pages:
+                logger.info("⚙️ Lazy loading Digital Output page...")
+                self.init_digital_output_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("digital_output")
+        # Lazy load Digital Input page if needed
+        elif page_id == "digital_input":
+            if "digital_input" not in self.pages:
+                logger.info("⚙️ Lazy loading Digital Input page...")
+                self.init_digital_input_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("digital_input")
+        # Lazy load Loadcell page if needed
+        elif page_id == "loadcell":
+            if "loadcell" not in self.pages:
+                logger.info("⚙️ Lazy loading Loadcell page...")
+                self.init_loadcell_tab()
+                # ✅ Sync initial hardware status immediately after creating page
+                self._sync_hardware_page_status("loadcell")
         # Standard lazy loading for other pages
         elif page_id not in self.pages:
             logger.info(f"⚙️ Lazy loading {page_id} page...")
@@ -1382,14 +1683,7 @@ class MainWindow(QMainWindow):
                 # No need to toggle submenu - Statistics now has 3 tabs inside
                 self.sidebar.set_current_page(page_id)
 
-            # Auto-select serial number when navigating to test control
-            if (
-                page_id == "test_control"
-                and hasattr(self, "test_control_page")
-                and self.test_control_page.serial_edit
-            ):
-                self.test_control_page.serial_edit.selectAll()
-                self.test_control_page.serial_edit.setFocus()
+            # Test control page - no auto-focus needed (popup-based serial number)
         else:
             logger.error(f"❌ Page '{page_id}' not found in self.pages!")
 
@@ -1469,8 +1763,108 @@ class MainWindow(QMainWindow):
             os.execv(executable, [executable] + sys.argv)
 
     def closeEvent(self, event) -> None:
-        """Handle window close event"""
-        # TODO: Add cleanup logic if needed
+        """Handle window close event with comprehensive cleanup"""
+        from loguru import logger
+
+        logger.info("🚪 Application closing - cleaning up resources...")
+
+        # 1. Disconnect ALL signals to prevent memory leaks
+        try:
+            logger.info("🔌 Disconnecting signals...")
+
+            # Sidebar signals
+            if hasattr(self, 'sidebar'):
+                try:
+                    self.sidebar.page_changed.disconnect()
+                    self.sidebar.settings_clicked.disconnect()
+                except (RuntimeError, AttributeError):
+                    pass
+
+            # Header signals
+            if hasattr(self, 'header'):
+                try:
+                    self.header.notifications_requested.disconnect()
+                except (RuntimeError, AttributeError):
+                    pass
+
+            # Test control page signals
+            if hasattr(self, 'test_control_page'):
+                try:
+                    self.test_control_page.test_started.disconnect()
+                    self.test_control_page.test_stopped.disconnect()
+                    self.test_control_page.test_paused.disconnect()
+                    self.test_control_page.robot_home_requested.disconnect()
+                    self.test_control_page.emergency_stop_requested.disconnect()
+                except (RuntimeError, AttributeError):
+                    pass
+
+            # Zoom control signals
+            if hasattr(self, 'zoom_control'):
+                try:
+                    self.zoom_control.zoom_changed.disconnect()
+                except (RuntimeError, AttributeError):
+                    pass
+
+            # Robot home thread signals
+            if hasattr(self, 'robot_home_thread') and self.robot_home_thread:
+                try:
+                    self.robot_home_thread.started.disconnect()
+                    self.robot_home_thread.progress.disconnect()
+                    self.robot_home_thread.completed.disconnect()
+                except (RuntimeError, AttributeError):
+                    pass
+
+            # Test executor thread signals
+            if hasattr(self, 'test_executor_thread') and self.test_executor_thread:
+                try:
+                    self.test_executor_thread.test_started.disconnect()
+                    self.test_executor_thread.test_progress.disconnect()
+                    self.test_executor_thread.test_result.disconnect()
+                    self.test_executor_thread.test_completed.disconnect()
+                    self.test_executor_thread.test_error.disconnect()
+                    self.test_executor_thread.log_message.disconnect()
+                except (RuntimeError, AttributeError):
+                    pass
+
+            logger.info("✅ All signals disconnected")
+
+        except Exception as e:
+            logger.warning(f"Error disconnecting signals (non-critical): {e}")
+
+        # 2. Clean up graphics effects to prevent memory leaks
+        if hasattr(self, 'content_stack'):
+            try:
+                logger.info("🎨 Cleaning up graphics effects...")
+                for i in range(self.content_stack.count()):
+                    widget = self.content_stack.widget(i)
+                    if widget:
+                        widget.setGraphicsEffect(None)  # Remove QGraphicsOpacityEffect
+                logger.info("✅ Graphics effects cleaned")
+            except Exception as e:
+                logger.debug(f"Graphics effect cleanup error: {e}")
+
+        # 3. Stop TestExecutorThread
+        if hasattr(self, "test_executor_thread") and self.test_executor_thread:
+            logger.info("🛑 Stopping TestExecutorThread...")
+            self.test_executor_thread.stop()
+            if self.test_executor_thread.isRunning():
+                self.test_executor_thread.wait(2000)  # Wait max 2 seconds
+                if self.test_executor_thread.isRunning():
+                    logger.warning("TestExecutorThread did not stop gracefully")
+                    self.test_executor_thread.terminate()
+            logger.info("✅ TestExecutorThread stopped")
+
+        # 4. Stop RobotHomeThread
+        if hasattr(self, "robot_home_thread") and self.robot_home_thread:
+            if self.robot_home_thread.isRunning():
+                logger.info("🛑 Stopping RobotHomeThread...")
+                self.robot_home_thread.wait(1000)  # Wait max 1 second
+                if self.robot_home_thread.isRunning():
+                    logger.warning("RobotHomeThread did not stop gracefully")
+                    self.robot_home_thread.terminate()
+                logger.info("✅ RobotHomeThread stopped")
+
+        logger.info("🚪 All resources cleaned up - closing application")
         event.accept()
 
 
@@ -1503,8 +1897,9 @@ class MainWindow(QMainWindow):
         from loguru import logger
 
         try:
-            # Check if test is already running
-            if self.test_executor_thread and self.test_executor_thread.isRunning():
+            # ✅ Check if a test is already executing (not if thread is running)
+            if self.test_executor_thread and self.test_executor_thread.is_test_running:
+                logger.warning("Test start blocked - another test is currently running")
                 self.test_control_page.update_test_status(
                     "Test already running. Please wait or stop first.", "⚠️"
                 )
@@ -1526,32 +1921,15 @@ class MainWindow(QMainWindow):
                 return
 
             # Get serial number and test sequence from test control widget
-            if not self.test_control_page.serial_edit or not self.test_control_page.sequence_combo:
+            if not self.test_control_page.sequence_combo:
                 self.test_control_page.update_test_status(
                     "Test controls not initialized", "status_error"
                 )
                 return
 
-            serial_number = self.test_control_page.serial_edit.text().strip()
+            # Get serial number from popup dialog (validation already done in dialog)
+            serial_number = self.test_control_page.get_current_serial_number()
             test_sequence = self.test_control_page.sequence_combo.currentText()
-
-            if not serial_number:
-                # Show popup warning
-                QMessageBox.warning(
-                    self,
-                    "Serial Number Required",
-                    "Please enter a serial number before starting the test.\n\n"
-                    "The serial number is required to identify and track the test results.",
-                    QMessageBox.StandardButton.Ok
-                )
-                # Also update status bar
-                self.test_control_page.update_test_status(
-                    "Please enter a serial number", "status_warning"
-                )
-                # Focus on serial number input field
-                if self.test_control_page.serial_edit:
-                    self.test_control_page.serial_edit.setFocus()
-                return
 
             logger.info(f"Starting {test_sequence} for serial number: {serial_number}")
 
@@ -1609,6 +1987,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             logger.error(f"Failed to start test: {e}")
+            self.test_control_page.stop_indeterminate_progress()
             self.test_control_page.update_test_status(
                 f"Failed to start test: {str(e)}", "status_error"
             )
@@ -1704,6 +2083,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             logger.error(f"Robot home failed: {e}")
+            self.test_control_page.stop_indeterminate_progress()
             self.test_control_page.update_test_status("Robot Home Failed", "status_error")
 
     def _on_emergency_stop_requested(self) -> None:
@@ -1808,6 +2188,10 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
+        # Stop progress bar animation
+        if hasattr(self.test_control_page, 'handle_robot_home_completed'):
+            self.test_control_page.handle_robot_home_completed(success)
+
         if success:
             logger.info(f"✅ {message}")
             self.state_manager.add_log_message("INFO", "ROBOT", message)
@@ -1828,6 +2212,7 @@ class MainWindow(QMainWindow):
         else:
             logger.error(f"❌ {message}")
             self.state_manager.add_log_message("ERROR", "ROBOT", message)
+            self.test_control_page.stop_indeterminate_progress()
             self.test_control_page.update_test_status("Robot Home Failed", "status_error")
 
             # Re-enable START TEST button even on failure (mutual exclusion complete)
@@ -1904,24 +2289,20 @@ class MainWindow(QMainWindow):
                 logger.info("Runtime GUI State Manager injection applied to main container")
             # pylint: enable=protected-access
 
-            # Create and configure test executor thread with main container (preserves GUI State Manager)
-            self.test_executor_thread = TestExecutorThread(
-                container=self.container,  # Use main container instead of fresh one
-                test_sequence=test_sequence,
-                serial_number=serial_number,
-                parent=self,
-            )
+            # ✅ Submit test to persistent TestExecutorThread (no new thread creation)
+            # Connect thread signals if not already connected
+            if not hasattr(self, '_test_signals_connected'):
+                self._connect_test_thread_signals()
+                self._test_signals_connected = True
 
-            # Connect thread signals
-            self._connect_test_thread_signals()
-
-            # Start the test execution thread
-            self.test_executor_thread.start()
-            logger.info(f"Test execution thread started for {test_sequence}")
+            # Submit test task to executor
+            self.test_executor_thread.submit_test(test_sequence, serial_number)
+            logger.info(f"Test submitted to TestExecutorThread: {test_sequence}")
 
         except Exception as e:
             logger.error(f"Failed to start test execution thread: {e}")
             self.state_manager.add_log_message("ERROR", "TEST", f"Failed to start test: {str(e)}")
+            self.test_control_page.stop_indeterminate_progress()
             self.test_control_page.update_test_status(
                 f"Test start failed: {str(e)}", "status_error"
             )
@@ -1936,6 +2317,99 @@ class MainWindow(QMainWindow):
             self.test_executor_thread.test_completed.connect(self._on_thread_test_completed)
             self.test_executor_thread.test_error.connect(self._on_thread_test_error)
             self.test_executor_thread.log_message.connect(self._on_thread_log_message)
+
+            # ✅ Connect hardware status signal for syncing Hardware pages
+            self.test_executor_thread.hardware_status_changed.connect(
+                self._on_hardware_status_changed
+            )
+
+    def _on_hardware_status_changed(self, hardware_name: str, is_connected: bool) -> None:
+        """
+        Handle hardware status changes from TestExecutorThread.
+
+        When test execution connects/disconnects hardware, this handler updates
+        the corresponding Hardware page's state to keep button states in sync.
+
+        Args:
+            hardware_name: Name of hardware ("robot", "mcu", etc.)
+            is_connected: Current connection status
+        """
+        # Third-party imports
+        from loguru import logger
+
+        logger.debug(f"Hardware status changed: {hardware_name} = {is_connected}")
+
+        # Update Robot page state
+        if hardware_name == "robot" and hasattr(self, "robot_page"):
+            self.robot_page.robot_state.set_connected(is_connected)
+            logger.debug(f"Robot page state updated: connected={is_connected}")
+
+        # Update MCU page state
+        elif hardware_name == "mcu" and hasattr(self, "mcu_page"):
+            self.mcu_page.mcu_state.set_connected(is_connected)
+            logger.debug(f"MCU page state updated: connected={is_connected}")
+
+    def _sync_hardware_page_status(self, hardware_name: str) -> None:
+        """
+        Sync hardware page GUI state with current hardware connection status.
+
+        Called when a hardware page is lazy-loaded to ensure it displays
+        the correct initial button states (especially if hardware is already connected).
+
+        This is a synchronous GUI-only update - it doesn't perform actual hardware operations.
+
+        Args:
+            hardware_name: Name of hardware page ("robot", "mcu", etc.)
+        """
+        # Third-party imports
+        from loguru import logger
+
+        logger.info(f"🔄 Syncing initial GUI state for {hardware_name} page...")
+
+        try:
+            # Get hardware facade to check connection status
+            hardware_facade = self.container.hardware_service_facade()
+
+            # Synchronously check if hardware is connected (mock services return immediately)
+            # Real hardware services may cache connection status, so this is safe
+            if hardware_name == "robot" and hasattr(self, "robot_page"):
+                # Check if robot service thinks it's connected
+                # Note: For mock hardware, this will return False unless explicitly connected
+                # For real hardware during test, this should return True if test connected it
+                try:
+                    import asyncio
+                    # Create a simple async check
+                    loop = asyncio.new_event_loop()
+                    is_connected = loop.run_until_complete(
+                        hardware_facade.robot_service.is_connected()
+                    )
+                    loop.close()
+
+                    logger.info(f"🔌 Robot hardware connection status: {is_connected}")
+                    # Update Robot page state directly
+                    self.robot_page.robot_state.set_connected(is_connected)
+                    logger.info(f"✅ Robot page GUI state updated: connected={is_connected}")
+                except Exception as e:
+                    logger.warning(f"Could not check robot connection status: {e}")
+
+            elif hardware_name == "mcu" and hasattr(self, "mcu_page"):
+                try:
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    is_connected = loop.run_until_complete(
+                        hardware_facade.mcu_service.is_connected()
+                    )
+                    loop.close()
+
+                    logger.info(f"🔌 MCU hardware connection status: {is_connected}")
+                    # Update MCU page state directly
+                    self.mcu_page.mcu_state.set_connected(is_connected)
+                    logger.info(f"✅ MCU page GUI state updated: connected={is_connected}")
+                except Exception as e:
+                    logger.warning(f"Could not check MCU connection status: {e}")
+
+        except Exception as e:
+            logger.warning(f"Failed to sync {hardware_name} GUI state: {e}")
 
     def _set_test_running_state(self, running: bool) -> None:
         """Set GUI state for test running/stopped"""
@@ -2064,6 +2538,10 @@ class MainWindow(QMainWindow):
 
         logger.info(f"Test completed: success={success}, message={message}")
 
+        # Stop progress bar animation
+        if hasattr(self.test_control_page, 'handle_test_completed'):
+            self.test_control_page.handle_test_completed(success)
+
         # Add completion message to logs
         log_level = "INFO" if success else "ERROR"
         self.state_manager.add_log_message(log_level, "TEST", f"Test completed: {message}")
@@ -2086,6 +2564,7 @@ class MainWindow(QMainWindow):
                 "Test Completed Successfully", "status_success", 100
             )
         else:
+            self.test_control_page.stop_indeterminate_progress()
             self.test_control_page.update_test_status("Test Failed", "status_error", 0)
 
     def _on_thread_test_error(self, error_message: str) -> None:
@@ -2094,6 +2573,9 @@ class MainWindow(QMainWindow):
         from loguru import logger
 
         logger.error(f"Test execution error: {error_message}")
+
+        # Stop progress bar animation
+        self.test_control_page.stop_indeterminate_progress()
 
         # Update test control status
         self.test_control_page.update_test_status(f"Test Error: {error_message}", "status_error", 0)

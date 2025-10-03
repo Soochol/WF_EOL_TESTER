@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Top connector with detail -->
+  <rect x="40" y="8" width="40" height="10" rx="2" stroke-width="4"/>
+  <line x1="50" y1="18" x2="50" y2="26" stroke-width="3.5"/>
+  <line x1="70" y1="18" x2="70" y2="26" stroke-width="3.5"/>
+
+  <!-- Precision coil wire (tight, uniform spacing) -->
+  <g stroke-width="5">
+    <!-- Front side -->
+    <path d="M 50 26 Q 35 32, 50 38 Q 65 44, 50 50 Q 35 56, 50 62 Q 65 68, 50 74 Q 35 80, 50 86 Q 65 92, 50 98 Q 35 104, 50 110 Q 65 116, 50 122 Q 35 128, 50 134"/>
+
+    <!-- Back side (lighter) -->
+    <path d="M 70 26 Q 85 32, 70 38 Q 55 44, 70 50 Q 85 56, 70 62 Q 55 68, 70 74 Q 85 80, 70 86 Q 55 92, 70 98 Q 85 104, 70 110 Q 55 116, 70 122 Q 85 128, 70 134" opacity="0.45"/>
+  </g>
+
+  <!-- Wire thickness indicators (subtle) -->
+  <circle cx="50" cy="50" r="8" fill="none" stroke-width="2.5" opacity="0.3"/>
+  <circle cx="50" cy="86" r="8" fill="none" stroke-width="2.5" opacity="0.3"/>
+  <circle cx="50" cy="122" r="8" fill="none" stroke-width="2.5" opacity="0.3"/>
+
+  <!-- Bottom connector with detail -->
+  <line x1="50" y1="134" x2="50" y2="142" stroke-width="3.5"/>
+  <line x1="70" y1="134" x2="70" y2="142" stroke-width="3.5"/>
+  <rect x="40" y="142" width="40" height="10" rx="2" stroke-width="4"/>
+
+  <!-- SMA activation symbol (thermal) -->
+  <g transform="translate(100, 76)" stroke="#ff6b6b" fill="none">
+    <circle cx="0" cy="-15" r="8" stroke-width="3"/>
+    <path d="M -3 -7 L 0 2 L 3 -7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -6 8 L 6 8" stroke-width="3"/>
+    <path d="M -4 14 L 4 14" stroke-width="3"/>
+    <path d="M -2 20 L 2 20" stroke-width="3"/>
+  </g>
+</svg>

@@ -3,10 +3,6 @@
 Event handling logic for robot control operations.
 """
 
-# Standard library imports
-import asyncio
-import threading
-
 # Third-party imports
 from PySide6.QtCore import QObject, Signal
 from loguru import logger
@@ -43,32 +39,25 @@ class RobotEventHandlers(QObject):
         self,
         robot_service: RobotService,
         state: RobotControlState,
-        axis_id: int = 0
+        axis_id: int = 0,
+        executor_thread=None  # ✅ TestExecutorThread for unified execution
     ):
         super().__init__()
         self.robot_service = robot_service
         self.state = state
         self.axis_id = axis_id
+        self.executor_thread = executor_thread  # ✅ Store executor thread
 
     # Connection operations
     def on_connect_clicked(self) -> None:
         """Handle connect button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available - cannot execute robot operations")
+            self.connect_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress("Connecting to robot...")
-        self._run_async(self._async_connect())
-
-    def _run_async(self, coro):
-        """Run async coroutine in a new thread with event loop"""
-        def run_in_thread():
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(coro)
-                loop.close()
-            except Exception as e:
-                logger.error(f"Async operation failed: {e}")
-
-        thread = threading.Thread(target=run_in_thread, daemon=True)
-        thread.start()
+        self.executor_thread.submit_task("robot_connect", self._async_connect())
 
     async def _async_connect(self) -> None:
         """Async connect operation"""
@@ -84,8 +73,13 @@ class RobotEventHandlers(QObject):
 
     def on_disconnect_clicked(self) -> None:
         """Handle disconnect button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.disconnect_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress("Disconnecting from robot...")
-        self._run_async(self._async_disconnect())
+        self.executor_thread.submit_task("robot_disconnect", self._async_disconnect())
 
     async def _async_disconnect(self) -> None:
         """Async disconnect operation with servo off"""
@@ -110,8 +104,13 @@ class RobotEventHandlers(QObject):
     # Servo operations
     def on_servo_on_clicked(self) -> None:
         """Handle servo on button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.servo_on_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress("Enabling servo...")
-        self._run_async(self._async_servo_on())
+        self.executor_thread.submit_task("robot_servo_on", self._async_servo_on())
 
     async def _async_servo_on(self) -> None:
         """Async servo on operation"""
@@ -127,8 +126,13 @@ class RobotEventHandlers(QObject):
 
     def on_servo_off_clicked(self) -> None:
         """Handle servo off button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.servo_off_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress("Disabling servo...")
-        self._run_async(self._async_servo_off())
+        self.executor_thread.submit_task("robot_servo_off", self._async_servo_off())
 
     async def _async_servo_off(self) -> None:
         """Async servo off operation"""
@@ -145,8 +149,13 @@ class RobotEventHandlers(QObject):
     # Motion operations
     def on_home_clicked(self) -> None:
         """Handle home button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.home_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress("Homing robot...")
-        self._run_async(self._async_home())
+        self.executor_thread.submit_task("robot_home", self._async_home())
 
     async def _async_home(self) -> None:
         """Async home operation"""
@@ -173,8 +182,14 @@ class RobotEventHandlers(QObject):
         deceleration: float = 5000.0
     ) -> None:
         """Handle absolute move request"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.move_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress(f"Moving to {position:.2f} μm...")
-        self._run_async(
+        self.executor_thread.submit_task(
+            "robot_move_abs",
             self._async_move_absolute(position, velocity, acceleration, deceleration)
         )
 
@@ -215,8 +230,14 @@ class RobotEventHandlers(QObject):
         deceleration: float = 5000.0
     ) -> None:
         """Handle relative move request"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.move_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress(f"Moving {distance:.2f} μm...")
-        self._run_async(
+        self.executor_thread.submit_task(
+            "robot_move_rel",
             self._async_move_relative(distance, velocity, acceleration, deceleration)
         )
 
@@ -251,8 +272,12 @@ class RobotEventHandlers(QObject):
 
     def on_get_position_clicked(self) -> None:
         """Handle get position button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            return
+
         self.state.show_progress("Reading position...")
-        self._run_async(self._async_get_position())
+        self.executor_thread.submit_task("robot_get_position", self._async_get_position())
 
     async def _async_get_position(self) -> None:
         """Async get position operation"""
@@ -268,8 +293,13 @@ class RobotEventHandlers(QObject):
 
     def on_stop_clicked(self) -> None:
         """Handle stop motion button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.stop_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
         self.state.show_progress("Stopping motion...")
-        self._run_async(self._async_stop())
+        self.executor_thread.submit_task("robot_stop", self._async_stop())
 
     async def _async_stop(self) -> None:
         """Async stop motion operation"""
@@ -285,7 +315,12 @@ class RobotEventHandlers(QObject):
     # Emergency operations
     def on_emergency_stop_clicked(self) -> None:
         """Handle emergency stop button click"""
-        self._run_async(self._async_emergency_stop())
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.emergency_stop_completed.emit(False, "System error: Executor thread not initialized")
+            return
+
+        self.executor_thread.submit_task("robot_emergency_stop", self._async_emergency_stop())
 
     async def _async_emergency_stop(self) -> None:
         """Async emergency stop operation with auto-connect and servo off"""
@@ -317,8 +352,13 @@ class RobotEventHandlers(QObject):
     # Diagnostic operations
     def on_get_load_ratio_clicked(self, ratio_type: int = 0) -> None:
         """Handle get load ratio button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.load_ratio_read.emit(-1.0)
+            return
+
         self.state.show_progress("Reading load ratio...")
-        self._run_async(self._async_get_load_ratio(ratio_type))
+        self.executor_thread.submit_task("robot_load_ratio", self._async_get_load_ratio(ratio_type))
 
     async def _async_get_load_ratio(self, ratio_type: int) -> None:
         """Async get load ratio operation"""
@@ -334,8 +374,13 @@ class RobotEventHandlers(QObject):
 
     def on_get_torque_clicked(self) -> None:
         """Handle get torque button click"""
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.torque_read.emit(-1.0)
+            return
+
         self.state.show_progress("Reading torque...")
-        self._run_async(self._async_get_torque())
+        self.executor_thread.submit_task("robot_torque", self._async_get_torque())
 
     async def _async_get_torque(self) -> None:
         """Async get torque operation"""

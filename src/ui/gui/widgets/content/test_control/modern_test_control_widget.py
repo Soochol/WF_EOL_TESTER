@@ -254,15 +254,43 @@ class ModernTestControlWidget(QWidget):
 
     def _get_serial_popup_setting(self) -> bool:
         """Get serial number popup setting from configuration"""
+        from loguru import logger
+
         try:
-            if self.container and hasattr(self.container, "_config_dict"):
-                config = self.container._config_dict
-                if isinstance(config, dict):
-                    gui_config = config.get("gui", {})
-                    if isinstance(gui_config, dict):
-                        return gui_config.get("require_serial_number_popup", True)
-        except Exception:
-            pass
+            if self.container:
+                # Try to get from ConfigurationService (preferred method)
+                if hasattr(self.container, 'configuration_service'):
+                    try:
+                        config_service = self.container.configuration_service()
+                        # Load application config through service
+                        import asyncio
+                        app_config = asyncio.run(config_service.load_application_config())
+                        result = app_config.gui.require_serial_number_popup
+                        logger.debug(f"Serial popup setting from ConfigurationService: {result}")
+                        return result
+                    except Exception as e:
+                        logger.warning(f"Failed to get setting from ConfigurationService: {e}")
+
+                # Fallback: Try container.config (dependency-injector config)
+                if hasattr(self.container, "config"):
+                    gui_config = self.container.config.gui()
+                    result = gui_config.get("require_serial_number_popup", True)
+                    logger.debug(f"Serial popup setting from container.config: {result}")
+                    return result
+
+                # Fallback: Try _config_dict (legacy)
+                if hasattr(self.container, "_config_dict"):
+                    config = self.container._config_dict
+                    if isinstance(config, dict):
+                        gui_config = config.get("gui", {})
+                        if isinstance(gui_config, dict):
+                            result = gui_config.get("require_serial_number_popup", True)
+                            logger.debug(f"Serial popup setting from _config_dict: {result}")
+                            return result
+        except Exception as e:
+            logger.error(f"Error getting serial popup setting: {e}")
+
+        logger.debug("Using default serial popup setting: True")
         return True  # Default: use popup
 
     def showEvent(self, event):
@@ -452,6 +480,12 @@ class ModernTestControlWidget(QWidget):
 
     def _on_start_clicked(self):
         """Handle start button click with serial number popup"""
+        from datetime import datetime
+        from loguru import logger
+
+        # Re-read popup setting from configuration (allows hot-reload without restart)
+        self.require_serial_popup = self._get_serial_popup_setting()
+
         # Show serial number popup if enabled
         if self.require_serial_popup:
             # Local application imports
@@ -464,6 +498,11 @@ class ModernTestControlWidget(QWidget):
             else:
                 # User cancelled - don't start test
                 return
+        else:
+            # Auto-generate serial number when popup is disabled
+            auto_serial = f"AUTO-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            self.current_serial_number = auto_serial
+            logger.info(f"Auto-generated serial number (popup disabled): {auto_serial}")
 
         # Start test animation and emit signal
         self.start_indeterminate_progress()

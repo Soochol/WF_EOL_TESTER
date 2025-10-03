@@ -7,10 +7,11 @@ Optimized for request-response patterns like BS205 LoadCell.
 
 # Standard library imports
 # Standard library imports
-# Third-party imports
-import asyncio
+# Standard library imports
 from typing import Optional
 
+# Third-party imports
+import asyncio
 from loguru import logger
 
 # Local application imports
@@ -27,6 +28,7 @@ from driver.serial.exceptions import (
     SerialConnectionError,
     SerialTimeoutError,
 )
+
 
 try:
     # Third-party imports
@@ -140,7 +142,8 @@ class SerialConnection:
             if self._writer and hasattr(self._writer, "transport"):
                 transport = self._writer.transport
                 if transport and hasattr(transport, "serial"):
-                    serial_instance = transport.serial
+                    # Type ignore: serial_asyncio transport has 'serial' attribute but not in type stubs
+                    serial_instance = transport.serial  # type: ignore[attr-defined]
                     if serial_instance and hasattr(serial_instance, "close"):
                         try:
                             serial_instance.close()

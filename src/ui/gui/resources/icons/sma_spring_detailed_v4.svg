@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Top mount -->
+  <line x1="7" y1="2" x2="17" y2="2" stroke-width="2.5"/>
+  <circle cx="12" cy="2" r="1.2" fill="currentColor"/>
+
+  <!-- Dense compressed spring coils (SMA characteristic) -->
+  <ellipse cx="12" cy="5" rx="5" ry="0.8" opacity="0.5"/>
+  <ellipse cx="12" cy="6.5" rx="5.2" ry="0.9" opacity="0.5"/>
+  <ellipse cx="12" cy="8" rx="5" ry="0.8" opacity="0.5"/>
+  <ellipse cx="12" cy="9.5" rx="5.2" ry="0.9" opacity="0.5"/>
+  <ellipse cx="12" cy="11" rx="5" ry="0.8" opacity="0.5"/>
+  <ellipse cx="12" cy="12.5" rx="5.2" ry="0.9" opacity="0.5"/>
+  <ellipse cx="12" cy="14" rx="5" ry="0.8" opacity="0.5"/>
+  <ellipse cx="12" cy="15.5" rx="5.2" ry="0.9" opacity="0.5"/>
+  <ellipse cx="12" cy="17" rx="5" ry="0.8" opacity="0.5"/>
+  <ellipse cx="12" cy="18.5" rx="5.2" ry="0.9" opacity="0.5"/>
+  <ellipse cx="12" cy="20" rx="5" ry="0.8" opacity="0.5"/>
+
+  <!-- Outer wire contour (3D effect) -->
+  <path d="M 7 4 L 7 20" stroke-width="2"/>
+  <path d="M 17 4 L 17 20" stroke-width="2" opacity="0.6"/>
+
+  <!-- Bottom mount -->
+  <circle cx="12" cy="22" r="1.2" fill="currentColor"/>
+  <line x1="7" y1="22" x2="17" y2="22" stroke-width="2.5"/>
+
+  <!-- Heat arrow (shape memory activation) -->
+  <path d="M 20 10 L 20 14 L 18 12 Z" fill="#ff6b6b" opacity="0.8"/>
+  <path d="M 20 8 Q 21 8, 21 9" stroke="#ff6b6b" stroke-width="1.5" fill="none"/>
+  <path d="M 20 16 Q 21 16, 21 15" stroke="#ff6b6b" stroke-width="1.5" fill="none"/>
+</svg>

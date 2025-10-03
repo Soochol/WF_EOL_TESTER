@@ -396,11 +396,31 @@ class EOLTesterGUIApplication:
         logger.info("GUI Application initialized")
 
     def create_splash_screen(self) -> None:
-        """Create and show splash screen"""
+        """Create and show splash screen with version from configuration"""
         if not self.app:
             raise RuntimeError("QApplication must be initialized before splash screen")
 
-        self.splash_screen = ModernSplashScreen()
+        # Read application name and version from configuration
+        app_name = "WF EOL Tester"  # Default
+        version = "1.0.0"  # Default
+
+        try:
+            # Try to read from application.yaml directly
+            from pathlib import Path
+            import yaml
+
+            config_path = Path("configuration/application.yaml")
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config_data = yaml.safe_load(f)
+                    if config_data and "application" in config_data:
+                        app_name = config_data["application"].get("name", app_name)
+                        version = config_data["application"].get("version", version)
+                        logger.info(f"Loaded splash screen info: {app_name} v{version}")
+        except Exception as e:
+            logger.warning(f"Failed to load version from config, using defaults: {e}")
+
+        self.splash_screen = ModernSplashScreen(app_name=app_name, version=version)
         self.splash_screen.show_with_animation()
 
         # Process events to ensure splash screen is visible

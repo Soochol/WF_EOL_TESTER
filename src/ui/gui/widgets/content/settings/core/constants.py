@@ -125,7 +125,7 @@ class EditorTypes:
     """Editor type definitions for different configuration values"""
 
     # Predefined combo box options
-    LOGGING_LEVELS = ["DEBUG", "INFO"]
+    LOGGING_LEVELS = ["INFO", "DEBUG"]
     ENVIRONMENTS = ["development", "production", "testing"]
     ROBOT_MODELS = ["mock", "ajinextek"]
     POWER_MODELS = ["mock", "oda"]
@@ -184,7 +184,10 @@ class Styles:
             border: 1px solid {Colors.BORDER};
             border-radius: 12px;
             outline: none;
-            font-size: 13px;
+            font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
             padding: 5px;
         }}
         QTreeWidget::item {{

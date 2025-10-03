@@ -14,7 +14,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 # Local folder imports
-from ..core import Colors, ConfigValidator, ConfigValue, Styles
+from ..core import Colors, ConfigValidator, ConfigValue
 
 
 class PropertyEditorWidget(QWidget):
@@ -25,7 +25,7 @@ class PropertyEditorWidget(QWidget):
     def __init__(self, config_value: ConfigValue, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.config_value = config_value
-        self.editor_widget = None
+        self.editor_widget: Optional[QWidget] = None
         self.validator = ConfigValidator()
         self.setup_ui()
         self.validate_current_value()
@@ -42,8 +42,10 @@ class PropertyEditorWidget(QWidget):
         key_label = QLabel(f"⚙️ {self.config_value.key}")
         key_label.setStyleSheet(
             f"""
+            font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 16px;
+            letter-spacing: 0.5px;
             color: {Colors.TEXT_PRIMARY};
             border: none;
             background-color: transparent;
@@ -56,15 +58,19 @@ class PropertyEditorWidget(QWidget):
 
         # Modern type badge
         type_label = QLabel(f"  {self.config_value.data_type}  ")
-        type_label.setStyleSheet(f"""
+        type_label.setStyleSheet(
+            f"""
+            font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif;
             color: {Colors.TEXT_MUTED};
             background-color: rgba(33, 150, 243, 0.2);
             border: 1px solid rgba(33, 150, 243, 0.3);
             border-radius: 10px;
             padding: 4px 8px;
-            font-size: 11px;
-            font-weight: 500;
-        """)
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        """
+        )
         header_layout.addWidget(type_label)
 
         layout.addLayout(header_layout)
@@ -74,7 +80,7 @@ class PropertyEditorWidget(QWidget):
             desc_label = QLabel(self.config_value.description)
             desc_label.setWordWrap(True)
             desc_label.setStyleSheet(
-                f"color: {Colors.TEXT_SECONDARY}; font-size: 11px; margin-bottom: 10px; border: none; background-color: transparent;"
+                f"font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif; color: {Colors.TEXT_SECONDARY}; font-size: 13px; letter-spacing: 0.2px; margin-bottom: 10px; border: none; background-color: transparent;"
             )
             layout.addWidget(desc_label)
 
@@ -87,14 +93,16 @@ class PropertyEditorWidget(QWidget):
         # Validation status
         self.validation_label = QLabel()
         self.validation_label.setWordWrap(True)
-        self.validation_label.setStyleSheet("font-size: 11px; margin-top: 5px; border: none; background-color: transparent;")
+        self.validation_label.setStyleSheet(
+            "font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif; font-size: 12px; letter-spacing: 0.2px; margin-top: 5px; border: none; background-color: transparent;"
+        )
         layout.addWidget(self.validation_label)
 
         # File path info
         if self.config_value.file_path:
             file_label = QLabel(f"File: {os.path.basename(self.config_value.file_path)}")
             file_label.setStyleSheet(
-                f"color: {Colors.TEXT_DISABLED}; font-size: 11px; margin-top: 5px; border: none; background-color: transparent;"
+                f"font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif; color: {Colors.TEXT_DISABLED}; font-size: 12px; letter-spacing: 0.2px; margin-top: 5px; border: none; background-color: transparent;"
             )
             layout.addWidget(file_label)
 

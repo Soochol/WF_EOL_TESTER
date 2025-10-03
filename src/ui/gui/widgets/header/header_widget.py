@@ -79,17 +79,6 @@ class BrandingSection(HeaderSectionWidget):
         )
         info_layout.addWidget(self.product_label)
 
-        # Version and company
-        self.version_label = QLabel("v2.0.0 • Withforce")
-        self.version_label.setStyleSheet(
-            """
-            font-size: 11px;
-            color: #cccccc;
-            margin: 0px;
-        """
-        )
-        info_layout.addWidget(self.version_label)
-
         layout.addLayout(info_layout)
         layout.addStretch()
 

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Top mounting block -->
+  <rect x="8" y="1" width="8" height="2" rx="0.5" fill="currentColor" opacity="0.2"/>
+  <line x1="10" y1="3" x2="10" y2="4" stroke-width="1.5"/>
+  <line x1="14" y1="3" x2="14" y2="4" stroke-width="1.5"/>
+
+  <!-- High-density spring coils (double helix representation) -->
+  <!-- Left wire path -->
+  <path d="M 10 4 C 8 4.8, 8 5.2, 10 6 C 12 6.8, 12 7.2, 10 8 C 8 8.8, 8 9.2, 10 10 C 12 10.8, 12 11.2, 10 12 C 8 12.8, 8 13.2, 10 14 C 12 14.8, 12 15.2, 10 16 C 8 16.8, 8 17.2, 10 18 C 12 18.8, 12 19.2, 10 20" stroke-width="2"/>
+
+  <!-- Right wire path (offset for depth) -->
+  <path d="M 14 4 C 16 4.8, 16 5.2, 14 6 C 12 6.8, 12 7.2, 14 8 C 16 8.8, 16 9.2, 14 10 C 12 10.8, 12 11.2, 14 12 C 16 12.8, 16 13.2, 14 14 C 12 14.8, 12 15.2, 14 16 C 16 16.8, 16 17.2, 14 18 C 12 18.8, 12 19.2, 14 20" stroke-width="2" opacity="0.6"/>
+
+  <!-- Wire diameter indicators (circles at turns) -->
+  <circle cx="10" cy="6" r="1.2" fill="currentColor" opacity="0.15"/>
+  <circle cx="10" cy="10" r="1.2" fill="currentColor" opacity="0.15"/>
+  <circle cx="10" cy="14" r="1.2" fill="currentColor" opacity="0.15"/>
+  <circle cx="10" cy="18" r="1.2" fill="currentColor" opacity="0.15"/>
+
+  <!-- Bottom mounting block -->
+  <line x1="10" y1="20" x2="10" y2="21" stroke-width="1.5"/>
+  <line x1="14" y1="20" x2="14" y2="21" stroke-width="1.5"/>
+  <rect x="8" y="21" width="8" height="2" rx="0.5" fill="currentColor" opacity="0.2"/>
+
+  <!-- Temperature/activation indicator -->
+  <g transform="translate(19, 12)">
+    <circle cx="0" cy="0" r="2.5" stroke="#ff6b6b" stroke-width="1.2" fill="none"/>
+    <path d="M -1 -1 L 1 1 M -1 1 L 1 -1" stroke="#ff6b6b" stroke-width="1.2"/>
+  </g>
+</svg>

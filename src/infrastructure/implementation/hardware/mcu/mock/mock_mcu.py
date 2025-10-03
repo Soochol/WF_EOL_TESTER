@@ -99,6 +99,16 @@ class MockMCU(MCUService):
         try:
             logger.info(f"Connecting to Mock MCU on {self._port} at {self._baudrate} baud")
 
+            # Clean up any existing temperature task from previous connection
+            if self._temperature_task and not self._temperature_task.done():
+                logger.debug("Cleaning up previous temperature simulation task")
+                self._temperature_task.cancel()
+                try:
+                    await asyncio.wait_for(self._temperature_task, timeout=0.5)
+                except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                    pass
+                self._temperature_task = None
+
             # Simulate connection delay
             await asyncio.sleep(self._connection_delay)
 
@@ -125,18 +135,28 @@ class MockMCU(MCUService):
             HardwareOperationError: If disconnection fails
         """
         try:
+            # Cancel temperature simulation task if running
             if self._temperature_task and not self._temperature_task.done():
                 self._temperature_task.cancel()
                 try:
-                    await self._temperature_task
+                    # Wait for task cancellation with timeout
+                    await asyncio.wait_for(self._temperature_task, timeout=1.0)
                 except asyncio.CancelledError:
-                    ...
+                    logger.debug("Temperature simulation task cancelled successfully")
+                except asyncio.TimeoutError:
+                    logger.warning("Temperature simulation task cancellation timed out")
+                except Exception as e:
+                    logger.debug(f"Temperature task cleanup error (expected): {e}")
 
+            self._temperature_task = None
             self._is_connected = False
             logger.info("Mock MCU disconnected")
 
         except Exception as e:
             logger.error(f"Error disconnecting Mock MCU: {e}")
+            # Force disconnect even on error
+            self._is_connected = False
+            self._temperature_task = None
             raise HardwareOperationError("mock_mcu", "disconnect", str(e)) from e
 
     async def is_connected(self) -> bool:
@@ -715,11 +735,39 @@ class MockMCU(MCUService):
 
         except asyncio.CancelledError:
             logger.debug("Mock MCU temperature simulation cancelled")
+            raise  # Re-raise to properly signal task cancellation
         except Exception as e:
             logger.error(f"Mock MCU temperature simulation error: {e}")
 
     async def set_cooling_temperature(self, target_temp: float) -> None:
-        raise NotImplementedError
+        """
+        Set cooling temperature for the MCU (시뮬레이션)
+
+        Args:
+            target_temp: Cooling temperature in Celsius
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If cooling temperature setting fails
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("mock_mcu", "MCU is not connected")
+
+        try:
+            # Simulate response delay
+            await asyncio.sleep(self._response_delay)
+
+            # Set cooling temperature as target
+            self._target_temperature = target_temp
+            # Enable cooling mode
+            self._cooling_enabled = True
+            self._heating_enabled = False
+
+            logger.info(f"Mock MCU cooling temperature set to {target_temp}°C")
+
+        except Exception as e:
+            logger.error(f"Failed to set Mock MCU cooling temperature: {e}")
+            raise HardwareOperationError("mock_mcu", "set_cooling_temperature", str(e)) from e
 
     def disable_verification_mode(self) -> None:
         """Disable verification mode to allow normal temperature simulation"""

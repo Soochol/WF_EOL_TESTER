@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame
 )
+from loguru import logger
 
 from application.containers.application_container import ApplicationContainer
 from ui.gui.services.gui_state_manager import GUIStateManager
@@ -67,15 +68,20 @@ class StatCard(QFrame):
         layout.addLayout(top_layout)
 
         # Value
-        value_label = QLabel(self.value)
-        value_label.setStyleSheet(f"""
+        self.value_label = QLabel(self.value)
+        self.value_label.setStyleSheet(f"""
             font-size: 32px;
             font-weight: bold;
             color: {self.color};
         """)
-        layout.addWidget(value_label)
+        layout.addWidget(self.value_label)
 
         layout.addStretch()
+
+    def update_value(self, new_value: str):
+        """Update the card value"""
+        self.value = new_value
+        self.value_label.setText(new_value)
 
 
 class ModernCard(QFrame):
@@ -132,7 +138,16 @@ class ModernDashboardWidget(QWidget):
         self.container = container
         self.state_manager = state_manager
 
+        # Statistics cards (will be initialized in setup_ui)
+        self.total_card: Optional[StatCard] = None
+        self.passed_card: Optional[StatCard] = None
+        self.failed_card: Optional[StatCard] = None
+        self.rate_card: Optional[StatCard] = None
+
         self.setup_ui()
+        self._connect_signals()
+        self._load_today_results()  # Load today's results from disk
+        self._update_statistics()  # Update display with loaded data
 
     def setup_ui(self):
         """Setup modern dashboard UI"""
@@ -151,15 +166,15 @@ class ModernDashboardWidget(QWidget):
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(15)
 
-        total_card = StatCard("Total Tests", "127", "check_circle", "#2196F3")
-        passed_card = StatCard("Passed", "120", "check_circle", "#00D9A5")
-        failed_card = StatCard("Failed", "7", "x_circle", "#F44336")
-        rate_card = StatCard("Pass Rate", "94.5%", "statistics", "#FF9800")
+        self.total_card = StatCard("Total Tests", "0", "check_circle", "#2196F3")
+        self.passed_card = StatCard("Passed", "0", "check_circle", "#00D9A5")
+        self.failed_card = StatCard("Failed", "0", "x_circle", "#F44336")
+        self.rate_card = StatCard("Pass Rate", "0%", "statistics", "#FF9800")
 
-        stats_layout.addWidget(total_card)
-        stats_layout.addWidget(passed_card)
-        stats_layout.addWidget(failed_card)
-        stats_layout.addWidget(rate_card)
+        stats_layout.addWidget(self.total_card)
+        stats_layout.addWidget(self.passed_card)
+        stats_layout.addWidget(self.failed_card)
+        stats_layout.addWidget(self.rate_card)
 
         main_layout.addLayout(stats_layout)
 
@@ -171,3 +186,48 @@ class ModernDashboardWidget(QWidget):
         )
         results_card.add_widget(self.results_table)
         main_layout.addWidget(results_card, stretch=1)
+
+    def _connect_signals(self):
+        """Connect state manager signals"""
+        self.state_manager.test_result_added.connect(self._on_test_result_added)
+
+    def _load_today_results(self):
+        """Load today's test results from JSON files on startup"""
+        json_dir = "logs/test_results/json"
+        count = self.state_manager.load_today_results_from_disk(json_dir)
+        if count > 0:
+            logger.info(f"📂 Dashboard: Loaded {count} results from today's files")
+
+    def _on_test_result_added(self, result):
+        """Handle new test result added"""
+        logger.info(f"📊 Dashboard: Test result added - Cycle {result.cycle}, Status: {result.status}")
+        self._update_statistics()
+
+    def _update_statistics(self):
+        """Update statistics cards from test results"""
+        # Check if cards are initialized
+        if not all([self.total_card, self.passed_card, self.failed_card, self.rate_card]):
+            logger.warning("Dashboard: Cards not initialized yet")
+            return
+
+        # Get all test results
+        test_results = self.state_manager.get_test_results()
+
+        # Calculate statistics
+        total = len(test_results)
+        passed = sum(1 for r in test_results if r.status.upper() == "PASS")
+        failed = total - passed
+        pass_rate = (passed / total * 100) if total > 0 else 0.0
+
+        logger.info(f"📊 Dashboard: Updating statistics - Total: {total}, Passed: {passed}, Failed: {failed}, Rate: {pass_rate:.1f}%")
+
+        # Update cards (cards are guaranteed to be initialized by the check above)
+        assert self.total_card is not None
+        assert self.passed_card is not None
+        assert self.failed_card is not None
+        assert self.rate_card is not None
+
+        self.total_card.update_value(str(total))
+        self.passed_card.update_value(str(passed))
+        self.failed_card.update_value(str(failed))
+        self.rate_card.update_value(f"{pass_rate:.1f}%")

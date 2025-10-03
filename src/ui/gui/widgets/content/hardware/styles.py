@@ -59,7 +59,7 @@ class HardwareStyles:
             padding: 8px 12px;
             font-size: 14px;
             min-width: 80px;
-            min-height: 30px;
+            min-height: 24px;
         }
         QPushButton:hover {
             background-color: #106ebe;

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Top connector with detail -->
+  <rect x="9" y="1.5" width="6" height="1.5" rx="0.3" stroke-width="1.5"/>
+  <line x1="10.5" y1="3" x2="10.5" y2="4.5" stroke-width="1.2"/>
+  <line x1="13.5" y1="3" x2="13.5" y2="4.5" stroke-width="1.2"/>
+
+  <!-- Precision coil wire (tight, uniform spacing) -->
+  <g stroke-width="2.2">
+    <!-- Front side -->
+    <path d="M 10.5 4.5 Q 8.5 5.3, 10.5 6.2 Q 12.5 7, 10.5 7.9 Q 8.5 8.7, 10.5 9.6 Q 12.5 10.4, 10.5 11.3 Q 8.5 12.1, 10.5 13 Q 12.5 13.8, 10.5 14.7 Q 8.5 15.5, 10.5 16.4 Q 12.5 17.2, 10.5 18.1 Q 8.5 18.9, 10.5 19.8"/>
+
+    <!-- Back side (lighter) -->
+    <path d="M 13.5 4.5 Q 15.5 5.3, 13.5 6.2 Q 11.5 7, 13.5 7.9 Q 15.5 8.7, 13.5 9.6 Q 11.5 10.4, 13.5 11.3 Q 15.5 12.1, 13.5 13 Q 11.5 13.8, 13.5 14.7 Q 15.5 15.5, 13.5 16.4 Q 11.5 17.2, 13.5 18.1 Q 15.5 18.9, 13.5 19.8" opacity="0.45"/>
+  </g>
+
+  <!-- Wire thickness indicators (subtle) -->
+  <circle cx="10.5" cy="7.9" r="1.3" fill="none" stroke-width="0.8" opacity="0.3"/>
+  <circle cx="10.5" cy="13" r="1.3" fill="none" stroke-width="0.8" opacity="0.3"/>
+  <circle cx="10.5" cy="18.1" r="1.3" fill="none" stroke-width="0.8" opacity="0.3"/>
+
+  <!-- Bottom connector with detail -->
+  <line x1="10.5" y1="19.8" x2="10.5" y2="21" stroke-width="1.2"/>
+  <line x1="13.5" y1="19.8" x2="13.5" y2="21" stroke-width="1.2"/>
+  <rect x="9" y="21" width="6" height="1.5" rx="0.3" stroke-width="1.5"/>
+
+  <!-- SMA activation symbol (thermal) -->
+  <g transform="translate(19, 12)" stroke="#ff6b6b" fill="none">
+    <circle cx="0" cy="-2.5" r="1.5" stroke-width="1.2"/>
+    <path d="M -0.5 -1 L 0 0.5 L 0.5 -1" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M -1 1 L 1 1" stroke-width="1.2"/>
+    <path d="M -0.7 2 L 0.7 2" stroke-width="1.2"/>
+    <path d="M -0.4 3 L 0.4 3" stroke-width="1.2"/>
+  </g>
+</svg>

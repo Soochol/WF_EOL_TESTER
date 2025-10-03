@@ -417,15 +417,27 @@ class HardwareServiceFacade:
             await asyncio.sleep(test_config.poweron_stabilization)
 
             # Display power switch instruction to user
-            console = Console()
-            power_panel = Panel(
-                "TURN ON POWER SWITCH",
-                title="⚡ User Action Required",
-                title_align="left",
-                style="bold yellow",
-                border_style="yellow",
-            )
-            console.print(power_panel)
+            # Note: Skip console output if no terminal (GUI mode) or encoding issues
+            try:
+                import sys
+                # Only print to console if we have a real terminal and UTF-8 support
+                if hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():
+                    console = Console()
+                    power_panel = Panel(
+                        "TURN ON POWER SWITCH",
+                        title="[!] User Action Required",  # Changed emoji to text
+                        title_align="left",
+                        style="bold yellow",
+                        border_style="yellow",
+                    )
+                    console.print(power_panel)
+                else:
+                    # GUI mode - log instead of console print
+                    logger.info("[!] USER ACTION: TURN ON POWER SWITCH")
+            except Exception as console_err:
+                # Fallback to simple logging if console fails
+                logger.warning(f"Console output failed: {console_err}")
+                logger.info("[!] USER ACTION: TURN ON POWER SWITCH")
 
             # Wait for MCU boot complete signal (directly using MCU service)
             logger.info("Waiting for MCU boot complete signal...")

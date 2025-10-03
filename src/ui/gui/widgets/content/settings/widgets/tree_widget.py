@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 # Local folder imports
-from ..core import Colors, ConfigFile, ConfigValue, Styles
+from ..core import Colors, ConfigFile, ConfigValue, EditorTypes, Styles
 
 
 class SettingsTreeWidget(QTreeWidget):
@@ -58,8 +58,11 @@ class SettingsTreeWidget(QTreeWidget):
             # Add categories and settings
             self.add_config_items(file_item, config_file.data, config_file.path, "")
 
-            # All items start collapsed
-            file_item.setExpanded(False)
+            # Application and GUI-related files start expanded by default
+            if file_name in ["Application", "Hardware", "Test Profile"]:
+                file_item.setExpanded(True)
+            else:
+                file_item.setExpanded(False)
 
     def add_config_items(
         self,
@@ -89,41 +92,47 @@ class SettingsTreeWidget(QTreeWidget):
                 # Create setting item
                 setting_item = QTreeWidgetItem(parent_item, [key])
 
-                # Determine allowed values for hardware model, port, and baudrate fields
+                # Determine allowed values using EditorTypes
                 allowed_values = None
-                if key == "model":
-                    # Extract hardware type from category (e.g., "robot", "digital_io")
-                    hardware_type = category_prefix.split(".")[-1] if category_prefix else None
-                    if hardware_type == "robot":
-                        allowed_values = ["mock", "ajinextek"]
-                    elif hardware_type == "digital_io":
-                        allowed_values = ["mock", "ajinextek"]
-                    elif hardware_type == "power":
-                        allowed_values = ["mock", "oda"]
-                    elif hardware_type == "loadcell":
-                        allowed_values = ["mock", "bs205"]
-                    elif hardware_type == "mcu":
-                        allowed_values = ["mock", "lma"]
-                elif key == "port":
-                    # Get available serial ports
-                    allowed_values = self._get_available_ports(value)
-                elif key == "baudrate":
-                    # Common baudrate values for serial communication
-                    allowed_values = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
-                    # Ensure current value is in the list
-                    if value and isinstance(value, int) and value not in allowed_values:
-                        allowed_values.append(value)
-                        allowed_values.sort()
-                elif key == "parity":
-                    # Standard parity options for serial communication
-                    allowed_values = ["none", "even", "odd", "mark", "space"]
-                    # Handle null/None values
-                    if value is None or value == "null":
-                        value = "none"
-                    # Ensure current value is in the list
-                    if value and isinstance(value, str) and value.lower() not in allowed_values:
-                        allowed_values.append(value.lower())
-                        allowed_values.sort()
+
+                # First, try to get allowed values from EditorTypes based on full key path
+                allowed_values = EditorTypes.get_combo_options(item_key)
+
+                # If not found, check for specific key patterns
+                if not allowed_values:
+                    if key == "model":
+                        # Extract hardware type from category (e.g., "robot", "digital_io")
+                        hardware_type = category_prefix.split(".")[-1] if category_prefix else None
+                        if hardware_type == "robot":
+                            allowed_values = ["mock", "ajinextek"]
+                        elif hardware_type == "digital_io":
+                            allowed_values = ["mock", "ajinextek"]
+                        elif hardware_type == "power":
+                            allowed_values = ["mock", "oda"]
+                        elif hardware_type == "loadcell":
+                            allowed_values = ["mock", "bs205"]
+                        elif hardware_type == "mcu":
+                            allowed_values = ["mock", "lma"]
+                    elif key == "port":
+                        # Get available serial ports
+                        allowed_values = self._get_available_ports(value)
+                    elif key == "baudrate":
+                        # Common baudrate values for serial communication
+                        allowed_values = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+                        # Ensure current value is in the list
+                        if value and isinstance(value, int) and value not in allowed_values:
+                            allowed_values.append(value)
+                            allowed_values.sort()
+                    elif key == "parity":
+                        # Standard parity options for serial communication
+                        allowed_values = ["none", "even", "odd", "mark", "space"]
+                        # Handle null/None values
+                        if value is None or value == "null":
+                            value = "none"
+                        # Ensure current value is in the list
+                        if value and isinstance(value, str) and value.lower() not in allowed_values:
+                            allowed_values.append(value.lower())
+                            allowed_values.sort()
 
                 # Create ConfigValue
                 config_value = ConfigValue(

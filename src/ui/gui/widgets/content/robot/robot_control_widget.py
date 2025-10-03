@@ -54,6 +54,7 @@ class RobotControlWidget(QWidget):
         self,
         container: SimpleReloadableContainer,
         state_manager: GUIStateManager,
+        executor_thread=None,  # ✅ TestExecutorThread for unified execution
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
@@ -61,6 +62,7 @@ class RobotControlWidget(QWidget):
         # Store dependencies
         self.container = container
         self.gui_state_manager = state_manager
+        self.executor_thread = executor_thread  # ✅ Store executor thread
 
         # Get robot service
         self.robot_service = container.hardware_service_facade().robot_service
@@ -71,7 +73,8 @@ class RobotControlWidget(QWidget):
         self.event_handlers = RobotEventHandlers(
             robot_service=self.robot_service,
             state=self.robot_state,
-            axis_id=0  # Primary axis
+            axis_id=0,  # Primary axis
+            executor_thread=executor_thread  # ✅ Pass executor to event handlers
         )
 
         # UI component groups
@@ -136,8 +139,8 @@ class RobotControlWidget(QWidget):
         # Create content widget for scroll area
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setSpacing(12)
-        content_layout.setContentsMargins(15, 15, 15, 15)
+        content_layout.setSpacing(8)
+        content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Create all cards in vertical layout
         status_widget = self.status_group.create()

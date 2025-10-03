@@ -9,10 +9,10 @@ Contains test outcome, measurements, timing information, and metadata.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# Local application imports
-from application.use_cases.common.command_result_patterns import BaseResult
+# Local domain imports
 from domain.enums.test_status import TestStatus
 from domain.exceptions.validation_exceptions import ValidationException
+from domain.value_objects.base_result import BaseResult
 from domain.value_objects.identifiers import MeasurementId, TestId
 from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.time_values import TestDuration

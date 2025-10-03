@@ -206,6 +206,34 @@ class GUIStateManager(QObject):
         """Clear all log messages"""
         self.log_messages.clear()
 
+    def load_today_results_from_disk(self, json_dir: str) -> int:
+        """
+        Load today's test results from JSON files.
+
+        Args:
+            json_dir: Directory containing JSON test result files
+
+        Returns:
+            Number of results loaded
+        """
+        from ui.gui.utils.result_loader import load_today_results
+
+        try:
+            results = load_today_results(json_dir)
+
+            # Add each result to state manager
+            for result in results:
+                self.test_results.append(result)
+                # Emit signal to update UI
+                self.test_result_added.emit(result)
+
+            logger.info(f"📂 Loaded {len(results)} test results from today's files")
+            return len(results)
+
+        except Exception as e:
+            logger.error(f"Failed to load today's results: {e}")
+            return 0
+
     def _setup_log_capture(self) -> None:
         """Setup log capture from loguru logger"""
 

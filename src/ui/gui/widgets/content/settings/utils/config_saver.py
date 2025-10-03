@@ -106,8 +106,13 @@ class ConfigFileSaver:
                 current[k] = {}
             current = current[k]
 
+        # Round float values to 2 decimal places for scaling_factor
+        final_key = keys[-1]
+        if final_key == "scaling_factor" and isinstance(value, float):
+            value = round(value, 2)
+
         # Set the final value
-        current[keys[-1]] = value
+        current[final_key] = value
 
     @staticmethod
     def _create_backup(file_path: str) -> None:

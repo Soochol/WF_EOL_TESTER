@@ -111,7 +111,7 @@ class NavigationMenu(QWidget):
         self.category_headers.append(header)
 
         # Hardware parent button (toggles submenu)
-        self.hardware_button = self.create_nav_button("hardware", "hardware", "Hardware")
+        self.hardware_button = self.create_nav_button("hardware", "chip", "Hardware")
         self.hardware_button.clicked.connect(self._on_hardware_clicked)
         layout.addWidget(self.hardware_button)
         self.nav_buttons.addButton(self.hardware_button)
@@ -124,6 +124,46 @@ class NavigationMenu(QWidget):
         self.all_buttons.append(self.robot_button)
         self.hardware_submenu_buttons.append(self.robot_button)
         self.robot_button.setVisible(False)  # Hidden by default
+
+        # Hardware submenu - MCU
+        self.mcu_button = self.create_submenu_button("mcu", "cpu", "MCU")
+        layout.addWidget(self.mcu_button)
+        self.nav_buttons.addButton(self.mcu_button)
+        self.all_buttons.append(self.mcu_button)
+        self.hardware_submenu_buttons.append(self.mcu_button)
+        self.mcu_button.setVisible(False)  # Hidden by default
+
+        # Hardware submenu - Power Supply
+        self.power_supply_button = self.create_submenu_button("power_supply", "battery", "Power Supply")
+        layout.addWidget(self.power_supply_button)
+        self.nav_buttons.addButton(self.power_supply_button)
+        self.all_buttons.append(self.power_supply_button)
+        self.hardware_submenu_buttons.append(self.power_supply_button)
+        self.power_supply_button.setVisible(False)  # Hidden by default
+
+        # Hardware submenu - Digital Output
+        self.digital_output_button = self.create_submenu_button("digital_output", "toggle_on", "Digital Output")
+        layout.addWidget(self.digital_output_button)
+        self.nav_buttons.addButton(self.digital_output_button)
+        self.all_buttons.append(self.digital_output_button)
+        self.hardware_submenu_buttons.append(self.digital_output_button)
+        self.digital_output_button.setVisible(False)  # Hidden by default
+
+        # Hardware submenu - Digital Input
+        self.digital_input_button = self.create_submenu_button("digital_input", "toggle_off", "Digital Input")
+        layout.addWidget(self.digital_input_button)
+        self.nav_buttons.addButton(self.digital_input_button)
+        self.all_buttons.append(self.digital_input_button)
+        self.hardware_submenu_buttons.append(self.digital_input_button)
+        self.digital_input_button.setVisible(False)  # Hidden by default
+
+        # Hardware submenu - Loadcell
+        self.loadcell_button = self.create_submenu_button("loadcell", "activity", "Loadcell")
+        layout.addWidget(self.loadcell_button)
+        self.nav_buttons.addButton(self.loadcell_button)
+        self.all_buttons.append(self.loadcell_button)
+        self.hardware_submenu_buttons.append(self.loadcell_button)
+        self.loadcell_button.setVisible(False)  # Hidden by default
 
         # Other system items
         system_items = [
@@ -379,6 +419,48 @@ class NavigationMenu(QWidget):
         }
         """
 
+    def _get_collapsed_submenu_style(self) -> str:
+        """Get collapsed submenu button stylesheet (centered, no indent)"""
+        return """
+        QPushButton {
+            text-align: center;
+            padding-left: 15px;
+            padding-right: 10px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            margin: 4px 8px;
+            border: none;
+            border-left: 4px solid transparent;
+            border-radius: 12px;
+            background-color: transparent;
+            color: #cccccc;
+            min-height: 52px;
+            max-height: 52px;
+            font-size: 14px;
+        }
+        QPushButton:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border-left: 4px solid rgba(99, 179, 237, 0.5);
+        }
+        QPushButton:checked {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 rgba(33, 150, 243, 0.15),
+                stop:1 rgba(33, 150, 243, 0.05));
+            color: #63b3ed;
+            border-left: 4px solid #2196F3;
+            font-weight: 600;
+        }
+        QPushButton:pressed {
+            background-color: rgba(33, 150, 243, 0.25);
+        }
+        QPushButton:focus {
+            outline: none;
+            border: 2px solid #2196F3;
+            border-left: 4px solid #2196F3;
+        }
+        """
+
     def _on_hardware_clicked(self) -> None:
         """Toggle hardware submenu visibility"""
         self.hardware_submenu_visible = not self.hardware_submenu_visible
@@ -424,18 +506,26 @@ class NavigationMenu(QWidget):
                 btn.setText("")  # Remove text, keep only icon
                 btn.setToolTip(label)  # Show label as tooltip
 
-        # Update submenu buttons (icon-only mode)
+        # Update submenu buttons (icon-only mode with centered alignment)
         for btn in self.statistics_submenu_buttons:
             label = btn.property("label")
             if label:
                 btn.setText("")  # Remove text, keep only icon
                 btn.setToolTip(label)  # Show label as tooltip
+                # Update icon size to match main buttons
+                btn.setIconSize(QSize(24, 24))
+                # Apply collapsed submenu style (centered, no indent)
+                btn.setStyleSheet(self._get_collapsed_submenu_style())
 
         for btn in self.hardware_submenu_buttons:
             label = btn.property("label")
             if label:
                 btn.setText("")  # Remove text, keep only icon
                 btn.setToolTip(label)  # Show label as tooltip
+                # Update icon size to match main buttons
+                btn.setIconSize(QSize(24, 24))
+                # Apply collapsed submenu style (centered, no indent)
+                btn.setStyleSheet(self._get_collapsed_submenu_style())
 
         # Adjust width
         self.setMinimumWidth(self.collapsed_width)
@@ -462,18 +552,26 @@ class NavigationMenu(QWidget):
                     btn.setText(f"  {label}")  # Extra space for icon
                 btn.setToolTip("")  # Clear tooltip
 
-        # Update submenu buttons (show text mode)
+        # Update submenu buttons (show text mode with original style)
         for btn in self.statistics_submenu_buttons:
             label = btn.property("label")
             if label:
                 btn.setText(f"  {label}")  # Extra space for icon
                 btn.setToolTip("")  # Clear tooltip
+                # Restore original icon size
+                btn.setIconSize(QSize(20, 20))
+                # Restore original submenu style
+                btn.setStyleSheet(self._get_submenu_button_style())
 
         for btn in self.hardware_submenu_buttons:
             label = btn.property("label")
             if label:
                 btn.setText(f"  {label}")  # Extra space for icon
                 btn.setToolTip("")  # Clear tooltip
+                # Restore original icon size
+                btn.setIconSize(QSize(20, 20))
+                # Restore original submenu style
+                btn.setStyleSheet(self._get_submenu_button_style())
 
         # Adjust width
         self.setMinimumWidth(self.expanded_width)

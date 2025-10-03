@@ -5,11 +5,13 @@ Professional header with glassmorphism, SVG icons, and animations.
 """
 
 # Standard library imports
+import os
 from typing import Optional
 
 # Third-party imports
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -306,10 +308,43 @@ class ModernHeaderWidget(QWidget):
         top_layout = QHBoxLayout()
         top_layout.setSpacing(20)
 
-        # Left: Branding
-        branding_layout = QVBoxLayout()
-        branding_layout.setSpacing(2)
+        # Left: Branding with icon
+        branding_layout = QHBoxLayout()
+        branding_layout.setSpacing(8)
 
+        # SMA Spring icon
+        icon_label = QLabel()
+        icon_label.setFixedSize(32, 32)
+
+        # Load and render SVG icon with gray color
+        icon_path = os.path.join(
+            os.path.dirname(__file__),
+            "../../resources/icons/sma_spring_100.svg"
+        )
+        if os.path.exists(icon_path):
+            # Read SVG and replace color
+            with open(icon_path, 'r', encoding='utf-8') as f:
+                svg_content = f.read()
+
+            # Replace currentColor with gray (#cccccc), keep heat indicator red
+            svg_content = svg_content.replace('stroke="currentColor"', 'stroke="#cccccc"')
+            svg_content = svg_content.replace('fill="currentColor"', 'fill="#cccccc"')
+            # Heat indicator stays red (#ff6b6b) - no replacement needed
+
+            svg_renderer = QSvgRenderer(svg_content.encode('utf-8'))
+            pixmap = QPixmap(32, 32)
+            pixmap.fill(Qt.GlobalColor.transparent)
+
+            from PySide6.QtGui import QPainter
+            painter = QPainter(pixmap)
+            svg_renderer.render(painter, QRectF(0, 0, 32, 32))
+            painter.end()
+
+            icon_label.setPixmap(pixmap)
+
+        branding_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # Title
         title_label = QLabel("WF EOL Tester")
         title_label.setStyleSheet(
             """
@@ -319,16 +354,7 @@ class ModernHeaderWidget(QWidget):
             letter-spacing: -0.5px;
         """
         )
-        branding_layout.addWidget(title_label)
-
-        subtitle_label = QLabel("v1.0.0 • Withforce")
-        subtitle_label.setStyleSheet(
-            """
-            font-size: 11px;
-            color: #999999;
-        """
-        )
-        branding_layout.addWidget(subtitle_label)
+        branding_layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         top_layout.addLayout(branding_layout)
 
