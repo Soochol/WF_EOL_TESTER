@@ -45,7 +45,7 @@ def ensure_project_directories():
         LOGS_DIR,
         LOGS_TEST_RESULTS_JSON_DIR,
         LOGS_EOL_RAW_DATA_DIR,
-        LOGS_EOL_SUMMARY_DIR
+        LOGS_EOL_SUMMARY_DIR,
     ]
 
     for directory in required_dirs:
@@ -86,9 +86,13 @@ class ServicesConfigPaths:
     # Configuration file paths (absolute paths)
     config_application_path: str = str(PROJECT_ROOT / "configuration" / "application.yaml")
     config_hardware_path: str = str(PROJECT_ROOT / "configuration" / "hardware_config.yaml")
-    config_profile_preference_path: str = str(PROJECT_ROOT / "configuration" / "profile_preferences.yaml")
+    config_profile_preference_path: str = str(
+        PROJECT_ROOT / "configuration" / "profile_preferences.yaml"
+    )
     config_test_profiles_dir: str = str(PROJECT_ROOT / "configuration" / "test_profiles")
-    config_heating_cooling_path: str = str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
+    config_heating_cooling_path: str = str(
+        PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml"
+    )
 
 
 @dataclass(frozen=True)
@@ -213,13 +217,15 @@ class ApplicationConfig:
                     "hardware_path", str(PROJECT_ROOT / "configuration" / "hardware_config.yaml")
                 ),
                 config_profile_preference_path=services_data.get("configuration", {}).get(
-                    "profile_preference_path", str(PROJECT_ROOT / "configuration" / "profile_preferences.yaml")
+                    "profile_preference_path",
+                    str(PROJECT_ROOT / "configuration" / "profile_preferences.yaml"),
                 ),
                 config_test_profiles_dir=services_data.get("configuration", {}).get(
                     "test_profiles_dir", str(PROJECT_ROOT / "configuration" / "test_profiles")
                 ),
                 config_heating_cooling_path=services_data.get("configuration", {}).get(
-                    "heating_cooling_path", str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml")
+                    "heating_cooling_path",
+                    str(PROJECT_ROOT / "configuration" / "heating_cooling_time_test.yaml"),
                 ),
             ),
             logging=LoggingConfig(level=logging_data.get("level", "INFO")),

@@ -200,7 +200,7 @@ class ModernDashboardWidget(QWidget):
 
     def _on_test_result_added(self, result):
         """Handle new test result added"""
-        logger.info(f"📊 Dashboard: Test result added - Cycle {result.cycle}, Status: {result.status}")
+        logger.info(f"📊 Dashboard: Test result added - Test ID: {result.test_id}, Status: {result.status}")
         self._update_statistics()
 
     def _update_statistics(self):

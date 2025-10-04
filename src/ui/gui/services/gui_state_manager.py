@@ -20,17 +20,28 @@ from application.services.hardware_facade.hardware_service_facade import (
 
 
 @dataclass
-class TestResult:
-    """Data class for test results"""
+class CycleData:
+    """Data class for individual cycle measurement"""
 
-    cycle: int
-    temperature: float
-    stroke: float
-    force: float
-    heating_time: int
-    cooling_time: int
-    status: str
-    timestamp: datetime
+    cycle: int  # Cycle number
+    temperature: float  # Temperature in °C
+    stroke: float  # Stroke position in mm
+    force: float  # Measured force in kgf
+    heating_time: int  # Heating time in ms
+    cooling_time: int  # Cooling time in ms
+    status: str  # Cycle status (PASS/FAIL)
+
+
+@dataclass
+class TestResult:
+    """Data class for test results with individual cycle data"""
+
+    test_id: str  # e.g., "1_20251004_165238"
+    serial_number: str  # DUT serial number
+    status: str  # Overall test status (PASS/FAIL)
+    timestamp: datetime  # Test completion time
+    duration_seconds: float  # Total test duration
+    cycles: List['CycleData']  # List of individual cycle measurements
 
 
 @dataclass
@@ -262,36 +273,6 @@ class GUIStateManager(QObject):
         # Add the custom sink to loguru logger
         logger.add(log_sink, level="DEBUG", format="{message}")
 
-    def add_cycle_result(
-        self,
-        cycle: int,
-        total_cycles: int,
-        temperature: float,
-        stroke: float,
-        force: float,
-        heating_time: int,
-        cooling_time: int,
-        status: str = "PASS",
-    ) -> None:
-        """Add individual cycle result to GUI"""
-        logger.info(f"🔄 GUI State Manager: Creating cycle result for cycle {cycle}/{total_cycles}")
-        cycle_result = TestResult(
-            cycle=cycle,
-            temperature=temperature,
-            stroke=stroke,
-            force=force,
-            heating_time=heating_time,
-            cooling_time=cooling_time,
-            status=status,
-            timestamp=datetime.now(),
-        )
-        self.test_results.append(cycle_result)
-        logger.info(f"📊 GUI State Manager: About to emit cycle_result_added signal for cycle {cycle}/{total_cycles}")
-        logger.info(f"📊 GUI State Manager: Cycle data - Temp: {temperature:.1f}°C, Force: {force:.2f}kgf, Status: {status}")
-
-        # Emit signal to update GUI (receivers() check removed - emit is always safe)
-        self.cycle_result_added.emit(cycle_result)
-        logger.info(f"✅ GUI State Manager: Cycle {cycle}/{total_cycles} result signal emitted successfully")
 
     def get_connection_count(self) -> tuple[int, int]:
         """Get connection count (connected, total)"""
