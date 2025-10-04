@@ -316,9 +316,8 @@ class TestExecutorThread(QThread):
 
             # Check actual test success/failure based on result type and content
             success, message = self._evaluate_test_result(result)
-            logger.critical(f"🚀 THREAD: Emitting test_completed signal! success={success}, message={message}")
+            logger.debug(f"Test completed, emitting signal: success={success}, message={message}")
             self.test_completed.emit(success, message)
-            logger.critical(f"✅ THREAD: test_completed signal emitted successfully")
 
         except KeyboardInterrupt:
             # Emergency Stop으로 인한 중단 - 정상적인 상황
@@ -2655,13 +2654,11 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
-        logger.critical(f"🎉 GUI HANDLER: _on_thread_test_completed called! success={success}, message={message}")
+        logger.info(f"Test completed: success={success}, message={message}")
 
         if not self.test_control_page:
-            logger.error("❌ test_control_page is None, cannot update UI")
+            logger.warning("test_control_page is None, skipping UI update")
             return
-
-        logger.info(f"✅ Test completed handler executing: success={success}, message={message}")
 
         # Stop progress bar animation
         if hasattr(self.test_control_page, "handle_test_completed"):
