@@ -12,7 +12,6 @@ from typing import Dict, List, Optional
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
-    QGroupBox,
     QVBoxLayout,
     QWidget,
 )
@@ -76,8 +75,11 @@ class TemperatureForceChartWidget(QWidget):
         self.state_manager.cycle_result_added.connect(self._on_cycle_result_added)
 
     def _on_cycle_result_added(self, result: TestResult) -> None:
-        """Handle new cycle result"""
-        self.add_data_point(result.cycle, result.temperature, result.force)
+        """Handle new cycle result (for live test execution)"""
+        # Note: This is for live test execution, not loaded results
+        # The signal is currently not emitted, but kept for future live test feature
+        # When implementing live tests, emit cycle data separately
+        pass
 
     def add_data_point(self, cycle: int, temperature: float, force: float) -> None:
         """Add a new data point for the given cycle"""
@@ -121,13 +123,15 @@ class ChartArea(QWidget):
         self.cycle_data = cycle_data
         self.cycle_colors = cycle_colors
         self.setMinimumHeight(300)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 rgba(45, 45, 45, 0.95),
                 stop:1 rgba(35, 35, 35, 0.95));
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-        """)
+        """
+        )
 
     def paintEvent(self, event) -> None:
         """Paint the chart"""
