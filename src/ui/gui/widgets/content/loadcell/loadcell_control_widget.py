@@ -27,10 +27,10 @@ from .event_handlers import LoadcellEventHandlers
 from .state_manager import LoadcellControlState
 from .ui_components import (
     ConnectionGroup,
+    create_modern_progress_bar,
     HoldControlGroup,
     MeasurementGroup,
     StatusDisplayGroup,
-    create_modern_progress_bar,
 )
 
 
@@ -73,7 +73,7 @@ class LoadcellControlWidget(QWidget):
         self.event_handlers = LoadcellEventHandlers(
             loadcell_service=self.loadcell_service,
             state=self.loadcell_state,
-            executor_thread=executor_thread  # ✅ Pass executor to event handlers
+            executor_thread=executor_thread,  # ✅ Pass executor to event handlers
         )
 
         # UI component groups
@@ -112,7 +112,8 @@ class LoadcellControlWidget(QWidget):
         # Create scroll area
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("""
+        scroll_area.setStyleSheet(
+            """
             QScrollArea {
                 border: none;
                 background-color: #1e1e1e;
@@ -133,7 +134,8 @@ class LoadcellControlWidget(QWidget):
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                 height: 0px;
             }
-        """)
+        """
+        )
 
         # Create content widget for scroll area
         content_widget = QWidget()
@@ -214,12 +216,10 @@ class LoadcellControlWidget(QWidget):
     def _on_force_read(self, force: float) -> None:
         """Handle force reading"""
         # Force is already updated in state and displayed in pills
-        pass
 
     def _on_peak_force_read(self, peak_force: float) -> None:
         """Handle peak force reading"""
         # Peak force is already updated in state and displayed in pills
-        pass
 
     def _on_hold_completed(self, success: bool, message: str) -> None:
         """Handle hold operation completion"""
@@ -234,8 +234,9 @@ class LoadcellControlWidget(QWidget):
     # State change callbacks
     def _on_button_state_changed(self, button_name: str, enabled: bool) -> None:
         """Update button enabled state"""
-        if button_name in self._button_refs and self._button_refs[button_name]:
-            self._button_refs[button_name].setEnabled(enabled)
+        button = self._button_refs.get(button_name)
+        if button:
+            button.setEnabled(enabled)
 
     def _on_progress_changed(self, visible: bool, message: str) -> None:
         """Update progress indicator"""
@@ -245,4 +246,3 @@ class LoadcellControlWidget(QWidget):
     def _on_status_changed(self, message: str, status_type: str) -> None:
         """Handle status message updates"""
         # Status is displayed in pills, no additional action needed
-        pass

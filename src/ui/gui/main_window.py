@@ -5,7 +5,7 @@ Main application window with sidebar navigation and content area.
 """
 
 # Standard library imports
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 # Third-party imports
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
@@ -29,16 +29,30 @@ from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.page_transition import PageTransitionManager
 from ui.gui.widgets.content.about_widget import AboutWidget
 from ui.gui.widgets.content.dashboard_widget import DashboardWidget
+from ui.gui.widgets.content.digital_output import DigitalOutputControlWidget
 from ui.gui.widgets.content.logs_widget import LogsWidget
-from ui.gui.widgets.content.results_widget import ResultsWidget
-from ui.gui.widgets.content.settings_widget import SettingsWidget
-from ui.gui.widgets.content.test_control_widget import TestControlWidget
-from ui.gui.widgets.content.robot import RobotControlWidget
 from ui.gui.widgets.content.mcu import MCUControlWidget
 from ui.gui.widgets.content.power_supply import PowerSupplyControlWidget
-from ui.gui.widgets.content.digital_output import DigitalOutputControlWidget
+from ui.gui.widgets.content.results_widget import ResultsWidget
+from ui.gui.widgets.content.robot import RobotControlWidget
+from ui.gui.widgets.content.settings_widget import SettingsWidget
+from ui.gui.widgets.content.test_control_widget import TestControlWidget
 from ui.gui.widgets.header.modern_header_widget import ModernHeaderWidget
 from ui.gui.widgets.sidebar.sidebar_widget import SidebarWidget
+
+
+# Type-checking only imports to avoid circular dependencies
+if TYPE_CHECKING:
+    # Local application imports
+    from ui.gui.widgets.content.statistics.pages.new_advanced_page import (
+        NewAdvancedPage,
+    )
+    from ui.gui.widgets.content.statistics.pages.new_analysis_page import (
+        NewAnalysisPage,
+    )
+    from ui.gui.widgets.content.statistics.pages.new_overview_page import (
+        NewOverviewPage,
+    )
 
 
 class TestExecutorThread(QThread):
@@ -73,13 +87,15 @@ class TestExecutorThread(QThread):
         self.container = container
 
         # Test-specific state (for backward compatibility)
-        self.test_sequence = None
-        self.serial_number = None
-        self.should_stop = False
-        self.is_test_running = False  # ✅ Track if a test is currently executing
+        self.test_sequence: Optional[str] = None
+        self.serial_number: Optional[str] = None
+        self.should_stop: bool = False
+        self.is_test_running: bool = False  # ✅ Track if a test is currently executing
 
         # Task queue for operations
+        # Standard library imports
         from queue import Queue
+
         self.task_queue = Queue()
         self._running = True
 
@@ -89,7 +105,9 @@ class TestExecutorThread(QThread):
 
     def stop(self):
         """Stop the executor thread gracefully"""
+        # Third-party imports
         from loguru import logger
+
         logger.info("🛑 Stopping TestExecutorThread...")
         self._running = False
 
@@ -101,12 +119,10 @@ class TestExecutorThread(QThread):
             operation_id: Unique identifier for this operation
             coroutine: Async coroutine to execute
         """
+        # Third-party imports
         from loguru import logger
-        task_info = {
-            'id': operation_id,
-            'coroutine': coroutine,
-            'type': 'operation'
-        }
+
+        task_info = {"id": operation_id, "coroutine": coroutine, "type": "operation"}
         self.task_queue.put(task_info)
         logger.debug(f"Task submitted: {operation_id}")
 
@@ -118,17 +134,19 @@ class TestExecutorThread(QThread):
             test_sequence: Test sequence name
             serial_number: DUT serial number
         """
+        # Third-party imports
         from loguru import logger
+
         # Set test-specific state
         self.test_sequence = test_sequence
         self.serial_number = serial_number
         self.should_stop = False
 
         task_info = {
-            'id': f'test_{test_sequence}',
-            'test_sequence': test_sequence,
-            'serial_number': serial_number,
-            'type': 'test'
+            "id": f"test_{test_sequence}",
+            "test_sequence": test_sequence,
+            "serial_number": serial_number,
+            "type": "test",
         }
         self.task_queue.put(task_info)
         logger.debug(f"Test submitted: {test_sequence}")
@@ -141,8 +159,8 @@ class TestExecutorThread(QThread):
         different event loop, reconnects in the current loop.
         """
         # Third-party imports
-        import asyncio
 
+        # Third-party imports
         from loguru import logger
 
         try:
@@ -158,20 +176,15 @@ class TestExecutorThread(QThread):
             if not is_connected:
                 # Not connected - connect in this thread's event loop
                 self.log_message.emit(
-                    "INFO", "HARDWARE",
-                    "Connecting BS205 loadcell in test thread's event loop"
+                    "INFO", "HARDWARE", "Connecting BS205 loadcell in test thread's event loop"
                 )
                 await loadcell.connect()
-                self.log_message.emit(
-                    "INFO", "HARDWARE",
-                    "BS205 loadcell connected successfully"
-                )
+                self.log_message.emit("INFO", "HARDWARE", "BS205 loadcell connected successfully")
             else:
                 # Already connected - but might be in wrong loop
                 # Reconnect to ensure it's in the correct event loop
                 self.log_message.emit(
-                    "INFO", "HARDWARE",
-                    "Reconnecting BS205 loadcell to test thread's event loop"
+                    "INFO", "HARDWARE", "Reconnecting BS205 loadcell to test thread's event loop"
                 )
 
                 try:
@@ -180,16 +193,12 @@ class TestExecutorThread(QThread):
                     logger.warning(f"Disconnect error (expected if from different loop): {e}")
 
                 await loadcell.connect()
-                self.log_message.emit(
-                    "INFO", "HARDWARE",
-                    "BS205 loadcell reconnected successfully"
-                )
+                self.log_message.emit("INFO", "HARDWARE", "BS205 loadcell reconnected successfully")
 
         except Exception as e:
             logger.error(f"Error ensuring hardware connection: {e}")
             self.log_message.emit(
-                "WARNING", "HARDWARE",
-                f"Failed to ensure hardware connection: {e}"
+                "WARNING", "HARDWARE", f"Failed to ensure hardware connection: {e}"
             )
 
     async def _emit_hardware_status(self):
@@ -211,7 +220,9 @@ class TestExecutorThread(QThread):
             self.hardware_status_changed.emit("mcu", is_mcu_connected)
 
         except Exception as e:
+            # Third-party imports
             from loguru import logger
+
             logger.warning(f"Failed to emit hardware status: {e}")
 
     def _evaluate_test_result(self, result):
@@ -290,11 +301,12 @@ class TestExecutorThread(QThread):
 
     def _execute_test_task(self, loop, task_info):
         """Execute a test task"""
+        # Third-party imports
         from loguru import logger
 
         # Set test-specific state
-        self.test_sequence = task_info['test_sequence']
-        self.serial_number = task_info['serial_number']
+        self.test_sequence = task_info["test_sequence"]
+        self.serial_number = task_info["serial_number"]
         self.should_stop = False
         self.is_test_running = True  # ✅ Mark test as running
 
@@ -322,10 +334,11 @@ class TestExecutorThread(QThread):
 
     def _execute_operation_task(self, loop, task_info):
         """Execute a hardware operation task (Robot/MCU)"""
+        # Third-party imports
         from loguru import logger
 
-        operation_id = task_info['id']
-        coroutine = task_info['coroutine']
+        operation_id = task_info["id"]
+        coroutine = task_info["coroutine"]
 
         try:
             logger.debug(f"Executing operation: {operation_id}")
@@ -338,10 +351,23 @@ class TestExecutorThread(QThread):
 
     def run(self):
         """Run hardware executor thread with persistent event loop"""
-        # Third-party imports
-        import asyncio
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
+        # Standard library imports
         import time
 
+        # Third-party imports
+        import asyncio
         from loguru import logger
 
         logger.info("🔧 TestExecutorThread started (Hardware Executor)")
@@ -359,10 +385,10 @@ class TestExecutorThread(QThread):
                     if not self.task_queue.empty():
                         task_info = self.task_queue.get_nowait()
 
-                        if task_info['type'] == 'test':
+                        if task_info["type"] == "test":
                             # Test execution
                             self._execute_test_task(loop, task_info)
-                        elif task_info['type'] == 'operation':
+                        elif task_info["type"] == "operation":
                             # Hardware operation (Robot/MCU)
                             self._execute_operation_task(loop, task_info)
                     else:
@@ -400,9 +426,7 @@ class TestExecutorThread(QThread):
                             )
                             logger.debug("🧹 EXECUTOR_CLEANUP: All tasks cleaned up successfully")
                         except asyncio.TimeoutError:
-                            logger.warning(
-                                "🧹 EXECUTOR_CLEANUP: Task cleanup timed out"
-                            )
+                            logger.warning("🧹 EXECUTOR_CLEANUP: Task cleanup timed out")
                         except Exception as cleanup_error:
                             logger.debug(
                                 f"🧹 EXECUTOR_CLEANUP: Task cleanup with exceptions: {cleanup_error}"
@@ -423,6 +447,10 @@ class TestExecutorThread(QThread):
         """Execute the selected test asynchronously"""
         # Local application imports
         from domain.value_objects.dut_command_info import DUTCommandInfo
+
+        # Validate test parameters
+        if not self.serial_number or not self.test_sequence:
+            raise ValueError("Test parameters not set (serial_number or test_sequence is None)")
 
         try:
             # Create DUT command info
@@ -727,7 +755,6 @@ class RobotHomeThread(QThread):
         """Execute robot home operation in separate thread"""
         # Third-party imports
         import asyncio
-
         from loguru import logger
 
         self.started.emit()
@@ -775,7 +802,6 @@ class RobotHomeThread(QThread):
         """Execute the robot home operation asynchronously using task-based pattern like START TEST"""
         # Third-party imports
         import asyncio
-
         from loguru import logger
 
         self.progress.emit("Starting robot home operation...")
@@ -842,7 +868,9 @@ class MainWindow(QMainWindow):
         # ✅ Create persistent TestExecutorThread at startup
         self.test_executor_thread = TestExecutorThread(container, self)
         self.test_executor_thread.start()
+        # Third-party imports
         from loguru import logger
+
         logger.info("🔧 TestExecutorThread created and started at application startup")
 
         self.robot_home_thread: Optional[RobotHomeThread] = (
@@ -856,9 +884,32 @@ class MainWindow(QMainWindow):
 
         # Initialize widgets containers for lazy loading
         self.content_widgets = {}
-        self.sidebar = None
-        self.content_stack = None
-        self.header = None
+        self.sidebar: Optional[SidebarWidget] = None
+        self.content_stack: Optional[QStackedWidget] = None
+        self.header: Optional[ModernHeaderWidget] = None
+
+        # Initialize page attributes (set to None until created)
+        self.dashboard_page: Optional[QWidget] = None
+        self.test_control_page: Optional[TestControlWidget] = None
+        self.robot_page: Optional[RobotControlWidget] = None
+        self.mcu_page: Optional[MCUControlWidget] = None
+        self.power_supply_page: Optional[QWidget] = None
+        self.digital_output_page: Optional[QWidget] = None
+        self.digital_input_page: Optional[QWidget] = None
+        self.loadcell_page: Optional[QWidget] = None
+        self.results_page: Optional[ResultsWidget] = None
+        self.statistics_page: Optional[QWidget] = None
+        self.statistics_header: Optional[QWidget] = None
+        self.overview_page: Optional["NewOverviewPage"] = None
+        self.analysis_page: Optional["NewAnalysisPage"] = None
+        self.advanced_page: Optional["NewAdvancedPage"] = None
+        self.logs_page: Optional[LogsWidget] = None
+        self.about_page: Optional[QWidget] = None
+        self.settings_page: Optional[SettingsWidget] = None
+        self.pages: dict = {}
+
+        # Test execution state
+        self._test_signals_connected: bool = False
 
         if lazy_init:
             self.setup_basic_ui()
@@ -1119,6 +1170,7 @@ class MainWindow(QMainWindow):
             return
 
         # Local imports
+        # Local application imports
         from ui.gui.widgets.content.digital_input import DigitalInputControlWidget
 
         self.digital_input_page = DigitalInputControlWidget(
@@ -1139,6 +1191,7 @@ class MainWindow(QMainWindow):
             return
 
         # Local imports
+        # Local application imports
         from ui.gui.widgets.content.loadcell import LoadcellControlWidget
 
         self.loadcell_page = LoadcellControlWidget(
@@ -1182,20 +1235,22 @@ class MainWindow(QMainWindow):
             logger.info("🔧 Initializing 3 enhanced statistics pages...")
 
             # Import enhanced components
+            # Third-party imports
+            from PySide6.QtWidgets import QTabWidget
+
             # Local application imports
             from ui.gui.widgets.content.statistics.enhanced_header_controls import (
                 EnhancedStatisticsHeaderControls,
             )
-            from ui.gui.widgets.content.statistics.pages.new_overview_page import (
-                NewOverviewPage,
+            from ui.gui.widgets.content.statistics.pages.new_advanced_page import (
+                NewAdvancedPage,
             )
             from ui.gui.widgets.content.statistics.pages.new_analysis_page import (
                 NewAnalysisPage,
             )
-            from ui.gui.widgets.content.statistics.pages.new_advanced_page import (
-                NewAdvancedPage,
+            from ui.gui.widgets.content.statistics.pages.new_overview_page import (
+                NewOverviewPage,
             )
-            from PySide6.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 
             # Get statistics service
             statistics_service = self.container.eol_statistics_service()
@@ -1216,7 +1271,8 @@ class MainWindow(QMainWindow):
 
             # Create tab widget for 3 pages
             tab_widget = QTabWidget()
-            tab_widget.setStyleSheet("""
+            tab_widget.setStyleSheet(
+                """
                 QTabWidget::pane {
                     border: 1px solid rgba(255, 255, 255, 0.1);
                     border-radius: 8px;
@@ -1240,7 +1296,8 @@ class MainWindow(QMainWindow):
                 QTabBar::tab:hover {
                     background-color: rgba(255, 255, 255, 0.05);
                 }
-            """)
+            """
+            )
 
             # Create 3 pages
             self.overview_page = NewOverviewPage(statistics_service=statistics_service)
@@ -1258,10 +1315,15 @@ class MainWindow(QMainWindow):
             def on_filters_changed(filters):
                 logger.info(f"Filters changed: {filters}")
                 # Update all 3 pages with new filters
+                # Third-party imports
                 import asyncio
-                asyncio.create_task(self.overview_page.update_data(filters))
-                asyncio.create_task(self.analysis_page.update_data(filters))
-                asyncio.create_task(self.advanced_page.update_data(filters))
+
+                if self.overview_page:
+                    asyncio.create_task(self.overview_page.update_data(filters))
+                if self.analysis_page:
+                    asyncio.create_task(self.analysis_page.update_data(filters))
+                if self.advanced_page:
+                    asyncio.create_task(self.advanced_page.update_data(filters))
 
             self.statistics_header.filter_changed.connect(on_filters_changed)
             logger.info("✅ Filter change handler connected to all pages")
@@ -1474,7 +1536,6 @@ class MainWindow(QMainWindow):
         # This placeholder is kept for compatibility but statistics pages are created separately
         # Third-party imports
         from loguru import logger
-        from PySide6.QtWidgets import QLabel
 
         logger.info("ℹ️ Statistics pages handled separately via init_statistics_tab()")
         placeholder = QLabel("Statistics - Use sidebar navigation to access statistics pages")
@@ -1545,7 +1606,9 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.progress_label)
 
         # Add zoom control (right side, permanent)
+        # Local application imports
         from ui.gui.widgets.footer import ZoomControl
+
         self.zoom_control = ZoomControl(container=self.container)
         self.zoom_control.zoom_changed.connect(self._on_zoom_changed)
         self.status_bar.addPermanentWidget(self._create_separator())
@@ -1591,14 +1654,16 @@ class MainWindow(QMainWindow):
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.VLine)
         separator.setFrameShadow(QFrame.Shadow.Plain)
-        separator.setStyleSheet("""
+        separator.setStyleSheet(
+            """
             QFrame {
                 color: rgba(255, 255, 255, 0.1);
                 background-color: rgba(255, 255, 255, 0.1);
                 max-width: 1px;
                 margin: 4px 8px;
             }
-        """)
+        """
+        )
         return separator
 
     def change_page(self, page_id: str) -> None:
@@ -1702,7 +1767,7 @@ class MainWindow(QMainWindow):
 
     def _on_zoom_changed(self, new_scale: float) -> None:
         """Handle zoom level changes - requires restart for complete scaling"""
-        from PySide6.QtWidgets import QMessageBox
+        # Third-party imports
         from loguru import logger
 
         logger.info(f"Zoom changed to {int(new_scale * 100)}%")
@@ -1716,11 +1781,10 @@ class MainWindow(QMainWindow):
             "The application must be restarted for the zoom change to take effect.\n\n"
             "Would you like to restart now?"
         )
-        msg_box.setStandardButtons(
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg_box.setDefaultButton(QMessageBox.StandardButton.Yes)
-        msg_box.setStyleSheet("""
+        msg_box.setStyleSheet(
+            """
             QMessageBox {
                 background-color: #1e1e1e;
             }
@@ -1740,19 +1804,23 @@ class MainWindow(QMainWindow):
             QPushButton:hover {
                 background-color: #42A5F5;
             }
-        """)
+        """
+        )
 
         result = msg_box.exec()
 
         if result == QMessageBox.StandardButton.Yes:
             # Restart application
             logger.info("Restarting application to apply zoom changes")
-            import sys
+            # Standard library imports
             import os
+            import sys
+
+            # Third-party imports
             from PySide6.QtCore import QCoreApplication
 
             # Get the current executable/script path
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 # Running as compiled executable
                 executable = sys.executable
             else:
@@ -1764,6 +1832,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         """Handle window close event with comprehensive cleanup"""
+        # Third-party imports
         from loguru import logger
 
         logger.info("🚪 Application closing - cleaning up resources...")
@@ -1773,7 +1842,7 @@ class MainWindow(QMainWindow):
             logger.info("🔌 Disconnecting signals...")
 
             # Sidebar signals
-            if hasattr(self, 'sidebar'):
+            if hasattr(self, "sidebar") and self.sidebar is not None:
                 try:
                     self.sidebar.page_changed.disconnect()
                     self.sidebar.settings_clicked.disconnect()
@@ -1781,14 +1850,14 @@ class MainWindow(QMainWindow):
                     pass
 
             # Header signals
-            if hasattr(self, 'header'):
+            if hasattr(self, "header") and self.header is not None:
                 try:
                     self.header.notifications_requested.disconnect()
                 except (RuntimeError, AttributeError):
                     pass
 
             # Test control page signals
-            if hasattr(self, 'test_control_page'):
+            if hasattr(self, "test_control_page") and self.test_control_page is not None:
                 try:
                     self.test_control_page.test_started.disconnect()
                     self.test_control_page.test_stopped.disconnect()
@@ -1799,14 +1868,14 @@ class MainWindow(QMainWindow):
                     pass
 
             # Zoom control signals
-            if hasattr(self, 'zoom_control'):
+            if hasattr(self, "zoom_control") and self.zoom_control is not None:
                 try:
                     self.zoom_control.zoom_changed.disconnect()
                 except (RuntimeError, AttributeError):
                     pass
 
             # Robot home thread signals
-            if hasattr(self, 'robot_home_thread') and self.robot_home_thread:
+            if hasattr(self, "robot_home_thread") and self.robot_home_thread:
                 try:
                     self.robot_home_thread.started.disconnect()
                     self.robot_home_thread.progress.disconnect()
@@ -1815,7 +1884,7 @@ class MainWindow(QMainWindow):
                     pass
 
             # Test executor thread signals
-            if hasattr(self, 'test_executor_thread') and self.test_executor_thread:
+            if hasattr(self, "test_executor_thread") and self.test_executor_thread:
                 try:
                     self.test_executor_thread.test_started.disconnect()
                     self.test_executor_thread.test_progress.disconnect()
@@ -1832,13 +1901,15 @@ class MainWindow(QMainWindow):
             logger.warning(f"Error disconnecting signals (non-critical): {e}")
 
         # 2. Clean up graphics effects to prevent memory leaks
-        if hasattr(self, 'content_stack'):
+        if hasattr(self, "content_stack") and self.content_stack is not None:
             try:
                 logger.info("🎨 Cleaning up graphics effects...")
-                for i in range(self.content_stack.count()):
-                    widget = self.content_stack.widget(i)
+                # Narrow type for Pylance - content_stack is guaranteed non-None here
+                content_stack = self.content_stack
+                for i in range(content_stack.count()):
+                    widget = content_stack.widget(i)
                     if widget:
-                        widget.setGraphicsEffect(None)  # Remove QGraphicsOpacityEffect
+                        widget.setGraphicsEffect(None)  # type: ignore[arg-type]  # PySide6 accepts None
                 logger.info("✅ Graphics effects cleaned")
             except Exception as e:
                 logger.debug(f"Graphics effect cleanup error: {e}")
@@ -1867,7 +1938,6 @@ class MainWindow(QMainWindow):
         logger.info("🚪 All resources cleaned up - closing application")
         event.accept()
 
-
     # Header Signal Handlers
     # ============================================================================
 
@@ -1878,14 +1948,11 @@ class MainWindow(QMainWindow):
 
     def _on_header_notifications_clicked(self) -> None:
         """Handle notifications button click from header"""
-        # Third-party imports
-        from PySide6.QtWidgets import QMessageBox
-
         # Show notifications dialog (placeholder)
         QMessageBox.information(
             self,
             "Notifications",
-            "No new notifications.\n\n" "System notifications and alerts will appear here.",
+            "No new notifications.\n\nSystem notifications and alerts will appear here.",
         )
 
     # Test Control Signal Handlers
@@ -1895,6 +1962,11 @@ class MainWindow(QMainWindow):
         """Handle test start request"""
         # Third-party imports
         from loguru import logger
+
+        # Validate required widgets exist
+        if not self.test_control_page or not self.results_page:
+            logger.error("Test control or results page not initialized")
+            return
 
         try:
             # ✅ Check if a test is already executing (not if thread is running)
@@ -1955,9 +2027,17 @@ class MainWindow(QMainWindow):
                 self.results_page.temp_force_chart.clear_data()
 
             # Clear live logs when starting a new test
-            if self.logs_page.log_viewer:
+            if (
+                self.logs_page
+                and hasattr(self.logs_page, "log_viewer")
+                and self.logs_page.log_viewer
+            ):
                 self.logs_page.log_viewer.clear_logs()
-            if self.test_control_page.log_viewer:
+            if (
+                self.test_control_page
+                and hasattr(self.test_control_page, "log_viewer")
+                and self.test_control_page.log_viewer
+            ):
                 self.test_control_page.log_viewer.clear_logs()
             logger.info("Previous test results and live logs cleared. Starting new test...")
             self.state_manager.add_log_message(
@@ -1998,6 +2078,9 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
+        if not self.test_control_page:
+            return
+
         logger.info("Test stop requested")
         self.state_manager.add_log_message("INFO", "TEST", "Test stop requested by user")
         self.state_manager.set_system_status("Stopping")
@@ -2025,6 +2108,9 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
+        if not self.test_control_page:
+            return
+
         logger.info("Test pause requested")
         self.state_manager.add_log_message("INFO", "TEST", "Test pause requested by user")
 
@@ -2036,6 +2122,9 @@ class MainWindow(QMainWindow):
         """Handle robot home request"""
         # Third-party imports
         from loguru import logger
+
+        if not self.test_control_page:
+            return
 
         logger.critical("🔥 DEBUG: _on_robot_home_requested method called!")
         try:
@@ -2090,7 +2179,9 @@ class MainWindow(QMainWindow):
         """Handle emergency stop request"""
         # Third-party imports
         from loguru import logger
-        from PySide6.QtCore import QTimer
+
+        if not self.test_control_page:
+            return
 
         logger.critical("EMERGENCY STOP REQUESTED")
 
@@ -2100,9 +2191,10 @@ class MainWindow(QMainWindow):
             logger.info("Executing immediate UI updates for Emergency Stop")
 
             # Update test control status immediately for user feedback
-            self.test_control_page.update_test_status(
-                "EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency"
-            )
+            if self.test_control_page:
+                self.test_control_page.update_test_status(
+                    "EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency"
+                )
 
             # Update header status
             if self.header is not None:
@@ -2111,8 +2203,9 @@ class MainWindow(QMainWindow):
             # Set emergency stop flag and disable START TEST button
             self.emergency_stop_active = True
             logger.info("Emergency stop state activated - START TEST button disabled")
-            self.test_control_page.disable_start_button()
-            logger.info("START TEST button disabled successfully")
+            if self.test_control_page:
+                self.test_control_page.disable_start_button()
+                logger.info("START TEST button disabled successfully")
 
         # Execute UI updates immediately
         immediate_ui_updates()
@@ -2169,6 +2262,9 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
+        if not self.test_control_page:
+            return
+
         logger.info("Robot home operation started in background thread")
         self.test_control_page.update_test_status("Robot Homing...", "status_running")
 
@@ -2188,8 +2284,11 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
+        if not self.test_control_page:
+            return
+
         # Stop progress bar animation
-        if hasattr(self.test_control_page, 'handle_robot_home_completed'):
+        if hasattr(self.test_control_page, "handle_robot_home_completed"):
             self.test_control_page.handle_robot_home_completed(success)
 
         if success:
@@ -2229,9 +2328,7 @@ class MainWindow(QMainWindow):
         """Execute emergency stop asynchronously using QTimer"""
         # Third-party imports
         import asyncio
-
         from loguru import logger
-        from PySide6.QtCore import QTimer
 
         try:
             # Create a single-shot timer to execute the async function
@@ -2291,7 +2388,7 @@ class MainWindow(QMainWindow):
 
             # ✅ Submit test to persistent TestExecutorThread (no new thread creation)
             # Connect thread signals if not already connected
-            if not hasattr(self, '_test_signals_connected'):
+            if not hasattr(self, "_test_signals_connected"):
                 self._connect_test_thread_signals()
                 self._test_signals_connected = True
 
@@ -2302,10 +2399,11 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Failed to start test execution thread: {e}")
             self.state_manager.add_log_message("ERROR", "TEST", f"Failed to start test: {str(e)}")
-            self.test_control_page.stop_indeterminate_progress()
-            self.test_control_page.update_test_status(
-                f"Test start failed: {str(e)}", "status_error"
-            )
+            if self.test_control_page:
+                self.test_control_page.stop_indeterminate_progress()
+                self.test_control_page.update_test_status(
+                    f"Test start failed: {str(e)}", "status_error"
+                )
             self._set_test_running_state(False)
 
     def _connect_test_thread_signals(self) -> None:
@@ -2340,12 +2438,12 @@ class MainWindow(QMainWindow):
         logger.debug(f"Hardware status changed: {hardware_name} = {is_connected}")
 
         # Update Robot page state
-        if hardware_name == "robot" and hasattr(self, "robot_page"):
+        if hardware_name == "robot" and hasattr(self, "robot_page") and self.robot_page is not None:
             self.robot_page.robot_state.set_connected(is_connected)
             logger.debug(f"Robot page state updated: connected={is_connected}")
 
         # Update MCU page state
-        elif hardware_name == "mcu" and hasattr(self, "mcu_page"):
+        elif hardware_name == "mcu" and hasattr(self, "mcu_page") and self.mcu_page is not None:
             self.mcu_page.mcu_state.set_connected(is_connected)
             logger.debug(f"MCU page state updated: connected={is_connected}")
 
@@ -2372,12 +2470,18 @@ class MainWindow(QMainWindow):
 
             # Synchronously check if hardware is connected (mock services return immediately)
             # Real hardware services may cache connection status, so this is safe
-            if hardware_name == "robot" and hasattr(self, "robot_page"):
+            if (
+                hardware_name == "robot"
+                and hasattr(self, "robot_page")
+                and self.robot_page is not None
+            ):
                 # Check if robot service thinks it's connected
                 # Note: For mock hardware, this will return False unless explicitly connected
                 # For real hardware during test, this should return True if test connected it
                 try:
+                    # Third-party imports
                     import asyncio
+
                     # Create a simple async check
                     loop = asyncio.new_event_loop()
                     is_connected = loop.run_until_complete(
@@ -2392,9 +2496,11 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     logger.warning(f"Could not check robot connection status: {e}")
 
-            elif hardware_name == "mcu" and hasattr(self, "mcu_page"):
+            elif hardware_name == "mcu" and hasattr(self, "mcu_page") and self.mcu_page is not None:
                 try:
+                    # Third-party imports
                     import asyncio
+
                     loop = asyncio.new_event_loop()
                     is_connected = loop.run_until_complete(
                         hardware_facade.mcu_service.is_connected()
@@ -2413,6 +2519,9 @@ class MainWindow(QMainWindow):
 
     def _set_test_running_state(self, running: bool) -> None:
         """Set GUI state for test running/stopped"""
+        if not self.test_control_page:
+            return
+
         # Update test control buttons
         if hasattr(self.test_control_page, "start_btn") and self.test_control_page.start_btn:
             # Only enable start button if not running AND not in emergency stop state
@@ -2453,6 +2562,9 @@ class MainWindow(QMainWindow):
         # Local application imports
         from ui.gui.services.gui_state_manager import TestProgress
 
+        if not self.test_control_page:
+            return
+
         progress_percent = int((current_cycle / total_cycles) * 100) if total_cycles > 0 else 0
 
         # Update test control progress bar
@@ -2464,10 +2576,13 @@ class MainWindow(QMainWindow):
         if self.header is not None:
             self.header.show_test_progress(progress_percent)
 
+        # Get current test name, ensuring it's never None
+        current_test_name = "Unknown"
+        if self.test_executor_thread and self.test_executor_thread.test_sequence:
+            current_test_name = self.test_executor_thread.test_sequence
+
         progress = TestProgress(
-            current_test=(
-                self.test_executor_thread.test_sequence if self.test_executor_thread else "Unknown"
-            ),
+            current_test=current_test_name,
             progress_percent=progress_percent,
             current_cycle=current_cycle,
             total_cycles=total_cycles,
@@ -2536,10 +2651,13 @@ class MainWindow(QMainWindow):
         # Third-party imports
         from loguru import logger
 
+        if not self.test_control_page:
+            return
+
         logger.info(f"Test completed: success={success}, message={message}")
 
         # Stop progress bar animation
-        if hasattr(self.test_control_page, 'handle_test_completed'):
+        if hasattr(self.test_control_page, "handle_test_completed"):
             self.test_control_page.handle_test_completed(success)
 
         # Add completion message to logs
@@ -2571,6 +2689,9 @@ class MainWindow(QMainWindow):
         """Handle test error from thread"""
         # Third-party imports
         from loguru import logger
+
+        if not self.test_control_page:
+            return
 
         logger.error(f"Test execution error: {error_message}")
 

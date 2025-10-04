@@ -8,21 +8,15 @@ Uses Material Design 3 components for consistent styling.
 from typing import Dict, Optional
 
 # Third-party imports
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDoubleSpinBox,
-    QGridLayout,
     QHBoxLayout,
-    QLabel,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
-# Local application imports
-from ui.gui.utils.styling import ThemeManager
-
+# Local folder imports
 # Local folder imports - use robot's modern components
 from ..robot.modern_components import ModernButton, ModernCard, StatusPill
 from .event_handlers import LoadcellEventHandlers
@@ -124,7 +118,7 @@ class ConnectionGroup:
 
         return card
 
-    def get_buttons(self) -> Dict[str, QPushButton]:
+    def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references for state management"""
         return {
             "connect": self.connect_btn,
@@ -175,7 +169,7 @@ class MeasurementGroup:
 
         return card
 
-    def get_buttons(self) -> Dict[str, QPushButton]:
+    def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references for state management"""
         return {
             "zero_calibration": self.zero_calibration_btn,
@@ -214,7 +208,7 @@ class HoldControlGroup:
 
         return card
 
-    def get_buttons(self) -> Dict[str, QPushButton]:
+    def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references for state management"""
         return {
             "hold": self.hold_btn,
@@ -228,7 +222,8 @@ def create_modern_progress_bar() -> QProgressBar:
     progress.setRange(0, 0)  # Indeterminate progress
     progress.setTextVisible(False)
     progress.setFixedHeight(4)
-    progress.setStyleSheet("""
+    progress.setStyleSheet(
+        """
         QProgressBar {
             border: none;
             background-color: rgba(255, 255, 255, 0.1);
@@ -238,5 +233,6 @@ def create_modern_progress_bar() -> QProgressBar:
             background-color: #2196F3;
             border-radius: 2px;
         }
-    """)
+    """
+    )
     return progress

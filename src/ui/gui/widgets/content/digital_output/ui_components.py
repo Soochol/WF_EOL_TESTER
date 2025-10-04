@@ -11,20 +11,15 @@ from typing import Dict, List, Optional
 # Third-party imports
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QProgressBar,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
-
-# Local application imports
-from ui.gui.utils.styling import ThemeManager
 
 # Local folder imports
 from .event_handlers import DigitalOutputEventHandlers
@@ -124,7 +119,9 @@ class ConnectionGroup:
 class OutputControlGroup:
     """Output channel control group"""
 
-    def __init__(self, event_handlers: DigitalOutputEventHandlers, state: DigitalOutputControlState):
+    def __init__(
+        self, event_handlers: DigitalOutputEventHandlers, state: DigitalOutputControlState
+    ):
         self.event_handlers = event_handlers
         self.state = state
         self.channel_combo: Optional[QComboBox] = None
@@ -319,7 +316,8 @@ class AllOutputsDisplayGroup:
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setMaximumHeight(200)
-        scroll_area.setStyleSheet("""
+        scroll_area.setStyleSheet(
+            """
             QScrollArea {
                 border: none;
                 background-color: transparent;
@@ -333,7 +331,8 @@ class AllOutputsDisplayGroup:
                 background-color: #555555;
                 border-radius: 4px;
             }
-        """)
+        """
+        )
 
         # Content widget
         content_widget = QWidget()
@@ -446,7 +445,8 @@ class LEDToggleGrid(QWidget):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setMaximumHeight(200)
-        scroll_area.setStyleSheet("""
+        scroll_area.setStyleSheet(
+            """
             QScrollArea {
                 border: none;
                 background-color: transparent;
@@ -460,7 +460,8 @@ class LEDToggleGrid(QWidget):
                 background-color: #555555;
                 border-radius: 4px;
             }
-        """)
+        """
+        )
 
         # Content widget
         content_widget = QWidget()

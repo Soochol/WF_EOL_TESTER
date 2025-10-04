@@ -8,6 +8,7 @@ Uses Material Design 3 components for consistent styling.
 from typing import Dict, Optional
 
 # Third-party imports
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
@@ -19,10 +20,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
 
 # Local application imports
-from ui.gui.widgets.content.robot.modern_components import ModernButton, ModernCard, StatusPill
+from ui.gui.widgets.content.robot.modern_components import (
+    ModernButton,
+    ModernCard,
+    StatusPill,
+)
 
 # Local folder imports
 from .event_handlers import MCUEventHandlers
@@ -169,7 +173,8 @@ class TemperatureControlGroup:
         temp_display_layout.addWidget(self.read_temp_btn)
 
         self.current_temp_label = QLabel("--°C")
-        self.current_temp_label.setStyleSheet("""
+        self.current_temp_label.setStyleSheet(
+            """
             QLabel {
                 color: #FF9800;
                 font-size: 14px;
@@ -180,7 +185,8 @@ class TemperatureControlGroup:
                 border: 1px solid rgba(255, 152, 0, 0.3);
                 min-width: 60px;
             }
-        """)
+        """
+        )
         temp_display_layout.addWidget(self.current_temp_label)
         temp_display_layout.addStretch()
         main_layout.addLayout(temp_display_layout)
@@ -199,8 +205,9 @@ class TemperatureControlGroup:
 
         self.set_operating_btn = ModernButton("Set", "check", "success")
         self.set_operating_btn.clicked.connect(
-            lambda: self.event_handlers.on_set_operating_temperature(
-                self.operating_temp_input.value()
+            lambda input_widget=self.operating_temp_input: (
+                self.event_handlers.on_set_operating_temperature(input_widget.value())
+                if input_widget else None
             )
         )
         op_layout.addWidget(self.set_operating_btn)
@@ -220,8 +227,9 @@ class TemperatureControlGroup:
 
         self.set_cooling_btn = ModernButton("Set", "check", "primary")
         self.set_cooling_btn.clicked.connect(
-            lambda: self.event_handlers.on_set_cooling_temperature(
-                self.cooling_temp_input.value()
+            lambda input_widget=self.cooling_temp_input: (
+                self.event_handlers.on_set_cooling_temperature(input_widget.value())
+                if input_widget else None
             )
         )
         cool_layout.addWidget(self.set_cooling_btn)
@@ -241,8 +249,9 @@ class TemperatureControlGroup:
 
         self.set_upper_btn = ModernButton("Set", "check", "warning")
         self.set_upper_btn.clicked.connect(
-            lambda: self.event_handlers.on_set_upper_temperature(
-                self.upper_temp_input.value()
+            lambda input_widget=self.upper_temp_input: (
+                self.event_handlers.on_set_upper_temperature(input_widget.value())
+                if input_widget else None
             )
         )
         upper_layout.addWidget(self.set_upper_btn)
@@ -260,7 +269,8 @@ class TemperatureControlGroup:
         spinbox.setRange(-50.0, 200.0)
         spinbox.setSingleStep(1.0)
         spinbox.setDecimals(1)
-        spinbox.setStyleSheet("""
+        spinbox.setStyleSheet(
+            """
             QDoubleSpinBox {
                 background-color: #2d2d2d;
                 color: #ffffff;
@@ -273,7 +283,8 @@ class TemperatureControlGroup:
             QDoubleSpinBox:focus {
                 border: 1px solid #2196F3;
             }
-        """)
+        """
+        )
         return spinbox
 
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
@@ -367,7 +378,8 @@ class AdvancedControlGroup:
         self.heating_hold_time_input.setSingleStep(1000)
         self.heating_hold_time_input.setValue(60000)
         self.heating_hold_time_input.setSuffix(" ms")
-        self.heating_hold_time_input.setStyleSheet("""
+        self.heating_hold_time_input.setStyleSheet(
+            """
             QSpinBox {
                 background-color: #2d2d2d;
                 color: #ffffff;
@@ -380,7 +392,8 @@ class AdvancedControlGroup:
             QSpinBox:focus {
                 border: 1px solid #2196F3;
             }
-        """)
+        """
+        )
         heating_hold_layout.addWidget(self.heating_hold_time_input)
         heating_hold_layout.addStretch()
         main_layout.addLayout(heating_hold_layout)
@@ -391,10 +404,13 @@ class AdvancedControlGroup:
 
         self.start_heating_btn = ModernButton("Start Heating", "zap", "warning")
         self.start_heating_btn.clicked.connect(
-            lambda: self.event_handlers.on_start_heating(
-                self.heating_op_temp_input.value(),
-                self.heating_standby_temp_input.value(),
-                self.heating_hold_time_input.value()
+            lambda op_temp=self.heating_op_temp_input, standby_temp=self.heating_standby_temp_input, hold_time=self.heating_hold_time_input: (
+                self.event_handlers.on_start_heating(
+                    op_temp.value(),
+                    standby_temp.value(),
+                    hold_time.value(),
+                )
+                if op_temp and standby_temp and hold_time else None
             )
         )
         heating_cooling_layout.addWidget(self.start_heating_btn)
@@ -417,7 +433,8 @@ class AdvancedControlGroup:
         fan_header_layout.addWidget(fan_label)
 
         self.fan_speed_label = QLabel("5")
-        self.fan_speed_label.setStyleSheet("""
+        self.fan_speed_label.setStyleSheet(
+            """
             QLabel {
                 color: #2196F3;
                 font-size: 14px;
@@ -427,13 +444,16 @@ class AdvancedControlGroup:
                 border-radius: 6px;
                 min-width: 30px;
             }
-        """)
+        """
+        )
         fan_header_layout.addWidget(self.fan_speed_label)
         fan_header_layout.addStretch()
 
         self.set_fan_speed_btn = ModernButton("Set", "check", "success")
         self.set_fan_speed_btn.clicked.connect(
-            lambda: self.event_handlers.on_set_fan_speed(self.fan_speed_slider.value())
+            lambda slider=self.fan_speed_slider: (
+                self.event_handlers.on_set_fan_speed(slider.value()) if slider else None
+            )
         )
         fan_header_layout.addWidget(self.set_fan_speed_btn)
 
@@ -446,9 +466,12 @@ class AdvancedControlGroup:
         self.fan_speed_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.fan_speed_slider.setTickInterval(1)
         self.fan_speed_slider.valueChanged.connect(
-            lambda val: self.fan_speed_label.setText(str(val))
+            lambda val, label=self.fan_speed_label: (
+                label.setText(str(val)) if label else None
+            )
         )
-        self.fan_speed_slider.setStyleSheet("""
+        self.fan_speed_slider.setStyleSheet(
+            """
             QSlider::groove:horizontal {
                 background: #2d2d2d;
                 height: 6px;
@@ -469,7 +492,8 @@ class AdvancedControlGroup:
                     stop:0 #2196F3, stop:1 #1976D2);
                 border-radius: 3px;
             }
-        """)
+        """
+        )
         fan_layout.addWidget(self.fan_speed_slider)
 
         main_layout.addLayout(fan_layout)
@@ -486,7 +510,8 @@ class AdvancedControlGroup:
         spinbox.setRange(30.0, 80.0)
         spinbox.setSingleStep(1.0)
         spinbox.setDecimals(1)
-        spinbox.setStyleSheet("""
+        spinbox.setStyleSheet(
+            """
             QDoubleSpinBox {
                 background-color: #2d2d2d;
                 color: #ffffff;
@@ -499,7 +524,8 @@ class AdvancedControlGroup:
             QDoubleSpinBox:focus {
                 border: 1px solid #2196F3;
             }
-        """)
+        """
+        )
         return spinbox
 
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
@@ -519,7 +545,8 @@ def create_modern_progress_bar() -> QProgressBar:
     progress_bar.setRange(0, 0)  # Indeterminate progress
     progress_bar.setTextVisible(True)
     progress_bar.setFormat("Processing...")
-    progress_bar.setStyleSheet("""
+    progress_bar.setStyleSheet(
+        """
         QProgressBar {
             background-color: #2d2d2d;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -534,5 +561,6 @@ def create_modern_progress_bar() -> QProgressBar:
                 stop:0 #2196F3, stop:1 #1976D2);
             border-radius: 7px;
         }
-    """)
+    """
+    )
     return progress_bar

@@ -22,11 +22,21 @@ from PySide6.QtWidgets import (
 )
 
 # Local application imports
-from ui.gui.widgets.content.robot.modern_components import ModernButton, ModernCard, StatusPill
+from ui.gui.widgets.content.robot.modern_components import (
+    ModernButton,
+    ModernCard,
+    StatusPill,
+)
 
 # Local folder imports
 from .event_handlers import DigitalInputEventHandlers
 from .state_manager import DigitalInputControlState
+
+
+# Constants for contact type configuration
+NC_CHANNELS = {8, 9}  # B-contact (Normally Closed) channels
+CONTACT_TYPE_NC = "B-contact (NC)"
+CONTACT_TYPE_NO = "A-contact (NO)"
 
 
 class StatusDisplayGroup:
@@ -175,7 +185,7 @@ class InputControlGroup:
         contact_label.setStyleSheet("color: #999999; font-size: 12px;")
         status_grid.addWidget(contact_label, 2, 0)
 
-        self.contact_type_label = QLabel("A-contact (NO)")
+        self.contact_type_label = QLabel(CONTACT_TYPE_NO)
         self.contact_type_label.setStyleSheet("color: #cccccc; font-size: 12px;")
         status_grid.addWidget(self.contact_type_label, 2, 1)
 
@@ -199,10 +209,9 @@ class InputControlGroup:
 
     def _on_channel_changed(self, index: int) -> None:
         """Update contact type display when channel changes"""
-        if index in [8, 9]:
-            self.contact_type_label.setText("B-contact (NC)")
-        else:
-            self.contact_type_label.setText("A-contact (NO)")
+        contact_type = CONTACT_TYPE_NC if index in NC_CHANNELS else CONTACT_TYPE_NO
+        if self.contact_type_label:
+            self.contact_type_label.setText(contact_type)
 
     def _on_read_input(self) -> None:
         """Handle read input button click"""
@@ -316,15 +325,14 @@ class AllInputsDisplayGroup:
         card.add_widget(read_all_button)
 
         # Connect to state changes to enable/disable button
-        self.state.connection_changed.connect(
-            lambda connected: read_all_button.setEnabled(connected)
-        )
+        self.state.connection_changed.connect(read_all_button.setEnabled)
 
         # Scroll area for channels
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setMaximumHeight(250)
-        scroll_area.setStyleSheet("""
+        scroll_area.setStyleSheet(
+            """
             QScrollArea {
                 border: none;
                 background-color: transparent;
@@ -338,7 +346,8 @@ class AllInputsDisplayGroup:
                 background-color: #555555;
                 border-radius: 4px;
             }
-        """)
+        """
+        )
 
         # Content widget
         content_widget = QWidget()
