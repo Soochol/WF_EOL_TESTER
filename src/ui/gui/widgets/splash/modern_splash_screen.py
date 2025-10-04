@@ -27,11 +27,15 @@ class ModernSplashScreen(QSplashScreen):
         pixmap = QPixmap(500, 300)
         pixmap.fill(Qt.GlobalColor.white)
 
-        # Remove WindowStaysOnTopHint to not block other windows
+        # Initialize with pixmap
         super().__init__(pixmap)
 
-        # Window flags - removed WindowStaysOnTopHint
-        self.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint)
+        # Window flags - keep on top for visibility during startup
+        self.setWindowFlags(
+            Qt.WindowType.SplashScreen
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
 
         # Add subtle border
         self.setStyleSheet(
@@ -65,10 +69,12 @@ class ModernSplashScreen(QSplashScreen):
 
     def _setup_animations(self):
         """Setup fade animations only"""
-        # Fade in animation
-        self.setWindowOpacity(0.0)
+        # Start with full opacity for immediate visibility
+        self.setWindowOpacity(1.0)
+
+        # Fade in animation (for smooth appearance)
         self.fade_in_animation = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_in_animation.setDuration(400)
+        self.fade_in_animation.setDuration(300)  # Faster fade in
         self.fade_in_animation.setStartValue(0.0)
         self.fade_in_animation.setEndValue(1.0)
         self.fade_in_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
