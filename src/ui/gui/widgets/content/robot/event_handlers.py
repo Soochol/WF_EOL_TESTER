@@ -171,8 +171,10 @@ class RobotEventHandlers(QObject):
             logger.error(f"Homing failed: {e}")
             self.home_completed.emit(False, f"Homing failed: {str(e)}")
         finally:
+            logger.debug("_async_home finally block - restoring button states")
             self.state.set_homing_in_progress(False)  # Restore buttons after homing
             self.state.hide_progress()
+            logger.debug("_async_home finally block - completed")
 
     def on_move_absolute(
         self,
