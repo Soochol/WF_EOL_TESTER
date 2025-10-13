@@ -2655,10 +2655,25 @@ class MainWindow(QMainWindow):
                 else:
                     logger.info("Test completed (single cycle or no individual cycle data)")
 
+                # Extract serial number from test_id or use stored serial_number from TestExecutorThread
+                serial_number = "N/A"
+                if hasattr(result_data, "test_id") and result_data.test_id:
+                    # Try to extract serial number from TestId
+                    extracted_serial = result_data.test_id.extract_serial_number()
+                    if extracted_serial:
+                        serial_number = extracted_serial
+                    else:
+                        # Fall back to stored serial_number from TestExecutorThread
+                        if self.test_executor_thread and hasattr(self.test_executor_thread, 'serial_number'):
+                            serial_number = self.test_executor_thread.serial_number or "N/A"
+                elif self.test_executor_thread and hasattr(self.test_executor_thread, 'serial_number'):
+                    # Use serial number from TestExecutorThread
+                    serial_number = self.test_executor_thread.serial_number or "N/A"
+
                 # Create GUI TestResult
                 test_result = TestResult(
                     test_id=str(getattr(result_data, "test_id", "Unknown")),
-                    serial_number=str(getattr(result_data, "serial_number", "N/A")),
+                    serial_number=serial_number,
                     status=status_text,
                     timestamp=datetime.now(),
                     duration_seconds=getattr(result_data, "test_duration_seconds", 0.0),
