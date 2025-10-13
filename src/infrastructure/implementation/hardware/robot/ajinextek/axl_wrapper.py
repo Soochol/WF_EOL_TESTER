@@ -772,19 +772,39 @@ class AXLWrapper:
         except AttributeError:
             missing_functions.append("AxmStatusReadTorque")
 
-        # Log all missing functions at once
+        # Log all missing functions at once (if any)
         if missing_functions:
             # Third-party imports
             from loguru import logger
 
-            logger.warning(
-                f"AXL Library: {len(missing_functions)} functions not found in DLL {DLL_PATH}"
-            )
-            for func in missing_functions:
-                logger.warning(f"  Missing function: {func}")
-            logger.info(
-                "Hardware service will continue but some functions may have limited functionality"
-            )
+            # Separate optional functions from critical ones
+            optional_functions = {
+                "AxmStatusReadTorque",  # Only available in specific hardware (MLII, SIIIH)
+                "AxmStatusReadServoLoadRatio",  # Advanced monitoring feature
+                "AxmStatusSetReadServoLoadRatio",  # Advanced monitoring feature
+            }
+
+            critical_missing = [f for f in missing_functions if f not in optional_functions]
+            optional_missing = [f for f in missing_functions if f in optional_functions]
+
+            if critical_missing:
+                logger.warning(
+                    f"AXL Library: {len(critical_missing)} critical functions not found in DLL {DLL_PATH}"
+                )
+                for func in critical_missing:
+                    logger.warning(f"  Missing critical function: {func}")
+                logger.warning(
+                    "Some hardware operations may not work correctly"
+                )
+
+            if optional_missing:
+                logger.info(
+                    f"AXL Library: {len(optional_missing)} optional functions not available (hardware-specific features)"
+                )
+                logger.debug(f"  Optional functions not found: {', '.join(optional_missing)}")
+                logger.info(
+                    "Basic hardware operations will work normally. Advanced monitoring features may be limited."
+                )
 
     # === Library Functions ===
     def open(self, irq_no: int = 7) -> int:  # pylint: disable=redefined-builtin  # noqa: A003
