@@ -110,11 +110,19 @@ class RobotControlState(QObject):
         """Get servo state"""
         return self._servo_enabled
 
-    def set_servo_enabled(self, enabled: bool) -> None:
-        """Set servo state and update related button states"""
-        if self._servo_enabled != enabled:
-            self._servo_enabled = enabled
-            self.servo_changed.emit(enabled)
+    def set_servo_enabled(self, enabled: bool, force_update: bool = False) -> None:
+        """Set servo state and update related button states
+
+        Args:
+            enabled: Servo enabled state
+            force_update: If True, update button states even if servo state hasn't changed
+        """
+        state_changed = self._servo_enabled != enabled
+
+        if state_changed or force_update:
+            if state_changed:
+                self._servo_enabled = enabled
+                self.servo_changed.emit(enabled)
 
             if enabled:
                 # Servo ON: Enable move buttons, home button, toggle servo buttons
@@ -123,7 +131,8 @@ class RobotControlState(QObject):
                 self.set_button_enabled("home", True)        # ✅ Home enabled (requires servo)
                 self.set_button_enabled("move_abs", True)    # Movement enabled
                 self.set_button_enabled("move_rel", True)    # Movement enabled
-                self.update_status("Servo enabled - Motor active, motion commands available", "info")
+                if state_changed or force_update:
+                    self.update_status("Servo enabled - Motor active, motion commands available", "info")
             else:
                 # Servo OFF: Disable move buttons, home button, toggle servo buttons
                 self.set_button_enabled("servo_on", True)    # Can turn on
@@ -131,7 +140,8 @@ class RobotControlState(QObject):
                 self.set_button_enabled("home", False)       # ✅ Home disabled (requires servo)
                 self.set_button_enabled("move_abs", False)   # Movement disabled
                 self.set_button_enabled("move_rel", False)   # Movement disabled
-                self.update_status("Servo disabled - Turn on servo to enable motion", "warning")
+                if state_changed or force_update:
+                    self.update_status("Servo disabled - Turn on servo to enable motion", "warning")
 
     # Position tracking
     @property
@@ -232,7 +242,8 @@ class RobotControlState(QObject):
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)
                 # Restore servo-dependent buttons (includes home button)
-                self.set_servo_enabled(self._servo_enabled)
+                # Use force_update=True to restore button states even if servo state hasn't changed
+                self.set_servo_enabled(self._servo_enabled, force_update=True)
 
     def set_motion_in_progress(self, in_progress: bool) -> None:
         """Set motion in progress state and update button states"""
@@ -256,7 +267,8 @@ class RobotControlState(QObject):
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)
                 # Restore servo-dependent buttons (includes home button)
-                self.set_servo_enabled(self._servo_enabled)
+                # Use force_update=True to restore button states even if servo state hasn't changed
+                self.set_servo_enabled(self._servo_enabled, force_update=True)
 
     # Reset state
     def reset(self) -> None:
