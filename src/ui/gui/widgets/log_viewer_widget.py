@@ -125,23 +125,107 @@ class LogViewerWidget(QWidget):
 
     def _add_log_entry(self, level: str, component: str, message: str, timestamp: str) -> None:
         """Add a log entry to the display"""
-        # Format log entry
-        log_line = f"{timestamp} [{level.ljust(5)}] {component.upper()} | {message}"
+        # Parse ANSI colors and convert to HTML
+        colored_message = self._parse_ansi_colors(message)
+
+        # Format log entry with timestamp and level
+        from html import escape
+        timestamp_part = escape(timestamp)
+        level_part = escape(level.ljust(5))
+        component_part = escape(component.upper())
 
         # Get color for log level
-        color = self._get_level_color(level)
+        level_color = self._get_level_color(level)
+
+        # Build HTML with proper color application
+        log_html = (
+            f'<span style="color: #00D9A5;">{timestamp_part}</span> '  # Green timestamp
+            f'<span style="color: {level_color};">[{level_part}]</span> '  # Level-colored level
+            f'<span style="color: #4da6ff;">{component_part}</span> | '  # Blue component
+            f'{colored_message}'  # Message with preserved ANSI colors
+        )
 
         # Add to display with color
         cursor = self.log_display.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
 
         # Insert colored text
-        cursor.insertHtml(f'<span style="color: {color};">{log_line}</span><br>')
+        cursor.insertHtml(f'{log_html}<br>')
 
         # Auto-scroll to bottom if enabled
         if self.auto_scroll:
             scrollbar = self.log_display.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
+
+    def _parse_ansi_colors(self, text: str) -> str:
+        """Parse ANSI color codes and convert to HTML spans with colors"""
+        import re
+        from html import escape
+
+        # ANSI to HTML color mapping (matching loguru's default colors)
+        ansi_colors = {
+            '30': '#000000',  # Black
+            '31': '#ff4444',  # Red
+            '32': '#00D9A5',  # Green (matching timestamp)
+            '33': '#ffaa00',  # Yellow
+            '34': '#4da6ff',  # Blue (matching component)
+            '35': '#ff66ff',  # Magenta
+            '36': '#00D9A5',  # Cyan
+            '37': '#cccccc',  # White
+            '90': '#666666',  # Bright Black (Gray)
+            '91': '#ff6666',  # Bright Red
+            '92': '#00ffaa',  # Bright Green
+            '93': '#ffdd00',  # Bright Yellow
+            '94': '#66aaff',  # Bright Blue
+            '95': '#ff99ff',  # Bright Magenta
+            '96': '#00ffff',  # Bright Cyan
+            '97': '#ffffff',  # Bright White
+        }
+
+        # Pattern to match ANSI codes
+        ansi_pattern = re.compile(r'\x1b\[([0-9;]+)m')
+
+        result = []
+        last_pos = 0
+        current_color = None
+
+        for match in ansi_pattern.finditer(text):
+            # Add text before this ANSI code
+            if match.start() > last_pos:
+                text_segment = text[last_pos:match.start()]
+                escaped_text = escape(text_segment)
+
+                if current_color:
+                    result.append(f'<span style="color: {current_color};">{escaped_text}</span>')
+                else:
+                    result.append(escaped_text)
+
+            # Parse ANSI code
+            codes = match.group(1).split(';')
+
+            # Reset code (0 or empty)
+            if '0' in codes or match.group(1) == '':
+                current_color = None
+            else:
+                # Look for color codes
+                for code in codes:
+                    if code in ansi_colors:
+                        current_color = ansi_colors[code]
+                        break
+
+            last_pos = match.end()
+
+        # Add remaining text
+        if last_pos < len(text):
+            text_segment = text[last_pos:]
+            escaped_text = escape(text_segment)
+
+            if current_color:
+                result.append(f'<span style="color: {current_color};">{escaped_text}</span>')
+            else:
+                result.append(escaped_text)
+
+        return ''.join(result)
 
     def _setup_debug_level_controls(self) -> QHBoxLayout:
         """Setup debug level control widgets"""

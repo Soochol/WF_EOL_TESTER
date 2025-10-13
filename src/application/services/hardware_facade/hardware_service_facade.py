@@ -770,11 +770,11 @@ class HardwareServiceFacade:
                 # Save cycle data immediately if repository service is available
                 if self._repository_service:
                     await self._save_cycle_measurements(
-                        measurements_dict,
+                        cycle_measurements_dict,  # Use cycle-specific measurements, not accumulated
                         repeat_idx + 1,
                         repeat_count,
                         dut_info.serial_number,
-                        timing_data,
+                        cycle_timing_data,  # Use cycle-specific timing data with temp_38 format
                     )
 
                 # Create individual cycle result for this repeat
@@ -1075,25 +1075,12 @@ class HardwareServiceFacade:
             return
 
         try:
-            # Create a copy of current measurements for this cycle
-            cycle_measurements = {}
-            for temp, positions in measurements_dict.items():
-                cycle_measurements[temp] = {}
-                for pos, measurements in positions.items():
-                    force_data = measurements["force"]
-                    if isinstance(force_data, list):
-                        # Multiple measurements - get the one for this cycle
-                        if len(force_data) >= cycle_num:
-                            cycle_force = force_data[cycle_num - 1]
-                            cycle_measurements[temp][pos] = {"force": cycle_force}
-                    else:
-                        # Single measurement (repeat_count = 1) - use the value directly
-                        cycle_measurements[temp][pos] = {"force": force_data}
-
-            if cycle_measurements:
+            # measurements_dict is already cycle-specific from caller
+            # No need to extract from list - just use it directly
+            if measurements_dict:
                 # Convert to TestMeasurements object with timing data
                 cycle_test_measurements = TestMeasurements.from_legacy_dict(
-                    cycle_measurements, timing_data
+                    measurements_dict, timing_data
                 )
 
                 # Save to repository with cycle identifier

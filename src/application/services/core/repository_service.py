@@ -547,9 +547,12 @@ class RepositoryService:
             for temp in measurements.get_temperatures():
                 for pos in measurements.get_positions_for_temperature(temp):
                     reading = measurements.get_reading(temp, pos)
+                    key = f"T{int(temp)}_P{int(pos/1000)}"
                     if reading:
-                        key = f"T{int(temp)}_P{int(pos/1000)}"
                         temp_pos_values[key] = reading.force
+                    else:
+                        # Ensure key exists even if no reading
+                        temp_pos_values[key] = 0.0
 
             # Add values in sorted order to match header (round to 2 decimal places)
             for key in sorted(temp_pos_values.keys()):
@@ -558,14 +561,20 @@ class RepositoryService:
 
             # Add timing data (average heating/cooling times for this cycle)
             if timing_data:
-                # Calculate average heating and cooling times for this cycle
+                # Calculate average heating and cooling times
+                # timing_data format: {"temp_38": {"heating_time_s": 0.2, "cooling_time_s": 0.2}, ...}
                 cycle_heating_times = []
                 cycle_cooling_times = []
 
                 for key, timing in timing_data.items():
-                    if timing.get("cycle") == cycle_num:
-                        cycle_heating_times.append(timing.get("heating_time_s", 0.0))
-                        cycle_cooling_times.append(timing.get("cooling_time_s", 0.0))
+                    if isinstance(timing, dict):
+                        heating_time = timing.get("heating_time_s", 0.0)
+                        cooling_time = timing.get("cooling_time_s", 0.0)
+
+                        if heating_time > 0:
+                            cycle_heating_times.append(heating_time)
+                        if cooling_time > 0:
+                            cycle_cooling_times.append(cooling_time)
 
                 # Use average times (or 0.0 if no data)
                 avg_heating_time = (
