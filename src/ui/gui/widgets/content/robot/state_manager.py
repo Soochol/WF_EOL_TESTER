@@ -81,7 +81,7 @@ class RobotControlState(QObject):
                 self.set_button_enabled("home", False)  # ✅ Disabled until servo is on (home requires servo)
                 self.set_button_enabled("move_abs", False)  # Disabled until servo is on
                 self.set_button_enabled("move_rel", False)  # Disabled until servo is on
-                self.set_button_enabled("get_position", True)
+                self.set_button_enabled("get_position", False)  # Disabled initially (enable after home/motion)
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)  # Always enabled
                 self.update_status("Robot connected - Turn on servo to enable motion", "info")
