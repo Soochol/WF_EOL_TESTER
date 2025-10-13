@@ -47,7 +47,7 @@ class StatusDisplayGroup:
 
         # Force status pill
         self.force_pill = StatusPill("Force:")
-        self.force_pill.set_status("0.000 N", "#cccccc")
+        self.force_pill.set_status("0.000 kgf", "#cccccc")
         pills_layout.addWidget(self.force_pill)
 
         # Hold status pill
@@ -77,7 +77,8 @@ class StatusDisplayGroup:
     def _on_force_changed(self, force: float) -> None:
         """Update force pill"""
         if self.force_pill:
-            self.force_pill.set_status(f"{force:.3f} N", "#2196F3")
+            # Force is already in kgf from loadcell service
+            self.force_pill.set_status(f"{force:.3f} kgf", "#2196F3")
 
     def _on_hold_changed(self, held: bool) -> None:
         """Update hold status pill"""

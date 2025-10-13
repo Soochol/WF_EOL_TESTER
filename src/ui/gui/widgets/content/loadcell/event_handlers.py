@@ -133,7 +133,7 @@ class LoadcellEventHandlers(QObject):
             force_value = await self.loadcell_service.read_force()
             self.state.set_force(force_value.value)
             self.force_read.emit(force_value.value)
-            self.state.update_status(f"Force: {force_value.value:.3f} N", "info")
+            self.state.update_status(f"Force: {force_value.value:.3f} kgf", "info")
         except Exception as e:
             logger.error(f"Read force failed: {e}")
             self.state.update_status(f"Read force failed: {str(e)}", "error")
@@ -159,7 +159,7 @@ class LoadcellEventHandlers(QObject):
             peak_force = await self.loadcell_service.read_peak_force(duration_ms, sampling_interval_ms)
             self.state.set_force(peak_force.value)
             self.peak_force_read.emit(peak_force.value)
-            self.state.update_status(f"Peak Force: {peak_force.value:.3f} N", "info")
+            self.state.update_status(f"Peak Force: {peak_force.value:.3f} kgf", "info")
         except Exception as e:
             logger.error(f"Read peak force failed: {e}")
             self.state.update_status(f"Read peak force failed: {str(e)}", "error")

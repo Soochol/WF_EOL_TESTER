@@ -24,7 +24,7 @@ class LoadcellControlState(QObject):
 
     # State change signals
     connection_changed = Signal(bool)  # is_connected
-    force_changed = Signal(float)  # force in Newtons
+    force_changed = Signal(float)  # force in kgf (kilogram-force)
     hold_changed = Signal(bool)  # is_held
     button_state_changed = Signal(str, bool)  # button_name, enabled
     status_changed = Signal(str, str)  # status_text, status_type (info/warning/error)
