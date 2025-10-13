@@ -771,15 +771,15 @@ class TestConfiguration:
             hardware = structured_data["hardware"]
             flattened.update(
                 {
-                    "voltage": hardware.get("voltage", 18.0),
-                    "current": hardware.get("current", 20.0),
-                    "upper_current": hardware.get("upper_current", 30.0),
-                    "upper_temperature": hardware.get("upper_temperature", 80.0),
-                    "activation_temperature": hardware.get("activation_temperature", 60.0),
-                    "standby_temperature": hardware.get("standby_temperature", 40.0),
-                    "fan_speed": hardware.get("fan_speed", 10),
-                    "operating_position": hardware.get("operating_position", 240000.0),
-                    "initial_position": hardware.get("initial_position", 10000.0),
+                    "voltage": float(hardware.get("voltage", 18.0)),
+                    "current": float(hardware.get("current", 20.0)),
+                    "upper_current": float(hardware.get("upper_current", 30.0)),
+                    "upper_temperature": float(hardware.get("upper_temperature", 80.0)),
+                    "activation_temperature": float(hardware.get("activation_temperature", 60.0)),
+                    "standby_temperature": float(hardware.get("standby_temperature", 40.0)),
+                    "fan_speed": int(hardware.get("fan_speed", 10)),
+                    "operating_position": float(hardware.get("operating_position", 240000.0)),
+                    "initial_position": float(hardware.get("initial_position", 10000.0)),
                 }
             )
 
@@ -788,9 +788,9 @@ class TestConfiguration:
             motion = structured_data["motion_control"]
             flattened.update(
                 {
-                    "velocity": motion.get("velocity", 60000.0),
-                    "acceleration": motion.get("acceleration", 60000.0),
-                    "deceleration": motion.get("deceleration", 60000.0),
+                    "velocity": float(motion.get("velocity", 60000.0)),
+                    "acceleration": float(motion.get("acceleration", 60000.0)),
+                    "deceleration": float(motion.get("deceleration", 60000.0)),
                 }
             )
 
@@ -836,18 +836,18 @@ class TestConfiguration:
             timing = structured_data["timing"]
             flattened.update(
                 {
-                    "robot_move_stabilization": timing.get("robot_move_stabilization", 0.1),
-                    "mcu_temperature_stabilization": timing.get(
+                    "robot_move_stabilization": float(timing.get("robot_move_stabilization", 0.1)),
+                    "mcu_temperature_stabilization": float(timing.get(
                         "mcu_temperature_stabilization", 0.1
-                    ),
-                    "robot_standby_stabilization": timing.get("robot_standby_stabilization", 1.0),
-                    "poweron_stabilization": timing.get("poweron_stabilization", 0.5),
-                    "power_command_stabilization": timing.get("power_command_stabilization", 0.2),
-                    "loadcell_zero_delay": timing.get("loadcell_zero_delay", 0.1),
-                    "mcu_command_stabilization": timing.get("mcu_command_stabilization", 0.1),
-                    "mcu_boot_complete_stabilization": timing.get(
+                    )),
+                    "robot_standby_stabilization": float(timing.get("robot_standby_stabilization", 1.0)),
+                    "poweron_stabilization": float(timing.get("poweron_stabilization", 0.5)),
+                    "power_command_stabilization": float(timing.get("power_command_stabilization", 0.2)),
+                    "loadcell_zero_delay": float(timing.get("loadcell_zero_delay", 0.1)),
+                    "mcu_command_stabilization": float(timing.get("mcu_command_stabilization", 0.1)),
+                    "mcu_boot_complete_stabilization": float(timing.get(
                         "mcu_boot_complete_stabilization", 2.0
-                    ),
+                    )),
                 }
             )
 
@@ -856,10 +856,10 @@ class TestConfiguration:
             tolerances = structured_data["tolerances"]
             flattened.update(
                 {
-                    "measurement_tolerance": tolerances.get("measurement_tolerance", 0.001),
-                    "force_precision": tolerances.get("force_precision", 2),
-                    "temperature_precision": tolerances.get("temperature_precision", 1),
-                    "temperature_tolerance": tolerances.get("temperature_tolerance", 3.0),
+                    "measurement_tolerance": float(tolerances.get("measurement_tolerance", 0.001)),
+                    "force_precision": int(tolerances.get("force_precision", 2)),
+                    "temperature_precision": int(tolerances.get("temperature_precision", 1)),
+                    "temperature_tolerance": float(tolerances.get("temperature_tolerance", 3.0)),
                 }
             )
 
@@ -868,9 +868,9 @@ class TestConfiguration:
             execution = structured_data["execution"]
             flattened.update(
                 {
-                    "retry_attempts": execution.get("retry_attempts", 3),
-                    "timeout_seconds": execution.get("timeout_seconds", 60.0),
-                    "repeat_count": execution.get("repeat_count", 1),
+                    "retry_attempts": int(execution.get("retry_attempts", 3)),
+                    "timeout_seconds": float(execution.get("timeout_seconds", 60.0)),
+                    "repeat_count": int(execution.get("repeat_count", 1)),
                 }
             )
 
@@ -879,12 +879,12 @@ class TestConfiguration:
             safety = structured_data["safety"]
             flattened.update(
                 {
-                    "max_voltage": safety.get("max_voltage", 30.0),
-                    "max_current": safety.get("max_current", 30.0),
-                    "max_velocity": safety.get("max_velocity", 60000.0),
-                    "max_acceleration": safety.get("max_acceleration", 60000.0),
-                    "max_deceleration": safety.get("max_deceleration", 60000.0),
-                    "max_stroke": safety.get("max_stroke", 180000.0),
+                    "max_voltage": float(safety.get("max_voltage", 30.0)),
+                    "max_current": float(safety.get("max_current", 30.0)),
+                    "max_velocity": float(safety.get("max_velocity", 60000.0)),
+                    "max_acceleration": float(safety.get("max_acceleration", 60000.0)),
+                    "max_deceleration": float(safety.get("max_deceleration", 60000.0)),
+                    "max_stroke": float(safety.get("max_stroke", 180000.0)),
                 }
             )
 
