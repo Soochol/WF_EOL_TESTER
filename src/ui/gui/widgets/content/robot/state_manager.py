@@ -237,6 +237,7 @@ class RobotControlState(QObject):
             self.set_button_enabled("emergency", True)
         else:
             # Homing completed: restore buttons based on connection and servo state
+            logger.debug(f"Homing completed - is_connected: {self.is_connected}, servo_enabled: {self._servo_enabled}")
             if self.is_connected:
                 self.set_button_enabled("disconnect", True)
                 self.set_button_enabled("get_position", True)
@@ -246,6 +247,8 @@ class RobotControlState(QObject):
                 # Restore servo-dependent buttons (includes home button)
                 # Use force_update=True to restore button states even if servo state hasn't changed
                 self.set_servo_enabled(self._servo_enabled, force_update=True)
+            else:
+                logger.warning("Homing completed but robot not connected - buttons not restored")
 
     def set_motion_in_progress(self, in_progress: bool) -> None:
         """Set motion in progress state and update button states"""
@@ -263,6 +266,7 @@ class RobotControlState(QObject):
             self.set_button_enabled("emergency", True)
         else:
             # Motion completed: restore buttons based on connection and servo state
+            logger.debug(f"Motion completed - is_connected: {self.is_connected}, servo_enabled: {self._servo_enabled}")
             if self.is_connected:
                 self.set_button_enabled("disconnect", True)
                 self.set_button_enabled("get_position", True)
@@ -272,6 +276,8 @@ class RobotControlState(QObject):
                 # Restore servo-dependent buttons (includes home button)
                 # Use force_update=True to restore button states even if servo state hasn't changed
                 self.set_servo_enabled(self._servo_enabled, force_update=True)
+            else:
+                logger.warning("Motion completed but robot not connected - buttons not restored")
 
     # Reset state
     def reset(self) -> None:
