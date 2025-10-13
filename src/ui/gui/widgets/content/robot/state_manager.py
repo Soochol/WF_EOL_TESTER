@@ -203,13 +203,13 @@ class RobotControlState(QObject):
 
     # Emergency state management
     def set_emergency_stopped(self) -> None:
-        """Set emergency stopped state - only Home, Servo ON and Emergency buttons enabled"""
-        # After emergency stop, allow servo on, homing and emergency
+        """Set emergency stopped state - only Servo ON and Emergency buttons enabled"""
+        # After emergency stop, servo is off - must turn servo on before homing
         self.set_button_enabled("connect", False)
         self.set_button_enabled("disconnect", True)
         self.set_button_enabled("servo_on", True)   # Enable to turn servo back on
         self.set_button_enabled("servo_off", False)
-        self.set_button_enabled("home", True)       # Enable home to recover
+        self.set_button_enabled("home", False)      # Disable home - must servo on first
         self.set_button_enabled("move_abs", False)
         self.set_button_enabled("move_rel", False)
         self.set_button_enabled("get_position", False)
@@ -217,7 +217,7 @@ class RobotControlState(QObject):
         self.set_button_enabled("emergency", True)  # Always enabled
         # Reset servo state
         self._servo_enabled = False
-        self.update_status("Emergency stop activated - Servo ON or Home to recover", "error")
+        self.update_status("Emergency stop activated - Turn Servo ON to recover", "error")
 
     # Motion state management
     def set_homing_in_progress(self, in_progress: bool) -> None:
