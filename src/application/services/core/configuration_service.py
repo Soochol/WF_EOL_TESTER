@@ -116,7 +116,7 @@ class ConfigurationService:
             available_profiles = await self.list_available_profiles()
             raise ConfigurationNotFoundError(profile_name, available_profiles) from e
         except Exception as e:
-            logger.error(f"Failed to load configurations from profile '{profile_name}': {e}")
+            logger.exception(f"Failed to load configurations from profile '{profile_name}': {e}")
             raise RepositoryAccessError(
                 operation="load_test_config",
                 reason=str(e),
