@@ -702,27 +702,24 @@ class HardwareServiceFacade:
                         await asyncio.sleep(test_config.robot_move_stabilization)
                         self._robot_state = RobotState.MEASUREMENT_POSITION
 
-                        # Take peak force measurement
+                        # Take peak force measurement (already in kgf from LoadCell)
                         force = await self._loadcell.read_peak_force()
-
-                        # Convert force from Newton to kgf (1 kgf = 9.80665 N)
-                        force_kgf = force.value / 9.80665
 
                         # Store measurement in dictionary format with repeat index
                         if repeat_count == 1:
-                            # Single measurement - store as before (in kgf)
-                            measurements_dict[temperature][position] = {"force": force_kgf}
+                            # Single measurement - store as before (already in kgf)
+                            measurements_dict[temperature][position] = {"force": force.value}
                         else:
-                            # Multiple measurements - store as list with repeat index (in kgf)
+                            # Multiple measurements - store as list with repeat index (already in kgf)
                             if position not in measurements_dict[temperature]:
                                 measurements_dict[temperature][position] = {"force": []}
-                            measurements_dict[temperature][position]["force"].append(force_kgf)
+                            measurements_dict[temperature][position]["force"].append(force.value)
 
-                        # Store individual cycle measurement (in kgf)
-                        cycle_measurements_dict[temperature][position] = {"force": force_kgf}
+                        # Store individual cycle measurement (already in kgf)
+                        cycle_measurements_dict[temperature][position] = {"force": force.value}
 
                         logger.debug(
-                            f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}N ({force_kgf:.3f}kgf)"
+                            f"Measurement completed - Position: {position}μm, Force: {force.value:.3f}kgf"
                         )
 
                     # 3. Return robot to initial position (robot return)
