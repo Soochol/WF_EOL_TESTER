@@ -36,7 +36,9 @@ class MCUEventHandlers(QObject):
     upper_temp_set = Signal(bool, str)  # success, message
     fan_speed_set = Signal(bool, str)  # success, message
     boot_wait_completed = Signal(bool, str)  # success, message
+    heating_started = Signal()  # heating operation started
     heating_completed = Signal(bool, str)  # success, message
+    cooling_started = Signal()  # cooling operation started
     cooling_completed = Signal(bool, str)  # success, message
 
     def __init__(
@@ -272,6 +274,10 @@ class MCUEventHandlers(QObject):
         self.state.show_progress(
             f"Starting heating (op:{operating_temp:.1f}°C, standby:{standby_temp:.1f}°C)..."
         )
+
+        # Emit heating started signal for temperature monitoring
+        self.heating_started.emit()
+
         self.executor_thread.submit_task(
             "mcu_heating",
             self._async_start_heating(operating_temp, standby_temp, hold_time_ms)
@@ -303,6 +309,10 @@ class MCUEventHandlers(QObject):
             return
 
         self.state.show_progress("Starting standby cooling...")
+
+        # Emit cooling started signal for temperature monitoring
+        self.cooling_started.emit()
+
         self.executor_thread.submit_task("mcu_cooling", self._async_start_cooling())
 
     async def _async_start_cooling(self) -> None:

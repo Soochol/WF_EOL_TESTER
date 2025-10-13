@@ -8,6 +8,7 @@ Features vertical layout with grouped controls.
 from typing import Dict, Optional
 
 # Third-party imports
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
@@ -89,6 +90,11 @@ class MCUControlWidget(QWidget):
 
         # Progress bar
         self.progress_bar: Optional[QProgressBar] = None
+
+        # Temperature monitoring timer (reads cached temperature without MCU commands)
+        self._temperature_monitor_timer = QTimer(self)
+        self._temperature_monitor_timer.timeout.connect(self._update_cached_temperature)
+        self._temperature_monitor_timer.setInterval(500)  # Update every 500ms
 
         # Setup UI and connections
         self._setup_ui()
@@ -185,7 +191,9 @@ class MCUControlWidget(QWidget):
         self.event_handlers.upper_temp_set.connect(self._on_upper_temp_set)
         self.event_handlers.fan_speed_set.connect(self._on_fan_speed_set)
         self.event_handlers.boot_wait_completed.connect(self._on_boot_wait_completed)
+        self.event_handlers.heating_started.connect(self._on_heating_started)
         self.event_handlers.heating_completed.connect(self._on_heating_completed)
+        self.event_handlers.cooling_started.connect(self._on_cooling_started)
         self.event_handlers.cooling_completed.connect(self._on_cooling_completed)
 
     def _setup_state_connections(self) -> None:
@@ -324,16 +332,61 @@ class MCUControlWidget(QWidget):
         else:
             QMessageBox.critical(self, "Boot Wait Error", message)
 
+    def _on_heating_started(self) -> None:
+        """Handle heating operation started - start temperature monitoring"""
+        self._temperature_monitor_timer.start()
+        self.gui_state_manager.add_log_message("INFO", "MCU", "Temperature monitoring started")
+
     def _on_heating_completed(self, success: bool, message: str) -> None:
         """Handle heating operation result"""
+        # Stop temperature monitoring
+        self._temperature_monitor_timer.stop()
+
         if success:
             self.gui_state_manager.add_log_message("INFO", "MCU", message)
         else:
             QMessageBox.critical(self, "Heating Error", message)
 
+    def _on_cooling_started(self) -> None:
+        """Handle cooling operation started - start temperature monitoring"""
+        self._temperature_monitor_timer.start()
+        self.gui_state_manager.add_log_message("INFO", "MCU", "Temperature monitoring started")
+
     def _on_cooling_completed(self, success: bool, message: str) -> None:
         """Handle cooling operation result"""
+        # Stop temperature monitoring
+        self._temperature_monitor_timer.stop()
+
         if success:
             self.gui_state_manager.add_log_message("INFO", "MCU", message)
         else:
             QMessageBox.critical(self, "Cooling Error", message)
+
+    def _update_cached_temperature(self) -> None:
+        """
+        Update temperature display from cached MCU temperature.
+
+        This method reads the cached temperature without sending MCU commands.
+        Called periodically by temperature monitor timer during heating/cooling.
+        """
+        cached_temp = self.mcu_service.get_cached_temperature()
+
+        if cached_temp is not None:
+            # Update temperature display
+            if self.temperature_group.current_temp_label:
+                self.temperature_group.current_temp_label.setText(f"{cached_temp:.1f}°C")
+                self.temperature_group.current_temp_label.setStyleSheet("""
+                    QLabel {
+                        color: #FF9800;
+                        font-size: 14px;
+                        font-weight: 600;
+                        padding: 6px 12px;
+                        background-color: rgba(255, 152, 0, 0.1);
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 152, 0, 0.3);
+                        min-width: 60px;
+                    }
+                """)
+
+            # Update status pill
+            self.mcu_state.set_temperature(cached_temp)

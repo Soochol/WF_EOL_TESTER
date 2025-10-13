@@ -668,6 +668,8 @@ class LMAMCU(MCUService):
         try:
             if len(packet) >= 14 and packet[2] == 0x07:
                 ir_temp, outside_temp = self._parse_temperature_packet(packet)
+                # ✅ Update cached temperature so GUI can read it without sending commands
+                self._current_temperature = ir_temp
                 logger.info(
                     f"🌡️  Current temperature - \033[91mIR: {ir_temp:.1f}°C\033[0m, \033[94mOutside: {outside_temp:.1f}°C\033[0m @ +{elapsed_ms:.1f}ms"
                 )
@@ -1062,6 +1064,21 @@ class LMAMCU(MCUService):
             error_msg = f"Temperature query failed: {e}"
             logger.error(error_msg)
             raise HardwareOperationError("fast_lma_mcu", "get_temperature", error_msg) from e
+
+    def get_cached_temperature(self) -> Optional[float]:
+        """
+        Get last cached temperature without sending MCU command
+
+        This is a lightweight read operation that returns the most recently
+        received temperature value without triggering serial communication.
+        Useful for GUI updates during heating/cooling operations.
+
+        Returns:
+            Last cached temperature in Celsius, or None if no temperature cached
+        """
+        if self._current_temperature == 0.0:
+            return None  # No temperature cached yet
+        return self._current_temperature
 
     async def set_test_mode(self, mode: TestMode) -> None:
         """Set test mode"""

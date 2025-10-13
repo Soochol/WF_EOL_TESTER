@@ -285,6 +285,19 @@ class MockMCU(MCUService):
             logger.error(f"Failed to get Mock MCU temperature: {e}")
             raise HardwareOperationError("mock_mcu", "get_temperature", str(e)) from e
 
+    def get_cached_temperature(self) -> Optional[float]:
+        """
+        Get last cached temperature without sending MCU command
+
+        This is a lightweight read operation that returns the most recently
+        received temperature value without triggering serial communication.
+        Useful for GUI updates during heating/cooling operations.
+
+        Returns:
+            Last cached temperature in Celsius, or None if no temperature cached
+        """
+        return self._current_temperature
+
     async def set_test_mode(self, mode: TestMode) -> None:
         """
         테스트 모드 설정 (시뮬레이션)

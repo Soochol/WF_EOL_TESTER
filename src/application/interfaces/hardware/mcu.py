@@ -6,7 +6,7 @@ Interface for MCU (Microcontroller Unit) operations and control.
 
 # Standard library imports
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 # Local application imports
 from domain.enums.mcu_enums import TestMode
@@ -97,10 +97,23 @@ class MCUService(ABC):
     @abstractmethod
     async def get_temperature(self) -> float:
         """
-        Get current temperature reading
+        Get current temperature reading (sends MCU command)
 
         Returns:
             Current temperature in Celsius
+        """
+        ...
+
+    def get_cached_temperature(self) -> Optional[float]:
+        """
+        Get last cached temperature without sending MCU command
+
+        This is a lightweight read operation that returns the most recently
+        received temperature value without triggering serial communication.
+        Useful for GUI updates during heating/cooling operations.
+
+        Returns:
+            Last cached temperature in Celsius, or None if no temperature cached
         """
         ...
 
