@@ -185,14 +185,12 @@ class TestCycleExecutor:
         mcu_service = self._hardware_services.mcu_service
 
         for i in range(repeat_count):
-            # Create prominent test cycle header with background color
+            # Create prominent test cycle header
             cycle_header = f"🔄 Test Cycle {i+1}/{repeat_count}"
             separator = "═" * 50
-            logger.info(f"\033[44;97;1m{separator}\033[0m")  # Blue background, white text, bold
-            logger.info(
-                f"\033[44;97;1m{cycle_header:^50}\033[0m"
-            )  # Centered text with blue background
-            logger.info(f"\033[44;97;1m{separator}\033[0m")
+            logger.info(separator)
+            logger.info(f"{cycle_header:^50}")
+            logger.info(separator)
 
             try:
                 # Heating phase (standby → activation)

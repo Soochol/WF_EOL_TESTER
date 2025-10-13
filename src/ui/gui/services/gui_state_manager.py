@@ -188,6 +188,43 @@ class GUIStateManager(QObject):
         self.test_results.append(result)
         self.test_result_added.emit(result)
 
+    def add_cycle_result(
+        self,
+        cycle: int,
+        total_cycles: int,
+        temperature: float,
+        stroke: float,
+        force: float,
+        heating_time: int,
+        cooling_time: int,
+        status: str,
+    ) -> None:
+        """
+        Add an individual cycle result and emit signal for real-time GUI updates.
+
+        Args:
+            cycle: Current cycle number
+            total_cycles: Total number of cycles in the test
+            temperature: Temperature in °C
+            stroke: Stroke position in mm
+            force: Measured force in kgf
+            heating_time: Heating time in ms
+            cooling_time: Cooling time in ms
+            status: Cycle status (PASS/FAIL)
+        """
+        cycle_data = CycleData(
+            cycle=cycle,
+            temperature=temperature,
+            stroke=stroke,
+            force=force,
+            heating_time=heating_time,
+            cooling_time=cooling_time,
+            status=status,
+        )
+
+        # Emit signal for real-time GUI updates (charts, tables, etc.)
+        self.cycle_result_added.emit(cycle_data)
+
     def add_log_message(self, level: str, component: str, message: str) -> None:
         """Add a log message"""
         log_entry = {
