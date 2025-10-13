@@ -8,6 +8,7 @@ from typing import Optional
 
 # Third-party imports
 from PySide6.QtCore import QObject, Signal
+from loguru import logger
 
 
 class RobotControlState(QObject):
@@ -239,6 +240,7 @@ class RobotControlState(QObject):
             if self.is_connected:
                 self.set_button_enabled("disconnect", True)
                 self.set_button_enabled("get_position", True)
+                logger.debug("Homing completed - Get Position button enabled")
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)
                 # Restore servo-dependent buttons (includes home button)
@@ -264,6 +266,7 @@ class RobotControlState(QObject):
             if self.is_connected:
                 self.set_button_enabled("disconnect", True)
                 self.set_button_enabled("get_position", True)
+                logger.debug("Motion completed - Get Position button enabled")
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)
                 # Restore servo-dependent buttons (includes home button)
