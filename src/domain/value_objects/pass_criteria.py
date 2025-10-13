@@ -455,17 +455,18 @@ class PassCriteria:
         if "spec_points" in data and data["spec_points"]:
             spec_points = [tuple(point) for point in data["spec_points"]]
 
+        # Apply explicit type conversion to prevent YAML string parsing issues
         return cls(
-            force_limit_min=data.get("force_limit_min", 0.0),
-            force_limit_max=data.get("force_limit_max", 100.0),
-            temperature_limit_min=data.get("temperature_limit_min", -10.0),
-            temperature_limit_max=data.get("temperature_limit_max", 80.0),
-            measurement_tolerance=data.get("measurement_tolerance", 0.001),
-            force_precision=data.get("force_precision", 2),
-            temperature_precision=data.get("temperature_precision", 1),
-            position_tolerance=data.get("position_tolerance", 0.5),
-            max_test_duration=data.get("max_test_duration", 300.0),
-            min_stabilization_time=data.get("min_stabilization_time", 0.5),
+            force_limit_min=float(data.get("force_limit_min", 0.0)),
+            force_limit_max=float(data.get("force_limit_max", 100.0)),
+            temperature_limit_min=float(data.get("temperature_limit_min", -10.0)),
+            temperature_limit_max=float(data.get("temperature_limit_max", 80.0)),
+            measurement_tolerance=float(data.get("measurement_tolerance", 0.001)),
+            force_precision=int(data.get("force_precision", 2)),
+            temperature_precision=int(data.get("temperature_precision", 1)),
+            position_tolerance=float(data.get("position_tolerance", 0.5)),
+            max_test_duration=float(data.get("max_test_duration", 300.0)),
+            min_stabilization_time=float(data.get("min_stabilization_time", 0.5)),
             spec_points=spec_points,
         )
 

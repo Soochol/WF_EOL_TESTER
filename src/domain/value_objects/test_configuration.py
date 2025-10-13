@@ -903,17 +903,19 @@ class TestConfiguration:
                 spec_points_tuples = []
 
             # Create pass_criteria dictionary for PassCriteria.from_dict()
+            # Apply explicit type conversion to prevent YAML string parsing issues
             pass_criteria_dict = {
-                "force_limit_min": pass_criteria.get("force_limit_min", 0.0),
-                "force_limit_max": pass_criteria.get("force_limit_max", 100.0),
-                "temperature_limit_min": pass_criteria.get("temperature_limit_min", -10.0),
-                "temperature_limit_max": pass_criteria.get("temperature_limit_max", 80.0),
+                "force_limit_min": float(pass_criteria.get("force_limit_min", 0.0)),
+                "force_limit_max": float(pass_criteria.get("force_limit_max", 100.0)),
+                "temperature_limit_min": float(pass_criteria.get("temperature_limit_min", -10.0)),
+                "temperature_limit_max": float(pass_criteria.get("temperature_limit_max", 80.0)),
                 "spec_points": spec_points_tuples,
-                "measurement_tolerance": pass_criteria.get("measurement_tolerance", 0.001),
-                "force_precision": pass_criteria.get("force_precision", 2),
-                "temperature_precision": pass_criteria.get("temperature_precision", 1),
-                "max_test_duration": pass_criteria.get("max_test_duration", 300.0),
-                "min_stabilization_time": pass_criteria.get("min_stabilization_time", 0.5),
+                "measurement_tolerance": float(pass_criteria.get("measurement_tolerance", 0.001)),
+                "force_precision": int(pass_criteria.get("force_precision", 2)),
+                "temperature_precision": int(pass_criteria.get("temperature_precision", 1)),
+                "position_tolerance": float(pass_criteria.get("position_tolerance", 0.5)),
+                "max_test_duration": float(pass_criteria.get("max_test_duration", 300.0)),
+                "min_stabilization_time": float(pass_criteria.get("min_stabilization_time", 0.5)),
             }
 
             flattened["pass_criteria"] = pass_criteria_dict
