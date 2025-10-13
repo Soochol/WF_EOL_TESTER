@@ -93,6 +93,9 @@ class LoadcellControlWidget(QWidget):
         self._setup_connections()
         self._setup_state_connections()
 
+        # Apply initial button states after UI is ready
+        self._apply_initial_states()
+
     def _setup_ui(self) -> None:
         """Setup modern UI with 1-column layout and scroll area"""
         # Main widget layout
@@ -194,6 +197,16 @@ class LoadcellControlWidget(QWidget):
 
         # Status updates
         self.loadcell_state.status_changed.connect(self._on_status_changed)
+
+    def _apply_initial_states(self) -> None:
+        """Apply initial button states after UI is ready"""
+        # Get initial button states from state manager and apply them
+        button_states = self.loadcell_state.get_all_button_states()
+        for button_name, enabled in button_states.items():
+            if button_name in self._button_refs:
+                button = self._button_refs[button_name]
+                if button:
+                    button.setEnabled(enabled)
 
     # Event handler result callbacks
     def _on_connect_completed(self, success: bool, message: str) -> None:

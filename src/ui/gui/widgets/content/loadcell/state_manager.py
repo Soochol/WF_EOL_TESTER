@@ -136,6 +136,10 @@ class LoadcellControlState(QObject):
         """Get button enabled state"""
         return self._button_states.get(button_name, False)
 
+    def get_all_button_states(self) -> dict[str, bool]:
+        """Get all button states for initial UI setup"""
+        return self._button_states.copy()
+
     # Status updates
     def update_status(self, message: str, status_type: str = "info") -> None:
         """Update status message
