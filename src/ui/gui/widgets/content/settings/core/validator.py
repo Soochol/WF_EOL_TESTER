@@ -68,6 +68,11 @@ class ConfigValidator:
             if error:
                 return False, error
 
+            # List validation (for string representations of lists)
+            error = ConfigValidator._validate_list_format(value, rule)
+            if error:
+                return False, error
+
             return True, ""
 
         except Exception as e:
@@ -197,6 +202,49 @@ class ConfigValidator:
             return f"Must be no more than {rule['max_length']} characters"
 
         return ""
+
+    @staticmethod
+    def _validate_list_format(value: Any, rule: Dict[str, Any]) -> str:
+        """
+        Validate list format for string representations of lists.
+
+        This checks if a string value that looks like a list (starts with '[' and ends with ']')
+        can be properly parsed as a valid YAML list.
+
+        Args:
+            value: Value to validate
+            rule: Validation rule (not used currently, for future extensions)
+
+        Returns:
+            Error message if invalid, empty string if valid
+        """
+        # Only validate string values that look like lists
+        if not isinstance(value, str):
+            return ""
+
+        value_stripped = value.strip()
+        if not (value_stripped.startswith("[") and value_stripped.endswith("]")):
+            return ""
+
+        # Try to parse the list
+        try:
+            import yaml
+            parsed = yaml.safe_load(value_stripped)
+
+            # Check if it parsed to a list
+            if not isinstance(parsed, list):
+                return "Invalid list format - must be a valid YAML list"
+
+            # Additional validation: check if list is empty
+            if len(parsed) == 0:
+                return "List cannot be empty"
+
+            return ""
+
+        except yaml.YAMLError as e:
+            return f"Invalid list syntax: {str(e)}"
+        except Exception as e:
+            return f"Cannot parse list: {str(e)}"
 
     def validate(self, key: str, value: Any) -> tuple[bool, str]:
         """

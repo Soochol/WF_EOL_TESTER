@@ -111,6 +111,21 @@ class ConfigFileSaver:
         if final_key == "scaling_factor" and isinstance(value, float):
             value = round(value, 2)
 
+        # Parse list values if they come as strings
+        if isinstance(value, str) and value.strip().startswith("[") and value.strip().endswith("]"):
+            try:
+                # Try to parse as Python list literal using yaml.safe_load
+                import yaml
+
+                parsed_value = yaml.safe_load(value)
+                if isinstance(parsed_value, list):
+                    value = parsed_value
+                # If not a list after parsing, keep original string value
+            except (yaml.YAMLError, ValueError):
+                # If parsing fails, keep the original string value
+                # This allows validation to catch the error later
+                pass
+
         # Set the final value
         current[final_key] = value
 
