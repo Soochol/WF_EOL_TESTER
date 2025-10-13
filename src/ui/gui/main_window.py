@@ -2598,7 +2598,11 @@ class MainWindow(QMainWindow):
     def _on_thread_test_result(self, result_data) -> None:
         """Handle test result from thread"""
         # Third-party imports
+        from datetime import datetime
         from loguru import logger
+
+        # Local imports
+        from ui.gui.services.gui_state_manager import TestResult, CycleData
 
         logger.info(f"Received test result: {result_data}")
 
@@ -2625,18 +2629,45 @@ class MainWindow(QMainWindow):
                 else:
                     status_text = result_data.test_status.value
 
-                # Individual cycle results are already processed in real-time by hardware facade
-                # No need to process them again here to avoid duplication
                 logger.info(f"Test result received: {status_text}")
+
+                # Convert domain result to GUI TestResult
+                cycles = []
                 if (
                     hasattr(result_data, "individual_cycle_results")
                     and result_data.individual_cycle_results
                 ):
                     logger.info(
-                        f"Test completed with {len(result_data.individual_cycle_results)} cycles (already displayed in real-time)"
+                        f"Converting {len(result_data.individual_cycle_results)} cycles to GUI format"
                     )
+                    for idx, cycle_result in enumerate(result_data.individual_cycle_results, 1):
+                        # Extract cycle data from domain result
+                        cycle_data = CycleData(
+                            cycle=idx,
+                            temperature=getattr(cycle_result, "temperature", 0.0),
+                            stroke=getattr(cycle_result, "stroke_position", 0.0),
+                            force=getattr(cycle_result, "measured_force", 0.0),
+                            heating_time=getattr(cycle_result, "heating_time_ms", 0),
+                            cooling_time=getattr(cycle_result, "cooling_time_ms", 0),
+                            status="PASS" if getattr(cycle_result, "is_passed", False) else "FAIL"
+                        )
+                        cycles.append(cycle_data)
                 else:
                     logger.info("Test completed (single cycle or no individual cycle data)")
+
+                # Create GUI TestResult
+                test_result = TestResult(
+                    test_id=str(getattr(result_data, "test_id", "Unknown")),
+                    serial_number=str(getattr(result_data, "serial_number", "N/A")),
+                    status=status_text,
+                    timestamp=datetime.now(),
+                    duration_seconds=getattr(result_data, "test_duration_seconds", 0.0),
+                    cycles=cycles
+                )
+
+                # Add result to state manager (will be displayed in Results page)
+                self.state_manager.add_test_result(test_result)
+                logger.info(f"Test result added to Results page: {test_result.test_id}")
 
             elif result_data is None:
                 logger.info("Test result is None (likely cancelled by Emergency Stop)")
