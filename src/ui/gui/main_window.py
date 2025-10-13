@@ -2658,6 +2658,7 @@ class MainWindow(QMainWindow):
                                     # Iterate through ALL temperatures (not just first one)
                                     temps = list(measurements_dict.keys())
                                     logger.info(f"Cycle {idx} - Found {len(temps)} temperatures: {temps}")
+                                    logger.info(f"Cycle {idx} - timing_data_dict keys: {list(timing_data_dict.keys())}")
 
                                     for temp in temps:
                                         # Extract data for this temperature
@@ -2678,9 +2679,9 @@ class MainWindow(QMainWindow):
                                         # Extract heating/cooling times from timing_data for this temperature
                                         if timing_data_dict:
                                             # Find timing data for this temperature
-                                            # timing_data keys are like: "cycle_1_temp_38", "cycle_1_temp_52", etc.
+                                            # timing_data keys are like: "temp_38", "temp_52", "temp_66"
                                             temp_int = int(temperature)
-                                            timing_key = f"cycle_{idx}_temp_{temp_int}"
+                                            timing_key = f"temp_{temp_int}"
                                             timing_info = timing_data_dict.get(timing_key, {})
                                             if timing_info:
                                                 # Timing data is in seconds, convert to ms
@@ -2735,9 +2736,9 @@ class MainWindow(QMainWindow):
 
                                             # Get timing data for this temperature
                                             if timing_data:
-                                                # timing_data keys are like: "cycle_1_temp_38"
+                                                # timing_data keys are like: "temp_38", "temp_52", "temp_66"
                                                 temp_int = int(temp)
-                                                timing_key = f"cycle_{idx}_temp_{temp_int}"
+                                                timing_key = f"temp_{temp_int}"
                                                 timing_info = timing_data.get(timing_key, {})
                                                 if timing_info:
                                                     heating_time = int(timing_info.get("heating_time_s", 0) * 1000)
