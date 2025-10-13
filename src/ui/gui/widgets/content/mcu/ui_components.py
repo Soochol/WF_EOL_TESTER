@@ -8,14 +8,12 @@ Uses Material Design 3 components for consistent styling.
 from typing import Dict, Optional
 
 # Third-party imports
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
-    QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -144,11 +142,13 @@ class TemperatureControlGroup:
         self.set_operating_btn: Optional[QPushButton] = None
         self.set_cooling_btn: Optional[QPushButton] = None
         self.set_upper_btn: Optional[QPushButton] = None
+        self.set_fan_speed_btn: Optional[QPushButton] = None
 
         # Input fields
         self.operating_temp_input: Optional[QDoubleSpinBox] = None
         self.cooling_temp_input: Optional[QDoubleSpinBox] = None
         self.upper_temp_input: Optional[QDoubleSpinBox] = None
+        self.fan_speed_input: Optional[QSpinBox] = None
 
         # Display label
         self.current_temp_label: Optional[QLabel] = None
@@ -204,12 +204,7 @@ class TemperatureControlGroup:
         op_layout.addWidget(self.operating_temp_input)
 
         self.set_operating_btn = ModernButton("Set", "check", "success")
-        self.set_operating_btn.clicked.connect(
-            lambda input_widget=self.operating_temp_input: (
-                self.event_handlers.on_set_operating_temperature(input_widget.value())
-                if input_widget else None
-            )
-        )
+        self.set_operating_btn.clicked.connect(self._on_set_operating_clicked)
         op_layout.addWidget(self.set_operating_btn)
         main_layout.addLayout(op_layout)
 
@@ -226,12 +221,7 @@ class TemperatureControlGroup:
         cool_layout.addWidget(self.cooling_temp_input)
 
         self.set_cooling_btn = ModernButton("Set", "check", "primary")
-        self.set_cooling_btn.clicked.connect(
-            lambda input_widget=self.cooling_temp_input: (
-                self.event_handlers.on_set_cooling_temperature(input_widget.value())
-                if input_widget else None
-            )
-        )
+        self.set_cooling_btn.clicked.connect(self._on_set_cooling_clicked)
         cool_layout.addWidget(self.set_cooling_btn)
         main_layout.addLayout(cool_layout)
 
@@ -248,14 +238,26 @@ class TemperatureControlGroup:
         upper_layout.addWidget(self.upper_temp_input)
 
         self.set_upper_btn = ModernButton("Set", "check", "warning")
-        self.set_upper_btn.clicked.connect(
-            lambda input_widget=self.upper_temp_input: (
-                self.event_handlers.on_set_upper_temperature(input_widget.value())
-                if input_widget else None
-            )
-        )
+        self.set_upper_btn.clicked.connect(self._on_set_upper_clicked)
         upper_layout.addWidget(self.set_upper_btn)
         main_layout.addLayout(upper_layout)
+
+        # Fan speed control
+        fan_layout = QHBoxLayout()
+        fan_layout.setSpacing(8)
+
+        fan_label = QLabel("Fan Speed:")
+        fan_label.setStyleSheet("color: #cccccc; font-size: 13px; min-width: 70px;")
+        fan_layout.addWidget(fan_label)
+
+        self.fan_speed_input = self._create_fan_spinbox()
+        self.fan_speed_input.setValue(10)
+        fan_layout.addWidget(self.fan_speed_input)
+
+        self.set_fan_speed_btn = ModernButton("Set", "check", "info")
+        self.set_fan_speed_btn.clicked.connect(self._on_set_fan_clicked)
+        fan_layout.addWidget(self.set_fan_speed_btn)
+        main_layout.addLayout(fan_layout)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -287,6 +289,55 @@ class TemperatureControlGroup:
         )
         return spinbox
 
+    def _create_fan_spinbox(self) -> QSpinBox:
+        """Create fan speed spinbox (0-10 range)"""
+        spinbox = QSpinBox()
+        spinbox.setRange(0, 10)
+        spinbox.setSingleStep(1)
+        spinbox.setStyleSheet(
+            """
+            QSpinBox {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 13px;
+                min-width: 80px;
+            }
+            QSpinBox:focus {
+                border: 1px solid #2196F3;
+            }
+        """
+        )
+        return spinbox
+
+    def _on_set_operating_clicked(self) -> None:
+        """Handle set operating temperature button click"""
+        if self.operating_temp_input:
+            self.event_handlers.on_set_operating_temperature(self.operating_temp_input.value())
+
+    def _on_set_cooling_clicked(self) -> None:
+        """Handle set cooling temperature button click"""
+        if self.cooling_temp_input:
+            self.event_handlers.on_set_cooling_temperature(self.cooling_temp_input.value())
+
+    def _on_set_upper_clicked(self) -> None:
+        """Handle set upper temperature button click"""
+        if self.upper_temp_input:
+            self.event_handlers.on_set_upper_temperature(self.upper_temp_input.value())
+
+    def _on_set_fan_clicked(self) -> None:
+        """Handle set fan speed button click"""
+        from loguru import logger
+        logger.info("💨 Fan Set button clicked")
+        if self.fan_speed_input:
+            fan_speed = self.fan_speed_input.value()
+            logger.info(f"Setting fan speed to: {fan_speed}")
+            self.event_handlers.on_set_fan_speed(fan_speed)
+        else:
+            logger.error("Fan speed input not initialized")
+
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references"""
         return {
@@ -294,6 +345,7 @@ class TemperatureControlGroup:
             "set_operating_temp": self.set_operating_btn,
             "set_cooling_temp": self.set_cooling_btn,
             "set_upper_temp": self.set_upper_btn,
+            "set_fan_speed": self.set_fan_speed_btn,
         }
 
 
@@ -308,11 +360,8 @@ class AdvancedControlGroup:
         self.wait_boot_btn: Optional[QPushButton] = None
         self.start_heating_btn: Optional[QPushButton] = None
         self.start_cooling_btn: Optional[QPushButton] = None
-        self.set_fan_speed_btn: Optional[QPushButton] = None
 
         # Input fields
-        self.fan_speed_slider: Optional[QSlider] = None
-        self.fan_speed_label: Optional[QLabel] = None
         self.heating_op_temp_input: Optional[QDoubleSpinBox] = None
         self.heating_standby_temp_input: Optional[QDoubleSpinBox] = None
         self.heating_hold_time_input: Optional[QSpinBox] = None
@@ -403,16 +452,7 @@ class AdvancedControlGroup:
         heating_cooling_layout.setSpacing(8)
 
         self.start_heating_btn = ModernButton("Start Heating", "zap", "warning")
-        self.start_heating_btn.clicked.connect(
-            lambda op_temp=self.heating_op_temp_input, standby_temp=self.heating_standby_temp_input, hold_time=self.heating_hold_time_input: (
-                self.event_handlers.on_start_heating(
-                    op_temp.value(),
-                    standby_temp.value(),
-                    hold_time.value(),
-                )
-                if op_temp and standby_temp and hold_time else None
-            )
-        )
+        self.start_heating_btn.clicked.connect(self._on_start_heating_clicked)
         heating_cooling_layout.addWidget(self.start_heating_btn)
 
         self.start_cooling_btn = ModernButton("Start Cooling", "wind", "primary")
@@ -420,83 +460,6 @@ class AdvancedControlGroup:
         heating_cooling_layout.addWidget(self.start_cooling_btn)
 
         main_layout.addLayout(heating_cooling_layout)
-
-        # Fan speed control
-        fan_layout = QVBoxLayout()
-        fan_layout.setSpacing(6)
-
-        fan_header_layout = QHBoxLayout()
-        fan_header_layout.setSpacing(8)
-
-        fan_label = QLabel("Fan Speed:")
-        fan_label.setStyleSheet("color: #cccccc; font-size: 13px;")
-        fan_header_layout.addWidget(fan_label)
-
-        self.fan_speed_label = QLabel("5")
-        self.fan_speed_label.setStyleSheet(
-            """
-            QLabel {
-                color: #2196F3;
-                font-size: 14px;
-                font-weight: 600;
-                padding: 4px 10px;
-                background-color: rgba(33, 150, 243, 0.1);
-                border-radius: 6px;
-                min-width: 30px;
-            }
-        """
-        )
-        fan_header_layout.addWidget(self.fan_speed_label)
-        fan_header_layout.addStretch()
-
-        self.set_fan_speed_btn = ModernButton("Set", "check", "success")
-        self.set_fan_speed_btn.clicked.connect(
-            lambda slider=self.fan_speed_slider: (
-                self.event_handlers.on_set_fan_speed(slider.value()) if slider else None
-            )
-        )
-        fan_header_layout.addWidget(self.set_fan_speed_btn)
-
-        fan_layout.addLayout(fan_header_layout)
-
-        # Fan speed slider
-        self.fan_speed_slider = QSlider(Qt.Orientation.Horizontal)
-        self.fan_speed_slider.setRange(0, 10)
-        self.fan_speed_slider.setValue(5)
-        self.fan_speed_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.fan_speed_slider.setTickInterval(1)
-        self.fan_speed_slider.valueChanged.connect(
-            lambda val, label=self.fan_speed_label: (
-                label.setText(str(val)) if label else None
-            )
-        )
-        self.fan_speed_slider.setStyleSheet(
-            """
-            QSlider::groove:horizontal {
-                background: #2d2d2d;
-                height: 6px;
-                border-radius: 3px;
-            }
-            QSlider::handle:horizontal {
-                background: #2196F3;
-                border: 2px solid #1976D2;
-                width: 18px;
-                margin: -6px 0;
-                border-radius: 9px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #42A5F5;
-            }
-            QSlider::sub-page:horizontal {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #2196F3, stop:1 #1976D2);
-                border-radius: 3px;
-            }
-        """
-        )
-        fan_layout.addWidget(self.fan_speed_slider)
-
-        main_layout.addLayout(fan_layout)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -528,6 +491,24 @@ class AdvancedControlGroup:
         )
         return spinbox
 
+    def _on_start_heating_clicked(self) -> None:
+        """Handle start heating button click"""
+        from loguru import logger
+        logger.info("🔥 Start Heating button clicked")
+        if (self.heating_op_temp_input and
+            self.heating_standby_temp_input and
+            self.heating_hold_time_input):
+            logger.info(f"Heating params: op={self.heating_op_temp_input.value()}, "
+                       f"standby={self.heating_standby_temp_input.value()}, "
+                       f"hold={self.heating_hold_time_input.value()}")
+            self.event_handlers.on_start_heating(
+                operating_temp=self.heating_op_temp_input.value(),
+                standby_temp=self.heating_standby_temp_input.value(),
+                hold_time_ms=self.heating_hold_time_input.value()
+            )
+        else:
+            logger.error("Heating input widgets not initialized")
+
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references"""
         return {
@@ -535,7 +516,6 @@ class AdvancedControlGroup:
             "wait_boot": self.wait_boot_btn,
             "start_heating": self.start_heating_btn,
             "start_cooling": self.start_cooling_btn,
-            "set_fan_speed": self.set_fan_speed_btn,
         }
 
 

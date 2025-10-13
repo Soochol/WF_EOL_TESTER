@@ -66,8 +66,12 @@ class MCUControlWidget(QWidget):
         # Get MCU service
         self.mcu_service = container.hardware_service_facade().mcu_service
 
+        # Check if using mock hardware for development mode
+        # Mock hardware allows buttons to be enabled without explicit connection
+        is_mock_hardware = hasattr(self.mcu_service, '__class__') and 'Mock' in self.mcu_service.__class__.__name__
+
         # Initialize components
-        self.mcu_state = MCUControlState()
+        self.mcu_state = MCUControlState(enable_buttons_initially=is_mock_hardware)
         self.event_handlers = MCUEventHandlers(
             mcu_service=self.mcu_service,
             state=self.mcu_state,

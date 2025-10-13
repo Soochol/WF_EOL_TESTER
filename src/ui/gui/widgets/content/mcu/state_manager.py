@@ -30,7 +30,7 @@ class MCUControlState(QObject):
     status_changed = Signal(str, str)  # status_text, status_type (info/warning/error)
     progress_changed = Signal(bool, str)  # visible, message
 
-    def __init__(self):
+    def __init__(self, enable_buttons_initially: bool = False):
         super().__init__()
 
         # Connection state
@@ -43,19 +43,36 @@ class MCUControlState(QObject):
         self._test_mode = "Normal"
 
         # Button states
-        self._button_states = {
-            "connect": True,
-            "disconnect": False,
-            "read_temp": False,
-            "enter_test_mode": False,
-            "set_operating_temp": False,
-            "set_cooling_temp": False,
-            "set_upper_temp": False,
-            "set_fan_speed": False,
-            "wait_boot": False,
-            "start_heating": False,
-            "start_cooling": False,
-        }
+        if enable_buttons_initially:
+            # Development mode: all buttons enabled initially for testing
+            self._button_states = {
+                "connect": True,
+                "disconnect": True,
+                "read_temp": True,
+                "enter_test_mode": True,
+                "set_operating_temp": True,
+                "set_cooling_temp": True,
+                "set_upper_temp": True,
+                "set_fan_speed": True,
+                "wait_boot": True,
+                "start_heating": True,
+                "start_cooling": True,
+            }
+        else:
+            # Production mode: only connect button enabled initially
+            self._button_states = {
+                "connect": True,
+                "disconnect": False,
+                "read_temp": False,
+                "enter_test_mode": False,
+                "set_operating_temp": False,
+                "set_cooling_temp": False,
+                "set_upper_temp": False,
+                "set_fan_speed": False,
+                "wait_boot": False,
+                "start_heating": False,
+                "start_cooling": False,
+            }
 
     # Connection state
     @property
