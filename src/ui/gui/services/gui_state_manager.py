@@ -27,8 +27,8 @@ class CycleData:
     temperature: float  # Temperature in °C
     stroke: float  # Stroke position in mm
     force: float  # Measured force in kgf
-    heating_time: int  # Heating time in ms
-    cooling_time: int  # Cooling time in ms
+    heating_time: float  # Heating time in seconds
+    cooling_time: float  # Cooling time in seconds
     status: str  # Cycle status (PASS/FAIL)
 
 

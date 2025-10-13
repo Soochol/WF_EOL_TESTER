@@ -2665,8 +2665,8 @@ class MainWindow(QMainWindow):
                                         temperature = float(temp) if isinstance(temp, (int, float, str)) else 0.0
                                         force = 0.0
                                         stroke = 0.0
-                                        heating_time = 0
-                                        cooling_time = 0
+                                        heating_time = 0.0
+                                        cooling_time = 0.0
 
                                         # Get force from first position
                                         positions = measurements_dict.get(temp, {})
@@ -2684,9 +2684,9 @@ class MainWindow(QMainWindow):
                                             timing_key = f"temp_{temp_int}"
                                             timing_info = timing_data_dict.get(timing_key, {})
                                             if timing_info:
-                                                # Timing data is in seconds, convert to ms
-                                                heating_time = int(timing_info.get("heating_time_s", 0) * 1000)
-                                                cooling_time = int(timing_info.get("cooling_time_s", 0) * 1000)
+                                                # Timing data is already in seconds, keep as float with 2 decimal places
+                                                heating_time = round(timing_info.get("heating_time_s", 0.0), 2)
+                                                cooling_time = round(timing_info.get("cooling_time_s", 0.0), 2)
 
                                         # Create CycleData for this temperature
                                         cycle_data = CycleData(
@@ -2700,7 +2700,7 @@ class MainWindow(QMainWindow):
                                         )
                                         cycles.append(cycle_data)
                                         logger.info(f"Cycle {idx}, Temp {temperature}°C - Force: {force:.2f}kgf, "
-                                                  f"Heat: {heating_time}ms, Cool: {cooling_time}ms")
+                                                  f"Heat: {heating_time:.2f}s, Cool: {cooling_time:.2f}s")
                             else:
                                 # TestMeasurements object - iterate through all temperatures
                                 try:
@@ -2719,8 +2719,8 @@ class MainWindow(QMainWindow):
                                             temperature = temp
                                             force = 0.0
                                             stroke = 0.0
-                                            heating_time = 0
-                                            cooling_time = 0
+                                            heating_time = 0.0
+                                            cooling_time = 0.0
 
                                             # Get measurements for this temperature
                                             temp_measurements = measurements.get_temperature_measurements(temp)
@@ -2741,8 +2741,9 @@ class MainWindow(QMainWindow):
                                                 timing_key = f"temp_{temp_int}"
                                                 timing_info = timing_data.get(timing_key, {})
                                                 if timing_info:
-                                                    heating_time = int(timing_info.get("heating_time_s", 0) * 1000)
-                                                    cooling_time = int(timing_info.get("cooling_time_s", 0) * 1000)
+                                                    # Timing data is already in seconds, keep as float with 2 decimal places
+                                                    heating_time = round(timing_info.get("heating_time_s", 0.0), 2)
+                                                    cooling_time = round(timing_info.get("cooling_time_s", 0.0), 2)
 
                                             # Create CycleData for this temperature
                                             cycle_data = CycleData(
@@ -2756,7 +2757,7 @@ class MainWindow(QMainWindow):
                                             )
                                             cycles.append(cycle_data)
                                             logger.info(f"Cycle {idx}, Temp {temperature}°C - Force: {force:.2f}kgf, "
-                                                      f"Heat: {heating_time}ms, Cool: {cooling_time}ms")
+                                                      f"Heat: {heating_time:.2f}s, Cool: {cooling_time:.2f}s")
                                 except Exception as e:
                                     logger.warning(f"Failed to extract from TestMeasurements: {e}")
                                     import traceback

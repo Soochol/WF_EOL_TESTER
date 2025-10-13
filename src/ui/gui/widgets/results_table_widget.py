@@ -63,8 +63,8 @@ class ResultsTableWidget(QWidget):
             "Temp(°C)",
             "Stroke(mm)",
             "Force(kgf)",
-            "Heat(ms)",
-            "Cool(ms)",
+            "Heat(s)",
+            "Cool(s)",
             "Status",
             "Time",
         ]
@@ -141,10 +141,10 @@ class ResultsTableWidget(QWidget):
 
             child_item.setText(0, f"Cycle {cycle.cycle}")
             child_item.setText(1, f"{cycle.temperature:.1f}°C")
-            child_item.setText(2, f"{cycle.stroke:.1f}")
+            child_item.setText(2, f"{cycle.stroke / 1000.0:.1f}")  # Convert μm to mm
             child_item.setText(3, f"{cycle.force:.2f}")
-            child_item.setText(4, str(cycle.heating_time))
-            child_item.setText(5, str(cycle.cooling_time))
+            child_item.setText(4, f"{cycle.heating_time:.2f}")
+            child_item.setText(5, f"{cycle.cooling_time:.2f}")
             child_item.setText(6, cycle.status)
             child_item.setText(7, "")  # No timestamp for cycles
 
