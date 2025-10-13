@@ -2669,6 +2669,41 @@ class MainWindow(QMainWindow):
                 self.state_manager.add_test_result(test_result)
                 logger.info(f"Test result added to Results page: {test_result.test_id}")
 
+                # Save test result to repository (logs/EOL Force Test/raw_data)
+                try:
+                    import asyncio
+                    from domain.entities.eol_test import EOLTest
+
+                    # Check if result_data has the necessary structure for saving
+                    if hasattr(result_data, 'test_id') and hasattr(result_data, 'test_status'):
+                        # Get repository service from container
+                        repository_service = self.container.repository_service()
+
+                        # Create EOLTest object if result_data is EOLTestResult
+                        # Note: result_data might be EOLTestResult, we need EOLTest entity
+                        # For now, check if we can get the test entity from result
+                        if hasattr(result_data, 'test') and isinstance(result_data.test, EOLTest):
+                            # EOLTestResult has a 'test' attribute with EOLTest entity
+                            test_entity = result_data.test
+                            # Run save operation in event loop
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            loop.run_until_complete(repository_service.save_test_result(test_entity))
+                            loop.close()
+                            logger.info(f"Test result saved to logs/EOL Force Test/raw_data: {test_entity.test_id}")
+                        elif isinstance(result_data, EOLTest):
+                            # If it's already an EOLTest entity
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            loop.run_until_complete(repository_service.save_test_result(result_data))
+                            loop.close()
+                            logger.info(f"Test result saved to logs/EOL Force Test/raw_data: {result_data.test_id}")
+                        else:
+                            logger.warning(f"Result data does not contain EOLTest entity, skipping file save: {type(result_data)}")
+                except Exception as save_error:
+                    logger.error(f"Failed to save test result to file: {save_error}")
+                    # Don't fail the entire result processing if file save fails
+
             elif result_data is None:
                 logger.info("Test result is None (likely cancelled by Emergency Stop)")
             else:
