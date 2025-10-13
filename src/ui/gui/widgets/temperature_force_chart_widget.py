@@ -72,14 +72,18 @@ class TemperatureForceChartWidget(QWidget):
 
     def connect_signals(self) -> None:
         """Connect to state manager signals"""
-        self.state_manager.cycle_result_added.connect(self._on_cycle_result_added)
+        # Connect to test_result_added signal to update chart when test completes
+        self.state_manager.test_result_added.connect(self._on_test_result_added)
 
-    def _on_cycle_result_added(self, result: TestResult) -> None:
-        """Handle new cycle result (for live test execution)"""
-        # Note: This is for live test execution, not loaded results
-        # The signal is currently not emitted, but kept for future live test feature
-        # When implementing live tests, emit cycle data separately
-        pass
+    def _on_test_result_added(self, result: TestResult) -> None:
+        """Handle new test result - extract cycle data and update chart"""
+        # Extract temperature-force data from all cycles
+        for cycle_data in result.cycles:
+            self.add_data_point(
+                cycle=cycle_data.cycle,
+                temperature=cycle_data.temperature,
+                force=cycle_data.force
+            )
 
     def add_data_point(self, cycle: int, temperature: float, force: float) -> None:
         """Add a new data point for the given cycle"""
