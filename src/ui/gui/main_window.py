@@ -2653,14 +2653,22 @@ class MainWindow(QMainWindow):
 
                         if cycle_result.measurements:
                             measurements = cycle_result.measurements
+                            logger.debug(f"Cycle {idx} - measurements type: {type(measurements)}")
 
                             # Get temperature from measurements
                             if isinstance(measurements, dict):
-                                # Dict format: try to extract from nested structure
+                                # Dict format from hardware_service_facade:
+                                # {"measurements": {temp: {pos: {"force": val}}}, "timing_data": {...}}
+                                logger.debug(f"Cycle {idx} - measurements dict keys: {list(measurements.keys())}")
                                 measurements_dict = measurements.get("measurements", {})
+                                timing_data_dict = measurements.get("timing_data", {})
+
+                                logger.debug(f"Cycle {idx} - timing_data_dict: {timing_data_dict}")
+
                                 if measurements_dict:
                                     # Get first temperature key
                                     temps = list(measurements_dict.keys())
+                                    logger.debug(f"Cycle {idx} - temperatures: {temps}")
                                     if temps:
                                         temperature = float(temps[0]) if isinstance(temps[0], (int, float, str)) else 0.0
 
@@ -2669,25 +2677,37 @@ class MainWindow(QMainWindow):
                                         if positions:
                                             first_pos = list(positions.keys())[0]
                                             force_data = positions.get(first_pos, {})
+                                            logger.debug(f"Cycle {idx} - force_data keys: {list(force_data.keys())}")
+                                            logger.debug(f"Cycle {idx} - force_data: {force_data}")
                                             force = force_data.get("force", 0.0)
                                             stroke = first_pos if isinstance(first_pos, (int, float)) else 0.0
 
-                                            # Extract heating/cooling times (stored in seconds, convert to ms)
-                                            heating_time = int(force_data.get("heating_time_s", 0) * 1000)
-                                            cooling_time = int(force_data.get("cooling_time_s", 0) * 1000)
+                                # Extract heating/cooling times from separate timing_data dict
+                                if timing_data_dict:
+                                    # Get first timing entry
+                                    first_timing_key = list(timing_data_dict.keys())[0]
+                                    timing_info = timing_data_dict.get(first_timing_key, {})
+                                    logger.debug(f"Cycle {idx} - timing_info: {timing_info}")
+                                    # Timing data is in seconds, convert to ms
+                                    heating_time = int(timing_info.get("heating_time_s", 0) * 1000)
+                                    cooling_time = int(timing_info.get("cooling_time_s", 0) * 1000)
+                                    logger.debug(f"Cycle {idx} - heating_time: {heating_time}ms, cooling_time: {cooling_time}ms")
                             else:
                                 # TestMeasurements object
                                 try:
                                     from domain.value_objects.measurements import TestMeasurements
                                     if isinstance(measurements, TestMeasurements):
+                                        logger.debug(f"Cycle {idx} - TestMeasurements object detected")
                                         # Get temperature range
                                         temp_range = measurements.get_temperature_range()
+                                        logger.debug(f"Cycle {idx} - temp_range: {temp_range}")
                                         if temp_range and temp_range[0] is not None:
                                             temperature = temp_range[0]
 
                                         # Get force range and average
                                         try:
                                             force_range = measurements.get_force_range()
+                                            logger.debug(f"Cycle {idx} - force_range: {force_range}")
                                             if force_range:
                                                 force = force_range[0]  # Use first/min force
                                         except:
@@ -2696,6 +2716,7 @@ class MainWindow(QMainWindow):
                                         # Get position range
                                         try:
                                             pos_range = measurements.get_position_range()
+                                            logger.debug(f"Cycle {idx} - pos_range: {pos_range}")
                                             if pos_range:
                                                 stroke = pos_range[0]  # Use first/min position
                                         except:
@@ -2703,14 +2724,21 @@ class MainWindow(QMainWindow):
 
                                         # Get timing data
                                         timing_data = measurements.get_timing_data()
+                                        logger.debug(f"Cycle {idx} - timing_data: {timing_data}")
                                         if timing_data:
                                             # Get first timing entry
-                                            for timing_info in timing_data.values():
+                                            for timing_key, timing_info in timing_data.items():
+                                                logger.debug(f"Cycle {idx} - timing_key: {timing_key}, timing_info: {timing_info}")
                                                 heating_time = int(timing_info.get("heating_time_s", 0) * 1000)
                                                 cooling_time = int(timing_info.get("cooling_time_s", 0) * 1000)
+                                                logger.debug(f"Cycle {idx} - extracted heating: {heating_time}ms, cooling: {cooling_time}ms")
                                                 break
+                                        else:
+                                            logger.warning(f"Cycle {idx} - No timing_data available")
                                 except Exception as e:
                                     logger.warning(f"Failed to extract from TestMeasurements: {e}")
+                                    import traceback
+                                    logger.warning(traceback.format_exc())
 
                         cycle_data = CycleData(
                             cycle=idx,
