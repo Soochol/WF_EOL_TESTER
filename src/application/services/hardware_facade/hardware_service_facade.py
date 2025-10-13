@@ -1081,10 +1081,14 @@ class HardwareServiceFacade:
                 cycle_measurements[temp] = {}
                 for pos, measurements in positions.items():
                     force_data = measurements["force"]
-                    if isinstance(force_data, list) and len(force_data) >= cycle_num:
-                        # Get only the measurement for this cycle
-                        cycle_force = force_data[cycle_num - 1]
-                        cycle_measurements[temp][pos] = {"force": cycle_force}
+                    if isinstance(force_data, list):
+                        # Multiple measurements - get the one for this cycle
+                        if len(force_data) >= cycle_num:
+                            cycle_force = force_data[cycle_num - 1]
+                            cycle_measurements[temp][pos] = {"force": cycle_force}
+                    else:
+                        # Single measurement (repeat_count = 1) - use the value directly
+                        cycle_measurements[temp][pos] = {"force": force_data}
 
             if cycle_measurements:
                 # Convert to TestMeasurements object with timing data
