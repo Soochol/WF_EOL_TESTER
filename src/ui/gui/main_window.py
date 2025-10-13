@@ -2641,17 +2641,89 @@ class MainWindow(QMainWindow):
                         f"Converting {len(result_data.individual_cycle_results)} cycles to GUI format"
                     )
                     for idx, cycle_result in enumerate(result_data.individual_cycle_results, 1):
-                        # Extract cycle data from domain result
+                        # Extract data from CycleResult
+                        # CycleResult has: cycle_number, test_status, is_passed, measurements (TestMeasurements)
+
+                        # Extract temperature and force from measurements
+                        temperature = 0.0
+                        force = 0.0
+                        stroke = 0.0
+                        heating_time = 0
+                        cooling_time = 0
+
+                        if cycle_result.measurements:
+                            measurements = cycle_result.measurements
+
+                            # Get temperature from measurements
+                            if isinstance(measurements, dict):
+                                # Dict format: try to extract from nested structure
+                                measurements_dict = measurements.get("measurements", {})
+                                if measurements_dict:
+                                    # Get first temperature key
+                                    temps = list(measurements_dict.keys())
+                                    if temps:
+                                        temperature = float(temps[0]) if isinstance(temps[0], (int, float, str)) else 0.0
+
+                                        # Get force from first position
+                                        positions = measurements_dict.get(temps[0], {})
+                                        if positions:
+                                            first_pos = list(positions.keys())[0]
+                                            force_data = positions.get(first_pos, {})
+                                            force = force_data.get("force", 0.0)
+                                            stroke = first_pos if isinstance(first_pos, (int, float)) else 0.0
+
+                                            # Extract heating/cooling times (stored in seconds, convert to ms)
+                                            heating_time = int(force_data.get("heating_time_s", 0) * 1000)
+                                            cooling_time = int(force_data.get("cooling_time_s", 0) * 1000)
+                            else:
+                                # TestMeasurements object
+                                try:
+                                    from domain.value_objects.measurements import TestMeasurements
+                                    if isinstance(measurements, TestMeasurements):
+                                        # Get temperature range
+                                        temp_range = measurements.get_temperature_range()
+                                        if temp_range and temp_range[0] is not None:
+                                            temperature = temp_range[0]
+
+                                        # Get force range and average
+                                        try:
+                                            force_range = measurements.get_force_range()
+                                            if force_range:
+                                                force = force_range[0]  # Use first/min force
+                                        except:
+                                            pass
+
+                                        # Get position range
+                                        try:
+                                            pos_range = measurements.get_position_range()
+                                            if pos_range:
+                                                stroke = pos_range[0]  # Use first/min position
+                                        except:
+                                            pass
+
+                                        # Get timing data
+                                        timing_data = measurements.get_timing_data()
+                                        if timing_data:
+                                            # Get first timing entry
+                                            for timing_info in timing_data.values():
+                                                heating_time = int(timing_info.get("heating_time_s", 0) * 1000)
+                                                cooling_time = int(timing_info.get("cooling_time_s", 0) * 1000)
+                                                break
+                                except Exception as e:
+                                    logger.warning(f"Failed to extract from TestMeasurements: {e}")
+
                         cycle_data = CycleData(
                             cycle=idx,
-                            temperature=getattr(cycle_result, "temperature", 0.0),
-                            stroke=getattr(cycle_result, "stroke_position", 0.0),
-                            force=getattr(cycle_result, "measured_force", 0.0),
-                            heating_time=getattr(cycle_result, "heating_time_ms", 0),
-                            cooling_time=getattr(cycle_result, "cooling_time_ms", 0),
-                            status="PASS" if getattr(cycle_result, "is_passed", False) else "FAIL"
+                            temperature=temperature,
+                            stroke=stroke,
+                            force=force,
+                            heating_time=heating_time,
+                            cooling_time=cooling_time,
+                            status="PASS" if cycle_result.is_passed else "FAIL"
                         )
                         cycles.append(cycle_data)
+                        logger.debug(f"Cycle {idx} - Temp: {cycle_data.temperature}, Force: {cycle_data.force}, "
+                                   f"Heat: {cycle_data.heating_time}ms, Cool: {cycle_data.cooling_time}ms")
                 else:
                     logger.info("Test completed (single cycle or no individual cycle data)")
 
