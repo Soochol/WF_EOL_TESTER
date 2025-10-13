@@ -78,13 +78,13 @@ class RobotControlState(QObject):
                 self.set_button_enabled("disconnect", True)
                 self.set_button_enabled("servo_on", True)
                 self.set_button_enabled("servo_off", False)  # Initially disabled (servo is off)
-                self.set_button_enabled("home", True)
+                self.set_button_enabled("home", False)  # ✅ Disabled until servo is on (home requires servo)
                 self.set_button_enabled("move_abs", False)  # Disabled until servo is on
                 self.set_button_enabled("move_rel", False)  # Disabled until servo is on
                 self.set_button_enabled("get_position", True)
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)  # Always enabled
-                self.update_status("Robot connected", "info")
+                self.update_status("Robot connected - Turn on servo to enable motion", "info")
             else:
                 # Disconnected: disable control buttons, enable connect
                 self.set_button_enabled("connect", True)
@@ -117,19 +117,21 @@ class RobotControlState(QObject):
             self.servo_changed.emit(enabled)
 
             if enabled:
-                # Servo ON: Enable move buttons, toggle servo buttons
+                # Servo ON: Enable move buttons, home button, toggle servo buttons
                 self.set_button_enabled("servo_on", False)   # Already on
                 self.set_button_enabled("servo_off", True)   # Can turn off
+                self.set_button_enabled("home", True)        # ✅ Home enabled (requires servo)
                 self.set_button_enabled("move_abs", True)    # Movement enabled
                 self.set_button_enabled("move_rel", True)    # Movement enabled
-                self.update_status("Servo enabled - Motor active", "info")
+                self.update_status("Servo enabled - Motor active, motion commands available", "info")
             else:
-                # Servo OFF: Disable move buttons, toggle servo buttons
+                # Servo OFF: Disable move buttons, home button, toggle servo buttons
                 self.set_button_enabled("servo_on", True)    # Can turn on
                 self.set_button_enabled("servo_off", False)  # Already off
+                self.set_button_enabled("home", False)       # ✅ Home disabled (requires servo)
                 self.set_button_enabled("move_abs", False)   # Movement disabled
                 self.set_button_enabled("move_rel", False)   # Movement disabled
-                self.update_status("Servo disabled - Motor inactive", "warning")
+                self.update_status("Servo disabled - Turn on servo to enable motion", "warning")
 
     # Position tracking
     @property
@@ -219,14 +221,13 @@ class RobotControlState(QObject):
             self.set_button_enabled("stop", True)
             self.set_button_enabled("emergency", True)
         else:
-            # Homing completed: restore buttons based on connection state
+            # Homing completed: restore buttons based on connection and servo state
             if self.is_connected:
                 self.set_button_enabled("disconnect", True)
-                self.set_button_enabled("home", True)
                 self.set_button_enabled("get_position", True)
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)
-                # Restore servo-dependent buttons
+                # Restore servo-dependent buttons (includes home button)
                 self.set_servo_enabled(self._servo_enabled)
 
     def set_motion_in_progress(self, in_progress: bool) -> None:
@@ -247,11 +248,10 @@ class RobotControlState(QObject):
             # Motion completed: restore buttons based on connection and servo state
             if self.is_connected:
                 self.set_button_enabled("disconnect", True)
-                self.set_button_enabled("home", True)
                 self.set_button_enabled("get_position", True)
                 self.set_button_enabled("stop", True)
                 self.set_button_enabled("emergency", True)
-                # Restore servo-dependent buttons
+                # Restore servo-dependent buttons (includes home button)
                 self.set_servo_enabled(self._servo_enabled)
 
     # Reset state
