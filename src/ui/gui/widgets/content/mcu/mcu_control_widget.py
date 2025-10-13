@@ -8,7 +8,6 @@ Features vertical layout with grouped controls.
 from typing import Dict, Optional
 
 # Third-party imports
-from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
@@ -91,19 +90,10 @@ class MCUControlWidget(QWidget):
         # Progress bar
         self.progress_bar: Optional[QProgressBar] = None
 
-        # Temperature polling timer for real-time display
-        self._temperature_timer: Optional[QTimer] = None
-        self._is_monitoring_temperature = False
-
         # Setup UI and connections
         self._setup_ui()
         self._setup_connections()
         self._setup_state_connections()
-        self._setup_temperature_polling()
-
-        # Start monitoring immediately if mock hardware (for UseCase auto-connect)
-        if is_mock_hardware:
-            self.start_temperature_monitoring()
 
     def _setup_ui(self) -> None:
         """Setup modern UI with 1-column layout and scroll area"""
@@ -208,79 +198,6 @@ class MCUControlWidget(QWidget):
 
         # Connect progress indication
         self.mcu_state.progress_changed.connect(self._on_progress_changed)
-
-        # Connect connection state to temperature monitoring
-        self.mcu_state.connection_changed.connect(self._on_connection_changed)
-
-    def _setup_temperature_polling(self) -> None:
-        """Setup timer for periodic temperature polling"""
-        self._temperature_timer = QTimer(self)
-        self._temperature_timer.timeout.connect(self._poll_temperature)
-        self._temperature_timer.setInterval(1000)  # Poll every 1 second
-
-    def _poll_temperature(self) -> None:
-        """Poll temperature from MCU service and update GUI"""
-        if not self._is_monitoring_temperature:
-            return
-
-        # Sync connection state from MCU service (in case UseCase connected/disconnected)
-        if self.executor_thread:
-            self.executor_thread.submit_task(
-                "mcu_sync_state",
-                self._async_sync_connection_state()
-            )
-
-        # Use executor thread to read temperature asynchronously
-        if self.executor_thread and self.mcu_state.is_connected:
-            self.executor_thread.submit_task(
-                "mcu_poll_temp",
-                self._async_poll_temperature()
-            )
-
-    async def _async_sync_connection_state(self) -> None:
-        """Sync connection state from MCU service (for UseCase connections)"""
-        try:
-            # Check actual connection state from MCU service
-            is_connected = await self.mcu_service.is_connected()
-
-            # Update GUI state if different from MCU service state
-            if is_connected != self.mcu_state.is_connected:
-                self.mcu_state.set_connected(is_connected)
-        except Exception:
-            # Silently fail during state sync
-            pass
-
-    async def _async_poll_temperature(self) -> None:
-        """Async temperature polling"""
-        try:
-            temperature = await self.mcu_service.get_temperature()
-            # Update state manager which will trigger GUI update
-            self.mcu_state.set_temperature(temperature)
-            self.event_handlers.temperature_read.emit(temperature)
-        except Exception:
-            # Silently fail - don't spam logs during continuous polling
-            pass
-
-    def start_temperature_monitoring(self) -> None:
-        """Start real-time temperature monitoring"""
-        if not self._is_monitoring_temperature and self._temperature_timer:
-            self._is_monitoring_temperature = True
-            self._temperature_timer.start()
-
-    def stop_temperature_monitoring(self) -> None:
-        """Stop real-time temperature monitoring"""
-        if self._is_monitoring_temperature and self._temperature_timer:
-            self._is_monitoring_temperature = False
-            self._temperature_timer.stop()
-
-    def _on_connection_changed(self, connected: bool) -> None:
-        """Handle MCU connection state changes"""
-        if connected:
-            # Start temperature monitoring when connected
-            self.start_temperature_monitoring()
-        else:
-            # Stop temperature monitoring when disconnected
-            self.stop_temperature_monitoring()
 
     def _on_button_state_changed(self, button_name: str, enabled: bool) -> None:
         """Handle button state changes from state manager"""
