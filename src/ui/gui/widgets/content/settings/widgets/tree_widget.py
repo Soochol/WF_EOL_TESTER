@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 # Local folder imports
 from ..core import Colors, ConfigFile, ConfigValue, EditorTypes, Styles
+from ..core.parameter_descriptions import ParameterDescriptions
 
 
 class SettingsTreeWidget(QTreeWidget):
@@ -142,6 +143,7 @@ class SettingsTreeWidget(QTreeWidget):
                     file_path=file_path,
                     category=category_prefix,
                     allowed_values=allowed_values,
+                    description=ParameterDescriptions.get_description(item_key),
                 )
 
                 setting_item.setData(

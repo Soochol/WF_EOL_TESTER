@@ -77,10 +77,37 @@ class PropertyEditorWidget(QWidget):
 
         # Description if available
         if self.config_value.description:
+            # Description header
+            desc_header = QLabel("📘 Description")
+            desc_header.setStyleSheet(
+                f"""
+                font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif;
+                font-weight: 600;
+                font-size: 13px;
+                color: {Colors.TEXT_SECONDARY};
+                margin-top: 10px;
+                margin-bottom: 5px;
+                border: none;
+                background-color: transparent;
+                """
+            )
+            layout.addWidget(desc_header)
+
+            # Description content
             desc_label = QLabel(self.config_value.description)
             desc_label.setWordWrap(True)
             desc_label.setStyleSheet(
-                f"font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif; color: {Colors.TEXT_SECONDARY}; font-size: 13px; letter-spacing: 0.2px; margin-bottom: 10px; border: none; background-color: transparent;"
+                f"""
+                font-family: 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif;
+                color: {Colors.TEXT_PRIMARY};
+                font-size: 13px;
+                line-height: 1.6;
+                background-color: rgba(33, 150, 243, 0.08);
+                border-left: 3px solid rgba(33, 150, 243, 0.5);
+                padding: 12px;
+                border-radius: 6px;
+                margin-bottom: 15px;
+                """
             )
             layout.addWidget(desc_label)
 
