@@ -89,12 +89,26 @@ class EmergencyStopService:
             pass
 
     async def _execute_hardware_emergency_stop(self) -> None:
-        """Execute immediate hardware safety actions"""
+        """Execute immediate hardware safety actions with automatic connection"""
 
         # Robot emergency stop - highest priority
         try:
             robot_service = self.hardware_facade.robot_service
-            if robot_service and await robot_service.is_connected():
+            if robot_service:
+                # Auto-connect if not connected (emergency requires connection to stop robot)
+                is_connected = await robot_service.is_connected()
+                if not is_connected:
+                    logger.warning(
+                        "Robot not connected - connecting automatically for emergency stop..."
+                    )
+                    try:
+                        await robot_service.connect()
+                        logger.info("Robot connected successfully for emergency stop")
+                    except Exception as connect_error:
+                        logger.error(f"Failed to connect robot for emergency stop: {connect_error}")
+                        # If connection fails, we cannot execute emergency stop on robot
+                        raise
+
                 # Get robot axis ID from configuration
                 hardware_config = await self.configuration_service.load_hardware_config()
                 robot_axis = hardware_config.robot.axis_id
@@ -109,7 +123,22 @@ class EmergencyStopService:
         # Power supply emergency shutdown
         try:
             power_service = self.hardware_facade.power_service
-            if power_service and await power_service.is_connected():
+            if power_service:
+                # Auto-connect if not connected (emergency requires connection to disable power)
+                is_connected = await power_service.is_connected()
+                if not is_connected:
+                    logger.warning(
+                        "Power supply not connected - connecting automatically for emergency stop..."
+                    )
+                    try:
+                        await power_service.connect()
+                        logger.info("Power supply connected successfully for emergency stop")
+                    except Exception as connect_error:
+                        logger.error(
+                            f"Failed to connect power supply for emergency stop: {connect_error}"
+                        )
+                        # Continue even if power connection fails
+
                 await power_service.disable_output()
                 logger.info("✓ Power supply emergency shutdown executed")
             else:

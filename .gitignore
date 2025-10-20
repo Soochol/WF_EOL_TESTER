@@ -57,7 +57,8 @@ venv_disabled/
 # Build and distribution
 build/
 dist/
-*.spec
+# Keep our custom spec file
+!wf_eol_tester.spec
 
 # Claude settings
 .claude/settings.local.json

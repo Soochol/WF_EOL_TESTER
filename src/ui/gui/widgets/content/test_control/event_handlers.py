@@ -4,14 +4,20 @@ Handles all events and user interactions for test controls.
 """
 
 # Standard library imports
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 # Third-party imports
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QComboBox, QLineEdit
+from loguru import logger
 
 # Local folder imports
 from .state_manager import TestControlState
+
+
+if TYPE_CHECKING:
+    # Local application imports
+    from application.interfaces.hardware.robot import RobotService
 
 
 class TestControlEventHandlers(QObject):
@@ -24,9 +30,19 @@ class TestControlEventHandlers(QObject):
     robot_home_requested = Signal()
     emergency_stop_requested = Signal()
 
-    def __init__(self, state_manager: TestControlState, parent: Optional[QObject] = None):
+    def __init__(
+        self,
+        state_manager: TestControlState,
+        robot_service: Optional["RobotService"] = None,
+        executor_thread=None,
+        axis_id: int = 0,
+        parent: Optional[QObject] = None,
+    ):
         super().__init__(parent)
         self.state_manager = state_manager
+        self.robot_service = robot_service
+        self.executor_thread = executor_thread
+        self.axis_id = axis_id
 
     def handle_start_test_clicked(self) -> None:
         """Handle START TEST button click"""
@@ -61,22 +77,82 @@ class TestControlEventHandlers(QObject):
         self.test_paused.emit()
 
     def handle_home_button_clicked(self) -> None:
-        """Handle HOME button click with debug logging"""
-        # Third-party imports
-        from loguru import logger
-
+        """Handle HOME button click - executes actual robot homing operation"""
         logger.info("🏠 HOME button clicked in TestControlWidget")
-        logger.debug("Emitting robot_home_requested signal...")
+
+        # Validate dependencies
+        if not self.robot_service:
+            logger.error("Robot service not available")
+            self.state_manager.update_status("Robot service not initialized", "status_error", 0)
+            self.state_manager.set_button_enabled("home", True)
+            return
+
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.state_manager.update_status("Executor thread not initialized", "status_error", 0)
+            self.state_manager.set_button_enabled("home", True)
+            return
 
         # Update state
         self.state_manager.update_status("Robot Homing...", "dashboard", 0)
-
-        # Disable home button during homing
         self.state_manager.set_button_enabled("home", False)
+        self.state_manager.set_button_enabled("start", False)
 
-        # Emit signal
-        self.robot_home_requested.emit()
-        logger.debug("robot_home_requested signal emitted successfully")
+        # Submit homing task to executor thread
+        logger.debug("Submitting robot home task to executor thread...")
+        self.executor_thread.submit_task("robot_home", self._async_home())
+
+    async def _async_home(self) -> None:
+        """Async home operation with automatic connection and servo on"""
+        # Type guard: robot_service should be available at this point
+        if not self.robot_service:
+            logger.error("Robot service became unavailable during homing")
+            self.state_manager.update_status("Robot service error", "status_error", 0)
+            self.state_manager.set_button_enabled("home", True)
+            return
+
+        try:
+            # Step 1: Check and establish connection
+            is_connected = await self.robot_service.is_connected()
+            if not is_connected:
+                logger.info("Robot not connected - connecting automatically...")
+                self.state_manager.update_status("Connecting to robot...", "dashboard", 10)
+                await self.robot_service.connect()
+                logger.info("Robot connected successfully")
+                self.state_manager.update_status("Robot connected", "status_success", 30)
+
+            # Step 2: Check and enable servo
+            # Note: Always enable servo to ensure it's ready (idempotent operation)
+            logger.info("Ensuring servo is enabled...")
+            self.state_manager.update_status("Enabling servo...", "dashboard", 50)
+            await self.robot_service.enable_servo(self.axis_id)
+            logger.info("Servo enabled successfully")
+            self.state_manager.update_status("Servo enabled", "status_success", 70)
+
+            # Step 3: Perform homing
+            logger.info(f"Starting robot homing for axis {self.axis_id}...")
+            self.state_manager.update_status("Homing robot...", "dashboard", 80)
+            await self.robot_service.home_axis(self.axis_id)
+
+            # Read position after homing
+            position = await self.robot_service.get_position(self.axis_id)
+            logger.info(f"Robot homing completed successfully - Position: {position:.2f} μm")
+
+            # Update state
+            self.state_manager.update_status("Robot Homing Completed", "status_success", 100)
+            self.state_manager.set_button_enabled("start", True)
+
+            # Emit success signal
+            self.robot_home_requested.emit()
+
+        except Exception as e:
+            logger.error(f"Robot homing failed: {e}", exc_info=True)
+            self.state_manager.update_status(f"Robot Homing Failed: {str(e)}", "status_error", 0)
+
+        finally:
+            # Always re-enable home button
+            logger.debug("Re-enabling home button after homing operation")
+            self.state_manager.set_button_enabled("home", True)
 
     def handle_emergency_stop_clicked(self) -> None:
         """Handle EMERGENCY STOP button click"""

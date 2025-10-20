@@ -137,15 +137,24 @@ class ForceValue(BaseMeasurement):
     """
 
     def _validate_value(self, value: Union[int, float]) -> None:
-        """Validate force-specific value constraints"""
+        """Validate force-specific value constraints
+
+        Note:
+            Negative values are allowed as they represent tensile force (pulling),
+            while positive values represent compressive force (pushing).
+            Physical force measurements can be bidirectional.
+        """
         super()._validate_value(value)
 
         # Force-specific validations
-        if value < 0:
+        # Optional: Add reasonable physical limits based on hardware capability
+        # For most load cells, ±500 kgf is a reasonable maximum
+        MAX_FORCE_KGF = 500.0
+        if abs(value) > MAX_FORCE_KGF:
             raise ValidationException(
                 "force_value",
                 value,
-                "Force value cannot be negative",
+                f"Force value magnitude exceeds physical limits (±{MAX_FORCE_KGF} kgf)",
             )
 
     @classmethod

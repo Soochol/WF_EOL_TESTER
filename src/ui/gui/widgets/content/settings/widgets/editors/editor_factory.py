@@ -16,6 +16,7 @@ from ...core import ConfigValue
 from .base_editor import BaseEditorWidget
 from .boolean_editor import BooleanEditorWidget
 from .combo_editor import ComboEditorWidget
+from .list_editor import ListEditorWidget
 from .numeric_editor import NumericEditorWidget
 from .text_editor import TextEditorWidget
 
@@ -53,6 +54,12 @@ class EditorFactory:
             return NumericEditorWidget(config_value, value_changed_callback, parent)
         elif data_type == "str":
             return TextEditorWidget(config_value, value_changed_callback, parent)
+        elif data_type == "list":
+            # Special handling for spec_points - use table editor
+            if config_value.key.endswith("spec_points"):
+                return ListEditorWidget(config_value, value_changed_callback, parent)
+            # Other lists fall back to text editor
+            return TextEditorWidget(config_value, value_changed_callback, parent)
 
         # Fallback to text editor for unknown types
         return TextEditorWidget(config_value, value_changed_callback, parent)
@@ -77,6 +84,10 @@ class EditorFactory:
         elif data_type in ("int", "float"):
             return "numeric"
         elif data_type == "str":
+            return "text"
+        elif data_type == "list":
+            if config_value.key.endswith("spec_points"):
+                return "list"
             return "text"
 
         return "text"  # fallback

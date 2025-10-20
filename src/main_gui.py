@@ -767,15 +767,28 @@ def main() -> int:
     """
     # Configure logging for GUI application
     logger.remove()  # Remove default logger
-    logger.add(
-        sys.stderr,
-        level="INFO",
-        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>GUI</cyan> | "
-        "<level>{message}</level>",
-        colorize=True,
-    )
+
+    # In PyInstaller GUI apps, sys.stderr may be None, so use file logging as fallback
+    if sys.stderr is not None:
+        logger.add(
+            sys.stderr,
+            level="INFO",
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>GUI</cyan> | "
+            "<level>{message}</level>",
+            colorize=True,
+        )
+    else:
+        # Fallback to file logging for bundled applications
+        logger.add(
+            "logs/gui_application.log",
+            level="INFO",
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | GUI | {message}",
+            rotation="10 MB",
+            retention="7 days",
+            compression="zip",
+        )
 
     logger.info("Starting WF EOL Tester GUI Application")
 

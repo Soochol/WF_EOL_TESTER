@@ -63,6 +63,7 @@ class TestControlWidget(QWidget):
         self,
         container: ApplicationContainer,
         state_manager: GUIStateManager,
+        executor_thread=None,  # TestExecutorThread for async operations
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
@@ -70,11 +71,20 @@ class TestControlWidget(QWidget):
         # Store dependencies
         self.container = container
         self.gui_state_manager = state_manager
+        self.executor_thread = executor_thread
+
+        # Get robot service from container
+        robot_service = container.hardware_service_facade().robot_service
 
         # Initialize components
         self.theme_manager = ThemeManager()
         self.test_state = TestControlState()
-        self.event_handlers = TestControlEventHandlers(self.test_state)
+        self.event_handlers = TestControlEventHandlers(
+            state_manager=self.test_state,
+            robot_service=robot_service,
+            executor_thread=executor_thread,
+            axis_id=0,  # Primary axis
+        )
         self.ui_factory = UIComponentFactory(self.theme_manager)
 
         # UI component groups

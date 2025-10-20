@@ -228,11 +228,17 @@ class ModernTestControlWidget(QWidget):
         self,
         container: ApplicationContainer,
         state_manager: GUIStateManager,
+        executor_thread=None,  # TestExecutorThread for async operations
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self.container = container
         self.state_manager = state_manager
+        self.executor_thread = executor_thread
+
+        # Get robot service from container
+        self.robot_service = container.hardware_service_facade().robot_service
+        self.axis_id = 0  # Primary axis
 
         # Serial number management (popup-based)
         self.current_serial_number = ""
@@ -254,16 +260,19 @@ class ModernTestControlWidget(QWidget):
 
     def _get_serial_popup_setting(self) -> bool:
         """Get serial number popup setting from configuration"""
+        # Third-party imports
         from loguru import logger
 
         try:
             if self.container:
                 # Try to get from ConfigurationService (preferred method)
-                if hasattr(self.container, 'configuration_service'):
+                if hasattr(self.container, "configuration_service"):
                     try:
                         config_service = self.container.configuration_service()
                         # Load application config through service
+                        # Third-party imports
                         import asyncio
+
                         app_config = asyncio.run(config_service.load_application_config())
                         result = app_config.gui.require_serial_number_popup
                         logger.debug(f"Serial popup setting from ConfigurationService: {result}")
@@ -480,7 +489,10 @@ class ModernTestControlWidget(QWidget):
 
     def _on_start_clicked(self):
         """Handle start button click with serial number popup"""
+        # Standard library imports
         from datetime import datetime
+
+        # Third-party imports
         from loguru import logger
 
         # Re-read popup setting from configuration (allows hot-reload without restart)
@@ -514,9 +526,88 @@ class ModernTestControlWidget(QWidget):
         self.test_stopped.emit()
 
     def _on_home_clicked(self):
-        """Handle home button click"""
+        """Handle home button click - executes actual robot homing operation"""
+        # Third-party imports
+        from loguru import logger
+
+        logger.info("🏠 HOME button clicked in ModernTestControlWidget")
+
+        # Validate dependencies
+        if not self.robot_service:
+            logger.error("Robot service not available")
+            self.update_test_status("Robot service not initialized", "❌")
+            return
+
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.update_test_status("Executor thread not initialized", "❌")
+            return
+
+        # Update UI state
         self.start_indeterminate_progress()
-        self.robot_home_requested.emit()
+        self.home_btn.setEnabled(False)
+        self.start_btn.setEnabled(False)
+
+        # Submit homing task to executor thread
+        logger.debug("Submitting robot home task to executor thread...")
+        self.executor_thread.submit_task("robot_home", self._async_home())
+
+    async def _async_home(self) -> None:
+        """Async home operation with automatic connection and servo on"""
+        # Third-party imports
+        from loguru import logger
+
+        # Type guard: robot_service should be available at this point
+        if not self.robot_service:
+            logger.error("Robot service became unavailable during homing")
+            self.update_test_status("Robot service error", "❌")
+            self.home_btn.setEnabled(True)
+            self.stop_indeterminate_progress()
+            return
+
+        try:
+            # Step 1: Check and establish connection
+            is_connected = await self.robot_service.is_connected()
+            if not is_connected:
+                logger.info("Robot not connected - connecting automatically...")
+                self.update_test_status("Connecting to robot...", "🔌")
+                await self.robot_service.connect()
+                logger.info("Robot connected successfully")
+                self.update_test_status("Robot connected", "✅")
+
+            # Step 2: Check and enable servo
+            # Note: Always enable servo to ensure it's ready (idempotent operation)
+            logger.info("Ensuring servo is enabled...")
+            self.update_test_status("Enabling servo...", "⚙️")
+            await self.robot_service.enable_servo(self.axis_id)
+            logger.info("Servo enabled successfully")
+            self.update_test_status("Servo enabled", "✅")
+
+            # Step 3: Perform homing
+            logger.info(f"Starting robot homing for axis {self.axis_id}...")
+            self.update_test_status("Homing robot...", "🏠")
+            await self.robot_service.home_axis(self.axis_id)
+
+            # Read position after homing
+            position = await self.robot_service.get_position(self.axis_id)
+            logger.info(f"Robot homing completed successfully - Position: {position:.2f} μm")
+
+            # Update UI state
+            self.update_test_status("Robot Homing Completed", "✅")
+            self.start_btn.setEnabled(True)
+
+            # Emit success signal
+            self.robot_home_requested.emit()
+
+        except Exception as e:
+            logger.error(f"Robot homing failed: {e}", exc_info=True)
+            self.update_test_status(f"Robot Homing Failed: {str(e)}", "❌")
+
+        finally:
+            # Always re-enable home button and stop progress
+            logger.debug("Re-enabling home button after homing operation")
+            self.home_btn.setEnabled(True)
+            self.stop_indeterminate_progress()
 
     def _on_emergency_clicked(self):
         """Handle emergency stop button click"""

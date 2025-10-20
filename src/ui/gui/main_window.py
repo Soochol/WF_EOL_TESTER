@@ -1080,6 +1080,7 @@ class MainWindow(QMainWindow):
         self.test_control_page = TestControlWidget(
             container=self.container,
             state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # Pass executor thread for async operations
         )
         # Connect test control signals
         self.test_control_page.test_started.connect(self._on_test_started)
@@ -1512,6 +1513,7 @@ class MainWindow(QMainWindow):
         self.test_control_page = TestControlWidget(
             container=self.container,
             state_manager=self.state_manager,
+            executor_thread=self.test_executor_thread,  # Pass executor thread for async operations
         )
         # Connect test control signals
         self.test_control_page.test_started.connect(self._on_test_started)
@@ -1886,15 +1888,23 @@ class MainWindow(QMainWindow):
 
             # Test executor thread signals
             if hasattr(self, "test_executor_thread") and self.test_executor_thread:
-                try:
-                    self.test_executor_thread.test_started.disconnect()
-                    self.test_executor_thread.test_progress.disconnect()
-                    self.test_executor_thread.test_result.disconnect()
-                    self.test_executor_thread.test_completed.disconnect()
-                    self.test_executor_thread.test_error.disconnect()
-                    self.test_executor_thread.log_message.disconnect()
-                except (RuntimeError, AttributeError):
-                    pass
+                # Disconnect each signal individually with error handling
+                signals_to_disconnect = [
+                    "test_started",
+                    "test_progress",
+                    "test_result",
+                    "test_completed",
+                    "test_error",
+                    "log_message",
+                ]
+                for signal_name in signals_to_disconnect:
+                    try:
+                        signal = getattr(self.test_executor_thread, signal_name, None)
+                        if signal:
+                            signal.disconnect()
+                    except (RuntimeError, TypeError, AttributeError):
+                        # Signal not connected or already disconnected - safe to ignore
+                        pass
 
             logger.info("✅ All signals disconnected")
 
@@ -2597,12 +2607,15 @@ class MainWindow(QMainWindow):
 
     def _on_thread_test_result(self, result_data) -> None:
         """Handle test result from thread"""
-        # Third-party imports
+        # Standard library imports
         from datetime import datetime
+
+        # Third-party imports
         from loguru import logger
 
+        # Local application imports
         # Local imports
-        from ui.gui.services.gui_state_manager import TestResult, CycleData
+        from ui.gui.services.gui_state_manager import CycleData, TestResult
 
         logger.info(f"Received test result: {result_data}")
 
@@ -2657,12 +2670,20 @@ class MainWindow(QMainWindow):
                                 if measurements_dict:
                                     # Iterate through ALL temperatures (not just first one)
                                     temps = list(measurements_dict.keys())
-                                    logger.info(f"Cycle {idx} - Found {len(temps)} temperatures: {temps}")
-                                    logger.info(f"Cycle {idx} - timing_data_dict keys: {list(timing_data_dict.keys())}")
+                                    logger.info(
+                                        f"Cycle {idx} - Found {len(temps)} temperatures: {temps}"
+                                    )
+                                    logger.info(
+                                        f"Cycle {idx} - timing_data_dict keys: {list(timing_data_dict.keys())}"
+                                    )
 
                                     for temp in temps:
                                         # Extract data for this temperature
-                                        temperature = float(temp) if isinstance(temp, (int, float, str)) else 0.0
+                                        temperature = (
+                                            float(temp)
+                                            if isinstance(temp, (int, float, str))
+                                            else 0.0
+                                        )
                                         force = 0.0
                                         stroke = 0.0
                                         heating_time = 0.0
@@ -2674,7 +2695,11 @@ class MainWindow(QMainWindow):
                                             first_pos = list(positions.keys())[0]
                                             force_data = positions.get(first_pos, {})
                                             force = force_data.get("force", 0.0)
-                                            stroke = first_pos if isinstance(first_pos, (int, float)) else 0.0
+                                            stroke = (
+                                                first_pos
+                                                if isinstance(first_pos, (int, float))
+                                                else 0.0
+                                            )
 
                                         # Extract heating/cooling times from timing_data for this temperature
                                         if timing_data_dict:
@@ -2685,8 +2710,12 @@ class MainWindow(QMainWindow):
                                             timing_info = timing_data_dict.get(timing_key, {})
                                             if timing_info:
                                                 # Timing data is already in seconds, keep as float with 2 decimal places
-                                                heating_time = round(timing_info.get("heating_time_s", 0.0), 2)
-                                                cooling_time = round(timing_info.get("cooling_time_s", 0.0), 2)
+                                                heating_time = round(
+                                                    timing_info.get("heating_time_s", 0.0), 2
+                                                )
+                                                cooling_time = round(
+                                                    timing_info.get("cooling_time_s", 0.0), 2
+                                                )
 
                                         # Create CycleData for this temperature
                                         cycle_data = CycleData(
@@ -2696,21 +2725,29 @@ class MainWindow(QMainWindow):
                                             force=force,
                                             heating_time=heating_time,
                                             cooling_time=cooling_time,
-                                            status="PASS" if cycle_result.is_passed else "FAIL"
+                                            status="PASS" if cycle_result.is_passed else "FAIL",
                                         )
                                         cycles.append(cycle_data)
-                                        logger.info(f"Cycle {idx}, Temp {temperature}°C - Force: {force:.2f}kgf, "
-                                                  f"Heat: {heating_time:.2f}s, Cool: {cooling_time:.2f}s")
+                                        logger.info(
+                                            f"Cycle {idx}, Temp {temperature}°C - Force: {force:.2f}kgf, "
+                                            f"Heat: {heating_time:.2f}s, Cool: {cooling_time:.2f}s"
+                                        )
                             else:
                                 # TestMeasurements object - iterate through all temperatures
                                 try:
+                                    # Local application imports
                                     from domain.value_objects.measurements import TestMeasurements
+
                                     if isinstance(measurements, TestMeasurements):
-                                        logger.info(f"Cycle {idx} - TestMeasurements object detected")
+                                        logger.info(
+                                            f"Cycle {idx} - TestMeasurements object detected"
+                                        )
 
                                         # Get all temperatures
                                         temps = measurements.get_temperatures()
-                                        logger.info(f"Cycle {idx} - Found {len(temps)} temperatures: {temps}")
+                                        logger.info(
+                                            f"Cycle {idx} - Found {len(temps)} temperatures: {temps}"
+                                        )
 
                                         timing_data = measurements.get_timing_data()
 
@@ -2723,14 +2760,18 @@ class MainWindow(QMainWindow):
                                             cooling_time = 0.0
 
                                             # Get measurements for this temperature
-                                            temp_measurements = measurements.get_temperature_measurements(temp)
+                                            temp_measurements = (
+                                                measurements.get_temperature_measurements(temp)
+                                            )
                                             if temp_measurements:
                                                 # Get positions for this temperature
                                                 positions = temp_measurements.get_positions()
                                                 if positions:
                                                     first_pos = positions[0]
                                                     stroke = first_pos
-                                                    force_val = temp_measurements.get_force(first_pos)
+                                                    force_val = temp_measurements.get_force(
+                                                        first_pos
+                                                    )
                                                     if force_val is not None:
                                                         force = force_val
 
@@ -2742,8 +2783,12 @@ class MainWindow(QMainWindow):
                                                 timing_info = timing_data.get(timing_key, {})
                                                 if timing_info:
                                                     # Timing data is already in seconds, keep as float with 2 decimal places
-                                                    heating_time = round(timing_info.get("heating_time_s", 0.0), 2)
-                                                    cooling_time = round(timing_info.get("cooling_time_s", 0.0), 2)
+                                                    heating_time = round(
+                                                        timing_info.get("heating_time_s", 0.0), 2
+                                                    )
+                                                    cooling_time = round(
+                                                        timing_info.get("cooling_time_s", 0.0), 2
+                                                    )
 
                                             # Create CycleData for this temperature
                                             cycle_data = CycleData(
@@ -2753,14 +2798,18 @@ class MainWindow(QMainWindow):
                                                 force=force,
                                                 heating_time=heating_time,
                                                 cooling_time=cooling_time,
-                                                status="PASS" if cycle_result.is_passed else "FAIL"
+                                                status="PASS" if cycle_result.is_passed else "FAIL",
                                             )
                                             cycles.append(cycle_data)
-                                            logger.info(f"Cycle {idx}, Temp {temperature}°C - Force: {force:.2f}kgf, "
-                                                      f"Heat: {heating_time:.2f}s, Cool: {cooling_time:.2f}s")
+                                            logger.info(
+                                                f"Cycle {idx}, Temp {temperature}°C - Force: {force:.2f}kgf, "
+                                                f"Heat: {heating_time:.2f}s, Cool: {cooling_time:.2f}s"
+                                            )
                                 except Exception as e:
                                     logger.warning(f"Failed to extract from TestMeasurements: {e}")
+                                    # Standard library imports
                                     import traceback
+
                                     logger.warning(traceback.format_exc())
                 else:
                     logger.info("Test completed (single cycle or no individual cycle data)")
@@ -2774,9 +2823,13 @@ class MainWindow(QMainWindow):
                         serial_number = extracted_serial
                     else:
                         # Fall back to stored serial_number from TestExecutorThread
-                        if self.test_executor_thread and hasattr(self.test_executor_thread, 'serial_number'):
+                        if self.test_executor_thread and hasattr(
+                            self.test_executor_thread, "serial_number"
+                        ):
                             serial_number = self.test_executor_thread.serial_number or "N/A"
-                elif self.test_executor_thread and hasattr(self.test_executor_thread, 'serial_number'):
+                elif self.test_executor_thread and hasattr(
+                    self.test_executor_thread, "serial_number"
+                ):
                     # Use serial number from TestExecutorThread
                     serial_number = self.test_executor_thread.serial_number or "N/A"
 
@@ -2787,12 +2840,14 @@ class MainWindow(QMainWindow):
                     status=status_text,
                     timestamp=datetime.now(),
                     duration_seconds=getattr(result_data, "test_duration_seconds", 0.0),
-                    cycles=cycles
+                    cycles=cycles,
                 )
 
                 # Add result to state manager (will be displayed in Results page)
                 self.state_manager.add_test_result(test_result)
-                logger.info(f"Test result added to Results page: {test_result.test_id}, Serial: {serial_number}")
+                logger.info(
+                    f"Test result added to Results page: {test_result.test_id}, Serial: {serial_number}"
+                )
 
                 # TODO: Save test result to repository (logs/EOL Force Test/raw_data)
                 # Currently, EOLTestResult doesn't contain EOLTest entity

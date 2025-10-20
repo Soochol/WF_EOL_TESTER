@@ -68,6 +68,11 @@ class PassCriteria:
     # Each tuple: (temperature°C, stroke_mm, upper_limit_N, lower_limit_N)
     spec_points: List[Tuple[float, float, float, float]] = field(default_factory=list)
 
+    # ========================================================================
+    # PASS/FAIL JUDGMENT CONTROL
+    # ========================================================================
+    enable_pass_fail_judgment: bool = True  # Enable/disable pass/fail criteria enforcement
+
     def __post_init__(self) -> None:
         """Validate pass criteria after initialization
 
@@ -85,19 +90,17 @@ class PassCriteria:
         self._validate_spec_points()
 
     def _validate_force_limits(self) -> None:
-        """Validate force limit ranges"""
+        """Validate force limit ranges
+
+        Note:
+            Negative force limits are allowed to support bidirectional force measurements
+            (tensile/compressive forces). The validation only ensures min < max relationship.
+        """
         if self.force_limit_min >= self.force_limit_max:
             raise ValidationException(
                 "force_limit_min",
                 self.force_limit_min,
                 f"Force min ({self.force_limit_min}) must be less than max ({self.force_limit_max})",
-            )
-
-        if self.force_limit_min < 0:
-            raise ValidationException(
-                "force_limit_min",
-                self.force_limit_min,
-                "Force minimum cannot be negative",
             )
 
     def _validate_temperature_limits(self) -> None:
@@ -231,13 +234,8 @@ class PassCriteria:
                     f"Lower limit ({lower_limit}) must be less than upper limit ({upper_limit})",
                 )
 
-            # Validate force limits are reasonable
-            if lower_limit < 0:
-                raise ValidationException(
-                    f"spec_points[{i}].lower_limit",
-                    lower_limit,
-                    "Force lower limit cannot be negative",
-                )
+            # Note: Negative force limits are allowed for bidirectional force measurements
+            # No additional validation needed beyond lower < upper relationship
 
     def is_force_within_limits(
         self, force: float, temperature: Optional[float] = None, stroke: Optional[float] = None
@@ -435,6 +433,7 @@ class PassCriteria:
             "max_test_duration": self.max_test_duration,
             "min_stabilization_time": self.min_stabilization_time,
             "spec_points": [list(point) for point in self.spec_points],
+            "enable_pass_fail_judgment": self.enable_pass_fail_judgment,
         }
 
     @classmethod
@@ -468,6 +467,7 @@ class PassCriteria:
             max_test_duration=float(data.get("max_test_duration", 300.0)),
             min_stabilization_time=float(data.get("min_stabilization_time", 0.5)),
             spec_points=spec_points,
+            enable_pass_fail_judgment=bool(data.get("enable_pass_fail_judgment", True)),
         )
 
     @classmethod

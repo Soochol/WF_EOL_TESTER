@@ -87,6 +87,7 @@ class ParameterDescriptions:
         "pass_criteria.measurement_tolerance": "General measurement precision tolerance.",
         "pass_criteria.force_precision": "Force value decimal places (0-10).",
         "pass_criteria.temperature_precision": "Temperature value decimal places (0-5).",
+        "pass_criteria.enable_pass_fail_judgment": "Enable or disable pass/fail criteria enforcement. When disabled, all tests are marked as PASS regardless of measurement values.",
     }
 
     # Hardware Device Descriptions
