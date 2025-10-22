@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Union
 # Third-party imports
 from loguru import logger
 from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local application imports
 from application.interfaces.repository.database_log_repository import DatabaseLogRepository
@@ -237,10 +236,11 @@ class SqliteLogRepository(DatabaseLogRepository):
         """
         try:
             async with self._db_manager.get_session() as session:
-                # Third-party imports
-                from sqlalchemy import func
                 # Standard library imports
                 from datetime import time
+
+                # Third-party imports
+                from sqlalchemy import func
 
                 # Convert date objects to datetime for proper filtering
                 # date objects are interpreted as start/end of day
@@ -349,6 +349,113 @@ class SqliteLogRepository(DatabaseLogRepository):
             logger.error(f"Failed to delete test: {e}")
             raise RepositoryAccessError(
                 "delete_test", f"Failed to delete test: {str(e)}", file_path=None
+            ) from e
+
+    async def delete_measurements_by_test_ids(self, test_ids: List[str]) -> Dict[str, Any]:
+        """
+        Delete test results and raw measurements by test IDs (batch delete support)
+
+        This method deletes from both test_results and raw_measurements tables.
+        Deleting TestResult automatically deletes associated RawMeasurement via
+        Foreign Key CASCADE. If TestResult doesn't exist, directly deletes RawMeasurement.
+
+        Args:
+            test_ids: List of test identifiers to delete
+
+        Returns:
+            Dictionary with deletion results:
+            {
+                "deleted_count": int,  # Total measurements deleted
+                "deleted_tests": List[str],  # Successfully deleted test_ids
+                "failed": List[str],  # Failed test_ids
+                "errors": Dict[str, str]  # test_id -> error message
+            }
+        """
+        result_dict = {
+            "deleted_count": 0,
+            "deleted_tests": [],
+            "failed": [],
+            "errors": {},
+        }
+
+        if not test_ids:
+            logger.warning("delete_measurements_by_test_ids called with empty test_ids list")
+            return result_dict
+
+        try:
+            async with self._db_manager.get_session() as session:
+                # Process each test_id
+                for test_id in test_ids:
+                    try:
+                        # Count measurements before deletion (for reporting)
+                        count_query = select(func.count(RawMeasurement.id)).where(
+                            RawMeasurement.test_id == test_id
+                        )
+                        count_result = await session.execute(count_query)
+                        measurement_count = count_result.scalar() or 0
+
+                        # Check if TestResult exists
+                        test_result_query = select(TestResult).where(TestResult.test_id == test_id)
+                        test_result_result = await session.execute(test_result_query)
+                        test_result = test_result_result.scalar_one_or_none()
+
+                        if test_result:
+                            # Delete TestResult - CASCADE will automatically delete RawMeasurement
+                            delete_test_query = delete(TestResult).where(
+                                TestResult.test_id == test_id
+                            )
+                            await session.execute(delete_test_query)
+                            logger.info(
+                                f"Deleted TestResult for test_id: {test_id} "
+                                f"(CASCADE will delete {measurement_count} measurements)"
+                            )
+                        else:
+                            # TestResult doesn't exist, directly delete RawMeasurement
+                            if measurement_count > 0:
+                                delete_raw_query = delete(RawMeasurement).where(
+                                    RawMeasurement.test_id == test_id
+                                )
+                                await session.execute(delete_raw_query)
+                                logger.info(
+                                    f"Deleted {measurement_count} orphan measurements "
+                                    f"for test_id: {test_id} (no TestResult found)"
+                                )
+                            else:
+                                logger.warning(
+                                    f"No data found for test_id: {test_id} "
+                                    f"(neither TestResult nor RawMeasurement)"
+                                )
+                                result_dict["failed"].append(test_id)
+                                result_dict["errors"][test_id] = "No data found"
+                                continue
+
+                        # Track success
+                        result_dict["deleted_count"] += measurement_count
+                        result_dict["deleted_tests"].append(test_id)
+
+                    except Exception as e:
+                        logger.error(f"Failed to delete data for test_id {test_id}: {e}")
+                        result_dict["failed"].append(test_id)
+                        result_dict["errors"][test_id] = str(e)
+                        # Continue with other test_ids even if one fails
+
+                # Commit all deletions
+                await session.commit()
+
+                logger.info(
+                    f"Batch deletion complete: {result_dict['deleted_count']} measurements "
+                    f"from {len(result_dict['deleted_tests'])} tests deleted, "
+                    f"{len(result_dict['failed'])} failed"
+                )
+
+                return result_dict
+
+        except Exception as e:
+            logger.error(f"Critical error in delete_measurements_by_test_ids: {e}")
+            raise RepositoryAccessError(
+                "delete_measurements_by_test_ids",
+                f"Failed to delete measurements: {str(e)}",
+                file_path=None,
             ) from e
 
     async def get_statistics(

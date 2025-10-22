@@ -130,6 +130,32 @@ class DatabaseLogRepository(ABC):
         ...
 
     @abstractmethod
+    async def delete_measurements_by_test_ids(self, test_ids: List[str]) -> Dict[str, Any]:
+        """
+        Delete raw measurements by test IDs (batch delete support)
+
+        This method deletes measurements directly from raw_measurements table
+        without checking test_results table. Useful for cleaning up data
+        when only raw measurements exist.
+
+        Args:
+            test_ids: List of test identifiers to delete
+
+        Returns:
+            Dictionary with deletion results:
+            {
+                "deleted_count": int,  # Total measurements deleted
+                "deleted_tests": List[str],  # Successfully deleted test_ids
+                "failed": List[str],  # Failed test_ids
+                "errors": Dict[str, str]  # test_id -> error message
+            }
+
+        Raises:
+            RepositoryAccessError: If critical deletion error occurs
+        """
+        ...
+
+    @abstractmethod
     async def get_statistics(
         self,
         start_date: Optional[datetime] = None,

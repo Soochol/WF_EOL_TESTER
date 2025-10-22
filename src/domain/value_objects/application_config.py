@@ -88,8 +88,21 @@ CONFIG_PROFILE_PREFERENCES_PATH = CONFIG_DIR / "profile_preferences.yaml"
 CONFIG_DUT_DEFAULTS_PATH = CONFIG_DIR / "dut_defaults.yaml"
 CONFIG_HEATING_COOLING_PATH = CONFIG_DIR / "heating_cooling_time_test.yaml"
 
-# Logs path constants
-LOGS_DIR = PROJECT_ROOT / "logs"
+# Logs path constants - separate by environment like DATABASE_DIR
+if IS_DEVELOPMENT:
+    # Development mode: Store logs in project folder for easy access
+    LOGS_DIR = PROJECT_ROOT / "logs"
+    print(f"[LOGS CONFIG] Development mode - using logs folder: {LOGS_DIR}")
+else:
+    # Production mode: Store logs in LOCALAPPDATA (same location as database)
+    # Use same LOCALAPPDATA path as DATABASE_DIR
+    localappdata_logs = os.getenv("LOCALAPPDATA")
+    if not localappdata_logs:
+        localappdata_logs = str(Path.home() / "AppData" / "Local")
+
+    LOGS_DIR = Path(localappdata_logs) / "WF EOL Tester" / "logs"
+    print(f"[LOGS CONFIG] Production mode - using AppData logs folder: {LOGS_DIR}")
+
 LOGS_TEST_RESULTS_JSON_DIR = LOGS_DIR / "test_results" / "json"
 LOGS_EOL_RAW_DATA_DIR = LOGS_DIR / "EOL Force Test" / "raw_data"
 LOGS_EOL_SUMMARY_DIR = LOGS_DIR / "EOL Force Test"
