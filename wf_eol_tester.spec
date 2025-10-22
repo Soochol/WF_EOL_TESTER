@@ -15,6 +15,8 @@ src_dir = root_dir / 'src'
 datas = [
     # Configuration files
     ('configuration', 'configuration'),
+    # UI resources (icons, images, etc.)
+    ('src/ui/gui/resources/icons', 'ui/gui/resources/icons'),
     # AXL Driver library (64-bit)
     ('src/driver/ajinextek/AXL(Library)/Library/64Bit/AXL.dll', 'driver/AXL/'),
     ('src/driver/ajinextek/AXL(Library)/Library/64Bit/EzBasicAxl.dll', 'driver/AXL/'),
@@ -26,6 +28,7 @@ hiddenimports = [
     'PySide6.QtCore',
     'PySide6.QtGui',
     'PySide6.QtWidgets',
+    'PySide6.QtSvg',  # SVG support for icons
     # Third-party libraries
     'loguru',
     'yaml',
@@ -66,6 +69,9 @@ hiddenimports = [
     'application.services.statistics.unit_converter',
     'application.services.test',
     'application.services.test.test_result_evaluator',
+    # Logging services (dynamically loaded by DI)
+    'application.services.logging',
+    'application.services.logging.db_logger_service',
     # Application use cases (dynamically loaded by DI)
     'application.use_cases.common',
     'application.use_cases.common.base_use_case',
@@ -108,6 +114,10 @@ hiddenimports = [
     'infrastructure.implementation.configuration.yaml_container_configuration',
     'infrastructure.implementation.repositories',
     'infrastructure.implementation.repositories.json_result_repository',
+    'infrastructure.implementation.repositories.sqlite_log_repository',
+    # Database (dynamically loaded by DI)
+    'infrastructure.database',
+    'infrastructure.database.db_manager',
     # Hardware implementations - Digital I/O
     'infrastructure.implementation.hardware.digital_io.ajinextek',
     'infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio',
@@ -146,6 +156,13 @@ hiddenimports = [
     # Hardware common
     'infrastructure.implementation.hardware.common',
     'infrastructure.implementation.hardware.common.disconnect_mixin',
+    # UI widgets (dynamically loaded)
+    'ui.gui.widgets.notifications',
+    'ui.gui.widgets.notifications.toast_notification',
+    'ui.gui.widgets.notifications.toast_manager',
+    'ui.gui.widgets.notifications.toast_animations',
+    # UI resources
+    'ui.gui.resources',
 ]
 
 # Analysis: Determine what to bundle

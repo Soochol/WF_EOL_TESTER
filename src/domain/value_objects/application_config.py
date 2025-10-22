@@ -11,29 +11,66 @@ from __future__ import annotations
 # Standard library imports
 from dataclasses import dataclass, field
 from datetime import datetime
+import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, Optional
 
+# Third-party imports
+from loguru import logger
 
-# Project root path calculation
-# src/domain/value_objects/application_config.py → WF_EOL_TESTER/
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+
+# Project root path calculation (PyInstaller-aware)
+def _get_project_root() -> Path:
+    """
+    Get project root directory with PyInstaller support.
+
+    In development:
+        Returns the actual project root (WF_EOL_TESTER/)
+
+    In PyInstaller executable:
+        Returns the directory containing the executable
+        (e.g., C:/Program Files/WF_EOL_Tester/)
+    """
+    if getattr(sys, "frozen", False):
+        # Running as PyInstaller executable
+        # sys.executable = C:/Program Files/WF_EOL_Tester/WF_EOL_Tester.exe
+        # Return the directory containing the executable
+        executable_dir = Path(sys.executable).parent
+        logger.info(f"PyInstaller mode detected, executable dir: {executable_dir}")
+        return executable_dir
+    else:
+        # Running as Python script (development)
+        # __file__ = WF_EOL_TESTER/src/domain/value_objects/application_config.py
+        project_root = Path(__file__).parent.parent.parent.parent
+        logger.info(f"Development mode detected, project root: {project_root}")
+        return project_root
+
+
+PROJECT_ROOT = _get_project_root()
 
 # Environment detection: Development vs Production
-# Development: .git folder exists (Git repository)
-# Production: .git folder absent (PyInstaller executable)
-IS_DEVELOPMENT = (PROJECT_ROOT / ".git").exists()
+# Development: Running as Python script (sys.frozen = False)
+# Production: Running as PyInstaller executable (sys.frozen = True)
+IS_DEVELOPMENT = not getattr(sys, "frozen", False)
 
 # Database directory selection based on environment
-import os
-
 if IS_DEVELOPMENT:
     # Development mode: Store DB in project folder for easy access
     DATABASE_DIR = PROJECT_ROOT / "database"
+    logger.info(f"Development DB directory: {DATABASE_DIR}")
 else:
     # Production mode: Store DB in AppData for user data isolation
-    APPDATA_DIR = Path(os.getenv("APPDATA", str(PROJECT_ROOT))) / "WF_EOL_Tester"
+    appdata = os.getenv("APPDATA")
+
+    if not appdata:
+        # Fallback: Use user home directory (should never happen on Windows)
+        appdata = str(Path.home() / "AppData" / "Roaming")
+        logger.warning(f"APPDATA environment variable not found, using fallback: {appdata}")
+
+    APPDATA_DIR = Path(appdata) / "WF_EOL_Tester"
     DATABASE_DIR = APPDATA_DIR
+    logger.info(f"Production DB directory: {DATABASE_DIR}")
 
 
 # Configuration path constants (Single Source of Truth)
@@ -55,6 +92,16 @@ LOGS_EOL_SUMMARY_DIR = LOGS_DIR / "EOL Force Test"
 
 def ensure_project_directories():
     """Ensure all required project directories exist"""
+    logger.info("=" * 60)
+    logger.info("INITIALIZING PROJECT DIRECTORIES")
+    logger.info("=" * 60)
+    logger.info(f"Environment: {'DEVELOPMENT' if IS_DEVELOPMENT else 'PRODUCTION'}")
+    logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+    logger.info(f"CONFIG_DIR: {CONFIG_DIR}")
+    logger.info(f"LOGS_DIR: {LOGS_DIR}")
+    logger.info(f"DATABASE_DIR: {DATABASE_DIR}")
+    logger.info("=" * 60)
+
     required_dirs = [
         CONFIG_DIR,
         CONFIG_TEST_PROFILES_DIR,
@@ -66,7 +113,14 @@ def ensure_project_directories():
     ]
 
     for directory in required_dirs:
-        directory.mkdir(parents=True, exist_ok=True)
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"✓ Created/verified directory: {directory}")
+        except Exception as e:
+            logger.error(f"✗ Failed to create directory {directory}: {e}")
+            # Don't raise - allow app to continue with whatever directories it can create
+
+    logger.info("Directory initialization complete")
 
 
 # Auto-create directories when module loads
