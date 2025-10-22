@@ -868,13 +868,12 @@ def main() -> int:
         )
     else:
         # Fallback to file logging for bundled applications
+        # mode="w" overwrites log file on each application start (not cumulative)
         logger.add(
             str(log_file),
             level="INFO",
             format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | GUI | {message}",
-            rotation="10 MB",
-            retention="7 days",
-            compression="zip",
+            mode="w",  # Overwrite mode - each session creates fresh log file
         )
 
     logger.info("Starting WF EOL Tester GUI Application")
