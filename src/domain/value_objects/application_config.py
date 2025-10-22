@@ -9,15 +9,12 @@ services configuration, and logging configuration.
 from __future__ import annotations
 
 # Standard library imports
+import os
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
-import os
 from pathlib import Path
-import sys
 from typing import Any, Dict, Optional
-
-# Third-party imports
-from loguru import logger
 
 
 # Project root path calculation (PyInstaller-aware)
@@ -36,15 +33,11 @@ def _get_project_root() -> Path:
         # Running as PyInstaller executable
         # sys.executable = C:/Program Files/WF_EOL_Tester/WF_EOL_Tester.exe
         # Return the directory containing the executable
-        executable_dir = Path(sys.executable).parent
-        logger.info(f"PyInstaller mode detected, executable dir: {executable_dir}")
-        return executable_dir
+        return Path(sys.executable).parent
     else:
         # Running as Python script (development)
         # __file__ = WF_EOL_TESTER/src/domain/value_objects/application_config.py
-        project_root = Path(__file__).parent.parent.parent.parent
-        logger.info(f"Development mode detected, project root: {project_root}")
-        return project_root
+        return Path(__file__).parent.parent.parent.parent
 
 
 PROJECT_ROOT = _get_project_root()
@@ -58,7 +51,6 @@ IS_DEVELOPMENT = not getattr(sys, "frozen", False)
 if IS_DEVELOPMENT:
     # Development mode: Store DB in project folder for easy access
     DATABASE_DIR = PROJECT_ROOT / "database"
-    logger.info(f"Development DB directory: {DATABASE_DIR}")
 else:
     # Production mode: Store DB in AppData for user data isolation
     appdata = os.getenv("APPDATA")
@@ -66,11 +58,9 @@ else:
     if not appdata:
         # Fallback: Use user home directory (should never happen on Windows)
         appdata = str(Path.home() / "AppData" / "Roaming")
-        logger.warning(f"APPDATA environment variable not found, using fallback: {appdata}")
 
     APPDATA_DIR = Path(appdata) / "WF_EOL_Tester"
     DATABASE_DIR = APPDATA_DIR
-    logger.info(f"Production DB directory: {DATABASE_DIR}")
 
 
 # Configuration path constants (Single Source of Truth)
@@ -91,17 +81,12 @@ LOGS_EOL_SUMMARY_DIR = LOGS_DIR / "EOL Force Test"
 
 
 def ensure_project_directories():
-    """Ensure all required project directories exist"""
-    logger.info("=" * 60)
-    logger.info("INITIALIZING PROJECT DIRECTORIES")
-    logger.info("=" * 60)
-    logger.info(f"Environment: {'DEVELOPMENT' if IS_DEVELOPMENT else 'PRODUCTION'}")
-    logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
-    logger.info(f"CONFIG_DIR: {CONFIG_DIR}")
-    logger.info(f"LOGS_DIR: {LOGS_DIR}")
-    logger.info(f"DATABASE_DIR: {DATABASE_DIR}")
-    logger.info("=" * 60)
+    """
+    Ensure all required project directories exist.
 
+    This function runs at module load time and must not depend on logger
+    as it executes before logger configuration in PyInstaller builds.
+    """
     required_dirs = [
         CONFIG_DIR,
         CONFIG_TEST_PROFILES_DIR,
@@ -115,12 +100,9 @@ def ensure_project_directories():
     for directory in required_dirs:
         try:
             directory.mkdir(parents=True, exist_ok=True)
-            logger.debug(f"✓ Created/verified directory: {directory}")
-        except Exception as e:
-            logger.error(f"✗ Failed to create directory {directory}: {e}")
-            # Don't raise - allow app to continue with whatever directories it can create
-
-    logger.info("Directory initialization complete")
+        except Exception:
+            # Silent fail - allow app to continue with whatever directories it can create
+            pass
 
 
 # Auto-create directories when module loads
