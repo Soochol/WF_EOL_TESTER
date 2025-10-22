@@ -16,9 +16,37 @@ REM Get start time
 set START_TIME=%TIME%
 
 REM ============================================================================
-REM Step 1: Clean previous builds
+REM Step 1: Check if PyInstaller is installed
 REM ============================================================================
-echo [1/4] Cleaning previous builds...
+echo [1/5] Checking dependencies...
+
+if not exist ".venv\Scripts\pyinstaller.exe" (
+    echo   - PyInstaller not found, installing dependencies...
+    echo   - Running uv sync...
+    echo.
+    echo   NOTE: If this fails with "access denied" error:
+    echo   1. Run: uv cache clean
+    echo   2. Run: uv sync
+    echo   3. Re-run this build script
+    echo.
+    uv sync
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to install dependencies!
+        echo Please run 'uv cache clean' then 'uv sync' manually.
+        pause
+        exit /b 1
+    )
+) else (
+    echo   - PyInstaller already installed
+)
+echo   Done.
+echo.
+
+REM ============================================================================
+REM Step 2: Clean previous builds
+REM ============================================================================
+echo [2/5] Cleaning previous builds...
 if exist "build" (
     echo   - Removing old build directory...
     rmdir /s /q "build"
@@ -34,14 +62,15 @@ echo   Done.
 echo.
 
 REM ============================================================================
-REM Step 2: Build executable with PyInstaller
+REM Step 3: Build executable with PyInstaller
 REM ============================================================================
-echo [2/4] Building executable with PyInstaller...
+echo [3/5] Building executable with PyInstaller...
 echo   - Running PyInstaller...
 echo   - This may take several minutes...
 echo.
 
-uv run pyinstaller wf_eol_tester.spec --clean --noconfirm
+REM Use venv Python directly instead of UV to avoid Windows Store Python permission issues
+.venv\Scripts\pyinstaller.exe wf_eol_tester.spec --clean --noconfirm
 
 if errorlevel 1 (
     echo.
@@ -63,9 +92,9 @@ echo   Done.
 echo.
 
 REM ============================================================================
-REM Step 3: Build installer with Inno Setup
+REM Step 4: Build installer with Inno Setup
 REM ============================================================================
-echo [3/4] Building installer with Inno Setup...
+echo [4/5] Building installer with Inno Setup...
 
 REM Check if Inno Setup is installed
 set "INNO_COMPILER=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
@@ -98,9 +127,9 @@ echo   Done.
 echo.
 
 REM ============================================================================
-REM Step 4: Display build summary
+REM Step 5: Display build summary
 REM ============================================================================
-echo [4/4] Build Summary
+echo [5/5] Build Summary
 echo ============================================================================
 echo.
 
