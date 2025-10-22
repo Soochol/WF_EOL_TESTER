@@ -395,6 +395,16 @@ class AXLWrapper:
         except AttributeError:
             missing_functions.append("AxmSignalReadServoAlarm")
 
+        # AxmSignalServoAlarmReset
+        try:
+            self.dll.AxmSignalServoAlarmReset.argtypes = [
+                c_long,
+                c_long,
+            ]
+            self.dll.AxmSignalServoAlarmReset.restype = c_long
+        except AttributeError:
+            missing_functions.append("AxmSignalServoAlarmReset")
+
         # AxmSignalReadLimit
         try:
             self.dll.AxmSignalReadLimit.argtypes = [
@@ -793,9 +803,7 @@ class AXLWrapper:
                 )
                 for func in critical_missing:
                     logger.warning(f"  Missing critical function: {func}")
-                logger.warning(
-                    "Some hardware operations may not work correctly"
-                )
+                logger.warning("Some hardware operations may not work correctly")
 
             if optional_missing:
                 logger.info(
@@ -1062,6 +1070,26 @@ class AXLWrapper:
             )
         return alarm_status.value == 1
 
+    def servo_alarm_reset(self, axis_no: int, on_off: int = 1) -> int:
+        """
+        Reset servo alarm status.
+
+        This function is required after emergency stop to clear the alarm state
+        and allow servo to be re-enabled. The alarm reset signal is typically
+        pulsed (ON then OFF) to reset the controller state.
+
+        Args:
+            axis_no: Axis number
+            on_off: 1 = Reset ON (pulse), 0 = Reset OFF (default: 1)
+
+        Returns:
+            Result code (AXT_RT_SUCCESS on success)
+        """
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        return self.dll.AxmSignalServoAlarmReset(axis_no, on_off)  # type: ignore[no-any-return]
+
     def read_limit_status(self, axis_no: int) -> tuple[bool, bool]:
         """Read positive and negative limit sensor status."""
         if self.dll is None:
@@ -1118,9 +1146,7 @@ class AXLWrapper:
             # Third-party imports
             from loguru import logger
 
-            logger.warning(
-                "AxmMoveVel function not available in AXL DLL, returning success code"
-            )
+            logger.warning("AxmMoveVel function not available in AXL DLL, returning success code")
             return 0  # Return success code
 
         return self.dll.AxmMoveVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]
@@ -1988,7 +2014,9 @@ class AXLWrapper:
 
         # Check if function is available
         if not hasattr(self.dll, "AxmStatusSetReadServoLoadRatio"):
-            raise AXLError("AxmStatusSetReadServoLoadRatio function not available in this AXL version")
+            raise AXLError(
+                "AxmStatusSetReadServoLoadRatio function not available in this AXL version"
+            )
 
         result = self.dll.AxmStatusSetReadServoLoadRatio(axis_no, sel_mon)
         return result  # type: ignore[no-any-return]

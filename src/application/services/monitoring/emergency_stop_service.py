@@ -64,23 +64,46 @@ class EmergencyStopService:
         2. UseCase state management and task cancellation
         3. System cleanup and safe state transition
         """
-        logger.info("🚨 EMERGENCY STOP 🚨")
+        logger.critical("🚨 EMERGENCY STOP SERVICE: Emergency Stop Execution Started 🚨")
         self._last_emergency_time = asyncio.get_event_loop().time()
 
         try:
             # Immediate industrial status indication for emergency
             if self.industrial_system_manager:
+                logger.info(
+                    "🚨 EMERGENCY STOP SERVICE: Calling industrial_system_manager.handle_emergency_stop()..."
+                )
                 await self.industrial_system_manager.handle_emergency_stop()
+                logger.info(
+                    "✅ EMERGENCY STOP SERVICE: industrial_system_manager.handle_emergency_stop() completed"
+                )
+            else:
+                logger.warning(
+                    "🚨 EMERGENCY STOP SERVICE: Industrial System Manager not available - skipping tower lamp/beep"
+                )
 
             # Hardware emergency stop and cleanup
+            logger.info("🚨 EMERGENCY STOP SERVICE: Executing hardware emergency stop...")
             await self._execute_hardware_emergency_stop()
-            await self._handle_software_cleanup()
-            await self._finalize_emergency_stop()
+            logger.info("✅ EMERGENCY STOP SERVICE: Hardware emergency stop completed")
 
-            logger.info("✅ Emergency stop completed")
+            logger.info("🚨 EMERGENCY STOP SERVICE: Handling software cleanup...")
+            await self._handle_software_cleanup()
+            logger.info("✅ EMERGENCY STOP SERVICE: Software cleanup completed")
+
+            logger.info("🚨 EMERGENCY STOP SERVICE: Finalizing emergency stop...")
+            await self._finalize_emergency_stop()
+            logger.info("✅ EMERGENCY STOP SERVICE: Emergency stop finalization completed")
+
+            logger.critical(
+                "✅ EMERGENCY STOP SERVICE: Emergency stop procedure completed successfully"
+            )
 
         except Exception as e:
-            logger.error(f"Error during emergency stop procedure: {e}")
+            logger.error(
+                f"❌ EMERGENCY STOP SERVICE: Error during emergency stop procedure: {e}",
+                exc_info=True,
+            )
             # Emergency stop errors should not prevent hardware safety actions
             # Hardware should already be in safe state from Phase 1
             raise
@@ -109,9 +132,10 @@ class EmergencyStopService:
                         # If connection fails, we cannot execute emergency stop on robot
                         raise
 
-                # Get robot axis ID from configuration
-                hardware_config = await self.configuration_service.load_hardware_config()
-                robot_axis = hardware_config.robot.axis_id
+                # Use default axis 0 for emergency stop (primary axis)
+                # CRITICAL: Do not load configuration during emergency stop - it may block!
+                # Emergency stop must execute immediately for safety
+                robot_axis = 0
                 await robot_service.emergency_stop(axis=robot_axis)
                 logger.info(f"✓ Robot emergency stop executed on axis {robot_axis}")
             else:
@@ -263,14 +287,13 @@ class EmergencyStopService:
         """Disconnect all hardware services during emergency stop cleanup"""
         pass
 
-        # Disconnect robot service
-        try:
-            robot_service = self.hardware_facade.robot_service
-            if robot_service and await robot_service.is_connected():
-                await robot_service.disconnect()
-                pass
-        except Exception as e:
-            logger.warning(f"Failed to disconnect robot service: {e}")
+        # Robot service: DO NOT disconnect
+        # Emergency stop puts robot in servo OFF state, which is safe
+        # Keeping connection allows quick recovery via Home button
+        # (servo alarm reset → brake release → servo on → homing)
+        logger.info(
+            "Skipping robot disconnect - maintaining connection for emergency stop recovery"
+        )
 
         # Disconnect power service
         try:

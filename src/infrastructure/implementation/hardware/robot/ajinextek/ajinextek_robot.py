@@ -257,9 +257,17 @@ class AjinextekRobot(RobotService):
             )
 
             # Monitor homing status using AJINEXTEK standard pattern
+            loop_count = 0
             while True:
                 try:
                     home_result = self._axl.home_get_result(axis)
+                    loop_count += 1
+
+                    # Log every 10 iterations to avoid log spam
+                    if loop_count % 10 == 1:
+                        logger.info(
+                            f"Homing axis {axis}: home_get_result = 0x{home_result:02X} (loop {loop_count})"
+                        )
 
                     if home_result == HOME_SUCCESS:
                         logger.info(f"Homing completed successfully for axis {axis}")
@@ -269,7 +277,8 @@ class AjinextekRobot(RobotService):
                         # Get progress information for logging
                         try:
                             _, step = self._axl.home_get_rate(axis)
-                            logger.debug(f"Homing axis {axis}: {step}%% complete")
+                            if loop_count % 10 == 1:
+                                logger.info(f"Homing axis {axis}: {step}% complete")
                         except Exception:
                             pass  # Progress info is optional
 
@@ -787,7 +796,11 @@ class AjinextekRobot(RobotService):
                 raise HardwareException(
                     "ajinextek_robot",
                     "get_load_ratio_set",
-                    {"axis": axis, "ratio_type": ratio_type, "error": f"Not supported: {error_msg}"},
+                    {
+                        "axis": axis,
+                        "ratio_type": ratio_type,
+                        "error": f"Not supported: {error_msg}",
+                    },
                 )
 
             # Read load ratio
@@ -803,7 +816,11 @@ class AjinextekRobot(RobotService):
                 raise HardwareException(
                     "ajinextek_robot",
                     "get_load_ratio",
-                    {"axis": axis, "ratio_type": ratio_type, "error": "Feature not available in AXL version"},
+                    {
+                        "axis": axis,
+                        "ratio_type": ratio_type,
+                        "error": "Feature not available in AXL version",
+                    },
                 ) from e
             else:
                 logger.error(f"Failed to read load ratio for axis {axis}: {e}")
@@ -1003,14 +1020,57 @@ class AjinextekRobot(RobotService):
         self._ensure_connected()
 
         try:
-            logger.info(f"Enabling servo for axis {axis}")
+            logger.info(f"⚙️ Enabling servo for axis {axis}")
+            logger.debug(f"Current servo state (cached): {self._servo_state}")
 
-            if not self._servo_state:
-                self._set_servo_on()
-                logger.debug(f"Servo enabled for axis {axis}")
-            else:
-                logger.debug(f"Servo already enabled for axis {axis}")
+            # Check servo alarm before enabling
+            try:
+                alarm_status = await self.check_servo_alarm(axis)
+                if alarm_status:
+                    logger.warning(
+                        f"⚠️ Servo alarm is ACTIVE for axis {axis} - servo enable may fail. "
+                        f"Consider calling reset_servo_alarm() first."
+                    )
+            except Exception as e:
+                logger.debug(f"Could not check servo alarm before enable: {e}")
 
+            # Always attempt servo enable (idempotent operation)
+            # Don't skip based on cached state - hardware state is source of truth
+            logger.debug(f"Calling AxmServoOn for axis {axis}")
+            self._set_servo_on()
+
+            # Verify servo is actually enabled by reading hardware state
+            try:
+                # Small delay for hardware to respond
+                await asyncio.sleep(0.05)
+
+                # Read actual servo state from hardware using wrapper method
+                actual_servo_on = self._axl.is_servo_on(axis)
+                logger.info(
+                    f"Hardware servo state after enable: {'ON' if actual_servo_on else 'OFF'}"
+                )
+
+                if not actual_servo_on:
+                    logger.error(
+                        f"❌ Servo enable FAILED for axis {axis} - hardware reports servo is still OFF. "
+                        f"Possible causes: servo alarm active, emergency stop flag not cleared, "
+                        f"or hardware fault."
+                    )
+                    raise RobotMotionError(
+                        f"Servo enable failed for axis {axis} - hardware verification shows servo is OFF",
+                        "AJINEXTEK",
+                    )
+                else:
+                    logger.info(f"✅ Servo enabled successfully for axis {axis}")
+
+            except RobotMotionError:
+                raise
+            except Exception as e:
+                logger.warning(f"Could not verify servo state after enable: {e}")
+                # Continue anyway - servo might still be on
+
+        except RobotMotionError:
+            raise
         except Exception as e:
             logger.error(f"Failed to enable servo for axis {axis}: {e}")
             raise RobotMotionError(
@@ -1048,6 +1108,93 @@ class AjinextekRobot(RobotService):
             logger.error(f"Failed to disable servo for axis {axis}: {e}")
             # Don't raise exception for disable failures during shutdown
             logger.warning(f"Servo disable failed for axis {axis}, continuing...")
+
+    async def reset_servo_alarm(self, axis: int) -> None:
+        """
+        Reset servo alarm status (required after emergency stop).
+
+        After emergency stop (AxmMoveEStop), the Ajinextek controller enters servo
+        alarm state and servo cannot be re-enabled until alarm is reset. This method
+        pulses the alarm reset signal to clear the alarm state.
+
+        Args:
+            axis: Axis number to reset alarm for
+
+        Raises:
+            RobotConnectionError: If robot is not connected
+            RobotMotionError: If alarm reset operation fails
+        """
+        self._ensure_connected()
+
+        try:
+            logger.info(f"🔧 Resetting servo alarm for axis {axis} (emergency stop recovery)")
+
+            # Check current alarm status before reset
+            try:
+                alarm_status_before = await self.check_servo_alarm(axis)
+                logger.info(
+                    f"Servo alarm status BEFORE reset: {'ACTIVE' if alarm_status_before else 'CLEAR'}"
+                )
+            except Exception as e:
+                logger.warning(f"Could not read alarm status before reset: {e}")
+                alarm_status_before = None
+
+            # Force servo state to False since emergency stop turned it off
+            logger.debug(f"Forcing servo state to False for axis {axis}")
+            self._servo_state = False
+
+            # Pulse reset signal: ON → wait → OFF
+            logger.debug(f"Sending alarm reset pulse ON for axis {axis}")
+            result = self._axl.servo_alarm_reset(axis, 1)  # ON
+            if result != AXT_RT_SUCCESS:
+                error_msg = get_error_message(result)
+                logger.error(f"Failed to reset servo alarm (ON) for axis {axis}: {error_msg}")
+                raise RobotMotionError(
+                    f"Failed to reset servo alarm (ON) for axis {axis}: {error_msg}",
+                    "AJINEXTEK",
+                )
+
+            # Hold reset signal for 200ms (increased from 50ms for hardware stability)
+            logger.debug(f"Holding alarm reset pulse for 200ms")
+            await asyncio.sleep(0.2)
+
+            logger.debug(f"Sending alarm reset pulse OFF for axis {axis}")
+            result = self._axl.servo_alarm_reset(axis, 0)  # OFF
+            if result != AXT_RT_SUCCESS:
+                error_msg = get_error_message(result)
+                logger.error(f"Failed to reset servo alarm (OFF) for axis {axis}: {error_msg}")
+                raise RobotMotionError(
+                    f"Failed to reset servo alarm (OFF) for axis {axis}: {error_msg}",
+                    "AJINEXTEK",
+                )
+
+            # Wait for hardware to stabilize after alarm reset (critical for servo enable)
+            logger.debug(f"Waiting 100ms for hardware stabilization after alarm reset")
+            await asyncio.sleep(0.1)
+
+            # Verify alarm was cleared
+            try:
+                alarm_status_after = await self.check_servo_alarm(axis)
+                logger.info(
+                    f"Servo alarm status AFTER reset: {'ACTIVE' if alarm_status_after else 'CLEAR'}"
+                )
+                if alarm_status_after:
+                    logger.warning(
+                        f"⚠️ Servo alarm still ACTIVE after reset for axis {axis} - servo may not enable properly"
+                    )
+            except Exception as e:
+                logger.warning(f"Could not verify alarm status after reset: {e}")
+
+            logger.info(f"✅ Servo alarm reset completed for axis {axis}")
+
+        except RobotMotionError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to reset servo alarm for axis {axis}: {e}")
+            raise RobotMotionError(
+                f"Failed to reset servo alarm for axis {axis}: {e}",
+                "AJINEXTEK",
+            ) from e
 
     async def _wait_for_motion_complete(self, axis: int, timeout: float = 30.0) -> None:
         """

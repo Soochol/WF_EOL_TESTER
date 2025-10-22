@@ -41,7 +41,7 @@ class TestResult:
     status: str  # Overall test status (PASS/FAIL)
     timestamp: datetime  # Test completion time
     duration_seconds: float  # Total test duration
-    cycles: List['CycleData']  # List of individual cycle measurements
+    cycles: List["CycleData"]  # List of individual cycle measurements
 
 
 @dataclass
@@ -310,7 +310,6 @@ class GUIStateManager(QObject):
         # Add the custom sink to loguru logger
         logger.add(log_sink, level="DEBUG", format="{message}")
 
-
     def get_connection_count(self) -> tuple[int, int]:
         """Get connection count (connected, total)"""
         connected = sum(
@@ -328,11 +327,14 @@ class GUIStateManager(QObject):
     async def execute_emergency_stop(self) -> None:
         """Execute emergency stop procedure"""
         try:
-            logger.critical("🚨 GUI Emergency Stop Request 🚨")
+            logger.critical("🚨 GUI STATE MANAGER: Emergency Stop Request Received 🚨")
 
             if self.emergency_stop_service:
+                logger.info(
+                    "🚨 GUI STATE MANAGER: Calling emergency_stop_service.execute_emergency_stop()..."
+                )
                 await self.emergency_stop_service.execute_emergency_stop()
-                logger.info("✅ Emergency stop completed successfully")
+                logger.info("✅ GUI STATE MANAGER: Emergency stop completed successfully")
 
                 # Update system state
                 self.set_system_status("EMERGENCY STOP")
@@ -340,9 +342,11 @@ class GUIStateManager(QObject):
                     "CRITICAL", "EMERGENCY", "Emergency stop executed successfully"
                 )
             else:
-                logger.error("Emergency stop service not available")
+                logger.error("🚨 GUI STATE MANAGER: Emergency stop service not available")
                 self.add_log_message("ERROR", "EMERGENCY", "Emergency stop service not available")
 
         except Exception as e:
-            logger.error(f"Emergency stop execution failed: {e}")
+            logger.error(
+                f"🚨 GUI STATE MANAGER: Emergency stop execution failed: {e}", exc_info=True
+            )
             self.add_log_message("ERROR", "EMERGENCY", f"Emergency stop failed: {str(e)}")

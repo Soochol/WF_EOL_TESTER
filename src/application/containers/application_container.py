@@ -120,6 +120,22 @@ class ApplicationContainer(containers.DeclarativeContainer):
         auto_save=_default_config.services.repository_auto_save,
     )
 
+    # Database infrastructure
+    database_manager = providers.Singleton(
+        "infrastructure.database.db_manager.DatabaseManager",
+        database_path=_default_config.services.database_path,
+    )
+
+    sqlite_log_repository = providers.Singleton(
+        "infrastructure.implementation.repositories.sqlite_log_repository.SqliteLogRepository",
+        db_manager=database_manager,
+    )
+
+    db_logger_service = providers.Singleton(
+        "application.services.logging.db_logger_service.DbLoggerService",
+        db_repository=sqlite_log_repository,
+    )
+
     # ============================================================================
     # CORE SERVICES
     # ============================================================================
@@ -136,6 +152,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         summary_filename=_default_config.services.repository_summary_filename,
     )
 
+    digital_io_setup_service = providers.Factory(
+        "application.use_cases.robot_operations.digital_io_setup_service.DigitalIOSetupService",
+        hardware_services=hardware_service_facade,
+    )
+
     # ============================================================================
     # STATISTICS SERVICES
     # ============================================================================
@@ -146,17 +167,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     # ============================================================================
-    # MONITORING SERVICES
-    # ============================================================================
-
-    emergency_stop_service = providers.Factory(
-        EmergencyStopService,
-        hardware_facade=hardware_service_facade,
-        configuration_service=configuration_service,
-    )
-
-    # ============================================================================
-    # INDUSTRIAL SERVICES
+    # INDUSTRIAL SERVICES (defined first - used by monitoring services)
     # ============================================================================
 
     industrial_system_manager = providers.Singleton(
@@ -164,6 +175,17 @@ class ApplicationContainer(containers.DeclarativeContainer):
         hardware_service_facade=hardware_service_facade,
         configuration_service=configuration_service,
         gui_alert_callback=None,  # Will be set by GUI if available
+    )
+
+    # ============================================================================
+    # MONITORING SERVICES (depends on industrial services)
+    # ============================================================================
+
+    emergency_stop_service = providers.Factory(
+        EmergencyStopService,
+        hardware_facade=hardware_service_facade,
+        configuration_service=configuration_service,
+        industrial_system_manager=industrial_system_manager,
     )
 
     # ============================================================================
@@ -181,6 +203,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         exception_handler=exception_handler,
         emergency_stop_service=emergency_stop_service,
         industrial_system_manager=industrial_system_manager,
+        db_logger_service=db_logger_service,
     )
 
     # Standard Use Cases (with industrial system integration)
@@ -330,6 +353,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
     ) -> None:
         """
         Synchronize HardwareFactory configuration with main container configuration.
+
+        This method ensures that hardware service providers are recreated with new
+        configuration values when settings are changed in the UI. Without resetting
+        the HardwareFactory, hardware services would continue using old configuration
+        (e.g., old COM port) even after YAML files are updated.
         """
         try:
             # Get hardware configuration from main container
@@ -337,11 +365,28 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
             # Update HardwareFactory config to match
             hardware_factory_instance = container_instance.hardware_factory()
-            if hasattr(hardware_factory_instance, 'config') and hasattr(hardware_factory_instance.config, 'from_dict'):
+            if hasattr(hardware_factory_instance, "config") and hasattr(
+                hardware_factory_instance.config, "from_dict"
+            ):
                 hardware_factory_instance.config.from_dict(hardware_config)
             logger.info("🔄 HardwareFactory configuration synchronized")
 
-            # Reset HardwareFactory providers to pick up new config
+            # ✨ CRITICAL: Reset HardwareFactory container itself to force recreation
+            # of all hardware service providers with new configuration
+            # This ensures that Factory providers create new instances with updated
+            # config values (e.g., new COM port, IP address, etc.)
+            try:
+                if hasattr(container_instance.hardware_factory, "reset"):
+                    container_instance.hardware_factory.reset()
+                    logger.info(
+                        "🔄 HardwareFactory container reset - all providers will be recreated with new config"
+                    )
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to reset HardwareFactory container: {e}")
+
+            # Reset individual HardwareFactory providers to pick up new config
+            # Note: After container reset above, these may already be reset,
+            # but we do this for completeness and backward compatibility
             hardware_factory_providers = [
                 "robot_service",
                 "power_service",

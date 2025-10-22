@@ -400,6 +400,31 @@ class MockRobot(RobotService):
         self._servo_enabled = False  # 상태 업데이트
         logger.info(f"Mock robot axis {axis} servo disabled")
 
+    async def reset_servo_alarm(self, axis: int) -> None:
+        """
+        Reset servo alarm status (mock implementation)
+
+        Args:
+            axis: Axis number to reset alarm for
+
+        Raises:
+            HardwareConnectionError: If robot is not connected
+            HardwareOperationError: If alarm reset operation fails
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError("mock_robot", "Robot is not connected")
+
+        if axis < 0 or axis >= self._axis_count:
+            raise HardwareOperationError(
+                "mock_robot",
+                "reset_servo_alarm",
+                f"Invalid axis {axis}",
+            )
+
+        # Simulate alarm reset delay
+        await asyncio.sleep(0.1)
+        logger.info(f"Mock robot axis {axis} servo alarm reset")
+
     async def get_axis_count(self) -> int:
         """
         Get the number of axes supported by this robot
@@ -556,9 +581,7 @@ class MockRobot(RobotService):
         else:
             load_ratio = random.uniform(25.0, 75.0)
 
-        logger.debug(
-            f"Mock load ratio (type {ratio_type}) for axis {axis}: {load_ratio:.2f}%"
-        )
+        logger.debug(f"Mock load ratio (type {ratio_type}) for axis {axis}: {load_ratio:.2f}%")
         return load_ratio
 
     async def get_torque(self, axis: int) -> float:

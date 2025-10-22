@@ -19,6 +19,7 @@ from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
 from domain.entities.eol_test import EOLTest
+from domain.enums.test_status import TestStatus
 from domain.exceptions import RepositoryAccessError
 from domain.value_objects.measurements import TestMeasurements
 
@@ -52,7 +53,7 @@ class RepositoryService:
 
     async def save_test_result(self, test: EOLTest) -> None:
         """
-        Save test result to repository and generate data files
+        Save test result to repository and generate data files - only for COMPLETED and FAILED status
 
         Args:
             test: EOL test to save
@@ -60,6 +61,14 @@ class RepositoryService:
         Raises:
             RepositoryAccessError: If saving fails
         """
+        # Only save if status is COMPLETED or FAILED
+        if test.status not in (TestStatus.COMPLETED, TestStatus.FAILED):
+            logger.info(
+                f"Test {test.test_id} NOT saved (status: {test.status}) - "
+                f"skipping ERROR/CANCELLED tests"
+            )
+            return
+
         # Save to original JSON repository
         try:
             await self._test_repository.save(test)

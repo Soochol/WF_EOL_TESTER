@@ -73,8 +73,9 @@ class TestControlWidget(QWidget):
         self.gui_state_manager = state_manager
         self.executor_thread = executor_thread
 
-        # Get robot service from container
+        # Get robot service and industrial system manager from container
         robot_service = container.hardware_service_facade().robot_service
+        industrial_system_manager = container.industrial_system_manager()
 
         # Initialize components
         self.theme_manager = ThemeManager()
@@ -84,6 +85,7 @@ class TestControlWidget(QWidget):
             robot_service=robot_service,
             executor_thread=executor_thread,
             axis_id=0,  # Primary axis
+            industrial_system_manager=industrial_system_manager,
         )
         self.ui_factory = UIComponentFactory(self.theme_manager)
 

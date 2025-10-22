@@ -18,6 +18,9 @@ from .state_manager import TestControlState
 if TYPE_CHECKING:
     # Local application imports
     from application.interfaces.hardware.robot import RobotService
+    from application.services.industrial.industrial_system_manager import (
+        IndustrialSystemManager,
+    )
 
 
 class TestControlEventHandlers(QObject):
@@ -36,6 +39,7 @@ class TestControlEventHandlers(QObject):
         robot_service: Optional["RobotService"] = None,
         executor_thread=None,
         axis_id: int = 0,
+        industrial_system_manager: Optional["IndustrialSystemManager"] = None,
         parent: Optional[QObject] = None,
     ):
         super().__init__(parent)
@@ -43,6 +47,7 @@ class TestControlEventHandlers(QObject):
         self.robot_service = robot_service
         self.executor_thread = executor_thread
         self.axis_id = axis_id
+        self.industrial_system_manager = industrial_system_manager
 
     def handle_start_test_clicked(self) -> None:
         """Handle START TEST button click"""
@@ -154,6 +159,55 @@ class TestControlEventHandlers(QObject):
             logger.debug("Re-enabling home button after homing operation")
             self.state_manager.set_button_enabled("home", True)
 
+    def handle_clear_error_clicked(self) -> None:
+        """Handle CLEAR ERROR button click - clears error state (Stage 2 of 3-stage clearing)"""
+        logger.info("🔧 CLEAR ERROR button clicked in TestControlWidget")
+
+        # Validate dependencies
+        if not self.industrial_system_manager:
+            logger.error("Industrial System Manager not available")
+            self.state_manager.update_status(
+                "Industrial System Manager not initialized", "status_error", 0
+            )
+            return
+
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.state_manager.update_status("Executor thread not initialized", "status_error", 0)
+            return
+
+        # Update state
+        self.state_manager.update_status("Clearing error...", "status_warning", 0)
+        self.state_manager.set_button_enabled("clear_error", False)
+
+        # Submit clear error task to executor thread
+        logger.debug("Submitting clear error task to executor thread...")
+        self.executor_thread.submit_task("clear_error", self._async_clear_error())
+
+    async def _async_clear_error(self) -> None:
+        """Async clear error operation"""
+        # Type guard: industrial_system_manager should be available at this point
+        if not self.industrial_system_manager:
+            logger.error("Industrial System Manager became unavailable during clear error")
+            self.state_manager.update_status("Industrial System Manager error", "status_error", 0)
+            return
+
+        try:
+            logger.info("Clearing error state (3-stage: BLINK→ON→OFF, Stage 2)...")
+            await self.industrial_system_manager.clear_error()
+            logger.info("Error cleared successfully")
+
+            # Update state
+            self.state_manager.update_status(
+                "Error Cleared - Press START TEST to continue", "status_success", 0
+            )
+            self.state_manager.set_button_enabled("start", True)
+
+        except Exception as e:
+            logger.error(f"Failed to clear error: {e}", exc_info=True)
+            self.state_manager.update_status(f"Clear Error Failed: {str(e)}", "status_error", 0)
+            self.state_manager.set_button_enabled("clear_error", True)
+
     def handle_emergency_stop_clicked(self) -> None:
         """Handle EMERGENCY STOP button click"""
         # Update state to emergency
@@ -161,6 +215,9 @@ class TestControlEventHandlers(QObject):
 
         # Disable start button (requires homing)
         self.state_manager.set_button_enabled("start", False)
+
+        # Enable clear error button for error clearing
+        self.state_manager.set_button_enabled("clear_error", True)
 
         # Emit signal
         self.emergency_stop_requested.emit()

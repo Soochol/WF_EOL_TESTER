@@ -388,10 +388,29 @@ class EOLTesterGUIApplication:
 
         logger.info(f"Application font set to: {default_font.family()}")
 
-        # Set application icon if available
-        icon_path = Path(__file__).parent / "resources" / "icons" / "app_icon.png"
+        # Set application icon (use same icon as splash screen - SMA Spring SVG)
+        icon_path = (
+            Path(__file__).parent / "ui" / "gui" / "resources" / "icons" / "sma_spring_100.svg"
+        )
         if icon_path.exists():
-            self.app.setWindowIcon(QIcon(str(icon_path)))
+            # PySide6 supports SVG natively - convert to QPixmap for better compatibility
+            from PySide6.QtSvg import QSvgRenderer
+            from PySide6.QtGui import QPixmap, QPainter
+            from PySide6.QtCore import Qt
+
+            # Convert SVG to QPixmap (64x64 for taskbar/titlebar)
+            svg_renderer = QSvgRenderer(str(icon_path))
+            pixmap = QPixmap(64, 64)
+            pixmap.fill(Qt.GlobalColor.transparent)
+
+            painter = QPainter(pixmap)
+            svg_renderer.render(painter)
+            painter.end()
+
+            self.app.setWindowIcon(QIcon(pixmap))
+            logger.info(f"Application icon set from: {icon_path}")
+        else:
+            logger.warning(f"Application icon not found: {icon_path}")
 
         logger.info("GUI Application initialized")
 
@@ -448,11 +467,31 @@ class EOLTesterGUIApplication:
             self.container = SimpleReloadableContainer.create()
             logger.info("SimpleReloadableContainer created successfully")
 
+            # Initialize database
+            self._initialize_database()
+
         except (ImportError, AttributeError, FileNotFoundError) as e:
             logger.error(f"Failed to create SimpleReloadableContainer: {e}")
             logger.info("Creating container with fallback configuration")
             # Fallback is handled internally by SimpleReloadableContainer
             self.container = SimpleReloadableContainer.create()
+
+            # Initialize database even with fallback
+            self._initialize_database()
+
+    def _initialize_database(self) -> None:
+        """Initialize database manager"""
+        try:
+            if self.container:
+                import asyncio
+
+                db_manager = self.container.database_manager()
+                # Run async initialization in sync context
+                asyncio.get_event_loop().run_until_complete(db_manager.initialize())
+                logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize database: {e}")
+            logger.info("Application will continue without database logging")
 
     def _setup_hardware_services_with_progress(self) -> None:
         """Setup hardware services with progress updates for splash screen"""
@@ -719,7 +758,9 @@ class EOLTesterGUIApplication:
                 return 1
 
         except Exception as e:
-            logger.error(f"Application startup failed: {e}")
+            logger.error(f"Application startup failed: {e}", exc_info=True)
+            import traceback
+            traceback.print_exc()
             if self.splash_screen:
                 self.splash_screen.close()
             return 1

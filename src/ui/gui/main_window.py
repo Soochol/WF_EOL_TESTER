@@ -880,6 +880,12 @@ class MainWindow(QMainWindow):
         self.emergency_stop_active = False  # Track emergency stop state
         self.page_transition_manager: Optional[PageTransitionManager] = None  # Page transitions
 
+        # Toast notification manager (will be initialized after UI is ready)
+        # Local application imports
+        from ui.gui.widgets.notifications.toast_manager import ToastManager
+
+        self.toast_manager: Optional[ToastManager] = None
+
         # GUI State Manager is already injected in main_gui.py during initialization
         # No need to inject again here to avoid overwriting the connection
 
@@ -993,6 +999,13 @@ class MainWindow(QMainWindow):
 
         # Insert header at the beginning
         layout.insertWidget(0, self.header)
+
+        # Initialize toast manager after central widget is ready
+        # Local application imports
+        from ui.gui.widgets.notifications.toast_manager import ToastManager
+
+        if self.toast_manager is None:
+            self.toast_manager = ToastManager(self.centralWidget(), max_toasts=3)
 
     def init_sidebar(self) -> None:
         """Initialize sidebar widget"""
@@ -1204,6 +1217,26 @@ class MainWindow(QMainWindow):
         self.content_stack.addWidget(self.loadcell_page)
         self.content_widgets["loadcell"] = self.loadcell_page
         self.pages["loadcell"] = self.loadcell_page  # Add to pages dictionary
+
+    def init_search_tab(self) -> None:
+        """Initialize Search tab"""
+        if "search" in self.content_widgets:
+            return  # Already initialized
+
+        if self.content_stack is None:
+            return
+
+        # Local imports
+        # Local application imports
+        from ui.gui.widgets.content.search_widget import SearchWidget
+
+        self.search_page = SearchWidget(
+            container=self.container,
+            state_manager=self.state_manager,
+        )
+        self.content_stack.addWidget(self.search_page)
+        self.content_widgets["search"] = self.search_page
+        self.pages["search"] = self.search_page  # Add to pages dictionary
 
     def init_results_tab(self) -> None:
         """Initialize results tab"""
@@ -1424,6 +1457,42 @@ class MainWindow(QMainWindow):
         if self.sidebar is not None and "dashboard" in self.content_widgets:
             self.change_page("dashboard")
 
+        # Initialize industrial system (GREEN lamp ON at program start)
+        self._initialize_industrial_system()
+
+    def _initialize_industrial_system(self) -> None:
+        """Initialize industrial system manager - turns GREEN lamp ON"""
+        # Standard library imports
+        from concurrent.futures import ThreadPoolExecutor
+
+        # Third-party imports
+        import asyncio
+        from loguru import logger
+
+        logger.info("🏭 Initializing industrial system manager at program start...")
+
+        try:
+            industrial_mgr = self.container.industrial_system_manager()
+
+            # Run async initialization in background thread
+            def init_task():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(industrial_mgr.initialize_system())
+                    logger.info("✅ Industrial system initialization complete - GREEN ON")
+                except Exception as e:
+                    logger.error(f"❌ Failed to initialize industrial system: {e}")
+                finally:
+                    loop.close()
+
+            # Submit to thread pool to avoid blocking GUI
+            executor = ThreadPoolExecutor(max_workers=1)
+            executor.submit(init_task)
+
+        except Exception as e:
+            logger.error(f"❌ Failed to get industrial system manager: {e}")
+
     def setup_ui(self) -> None:
         """Setup the main window UI"""
         # Window properties
@@ -1573,6 +1642,8 @@ class MainWindow(QMainWindow):
         )
         self.content_stack.addWidget(self.settings_page)
 
+        # Note: Search page is lazy-loaded via init_search_tab()
+
         # Store pages for easy access
         self.pages = {
             "dashboard": self.dashboard_page,
@@ -1583,6 +1654,7 @@ class MainWindow(QMainWindow):
             "logs": self.logs_page,
             "about": self.about_page,
             "settings": self.settings_page,
+            # "search" is added dynamically via init_search_tab()
         }
 
     def setup_status_bar(self) -> None:
@@ -1730,6 +1802,11 @@ class MainWindow(QMainWindow):
                 self.init_loadcell_tab()
                 # ✅ Sync initial hardware status immediately after creating page
                 self._sync_hardware_page_status("loadcell")
+        # Lazy load Search page if needed
+        elif page_id == "search":
+            if "search" not in self.pages:
+                logger.info("⚙️ Lazy loading Search page...")
+                self.init_search_tab()
         # Standard lazy loading for other pages
         elif page_id not in self.pages:
             logger.info(f"⚙️ Lazy loading {page_id} page...")
@@ -1925,7 +2002,46 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 logger.debug(f"Graphics effect cleanup error: {e}")
 
-        # 3. Stop TestExecutorThread
+        # 3. Shutdown industrial system (Tower Lamp, Safety, Digital I/O)
+        if hasattr(self, "container") and self.container:
+            try:
+                logger.info("🏭 Shutting down industrial system...")
+                industrial_mgr = self.container.industrial_system_manager()
+
+                # Run async shutdown in sync context
+                # Third-party imports
+                import asyncio
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(industrial_mgr.shutdown_system())
+                    logger.info("✅ Industrial system shutdown complete")
+                finally:
+                    loop.close()
+            except Exception as e:
+                logger.error(f"Error during industrial system shutdown: {e}")
+
+        # 4. Shutdown all hardware (Power, Robot, MCU, Loadcell)
+        if hasattr(self, "container") and self.container:
+            try:
+                logger.info("🔌 Shutting down hardware...")
+                hardware_facade = self.container.hardware_service_facade()
+
+                # Third-party imports
+                import asyncio
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(hardware_facade.shutdown_hardware())
+                    logger.info("✅ Hardware shutdown complete")
+                finally:
+                    loop.close()
+            except Exception as e:
+                logger.error(f"Error during hardware shutdown: {e}")
+
+        # 5. Stop TestExecutorThread
         if hasattr(self, "test_executor_thread") and self.test_executor_thread:
             logger.info("🛑 Stopping TestExecutorThread...")
             self.test_executor_thread.stop()
@@ -1936,7 +2052,7 @@ class MainWindow(QMainWindow):
                     self.test_executor_thread.terminate()
             logger.info("✅ TestExecutorThread stopped")
 
-        # 4. Stop RobotHomeThread
+        # 6. Stop RobotHomeThread
         if hasattr(self, "robot_home_thread") and self.robot_home_thread:
             if self.robot_home_thread.isRunning():
                 logger.info("🛑 Stopping RobotHomeThread...")
@@ -2130,7 +2246,7 @@ class MainWindow(QMainWindow):
         self.test_control_page.update_test_status("Test Paused", "⏸️")
 
     def _on_robot_home_requested(self) -> None:
-        """Handle robot home request"""
+        """Handle robot home completion (signal from ModernTestControlWidget)"""
         # Third-party imports
         from loguru import logger
 
@@ -2138,6 +2254,17 @@ class MainWindow(QMainWindow):
             return
 
         logger.critical("🔥 DEBUG: _on_robot_home_requested method called!")
+
+        # Reset emergency stop flag when homing completes successfully
+        # This allows START TEST button to be enabled after Emergency Stop → Clear Error → Home
+        if self.emergency_stop_active:
+            logger.info("Resetting emergency_stop_active flag after successful homing")
+            self.emergency_stop_active = False
+            # Re-enable START TEST button if test is not running
+            if self.test_executor_thread and not self.test_executor_thread.isRunning():
+                self.test_control_page.start_btn.setEnabled(True)
+                logger.info("START TEST button enabled after emergency stop recovery")
+
         try:
             # Mutex check: Prevent robot home if test is running
             if self.test_executor_thread and self.test_executor_thread.isRunning():
@@ -2187,7 +2314,7 @@ class MainWindow(QMainWindow):
             self.test_control_page.update_test_status("Robot Home Failed", "status_error")
 
     def _on_emergency_stop_requested(self) -> None:
-        """Handle emergency stop request"""
+        """Handle emergency stop request with immediate hardware response"""
         # Third-party imports
         from loguru import logger
 
@@ -2196,49 +2323,56 @@ class MainWindow(QMainWindow):
 
         logger.critical("EMERGENCY STOP REQUESTED")
 
-        # PRIORITY 1: Immediate UI updates (must happen first)
-        def immediate_ui_updates():
-            """Execute immediate UI updates with high priority"""
-            logger.info("Executing immediate UI updates for Emergency Stop")
+        # PRIORITY 1: IMMEDIATE HARDWARE EMERGENCY STOP (HIGHEST PRIORITY!)
+        # Execute hardware stop first - do not wait for anything!
+        logger.info("🚨 Calling _execute_emergency_stop_async()...")
+        self._execute_emergency_stop_async()
+        logger.info("🚨 _execute_emergency_stop_async() call completed")
 
-            # Update test control status immediately for user feedback
-            if self.test_control_page:
-                self.test_control_page.update_test_status(
-                    "EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency"
-                )
+        # PRIORITY 2: Immediate UI updates (parallel with hardware stop)
+        self._update_emergency_ui()
 
-            # Update header status
-            if self.header is not None:
-                self.header.set_system_status("EMERGENCY STOP", "emergency")
+        # PRIORITY 3: Stop test thread in background (lowest priority, non-blocking)
+        self._stop_test_thread_background()
 
-            # Set emergency stop flag and disable START TEST button
-            self.emergency_stop_active = True
-            logger.info("Emergency stop state activated - START TEST button disabled")
-            if self.test_control_page:
-                self.test_control_page.disable_start_button()
-                logger.info("START TEST button disabled successfully")
+    def _update_emergency_ui(self) -> None:
+        """Execute immediate UI updates for emergency stop"""
+        # Third-party imports
+        from loguru import logger
 
-        # Execute UI updates immediately
-        immediate_ui_updates()
+        logger.info("Executing immediate UI updates for Emergency Stop")
 
-        # PRIORITY 2: Stop running test thread (after UI updates)
-        def stop_test_thread():
-            """Stop running test thread"""
-            if (
-                hasattr(self, "test_executor_thread")
-                and self.test_executor_thread
-                and self.test_executor_thread.isRunning()
-            ):
-                logger.info("Stopping running test thread...")
-                self.test_executor_thread.stop_test()
-                self.test_executor_thread.wait(1000)  # Wait up to 1 second
-                logger.info("Test thread stopped")
+        # Update test control status immediately for user feedback
+        if self.test_control_page:
+            self.test_control_page.update_test_status(
+                "EMERGENCY STOP ACTIVATED! - HOME REQUIRED", "status_emergency"
+            )
 
-            # PRIORITY 3: Execute hardware emergency stop (after thread stop)
-            self._execute_emergency_stop_async()
+        # Update header status
+        if self.header is not None:
+            self.header.set_system_status("EMERGENCY STOP", "emergency")
 
-        # Use QTimer.singleShot to ensure proper event loop handling
-        QTimer.singleShot(0, stop_test_thread)
+        # Set emergency stop flag and disable START TEST button
+        self.emergency_stop_active = True
+        logger.info("Emergency stop state activated - START TEST button disabled")
+        if self.test_control_page:
+            self.test_control_page.disable_start_button()
+            logger.info("START TEST button disabled successfully")
+
+    def _stop_test_thread_background(self) -> None:
+        """Stop running test thread in background (non-blocking)"""
+        # Third-party imports
+        from loguru import logger
+
+        if (
+            hasattr(self, "test_executor_thread")
+            and self.test_executor_thread
+            and self.test_executor_thread.isRunning()
+        ):
+            logger.info("Stopping running test thread in background...")
+            self.test_executor_thread.stop_test()
+            # Do NOT wait - let it stop in background!
+            logger.info("Test thread stop requested (will complete in background)")
 
     def _execute_robot_home_async(self) -> None:
         """Execute robot home operation using QThread (non-blocking)"""
@@ -2336,19 +2470,42 @@ class MainWindow(QMainWindow):
             self.robot_home_thread = None
 
     def _execute_emergency_stop_async(self) -> None:
-        """Execute emergency stop asynchronously using QTimer"""
+        """Execute emergency stop asynchronously using Thread Pool Executor"""
+        # Standard library imports
+        from concurrent.futures import ThreadPoolExecutor
+
         # Third-party imports
         import asyncio
         from loguru import logger
 
+        logger.info("🚨 Starting Emergency Stop async execution...")
+
         try:
-            # Create a single-shot timer to execute the async function
-            timer = QTimer()
-            timer.setSingleShot(True)
-            timer.timeout.connect(lambda: asyncio.ensure_future(self._run_emergency_stop()))
-            timer.start(10)  # Start after 10ms
+            # Use thread pool executor to run async function properly
+            # This ensures asyncio.run() creates a proper event loop for the async function
+            executor = ThreadPoolExecutor(max_workers=1)
+
+            def run_emergency_stop_in_thread():
+                """Wrapper to run async emergency stop in thread with proper event loop"""
+                try:
+                    logger.info("🚨 Emergency Stop thread started")
+                    # asyncio.run() creates a new event loop and runs the coroutine
+                    asyncio.run(self._run_emergency_stop())
+                    logger.info("🚨 Emergency Stop thread completed successfully")
+                except Exception as e:
+                    logger.error(f"🚨 Emergency Stop thread failed: {e}", exc_info=True)
+                    # Update UI on failure
+                    self.state_manager.add_log_message(
+                        "ERROR", "EMERGENCY", f"Emergency stop execution failed: {str(e)}"
+                    )
+                    self.state_manager.set_system_status("EMERGENCY STOP - ERROR")
+
+            # Submit to executor (non-blocking)
+            executor.submit(run_emergency_stop_in_thread)
+            logger.info("🚨 Emergency Stop submitted to executor thread")
+
         except Exception as e:
-            logger.error(f"Failed to setup emergency stop async execution: {e}")
+            logger.error(f"Failed to setup emergency stop async execution: {e}", exc_info=True)
             # Fallback to UI-only emergency stop
             self.state_manager.add_log_message(
                 "ERROR", "EMERGENCY", f"Emergency stop setup failed: {str(e)}"
@@ -2361,10 +2518,13 @@ class MainWindow(QMainWindow):
         from loguru import logger
 
         try:
+            logger.info(
+                "🚨 _run_emergency_stop() - Calling state_manager.execute_emergency_stop()..."
+            )
             await self.state_manager.execute_emergency_stop()
-            logger.info("Emergency stop completed successfully from GUI")
+            logger.info("✅ Emergency stop completed successfully from GUI")
         except Exception as e:
-            logger.error(f"Emergency stop execution failed: {e}")
+            logger.error(f"❌ Emergency stop execution failed: {e}", exc_info=True)
             self.state_manager.add_log_message(
                 "ERROR", "EMERGENCY", f"Emergency stop failed: {str(e)}"
             )
@@ -2885,7 +3045,9 @@ class MainWindow(QMainWindow):
 
         # Reset GUI state
         self._set_test_running_state(False)
-        self.state_manager.set_system_status("Ready")
+        # DO NOT call state_manager.set_system_status("Ready") here!
+        # Industrial system manager already set the correct tower lamp status
+        # (TEST_PASS/TEST_FAIL), and calling "Ready" here would interfere with lamp state
 
         # Update header and hide progress
         if self.header is not None:
@@ -2904,6 +3066,15 @@ class MainWindow(QMainWindow):
             self.test_control_page.stop_indeterminate_progress()
             self.test_control_page.update_test_status("Test Failed", "status_error", 0)
 
+        # Show toast notification
+        if self.toast_manager:
+            if success:
+                self.toast_manager.show_success(
+                    "테스트 완료", f"테스트가 성공적으로 완료되었습니다.\n{message}"
+                )
+            else:
+                self.toast_manager.show_error("테스트 실패", f"테스트가 실패했습니다.\n{message}")
+
     def _on_thread_test_error(self, error_message: str) -> None:
         """Handle test error from thread"""
         # Third-party imports
@@ -2920,14 +3091,31 @@ class MainWindow(QMainWindow):
         # Update test control status
         self.test_control_page.update_test_status(f"Test Error: {error_message}", "status_error", 0)
 
+        # Note: Clear Error button should NOT be enabled for test errors
+        # Test errors allow immediate retry - no clearing required
+
         # Reset GUI state
         self._set_test_running_state(False)
-        self.state_manager.set_system_status("Error")
+        # DO NOT call state_manager.set_system_status("Ready") here!
+        # Industrial system manager already set SYSTEM_ERROR status (RED BLINK + GREEN ON)
+        # Calling "Ready" here would turn off the error indication lamps
 
-        # Show error message
-        QMessageBox.critical(
-            self, "Test Execution Error", f"Test execution failed:\n\n{error_message}"
-        )
+        # Show toast notification instead of blocking dialog
+        if self.toast_manager:
+            # Truncate long error messages
+            display_message = (
+                error_message[:200] + "..." if len(error_message) > 200 else error_message
+            )
+            self.toast_manager.show_error(
+                "테스트 오류",
+                f"테스트 실행 중 오류가 발생했습니다.\n{display_message}",
+                duration=6000,  # Longer duration for errors
+            )
+        else:
+            # Fallback to QMessageBox if toast not available
+            QMessageBox.critical(
+                self, "Test Execution Error", f"Test execution failed:\n\n{error_message}"
+            )
 
     def _on_thread_log_message(self, level: str, component: str, message: str) -> None:
         """Handle log message from thread"""

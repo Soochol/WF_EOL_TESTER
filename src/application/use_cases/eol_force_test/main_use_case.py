@@ -23,8 +23,11 @@ from application.services.monitoring.emergency_stop_service import (
 )
 from application.services.test.test_result_evaluator import TestResultEvaluator
 
+
 if TYPE_CHECKING:
     from application.services.industrial.industrial_system_manager import IndustrialSystemManager
+
+# Local application imports
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
 from domain.exceptions.test_exceptions import TestExecutionException
@@ -85,6 +88,7 @@ class EOLForceTestUseCase(BaseUseCase):
         exception_handler: ExceptionHandler,
         emergency_stop_service: Optional[EmergencyStopService] = None,
         industrial_system_manager: Optional["IndustrialSystemManager"] = None,
+        db_logger_service: Optional[Any] = None,
     ):
         # Initialize BaseUseCase
         super().__init__("EOL Force Test", emergency_stop_service)
@@ -93,6 +97,7 @@ class EOLForceTestUseCase(BaseUseCase):
         self._hardware_services = hardware_services
         self._exception_handler = exception_handler
         self._industrial_system_manager = industrial_system_manager
+        self._db_logger_service = db_logger_service
 
         # Inject repository service into hardware facade for cycle-by-cycle saving
         if hasattr(hardware_services, "_repository_service"):
@@ -203,16 +208,53 @@ class EOLForceTestUseCase(BaseUseCase):
         test_entity = None
 
         # Verify GUI State Manager connection for real-time updates
-        gui_state_manager_connected = hasattr(self._hardware_services, '_gui_state_manager') and self._hardware_services._gui_state_manager is not None
-        logger.info(f"🔌 EOL UseCase: GUI State Manager connection status: {gui_state_manager_connected}")
+        gui_state_manager_connected = (
+            hasattr(self._hardware_services, "_gui_state_manager")
+            and self._hardware_services._gui_state_manager is not None
+        )
+        logger.info(
+            f"🔌 EOL UseCase: GUI State Manager connection status: {gui_state_manager_connected}"
+        )
         if gui_state_manager_connected:
-            logger.info(f"🔗 EOL UseCase: GUI State Manager ID = {id(self._hardware_services._gui_state_manager)}")
+            logger.info(
+                f"🔗 EOL UseCase: GUI State Manager ID = {id(self._hardware_services._gui_state_manager)}"
+            )
         else:
-            logger.warning("⚠️ EOL UseCase: GUI State Manager not connected - cycle results will not be displayed in real-time")
+            logger.warning(
+                "⚠️ EOL UseCase: GUI State Manager not connected - cycle results will not be displayed in real-time"
+            )
+
+        # DEBUG: Check Industrial System Manager status
+        logger.info(
+            f"🏭 DEBUG: Industrial System Manager status: {self._industrial_system_manager is not None}"
+        )
+        if self._industrial_system_manager:
+            logger.info(
+                f"🏭 DEBUG: Industrial System Manager ID: {id(self._industrial_system_manager)}"
+            )
+            logger.info(
+                f"🏭 DEBUG: Industrial System Manager type: {type(self._industrial_system_manager)}"
+            )
+        else:
+            logger.error("🏭 DEBUG: Industrial System Manager is None - Tower Lamp will not work!")
+
+        # Phase 0: Initialize Industrial System Manager BEFORE try block
+        # This ensures tower lamp error indication works even if config loading fails
+        if self._industrial_system_manager:
+            try:
+                logger.info("🏭 EOL UseCase: Initializing Industrial System Manager...")
+                await self._industrial_system_manager.initialize_system()
+                logger.info("🏭 EOL UseCase: Industrial System Manager ready")
+            except Exception as init_error:
+                logger.error(
+                    f"⚠️ EOL UseCase: Failed to initialize Industrial Manager: {init_error}"
+                )
+                logger.warning("⚠️ EOL UseCase: Continuing without Tower Lamp (degraded mode)")
 
         try:
             # Phase 1: Initialize test setup
             await self._config_loader.load_and_validate_configurations()
+
             test_entity = await self._test_factory.create_test_entity(
                 command.dut_info,
                 command.operator_id,
@@ -237,14 +279,18 @@ class EOLForceTestUseCase(BaseUseCase):
             # Update industrial status indication
             if self._industrial_system_manager:
                 # Import here to avoid circular imports
+                # Local application imports
                 from application.services.industrial.tower_lamp_service import SystemStatus
+
                 await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
 
             # Phase 3: Execute hardware test phases
-            measurements, individual_cycle_results = await self._hardware_executor.execute_hardware_test_phases(
-                self._config_loader.test_config,
-                self._config_loader.hardware_config,
-                command.dut_info,
+            measurements, individual_cycle_results = (
+                await self._hardware_executor.execute_hardware_test_phases(
+                    self._config_loader.test_config,
+                    self._config_loader.hardware_config,
+                    command.dut_info,
+                )
             )
 
             # Phase 4: Evaluate results and create success result
@@ -252,6 +298,9 @@ class EOLForceTestUseCase(BaseUseCase):
                 test_entity, measurements, self._config_loader.test_config
             )
             await self._state_manager.save_test_state(test_entity)
+
+            # Save to database if db_logger_service is available
+            await self._log_test_to_database(test_entity, measurements)
 
             execution_duration = self._calculate_execution_duration(start_time)
             result_status = (
@@ -394,19 +443,22 @@ class EOLForceTestUseCase(BaseUseCase):
 
         logger.error("EOL test execution failed: {}", error_context.get("user_message", str(error)))
 
-        # Update industrial status indication for error
+        # Update industrial status indication for error (with safety net)
         if self._industrial_system_manager:
-            await self._industrial_system_manager.handle_test_completion(
-                test_success=False, test_error=True
-            )
+            try:
+                await self._industrial_system_manager.handle_test_completion(
+                    test_success=False, test_error=True
+                )
+            except Exception as lamp_error:
+                logger.warning(f"⚠️ Failed to indicate error on Tower Lamp: {lamp_error}")
 
-        # Try to save failure state if test entity exists
+        # Try to save error state if test entity exists
         if test_entity is not None:
             try:
-                test_entity.fail_test(error_context.get("user_message", str(error)))
+                test_entity.error_test(error_context.get("user_message", str(error)))
                 await self._state_manager.save_test_state(test_entity)
             except Exception as save_error:
-                logger.warning("Failed to save test entity failure state: {}", save_error)
+                logger.warning("Failed to save test entity error state: {}", save_error)
 
         # Create failure result with available data
         return EOLTestResult(
@@ -430,6 +482,10 @@ class EOLForceTestUseCase(BaseUseCase):
 
         Note:
             Cleanup failures are logged but never raise exceptions
+
+        IMPORTANT: Hardware connections are NOT shutdown here to preserve tower lamp state.
+        Tower lamp blinking/status must continue after test completion.
+        Hardware shutdown only happens on program exit.
         """
         try:
             # Only perform teardown if test configuration is available
@@ -437,7 +493,10 @@ class EOLForceTestUseCase(BaseUseCase):
                 await self._hardware_services.teardown_test(
                     self._config_loader.test_config, self._config_loader.hardware_config
                 )
-            await self._hardware_services.shutdown_hardware()
+            # DO NOT call shutdown_hardware() here!
+            # Reason: Tower lamp needs Digital I/O to stay connected for blinking to work.
+            # TEST_PASS/FAIL states use blinking, which requires active Digital I/O connection.
+            # Hardware shutdown will be handled by main window on program exit.
             logger.debug(TestExecutionConstants.LOG_HARDWARE_CLEANUP_SUCCESS)
         except Exception as cleanup_error:
             # Hardware cleanup errors should never fail the test
@@ -462,3 +521,68 @@ class EOLForceTestUseCase(BaseUseCase):
         except Exception as emergency_error:
             # Even emergency power off failed - log critical error but don't raise
             logger.critical("Emergency power off failed: {}", emergency_error)
+
+    async def _log_test_to_database(
+        self, test_entity: "EOLTest", measurements: TestMeasurements
+    ) -> None:
+        """
+        Log test result and measurements to database
+
+        Args:
+            test_entity: Test entity with results
+            measurements: Test measurements data
+
+        Note:
+            Database logging failures are logged but never raise exceptions
+            to avoid breaking the main test flow
+        """
+        if not self._db_logger_service:
+            return
+
+        try:
+            # Log test result
+            await self._db_logger_service.log_test_result(test_entity)
+
+            # Log raw measurements
+            # Standard library imports
+            from datetime import datetime
+
+            serial_number = test_entity.dut.serial_number or "UNKNOWN"
+            test_id_str = str(test_entity.test_id)
+
+            # TestMeasurements is iterable over (temperature, PositionMeasurements) pairs
+            cycle_idx = 0
+            for temp, position_measurements in measurements:
+                # PositionMeasurements is iterable over (position, MeasurementReading) pairs
+                for pos, reading in position_measurements:
+                    try:
+                        # Extract values from MeasurementReading
+                        temperature_val = float(temp) if temp is not None else None
+                        position_val = float(pos) if pos is not None else None
+                        force_val = (
+                            float(reading.force_value.value)
+                            if reading.force_value is not None
+                            else None
+                        )
+
+                        # Log to database
+                        await self._db_logger_service.log_raw_measurement(
+                            test_id=test_id_str,
+                            serial_number=serial_number,
+                            cycle_number=cycle_idx + 1,
+                            temperature=temperature_val,
+                            position=position_val,
+                            force=force_val,
+                            timestamp=datetime.now(),
+                        )
+                        cycle_idx += 1
+                    except Exception as meas_error:
+                        logger.debug(
+                            f"Failed to log measurement (T={temp}, P={pos}) to database: {meas_error}"
+                        )
+
+            logger.debug(f"Test {test_id_str} logged to database successfully")
+
+        except Exception as e:
+            logger.warning(f"Failed to log test to database: {e}")
+            # Don't raise - database logging is optional

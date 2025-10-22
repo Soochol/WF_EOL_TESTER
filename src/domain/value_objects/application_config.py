@@ -19,6 +19,22 @@ from typing import Any, Dict, Optional
 # src/domain/value_objects/application_config.py → WF_EOL_TESTER/
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
+# Environment detection: Development vs Production
+# Development: .git folder exists (Git repository)
+# Production: .git folder absent (PyInstaller executable)
+IS_DEVELOPMENT = (PROJECT_ROOT / ".git").exists()
+
+# Database directory selection based on environment
+import os
+
+if IS_DEVELOPMENT:
+    # Development mode: Store DB in project folder for easy access
+    DATABASE_DIR = PROJECT_ROOT / "database"
+else:
+    # Production mode: Store DB in AppData for user data isolation
+    APPDATA_DIR = Path(os.getenv("APPDATA", str(PROJECT_ROOT))) / "WF_EOL_Tester"
+    DATABASE_DIR = APPDATA_DIR
+
 
 # Configuration path constants (Single Source of Truth)
 CONFIG_DIR = PROJECT_ROOT / "configuration"
@@ -46,6 +62,7 @@ def ensure_project_directories():
         LOGS_TEST_RESULTS_JSON_DIR,
         LOGS_EOL_RAW_DATA_DIR,
         LOGS_EOL_SUMMARY_DIR,
+        DATABASE_DIR,  # Database directory (development or AppData)
     ]
 
     for directory in required_dirs:
@@ -82,6 +99,9 @@ class ServicesConfigPaths:
     repository_summary_path: str = str(PROJECT_ROOT / "logs" / "EOL Force Test")
     repository_summary_filename: str = "test_summary.csv"
     repository_auto_save: bool = True
+
+    # Database path (hybrid: development=project/database, production=AppData)
+    database_path: str = str(DATABASE_DIR / "test_data.db")
 
     # Configuration file paths (absolute paths)
     config_application_path: str = str(PROJECT_ROOT / "configuration" / "application.yaml")

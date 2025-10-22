@@ -220,6 +220,7 @@ class TestControlsGroup:
         self.factory = factory
         self.event_handlers = event_handlers
         self.start_btn: Optional[QPushButton] = None
+        self.clear_error_btn: Optional[QPushButton] = None
         self.home_btn: Optional[QPushButton] = None
         self.pause_btn: Optional[QPushButton] = None
         self.stop_btn: Optional[QPushButton] = None
@@ -241,28 +242,68 @@ class TestControlsGroup:
 
         # Create buttons
         self.start_btn = self.factory.create_button_with_icon("START TEST", "play")
-        self.home_btn = self.factory.create_button_with_icon("HOME", "dashboard")
         self.pause_btn = self.factory.create_button_with_icon("PAUSE", "pause")
         self.stop_btn = self.factory.create_button_with_icon("STOP", "stop")
 
         # Connect signals
         self.start_btn.clicked.connect(self.event_handlers.handle_start_test_clicked)
-        self.home_btn.clicked.connect(self.event_handlers.handle_home_button_clicked)
         self.pause_btn.clicked.connect(self.event_handlers.handle_pause_test_clicked)
         self.stop_btn.clicked.connect(self.event_handlers.handle_stop_test_clicked)
 
         # Add to layout
         main_controls_layout.addWidget(self.start_btn)
-        main_controls_layout.addWidget(self.home_btn)
         main_controls_layout.addWidget(self.pause_btn)
         main_controls_layout.addWidget(self.stop_btn)
 
         layout.addLayout(main_controls_layout)
 
-        # Emergency stop button
+        # Error clearing and safety control buttons row
+        safety_controls_layout = QHBoxLayout()
+        safety_controls_layout.setSpacing(10)
+
+        # Create Clear Error button (orange styling)
+        self.clear_error_btn = QPushButton("CLEAR ERROR")
+        self.clear_error_btn.setMinimumHeight(38)
+        self.clear_error_btn.setMaximumHeight(48)
+        clear_error_style = f"""
+        QPushButton {{
+            background-color: {self.factory.theme_manager.COLORS.get('warning', '#FF8C00')};
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            border: 2px solid #CC7000;
+            border-radius: 4px;
+        }}
+        QPushButton:hover {{
+            background-color: #FFA500;
+        }}
+        QPushButton:pressed {{
+            background-color: #E67E00;
+        }}
+        QPushButton:disabled {{
+            background-color: #A0A0A0;
+            color: #606060;
+            border-color: #808080;
+        }}
+        """
+        self.clear_error_btn.setStyleSheet(clear_error_style)
+        self.clear_error_btn.setEnabled(False)  # Initially disabled
+        self.clear_error_btn.clicked.connect(self.event_handlers.handle_clear_error_clicked)
+
+        # Create HOME button
+        self.home_btn = self.factory.create_button_with_icon("HOME", "dashboard")
+        self.home_btn.clicked.connect(self.event_handlers.handle_home_button_clicked)
+
+        # Create Emergency Stop button
         self.emergency_btn = self.factory.create_emergency_button()
         self.emergency_btn.clicked.connect(self.event_handlers.handle_emergency_stop_clicked)
-        layout.addWidget(self.emergency_btn)
+
+        # Add to layout: [Clear Error] [Home] [Emergency Stop]
+        safety_controls_layout.addWidget(self.clear_error_btn)
+        safety_controls_layout.addWidget(self.home_btn)
+        safety_controls_layout.addWidget(self.emergency_btn)
+
+        layout.addLayout(safety_controls_layout)
 
         return group
 
@@ -270,6 +311,7 @@ class TestControlsGroup:
         """Get button references for state management"""
         return {
             "start": self.start_btn,
+            "clear_error": self.clear_error_btn,
             "home": self.home_btn,
             "pause": self.pause_btn,
             "stop": self.stop_btn,

@@ -1,21 +1,43 @@
 @echo off
-REM WF EOL Tester - GUI Only Launcher
-REM This script runs the GUI application without showing the command prompt window
+REM ============================================================================
+REM WF EOL Tester - GUI Launcher
+REM ============================================================================
+REM This script runs the GUI application (src/main_gui.py)
+REM
+REM Usage:
+REM   run_gui.bat           - Run GUI with console window (for debugging)
+REM   run_gui_silent.vbs    - Run GUI without console window (recommended)
+REM ============================================================================
 
-REM Check if UV is available
-where uv >nul 2>&1
-if errorlevel 1 (
-    REM Fallback to Python if UV is not available
-    where pythonw >nul 2>&1
-    if errorlevel 1 (
-        REM Use python.exe as last resort
-        start "" python src/main_gui.py
-    ) else (
-        REM Use pythonw.exe to hide console window
-        start "" pythonw src/main_gui.py
-    )
+echo.
+echo ========================================
+echo  WF EOL Tester - Starting GUI
+echo ========================================
+echo.
+
+REM Navigate to project root directory
+cd /d "%~dp0"
+
+REM Check if virtual environment exists (priority)
+if exist ".venv\Scripts\python.exe" (
+    echo [INFO] Using virtual environment Python...
+    echo.
+    .venv\Scripts\python.exe src\main_gui.py
 ) else (
-    REM Use UV with pythonw to hide console window
-    REM Note: UV may still show console briefly, but this is the best we can do
-    start "" /min uv run src/main_gui.py
+    REM Fallback: Check if UV is available
+    where uv >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] Virtual environment not found, using system Python...
+        echo.
+        python src\main_gui.py
+    ) else (
+        echo [INFO] Using UV to run GUI...
+        echo.
+        uv run src/main_gui.py
+    )
 )
+
+echo.
+echo [INFO] GUI application closed.
+echo.
+pause

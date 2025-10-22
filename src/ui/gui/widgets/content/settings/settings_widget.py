@@ -182,7 +182,9 @@ class SettingsWidget(QWidget):
                 try:
                     active_profile = asyncio.run(config_service.get_active_profile_name())
                     # Add active test profile to paths
-                    test_profile_path = Path(config_service.test_profiles_dir) / f"{active_profile}.yaml"
+                    test_profile_path = (
+                        Path(config_service.test_profiles_dir) / f"{active_profile}.yaml"
+                    )
                     base_paths[f"Test Profile ({active_profile})"] = str(test_profile_path)
                     logger.info(f"Loading active test profile: {active_profile}")
                 except Exception as e:
@@ -269,39 +271,62 @@ class SettingsWidget(QWidget):
 
         try:
             if self.current_config_value:
+                # Log the configuration change with proper attributes
+                # ConfigValue has: key, value, category, file_path (not config_file or get_full_path)
+                config_file = self.current_config_value.file_path
+                setting_category = self.current_config_value.category
+                setting_key = self.current_config_value.key
+                old_value = self.current_config_value.value
+
+                # Build readable path: category.key (e.g., "Hardware.mcu.port")
+                full_path = f"{setting_category}.{setting_key}" if setting_category else setting_key
+
+                logger.info(f"📝 Settings change: {full_path} = {new_value} (was: {old_value})")
+                logger.debug(f"📁 Target file: {config_file}")
+
                 # Save the change
                 success = ConfigFileSaver.save_config_value(
                     self.current_config_value, self.config_files
                 )
 
                 if success:
+                    logger.info(f"💾 Configuration saved to file: {config_file}")
+
                     # Update tree display
                     if self.tree_widget:
                         self.tree_widget.update_item_text(key, new_value)
 
                     # Reload configuration in container to apply changes immediately
-                    if self.container and hasattr(self.container, 'reload_configuration'):
+                    if self.container and hasattr(self.container, "reload_configuration"):
                         try:
+                            logger.info(f"🔄 Triggering container configuration reload for: {key}")
                             reload_success = self.container.reload_configuration()
                             if reload_success:
-                                logger.info(f"✅ Configuration reloaded after changing {key}")
+                                logger.info(
+                                    f"✅ Configuration reloaded successfully - {key} = {new_value}"
+                                )
+                                logger.info(
+                                    "🔌 Hardware services will use new configuration on next connection"
+                                )
                             else:
                                 logger.warning(f"⚠️ Configuration reload failed for {key}")
                         except Exception as e:
-                            logger.error(f"Failed to reload configuration: {e}")
+                            logger.error(f"❌ Failed to reload configuration: {e}")
 
                     # Emit change signal
                     self.settings_changed.emit()
 
-                    # Update status
+                    # Update status with more informative message
                     if self.status_label:
-                        self.status_label.setText(f"Saved & Applied: {key} = {new_value}")
+                        self.status_label.setText(f"✅ Saved & Applied: {key} = {new_value}")
                 else:
+                    logger.error(f"❌ Failed to save configuration change: {key} = {new_value}")
                     UIHelpers.show_error_message(
                         self, "Save Error", f"Failed to save changes for: {key}"
                     )
 
         except Exception as e:
+            logger.error(f"❌ Configuration update error: {str(e)}", exc_info=True)
             UIHelpers.show_error_message(
                 self, "Configuration Error", f"Error updating configuration:\\n\\n{str(e)}"
             )

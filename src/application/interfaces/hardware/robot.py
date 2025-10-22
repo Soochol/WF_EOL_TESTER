@@ -194,6 +194,22 @@ class RobotService(ABC):
         ...
 
     @abstractmethod
+    async def reset_servo_alarm(self, axis: int) -> None:
+        """
+        Reset servo alarm status (required after emergency stop)
+
+        After emergency stop, the robot controller may enter servo alarm state.
+        This method resets the alarm to allow servo re-enabling.
+
+        Args:
+            axis: Axis number to reset alarm for
+
+        Raises:
+            HardwareOperationError: If alarm reset operation fails
+        """
+        ...
+
+    @abstractmethod
     async def get_axis_count(self) -> int:
         """
         Get the number of axes supported by this robot

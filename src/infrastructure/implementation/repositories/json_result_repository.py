@@ -18,6 +18,7 @@ from application.interfaces.repository.test_result_repository import (
     TestResultRepository,
 )
 from domain.entities.eol_test import EOLTest
+from domain.enums.test_status import TestStatus
 from domain.exceptions import (
     ConfigurationNotFoundError,
     RepositoryAccessError,
@@ -50,7 +51,7 @@ class JsonResultRepository(TestResultRepository):
 
     async def save(self, test: EOLTest) -> EOLTest:
         """
-        Save test
+        Save test - only for COMPLETED and FAILED status
 
         Args:
             test: Test to save
@@ -64,10 +65,19 @@ class JsonResultRepository(TestResultRepository):
         # Save to cache
         self._tests_cache[test_id] = test_dict
 
+        # Only save to file if status is COMPLETED or FAILED (not ERROR/CANCELLED)
         if self._auto_save:
-            await self._save_to_file(test_id, test_dict)
+            # Check test status before saving
+            if test.status in (TestStatus.COMPLETED, TestStatus.FAILED):
+                await self._save_to_file(test_id, test_dict)
+                logger.debug(f"Test {test_id} saved to file (status: {test.status})")
+            else:
+                logger.info(
+                    f"Test {test_id} NOT saved to file (status: {test.status}) - "
+                    f"skipping ERROR/CANCELLED tests"
+                )
 
-        logger.debug(f"Test {test_id} saved to repository")
+        logger.debug(f"Test {test_id} saved to repository cache")
         return test
 
     async def update(self, test: EOLTest) -> EOLTest:

@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 
 # Local application imports
 from application.containers.application_container import ApplicationContainer
+from application.services.industrial.tower_lamp_service import SystemStatus
 from ui.gui.services.gui_state_manager import GUIStateManager
 from ui.gui.utils.svg_icon_provider import get_svg_icon_provider
 from ui.gui.widgets.log_viewer_widget import LogViewerWidget
@@ -236,9 +237,14 @@ class ModernTestControlWidget(QWidget):
         self.state_manager = state_manager
         self.executor_thread = executor_thread
 
-        # Get robot service from container
+        # Get robot service and industrial system manager from container
         self.robot_service = container.hardware_service_facade().robot_service
+        self.industrial_system_manager = container.industrial_system_manager()
         self.axis_id = 0  # Primary axis
+
+        # Get digital I/O setup service and configuration service for brake release
+        self.digital_io_setup_service = container.digital_io_setup_service()
+        self.configuration_service = container.configuration_service()
 
         # Serial number management (popup-based)
         self.current_serial_number = ""
@@ -249,6 +255,7 @@ class ModernTestControlWidget(QWidget):
         self.start_btn: ModernButton
         self.pause_btn: ModernButton
         self.stop_btn: ModernButton
+        self.clear_error_btn: ModernButton
         self.home_btn: ModernButton
         self.emergency_btn: ModernButton
         self.status_pill: StatusPill
@@ -257,6 +264,40 @@ class ModernTestControlWidget(QWidget):
 
         self.setup_ui()
         self.setup_connections()
+        self.setup_status_callback()
+
+    def setup_status_callback(self):
+        """Register callback for system status changes"""
+        if self.industrial_system_manager:
+            self.industrial_system_manager.register_status_change_callback(
+                self._on_system_status_changed
+            )
+
+    def _on_system_status_changed(self, status: SystemStatus):
+        """
+        Called when system status changes via callback
+
+        Args:
+            status: New system status
+        """
+        # Third-party imports
+        from loguru import logger
+
+        # Only enable Clear Error for EMERGENCY and SAFETY issues
+        # Test errors (SYSTEM_ERROR) should NOT require clearing - user can retry immediately
+        emergency_states = [
+            SystemStatus.EMERGENCY_STOP,  # Emergency Stop only (updated enum name)
+            SystemStatus.SAFETY_VIOLATION,  # Safety issues only
+        ]
+
+        # Enable button only for emergency/safety states, disable for test errors
+        should_enable = status in emergency_states
+        self.clear_error_btn.setEnabled(should_enable)
+
+        # Log for debugging
+        logger.debug(
+            f"🔘 Clear Error button auto-updated: {'ENABLED' if should_enable else 'DISABLED'} (status: {status.value})"
+        )
 
     def _get_serial_popup_setting(self) -> bool:
         """Get serial number popup setting from configuration"""
@@ -402,9 +443,12 @@ class ModernTestControlWidget(QWidget):
         secondary_controls = QHBoxLayout()
         secondary_controls.setSpacing(12)
 
+        self.clear_error_btn = ModernButton("Clear Error", "warning", "warning")
+        self.clear_error_btn.setEnabled(False)  # Initially disabled
         self.home_btn = ModernButton("Home", "home", "secondary")
         self.emergency_btn = ModernButton("Emergency Stop", "emergency", "danger")
 
+        secondary_controls.addWidget(self.clear_error_btn)
         secondary_controls.addWidget(self.home_btn)
         secondary_controls.addWidget(self.emergency_btn)
 
@@ -484,6 +528,7 @@ class ModernTestControlWidget(QWidget):
         self.start_btn.clicked.connect(self._on_start_clicked)
         self.pause_btn.clicked.connect(self.test_paused.emit)
         self.stop_btn.clicked.connect(self._on_stop_clicked)
+        self.clear_error_btn.clicked.connect(self._on_clear_error_clicked)
         self.home_btn.clicked.connect(self._on_home_clicked)
         self.emergency_btn.clicked.connect(self._on_emergency_clicked)
 
@@ -575,7 +620,24 @@ class ModernTestControlWidget(QWidget):
                 logger.info("Robot connected successfully")
                 self.update_test_status("Robot connected", "✅")
 
-            # Step 2: Check and enable servo
+            # Step 2: Reset servo alarm (emergency stop recovery)
+            # This is required after emergency stop to clear alarm state
+            logger.info("Resetting servo alarm (emergency stop recovery)...")
+            self.update_test_status("Resetting alarm...", "🔄")
+            await self.robot_service.reset_servo_alarm(self.axis_id)
+            logger.info("Servo alarm reset successfully")
+            self.update_test_status("Alarm reset", "✅")
+
+            # Step 3: Release brake (Digital Output Ch0 = HIGH)
+            # Required to allow motor to physically move
+            logger.info("Releasing servo brake (Digital Output Ch0)...")
+            self.update_test_status("Releasing brake...", "🔓")
+            hardware_config = await self.configuration_service.load_hardware_config()
+            await self.digital_io_setup_service.setup_servo_brake_release(hardware_config)
+            logger.info("Servo brake released successfully")
+            self.update_test_status("Brake released", "✅")
+
+            # Step 4: Check and enable servo
             # Note: Always enable servo to ensure it's ready (idempotent operation)
             logger.info("Ensuring servo is enabled...")
             self.update_test_status("Enabling servo...", "⚙️")
@@ -583,7 +645,7 @@ class ModernTestControlWidget(QWidget):
             logger.info("Servo enabled successfully")
             self.update_test_status("Servo enabled", "✅")
 
-            # Step 3: Perform homing
+            # Step 5: Perform homing
             logger.info(f"Starting robot homing for axis {self.axis_id}...")
             self.update_test_status("Homing robot...", "🏠")
             await self.robot_service.home_axis(self.axis_id)
@@ -608,6 +670,60 @@ class ModernTestControlWidget(QWidget):
             logger.debug("Re-enabling home button after homing operation")
             self.home_btn.setEnabled(True)
             self.stop_indeterminate_progress()
+
+    def _on_clear_error_clicked(self):
+        """Handle clear error button click - clears error state (Stage 2 of 3-stage clearing)"""
+        # Third-party imports
+        from loguru import logger
+
+        logger.info("🔧 CLEAR ERROR button clicked in ModernTestControlWidget")
+
+        # Validate dependencies
+        if not self.industrial_system_manager:
+            logger.error("Industrial System Manager not available")
+            self.update_test_status("Industrial System Manager not initialized", "❌")
+            return
+
+        if not self.executor_thread:
+            logger.error("TestExecutorThread not available")
+            self.update_test_status("Executor thread not initialized", "❌")
+            return
+
+        # Update UI state
+        self.update_test_status("Clearing error...", "⚠️")
+        self.clear_error_btn.setEnabled(False)
+
+        # Submit clear error task to executor thread
+        logger.debug("Submitting clear error task to executor thread...")
+        self.executor_thread.submit_task("clear_error", self._async_clear_error())
+
+    async def _async_clear_error(self) -> None:
+        """Async clear error operation"""
+        # Third-party imports
+        from loguru import logger
+
+        # Type guard: industrial_system_manager should be available at this point
+        if not self.industrial_system_manager:
+            logger.error("Industrial System Manager became unavailable during clear error")
+            self.update_test_status("Industrial System Manager error", "❌")
+            self.clear_error_btn.setEnabled(True)
+            return
+
+        try:
+            logger.info("Clearing error state (3-stage: BLINK→ON→OFF, Stage 2)...")
+            await self.industrial_system_manager.clear_error()
+            logger.info("Error cleared successfully")
+
+            # Update UI state - do NOT enable START TEST yet!
+            # User must perform homing first after emergency stop
+            self.update_test_status("Error Cleared - Press HOME to continue", "✅")
+            # Keep START TEST disabled until homing is completed
+            self.start_btn.setEnabled(False)
+
+        except Exception as e:
+            logger.error(f"Failed to clear error: {e}", exc_info=True)
+            self.update_test_status(f"Clear Error Failed: {str(e)}", "❌")
+            self.clear_error_btn.setEnabled(True)
 
     def _on_emergency_clicked(self):
         """Handle emergency stop button click"""
@@ -689,6 +805,14 @@ class ModernTestControlWidget(QWidget):
     def enable_home_button(self):
         """Enable HOME button (API compatibility method)"""
         self.home_btn.setEnabled(True)
+
+    def enable_clear_error_button(self):
+        """Enable CLEAR ERROR button (API compatibility method)"""
+        self.clear_error_btn.setEnabled(True)
+
+    def disable_clear_error_button(self):
+        """Disable CLEAR ERROR button (API compatibility method)"""
+        self.clear_error_btn.setEnabled(False)
 
     # Property accessors for backward compatibility
     @property

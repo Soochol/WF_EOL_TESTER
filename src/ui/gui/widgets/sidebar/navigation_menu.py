@@ -101,6 +101,13 @@ class NavigationMenu(QWidget):
         self.nav_buttons.addButton(stats_btn)
         self.all_buttons.append(stats_btn)
 
+        # Search button (database search and visualization)
+        search_btn = self.create_nav_button("search", "search", "Search")
+        search_btn.setToolTip("Search and visualize test results from database")
+        layout.addWidget(search_btn)
+        self.nav_buttons.addButton(search_btn)
+        self.all_buttons.append(search_btn)
+
         # SYSTEM Section
         divider = self._create_section_divider()
         layout.addWidget(divider)

@@ -228,13 +228,42 @@ class YamlConfiguration:
         return HeatingCoolingConfiguration.from_dict(data)
 
     async def load_hardware_config(self) -> HardwareConfig:
-        """Load unified hardware configuration
+        """Load hardware configuration from YAML file"""
+        config_file = self.config_dir / "hardware_config.yaml"
 
-        Note: Hardware configuration is now managed separately from application.yaml.
-        This method returns default hardware configuration.
-        """
-        logger.info("Using default hardware configuration")
-        return HardwareConfig()  # Default constructor creates all mock hardware
+        if not config_file.exists():
+            # Create default hardware configuration when file is missing
+            # Standard library imports
+            from datetime import datetime
+
+            # Create default HardwareConfig with all default values
+            default_hardware_config = HardwareConfig()
+
+            # Convert to dictionary format for YAML serialization
+            config_data = default_hardware_config.to_dict()
+
+            # Add metadata
+            config_data["metadata"] = {
+                "created_at": datetime.now().isoformat(),
+                "created_by": "YamlConfiguration (auto-generated)",
+                "note": "Auto-generated default hardware configuration",
+            }
+
+            # Save the default configuration for future use with formatting
+            yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
+            formatted_content = self._format_yaml_with_spacing(yaml_content)
+
+            with open(config_file, "w", encoding="utf-8") as f:
+                f.write(formatted_content)
+
+            logger.info(f"Created default hardware configuration: {config_file}")
+            return default_hardware_config
+
+        with open(config_file, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        logger.info(f"Hardware configuration loaded from: {config_file}")
+        return HardwareConfig.from_dict(data)
 
     async def list_available_profiles(self) -> List[str]:
         """List available configuration profiles"""

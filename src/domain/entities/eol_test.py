@@ -322,6 +322,37 @@ class EOLTest:
         self._error_message = error_message.strip()
         self._test_result = test_result
 
+    def error_test(self, error_message: str) -> None:
+        """
+        Mark test as errored due to system/hardware failure
+
+        Args:
+            error_message: Error description
+
+        Raises:
+            InvalidTestStateException: If test is not active
+            ValidationException: If error_message is empty
+        """
+        if not self._status.is_active:
+            raise InvalidTestStateException(
+                self._status.value,
+                "RUNNING or PREPARING",
+                "error_test",
+                {"test_id": str(self._test_id)},
+            )
+
+        if not error_message or not error_message.strip():
+            raise ValidationException(
+                "error_message",
+                error_message,
+                "Error message is required",
+            )
+
+        self._status = TestStatus.ERROR
+        self._end_time = Timestamp.now()
+        self._error_message = error_message.strip()
+        self._test_result = None  # No test result for errors
+
     def cancel_test(self, reason: Optional[str] = None) -> None:
         """
         Cancel test execution

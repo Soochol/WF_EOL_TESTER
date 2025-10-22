@@ -59,11 +59,8 @@ class SettingsTreeWidget(QTreeWidget):
             # Add categories and settings
             self.add_config_items(file_item, config_file.data, config_file.path, "")
 
-            # Application and GUI-related files start expanded by default
-            if file_name in ["Application", "Hardware", "Test Profile"]:
-                file_item.setExpanded(True)
-            else:
-                file_item.setExpanded(False)
+            # All files start collapsed by default
+            file_item.setExpanded(False)
 
     def add_config_items(
         self,

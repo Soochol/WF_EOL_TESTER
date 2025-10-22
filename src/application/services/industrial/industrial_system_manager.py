@@ -6,7 +6,7 @@ Coordinates tower lamp control, safety alerts, and system status management.
 """
 
 # Standard library imports
-from typing import Dict, Optional, TYPE_CHECKING, Union, Any
+from typing import Any, Dict, Optional, TYPE_CHECKING, Union
 
 # Third-party imports
 import asyncio
@@ -74,6 +74,9 @@ class IndustrialSystemManager:
         self._last_safety_check_result: Optional[SafetyAlert] = None
         self._initialized = False
 
+        # Status change callbacks (for UI synchronization)
+        self._status_change_callbacks: list = []
+
         logger.info("🏭 INDUSTRIAL_MGR: Industrial System Manager initialized")
 
     async def _ensure_initialized(self) -> None:
@@ -87,6 +90,16 @@ class IndustrialSystemManager:
 
             # Get digital I/O service
             self._digital_io_service = self._hardware_service_facade.digital_io_service
+
+            # Connect Digital I/O service if not already connected
+            if not await self._digital_io_service.is_connected():
+                logger.info(
+                    "🏭 INDUSTRIAL_MGR: Connecting Digital I/O service for tower lamp control..."
+                )
+                await self._digital_io_service.connect()
+                logger.info("🏭 INDUSTRIAL_MGR: Digital I/O service connected successfully")
+            else:
+                logger.info("🏭 INDUSTRIAL_MGR: Digital I/O service already connected")
 
             # Initialize tower lamp service
             self.tower_lamp_service = TowerLampService(
@@ -114,13 +127,25 @@ class IndustrialSystemManager:
             logger.error(f"🏭 INDUSTRIAL_MGR: Failed to initialize: {e}")
             raise
 
+    def register_status_change_callback(self, callback):
+        """
+        Register callback to be called when system status changes
+
+        Args:
+            callback: Function to call with SystemStatus parameter
+        """
+        self._status_change_callbacks.append(callback)
+        logger.debug(
+            f"🏭 INDUSTRIAL_MGR: Status change callback registered (total: {len(self._status_change_callbacks)})"
+        )
+
     async def initialize_system(self) -> None:
-        """Initialize industrial system to idle state"""
+        """Initialize industrial system to idle state - GREEN ON immediately"""
         logger.info("🏭 INDUSTRIAL_MGR: Initializing system...")
         await self._ensure_initialized()
-        await self.set_system_status(SystemStatus.SYSTEM_INITIALIZING)
+        # Set to IDLE immediately - GREEN lamp turns ON from program start
         await self.set_system_status(SystemStatus.SYSTEM_IDLE)
-        logger.info("🏭 INDUSTRIAL_MGR: System initialization complete")
+        logger.info("🏭 INDUSTRIAL_MGR: System initialization complete - GREEN ON")
 
     async def set_system_status(self, status: SystemStatus) -> None:
         """
@@ -137,6 +162,13 @@ class IndustrialSystemManager:
             await self.tower_lamp_service.set_system_status(status)
         else:
             logger.error("🏭 INDUSTRIAL_MGR: Tower lamp service not initialized")
+
+        # Notify all registered callbacks
+        for callback in self._status_change_callbacks:
+            try:
+                callback(status)
+            except Exception as e:
+                logger.warning(f"🏭 INDUSTRIAL_MGR: Status change callback error: {e}")
 
     async def check_safety_conditions(self, current_states: Dict[int, bool]) -> bool:
         """
@@ -199,12 +231,12 @@ class IndustrialSystemManager:
             return True
 
     async def handle_emergency_stop(self) -> None:
-        """Handle emergency stop activation"""
+        """Handle emergency stop activation - RED BLINK + BEEP (only beep source)"""
         await self._ensure_initialized()
         logger.critical("🚨 INDUSTRIAL_MGR: Emergency stop activated!")
 
-        # Set emergency status
-        await self.set_system_status(SystemStatus.SYSTEM_EMERGENCY)
+        # Set emergency status - RED BLINK + GREEN ON + BEEP
+        await self.set_system_status(SystemStatus.EMERGENCY_STOP)
 
         # Trigger emergency stop alert
         if self.safety_alert_service:
@@ -212,7 +244,7 @@ class IndustrialSystemManager:
 
     async def handle_test_start_request(self, current_states: Dict[int, bool]) -> bool:
         """
-        Handle test start request with safety validation
+        Handle test start request - Clear all lamps except GREEN, set to RUNNING
 
         Args:
             current_states: Current digital input states
@@ -227,6 +259,7 @@ class IndustrialSystemManager:
 
         if safety_ok:
             logger.info("🏭 INDUSTRIAL_MGR: Safety conditions satisfied - test can start")
+            # SYSTEM_RUNNING: RED OFF, YELLOW OFF, GREEN ON (clears all previous states)
             await self.set_system_status(SystemStatus.SYSTEM_RUNNING)
             return True
         else:
@@ -235,31 +268,57 @@ class IndustrialSystemManager:
 
     async def handle_test_completion(self, test_success: bool, test_error: bool = False) -> None:
         """
-        Handle test completion with appropriate status indication
+        Handle test completion with appropriate status indication (no auto-transition)
 
         Args:
             test_success: Whether test completed successfully
             test_error: Whether test completed with error
         """
         if test_error:
-            logger.error("🏭 INDUSTRIAL_MGR: Test completed with error")
+            logger.error("🏭 INDUSTRIAL_MGR: Test completed with error - RED BLINK")
             await self.set_system_status(SystemStatus.SYSTEM_ERROR)
         elif test_success:
-            logger.info("🏭 INDUSTRIAL_MGR: Test completed successfully")
+            logger.info("🏭 INDUSTRIAL_MGR: Test completed successfully (PASS) - GREEN BLINK")
+            await self.set_system_status(SystemStatus.TEST_PASS)
+        else:
+            logger.warning("🏭 INDUSTRIAL_MGR: Test completed with failure (FAIL) - YELLOW BLINK")
+            await self.set_system_status(SystemStatus.TEST_FAIL)
+        # No auto-transition - user must press START TEST to clear
+
+    async def clear_error(self) -> None:
+        """
+        Clear error state - Red BLINK → Red ON, Yellow OFF
+
+        Transitions error states from blinking to steady:
+        - SYSTEM_ERROR → TEST_ERROR_CLEARED (Red BLINK → Red ON)
+        - EMERGENCY_STOP → EMERGENCY_CLEARED (Red BLINK → Red ON)
+        - SAFETY_VIOLATION → SAFETY_CLEARED (Yellow BLINK → Yellow ON)
+        - TEST_FAIL → Turn off Yellow (Yellow BLINK → OFF)
+        """
+        await self._ensure_initialized()
+
+        if not self.tower_lamp_service:
+            logger.error("🏭 INDUSTRIAL_MGR: Tower lamp service not initialized")
+            return
+
+        current_status = await self.tower_lamp_service.get_current_status()
+
+        if current_status == SystemStatus.SYSTEM_ERROR:
+            logger.info("🏭 INDUSTRIAL_MGR: Clearing test error - RED BLINK → RED ON")
+            await self.set_system_status(SystemStatus.TEST_ERROR_CLEARED)
+        elif current_status == SystemStatus.EMERGENCY_STOP:
+            logger.info("🏭 INDUSTRIAL_MGR: Clearing emergency stop - RED BLINK → RED ON, BEEP OFF")
+            await self.set_system_status(SystemStatus.EMERGENCY_CLEARED)
+        elif current_status == SystemStatus.SAFETY_VIOLATION:
+            logger.info("🏭 INDUSTRIAL_MGR: Clearing safety violation - YELLOW BLINK → YELLOW ON")
+            await self.set_system_status(SystemStatus.SAFETY_CLEARED)
+        elif current_status == SystemStatus.TEST_FAIL:
+            logger.info("🏭 INDUSTRIAL_MGR: Clearing test fail - YELLOW OFF")
             await self.set_system_status(SystemStatus.SYSTEM_IDLE)
         else:
-            logger.warning("🏭 INDUSTRIAL_MGR: Test completed with failure")
-            await self.set_system_status(SystemStatus.SYSTEM_WARNING)
-
-    async def handle_system_warning(self, warning_message: str = "") -> None:
-        """
-        Handle system warning condition
-
-        Args:
-            warning_message: Optional warning message
-        """
-        logger.warning(f"🏭 INDUSTRIAL_MGR: System warning: {warning_message}")
-        await self.set_system_status(SystemStatus.SYSTEM_WARNING)
+            logger.warning(
+                f"🏭 INDUSTRIAL_MGR: No active error to clear (current status: {current_status})"
+            )
 
     async def handle_system_error(self, error_message: str = "") -> None:
         """
@@ -271,7 +330,9 @@ class IndustrialSystemManager:
         logger.error(f"🏭 INDUSTRIAL_MGR: System error: {error_message}")
         await self.set_system_status(SystemStatus.SYSTEM_ERROR)
 
-    async def get_safety_sensor_status(self, current_states: Dict[int, bool]) -> Dict[str, Union[Dict[str, Any], str, bool]]:
+    async def get_safety_sensor_status(
+        self, current_states: Dict[int, bool]
+    ) -> Dict[str, Union[Dict[str, Any], str, bool]]:
         """
         Get detailed safety sensor status for diagnostics
 
@@ -355,9 +416,26 @@ class IndustrialSystemManager:
         if self.tower_lamp_service:
             await self.tower_lamp_service.turn_off_all()
 
+        # Set all digital outputs to LOW before disconnecting
+        if self._initialized and self._digital_io_service:
+            try:
+                if await self._digital_io_service.is_connected():
+                    logger.info("🏭 INDUSTRIAL_MGR: Setting all digital outputs to LOW...")
+                    await self._digital_io_service.reset_all_outputs()
+                    logger.info("🏭 INDUSTRIAL_MGR: All digital outputs set to LOW")
+
+                    logger.info("🏭 INDUSTRIAL_MGR: Disconnecting Digital I/O service...")
+                    await self._digital_io_service.disconnect()
+                    logger.info("🏭 INDUSTRIAL_MGR: Digital I/O service disconnected")
+            except Exception as e:
+                logger.warning(
+                    f"🏭 INDUSTRIAL_MGR: Failed to shutdown Digital I/O service cleanly: {e}"
+                )
+
         # Clear state
         self._current_system_status = None
         self._last_safety_check_result = None
+        self._initialized = False
 
         logger.info("🏭 INDUSTRIAL_MGR: Industrial system shutdown complete")
 

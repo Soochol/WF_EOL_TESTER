@@ -6,6 +6,9 @@ yarn-error.log*
 dev-debug.log
 /logs/
 
+# Database files (development mode - stored in /database/)
+/database/
+
 # Profile preferences and user data
 data/
 
