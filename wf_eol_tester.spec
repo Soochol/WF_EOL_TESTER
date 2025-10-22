@@ -118,6 +118,12 @@ hiddenimports = [
     # Database (dynamically loaded by DI)
     'infrastructure.database',
     'infrastructure.database.db_manager',
+    'infrastructure.database.schema',
+    # Database dependencies (required for async SQLite)
+    'aiosqlite',
+    'sqlalchemy.ext.asyncio',
+    'sqlalchemy.ext.asyncio.engine',
+    'sqlalchemy.ext.asyncio.session',
     # Hardware implementations - Digital I/O
     'infrastructure.implementation.hardware.digital_io.ajinextek',
     'infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio',
