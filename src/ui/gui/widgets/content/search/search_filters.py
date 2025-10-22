@@ -5,7 +5,6 @@ UI for filtering database search results.
 """
 
 # Standard library imports
-from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 # Third-party imports

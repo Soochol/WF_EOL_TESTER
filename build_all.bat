@@ -44,6 +44,20 @@ echo   Done.
 echo.
 
 REM ============================================================================
+REM Step 1.5: Synchronize version from pyproject.toml
+REM ============================================================================
+echo [1.5/5] Synchronizing version...
+echo   - Reading version from pyproject.toml...
+.venv\Scripts\python.exe scripts\sync_version.py
+if errorlevel 1 (
+    echo.
+    echo WARNING: Version synchronization failed!
+    echo Build will continue but version may be inconsistent.
+    echo.
+)
+echo.
+
+REM ============================================================================
 REM Step 2: Clean previous builds
 REM ============================================================================
 echo [2/5] Cleaning previous builds...
@@ -88,6 +102,10 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+echo   Done.
+
+echo   - Cleaning up PyInstaller intermediate files...
+rmdir /S /Q "dist" 2>nul
 echo   Done.
 echo.
 

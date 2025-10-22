@@ -47,10 +47,21 @@ PROJECT_ROOT = _get_project_root()
 # Production: Running as PyInstaller executable (sys.frozen = True)
 IS_DEVELOPMENT = not getattr(sys, "frozen", False)
 
+# Additional verification: If __file__ contains 'src', we're definitely in development
+# This handles edge cases where sys.frozen might not be set correctly
+if not IS_DEVELOPMENT:
+    try:
+        if __file__ and "src" in str(__file__):
+            IS_DEVELOPMENT = True
+            print("[WARNING] sys.frozen was True but __file__ indicates development mode. Forcing IS_DEVELOPMENT=True")
+    except NameError:
+        pass  # __file__ not defined (should never happen)
+
 # Database directory selection based on environment
 if IS_DEVELOPMENT:
     # Development mode: Store DB in project folder for easy access
     DATABASE_DIR = PROJECT_ROOT / "database"
+    print(f"[DB CONFIG] Development mode - using database folder: {DATABASE_DIR}")
 else:
     # Production mode: Store DB in LOCALAPPDATA (same location as logs)
     # Use LOCALAPPDATA instead of APPDATA to:
@@ -64,6 +75,7 @@ else:
 
     APPDATA_DIR = Path(localappdata) / "WF EOL Tester"
     DATABASE_DIR = APPDATA_DIR
+    print(f"[DB CONFIG] Production mode - using AppData folder: {DATABASE_DIR}")
 
 
 # Configuration path constants (Single Source of Truth)

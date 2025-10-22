@@ -7,11 +7,8 @@ Integrates with existing business logic via ApplicationContainer.
 """
 
 # Standard library imports
-# Standard library imports
-# Standard library imports
-# Standard library imports
-# Third-party imports
 import asyncio
+import os
 import sys
 import time
 import warnings
@@ -520,11 +517,18 @@ class EOLTesterGUIApplication:
                 logger.info(f"Database manager path: {db_manager._database_path}")
 
                 # Run async initialization in sync context
-                asyncio.get_event_loop().run_until_complete(db_manager.initialize())
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    # No running loop - create new one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                loop.run_until_complete(db_manager.initialize())
                 logger.info("Database initialized successfully")
         except Exception as e:
-            logger.warning(f"Failed to initialize database: {e}")
-            logger.info("Application will continue without database logging")
+            logger.error(f"Failed to initialize database during startup: {e}", exc_info=True)
+            logger.warning("Database will be auto-initialized when first needed (e.g., when opening Search tab)")
 
     def _setup_hardware_services_with_progress(self) -> None:
         """Setup hardware services with progress updates for splash screen"""
@@ -845,8 +849,6 @@ def main() -> int:
 
     # Get user-writable log directory (important for Program Files installations)
     if sys.platform == "win32":
-        import os
-
         log_dir = Path(os.environ.get("LOCALAPPDATA", "")) / "WF EOL Tester" / "logs"
     else:
         log_dir = Path.home() / ".wf_eol_tester" / "logs"

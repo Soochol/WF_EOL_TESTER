@@ -5,8 +5,8 @@ SQLite implementation of database log repository.
 """
 
 # Standard library imports
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Union
 
 # Third-party imports
 from loguru import logger
@@ -216,8 +216,8 @@ class SqliteLogRepository(DatabaseLogRepository):
     async def query_test_ids_from_measurements(
         self,
         serial_number: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: Optional[Union[date, datetime]] = None,
+        end_date: Optional[Union[date, datetime]] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """
@@ -228,8 +228,8 @@ class SqliteLogRepository(DatabaseLogRepository):
 
         Args:
             serial_number: Filter by serial number (partial match)
-            start_date: Filter by start date
-            end_date: Filter by end date
+            start_date: Filter by start date (accepts date or datetime)
+            end_date: Filter by end date (accepts date or datetime)
             limit: Maximum number of test_ids to return
 
         Returns:
@@ -239,15 +239,30 @@ class SqliteLogRepository(DatabaseLogRepository):
             async with self._db_manager.get_session() as session:
                 # Third-party imports
                 from sqlalchemy import func
+                # Standard library imports
+                from datetime import time
+
+                # Convert date objects to datetime for proper filtering
+                # date objects are interpreted as start/end of day
+                if start_date:
+                    if isinstance(start_date, date) and not isinstance(start_date, datetime):
+                        # Convert date to datetime at start of day (00:00:00)
+                        start_date = datetime.combine(start_date, time.min)
+
+                if end_date:
+                    if isinstance(end_date, date) and not isinstance(end_date, datetime):
+                        # Convert date to datetime at end of day (23:59:59.999999)
+                        end_date = datetime.combine(end_date, time.max)
 
                 # Build subquery to get test summary
-                # GROUP BY test_id to get unique tests with their metadata
+                # GROUP BY test_id only to ensure one row per unique test
+                # (A single test may have multiple serial_numbers during execution)
                 subquery = select(
                     RawMeasurement.test_id,
-                    RawMeasurement.serial_number,
+                    func.min(RawMeasurement.serial_number).label("serial_number"),
                     func.min(RawMeasurement.timestamp).label("created_at"),
                     func.count(RawMeasurement.id).label("measurement_count"),
-                ).group_by(RawMeasurement.test_id, RawMeasurement.serial_number)
+                ).group_by(RawMeasurement.test_id)
 
                 # Apply filters to subquery
                 if serial_number:

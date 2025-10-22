@@ -57,7 +57,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; Main executable and dependencies from PyInstaller output
-Source: "dist\WF_EOL_Tester\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\application\WF_EOL_Tester\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Configuration files (will be placed in app\configuration)
 Source: "configuration\*"; DestDir: "{app}\configuration"; Flags: ignoreversion recursesubdirs createallsubdirs

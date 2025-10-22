@@ -117,11 +117,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                 f"Using repeat count: {actual_repeat_count} (config: {hc_config.repeat_count}, input: {input_data.repeat_count})"
             )
 
-            # Generate test ID for CSV logging
-            # Standard library imports
-            from datetime import datetime
+            # Generate test ID for CSV logging using UUID format
+            from domain.value_objects.identifiers import TestId
 
-            test_id_str = f"HC_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            test_id_str = str(TestId.generate())  # UUID format - always unique
 
             cycle_results = await test_executor.execute_test_cycles(
                 hc_config, actual_repeat_count, test_id_str

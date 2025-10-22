@@ -317,7 +317,7 @@ class SearchWidget(QWidget):
                 serial_number=filters.get("serial_number"),
                 start_date=filters.get("start_date"),
                 end_date=filters.get("end_date"),
-                limit=100,
+                limit=500,  # Increased from 100 to support more test data
             )
 
             logger.info(f"Found {len(results)} unique test IDs from raw_measurements")

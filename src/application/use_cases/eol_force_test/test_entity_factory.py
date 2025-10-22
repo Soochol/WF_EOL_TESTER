@@ -6,11 +6,7 @@ Extracted from EOLForceTestUseCase for better separation of concerns.
 """
 
 # Standard library imports
-from datetime import datetime
 from typing import Optional
-
-# Third-party imports
-from loguru import logger
 
 # Local application imports
 from application.services.core.repository_service import RepositoryService
@@ -19,9 +15,6 @@ from domain.entities.eol_test import EOLTest
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.identifiers import DUTId, OperatorId, TestId
 from domain.value_objects.test_configuration import TestConfiguration
-
-# Local folder imports
-from .constants import TestExecutionConstants
 
 
 class TestEntityFactory:
@@ -57,8 +50,8 @@ class TestEntityFactory:
             manufacturer=dut_info.manufacturer,
         )
 
-        # Generate unique test ID with serial number and datetime
-        test_id = await self._generate_unique_test_id(dut_info.serial_number)
+        # Generate unique test ID using UUID format
+        test_id = await self._generate_unique_test_id()
 
         # Create and configure test entity
         test_entity = EOLTest(
@@ -71,70 +64,20 @@ class TestEntityFactory:
 
         return test_entity
 
-    async def _generate_unique_test_id(
-        self, serial_number: str, timestamp: Optional[datetime] = None
-    ) -> TestId:
+    async def _generate_unique_test_id(self) -> TestId:
         """
-        Generate a unique test ID, preferring no sequence number for cleaner IDs
+        Generate a unique test ID using UUID format.
 
-        Args:
-            serial_number: DUT serial number
-            timestamp: Test timestamp (defaults to now)
+        UUID provides guaranteed uniqueness without requiring duplicate checks,
+        sequence management, or database queries. This simplifies the code and
+        eliminates the possibility of ID collisions.
 
         Returns:
-            TestId: Unique test ID, preferring SerialNumber_YYYYMMDD_HHMMSS format (no sequence)
+            TestId: Unique UUID-format test ID
+
+        Note:
+            Serial number and timestamp information is preserved in separate
+            database fields (dut.serial_number, created_at) so no information
+            is lost by using UUID.
         """
-        if timestamp is None:
-            timestamp = datetime.now()
-
-        # First, try without sequence number for cleaner ID
-        try:
-            test_id_no_seq = TestId.generate_from_serial_datetime_no_sequence(
-                serial_number, timestamp
-            )
-
-            # Check if this test ID already exists
-            if self._repository_service.test_repository:
-                existing_test = await self._repository_service.test_repository.find_by_id(
-                    str(test_id_no_seq)
-                )
-                if existing_test is None:
-                    # ID is unique, use it without sequence
-                    return test_id_no_seq
-        except Exception as e:
-            logger.warning(f"Failed to generate no-sequence test ID: {e}")
-
-        # If no-sequence ID exists or failed, fall back to sequence-based generation
-        sequence = TestExecutionConstants.INITIAL_SEQUENCE
-        max_attempts = TestExecutionConstants.MAX_TEST_ID_ATTEMPTS
-
-        while sequence <= max_attempts:
-            test_id = TestId.generate_from_serial_datetime(serial_number, timestamp, sequence)
-
-            # Check if this test ID already exists
-            try:
-                if self._repository_service.test_repository:
-                    existing_test = await self._repository_service.test_repository.find_by_id(
-                        str(test_id)
-                    )
-                    if existing_test is None:
-                        # ID is unique, we can use it
-                        return test_id
-                    else:
-                        # ID exists, try next sequence
-                        sequence += 1
-                else:
-                    # No repository configured, assume ID is unique
-                    return test_id
-            except Exception as e:
-                # Error checking existence, assume it doesn't exist and use the ID
-                logger.warning(
-                    f"Error checking test ID uniqueness for {test_id}: {e}. Using ID anyway."
-                )
-                return test_id
-
-        # If we exhausted all sequences, fall back to UUID
-        logger.warning(
-            f"Exhausted all sequence numbers for {serial_number} at {timestamp.strftime('%Y%m%d_%H%M%S')}. Falling back to UUID format."
-        )
-        return TestId.generate()
+        return TestId.generate()  # UUID format - always unique

@@ -59,10 +59,19 @@ class DatabaseManager:
         # Ensure directory exists
         self._database_path.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"DatabaseManager initialized with path: {self._database_path}")
+        # Log database location with both relative and absolute paths
+        logger.info(f"DatabaseManager initialized")
+        logger.info(f"  Database path (relative): {database_path}")
+        logger.info(f"  Database path (absolute): {self._database_path.absolute()}")
+        logger.info(f"  Database exists: {self._database_path.exists()}")
 
     async def initialize(self) -> None:
         """Initialize database engine and create tables with foreign key enforcement"""
+        # Idempotent: Skip if already initialized
+        if self._engine is not None:
+            logger.debug("Database already initialized, skipping initialization")
+            return
+
         try:
             # Create async engine for SQLite
             database_url = f"sqlite+aiosqlite:///{self._database_path}"
@@ -112,14 +121,43 @@ class DatabaseManager:
         """
         Get a new database session
 
+        Auto-initializes database if not already initialized.
+
         Returns:
             AsyncSession instance
 
         Raises:
-            RuntimeError: If database is not initialized
+            RuntimeError: If database initialization fails
         """
+        # Auto-initialize if not already initialized
         if not self._session_factory:
-            raise RuntimeError("Database not initialized. Call initialize() first.")
+            import asyncio
+
+            logger.info("Database not initialized, auto-initializing...")
+
+            try:
+                # Try to get existing event loop
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        raise RuntimeError("Event loop is closed")
+                except RuntimeError:
+                    # No event loop or closed - create new one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    logger.debug("Created new event loop for database initialization")
+
+                # Run initialization
+                loop.run_until_complete(self.initialize())
+                logger.info("Database auto-initialized successfully")
+
+            except Exception as e:
+                logger.error(f"Failed to auto-initialize database: {e}", exc_info=True)
+                raise RuntimeError(f"Database initialization failed: {e}") from e
+
+        # Final safety check (should never happen, but satisfies type checker)
+        if not self._session_factory:
+            raise RuntimeError("Database session factory not available after initialization")
 
         return self._session_factory()
 

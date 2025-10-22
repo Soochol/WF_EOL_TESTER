@@ -5,13 +5,22 @@ These constants are defined based on the AXL library header files.
 """
 
 # Standard library imports
+import sys
 from pathlib import Path
 import platform
 
 
-# Library paths
-BASE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent.parent
-AXL_LIBRARY_DIR = BASE_DIR / "src" / "driver" / "ajinextek" / "AXL(Library)" / "Library"
+# Library paths - handle both development and PyInstaller environments
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Running in PyInstaller bundle
+    BASE_DIR = Path(sys._MEIPASS)
+    AXL_LIBRARY_DIR = BASE_DIR / "driver" / "AXL"
+    IS_PYINSTALLER = True
+else:
+    # Running in development
+    BASE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent.parent
+    AXL_LIBRARY_DIR = BASE_DIR / "src" / "driver" / "ajinextek" / "AXL(Library)" / "Library"
+    IS_PYINSTALLER = False
 
 
 # Select DLL based on system architecture with enhanced path verification
@@ -20,6 +29,18 @@ def get_dll_path() -> Path:
     # Determine architecture
     is_64bit = platform.machine().endswith("64") or platform.architecture()[0] == "64bit"
 
+    # PyInstaller environment: DLL is directly in AXL_LIBRARY_DIR
+    if IS_PYINSTALLER:
+        dll_path = AXL_LIBRARY_DIR / "AXL.dll"
+        if dll_path.exists():
+            print(f"[OK] Using PyInstaller bundled AXL DLL: {dll_path}")
+            return dll_path
+        else:
+            print(f"[ERROR] PyInstaller bundled AXL DLL not found at: {dll_path}")
+            print(f"  Library directory: {AXL_LIBRARY_DIR}")
+            return dll_path
+
+    # Development environment: DLL is in architecture-specific subdirectory
     # Select appropriate DLL path
     if is_64bit:
         dll_path = AXL_LIBRARY_DIR / "64Bit" / "AXL.dll"
