@@ -52,14 +52,17 @@ if IS_DEVELOPMENT:
     # Development mode: Store DB in project folder for easy access
     DATABASE_DIR = PROJECT_ROOT / "database"
 else:
-    # Production mode: Store DB in AppData for user data isolation
-    appdata = os.getenv("APPDATA")
+    # Production mode: Store DB in LOCALAPPDATA (same location as logs)
+    # Use LOCALAPPDATA instead of APPDATA to:
+    # 1. Keep logs and database in the same directory
+    # 2. Avoid roaming profile synchronization (local machine data only)
+    localappdata = os.getenv("LOCALAPPDATA")
 
-    if not appdata:
+    if not localappdata:
         # Fallback: Use user home directory (should never happen on Windows)
-        appdata = str(Path.home() / "AppData" / "Roaming")
+        localappdata = str(Path.home() / "AppData" / "Local")
 
-    APPDATA_DIR = Path(appdata) / "WF_EOL_Tester"
+    APPDATA_DIR = Path(localappdata) / "WF EOL Tester"
     DATABASE_DIR = APPDATA_DIR
 
 

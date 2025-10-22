@@ -508,7 +508,9 @@ class EOLTesterGUIApplication:
             logger.info(f"LOGS_DIR: {LOGS_DIR}")
             logger.info(f"DATABASE_DIR: {DATABASE_DIR}")
             logger.info(f"DATABASE_DIR exists: {DATABASE_DIR.exists()}")
-            logger.info(f"APPDATA env var: {Path.home() / 'AppData' / 'Roaming'}")
+            logger.info(
+                f"LOCALAPPDATA env var: {os.getenv('LOCALAPPDATA', Path.home() / 'AppData' / 'Local')}"
+            )
             logger.info("=" * 70)
 
             if self.container:
