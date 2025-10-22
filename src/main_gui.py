@@ -266,6 +266,9 @@ def check_pyside6_installation() -> None:
     _print_suggested_solutions(is_uv_env, uv_available)
 
 
+# Import version utility (single source of truth from pyproject.toml)
+from utils.version import get_project_version
+
 # Try to import PySide6 with diagnostic support
 try:
     # Third-party imports - PySide6
@@ -307,7 +310,8 @@ class AppConstants:
 
     # UI constants
     DEFAULT_FONT_SIZE = 9
-    APPLICATION_VERSION = "2.0.0"
+    # Version is read from pyproject.toml (single source of truth)
+    APPLICATION_VERSION = get_project_version()
 
     # Organization info
     ORGANIZATION_NAME = "Withforce"
@@ -482,10 +486,37 @@ class EOLTesterGUIApplication:
     def _initialize_database(self) -> None:
         """Initialize database manager"""
         try:
+            # Log critical path information for debugging production issues
+            import sys
+            from pathlib import Path
+            from domain.value_objects.application_config import (
+                PROJECT_ROOT,
+                DATABASE_DIR,
+                IS_DEVELOPMENT,
+                CONFIG_DIR,
+                LOGS_DIR,
+            )
+
+            logger.info("=" * 70)
+            logger.info("PATH DIAGNOSTICS")
+            logger.info("=" * 70)
+            logger.info(f"IS_DEVELOPMENT: {IS_DEVELOPMENT}")
+            logger.info(f"sys.frozen: {getattr(sys, 'frozen', False)}")
+            logger.info(f"sys.executable: {sys.executable}")
+            logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+            logger.info(f"CONFIG_DIR: {CONFIG_DIR}")
+            logger.info(f"LOGS_DIR: {LOGS_DIR}")
+            logger.info(f"DATABASE_DIR: {DATABASE_DIR}")
+            logger.info(f"DATABASE_DIR exists: {DATABASE_DIR.exists()}")
+            logger.info(f"APPDATA env var: {Path.home() / 'AppData' / 'Roaming'}")
+            logger.info("=" * 70)
+
             if self.container:
                 import asyncio
 
                 db_manager = self.container.database_manager()
+                logger.info(f"Database manager path: {db_manager._database_path}")
+
                 # Run async initialization in sync context
                 asyncio.get_event_loop().run_until_complete(db_manager.initialize())
                 logger.info("Database initialized successfully")
@@ -760,6 +791,7 @@ class EOLTesterGUIApplication:
         except Exception as e:
             logger.error(f"Application startup failed: {e}", exc_info=True)
             import traceback
+
             traceback.print_exc()
             if self.splash_screen:
                 self.splash_screen.close()
@@ -809,6 +841,18 @@ def main() -> int:
     # Configure logging for GUI application
     logger.remove()  # Remove default logger
 
+    # Get user-writable log directory (important for Program Files installations)
+    if sys.platform == "win32":
+        import os
+
+        log_dir = Path(os.environ.get("LOCALAPPDATA", "")) / "WF EOL Tester" / "logs"
+    else:
+        log_dir = Path.home() / ".wf_eol_tester" / "logs"
+
+    # Create log directory if it doesn't exist
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "gui_application.log"
+
     # In PyInstaller GUI apps, sys.stderr may be None, so use file logging as fallback
     if sys.stderr is not None:
         logger.add(
@@ -823,7 +867,7 @@ def main() -> int:
     else:
         # Fallback to file logging for bundled applications
         logger.add(
-            "logs/gui_application.log",
+            str(log_file),
             level="INFO",
             format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | GUI | {message}",
             rotation="10 MB",
