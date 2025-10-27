@@ -31,6 +31,7 @@ class SettingsTreeWidget(QTreeWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.config_values: Dict[str, ConfigValue] = {}
+        self.is_filtering = False  # Track if currently filtering/searching
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -116,7 +117,19 @@ class SettingsTreeWidget(QTreeWidget):
                         allowed_values = self._get_available_ports(value)
                     elif key == "baudrate":
                         # Common baudrate values for serial communication
-                        allowed_values = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+                        allowed_values = [
+                            1200,
+                            2400,
+                            4800,
+                            9600,
+                            19200,
+                            38400,
+                            57600,
+                            115200,
+                            230400,
+                            460800,
+                            921600,
+                        ]
                         # Ensure current value is in the list
                         if value and isinstance(value, int) and value not in allowed_values:
                             allowed_values.append(value)
@@ -198,6 +211,10 @@ class SettingsTreeWidget(QTreeWidget):
 
     def on_item_expanded(self, item: QTreeWidgetItem) -> None:
         """Handle item expansion - implement accordion behavior"""
+        # Skip accordion behavior during filtering/search
+        if self.is_filtering:
+            return
+
         # Only apply accordion behavior to top-level items (file items)
         if item.parent() is None:
             # Collapse all other top-level items
@@ -210,10 +227,12 @@ class SettingsTreeWidget(QTreeWidget):
         """Filter tree items based on search text"""
         if not search_text:
             # Show all items when search is empty
+            self.is_filtering = False  # Not filtering anymore
             self.show_all_items()
             self.update_status_message("")
             return
 
+        self.is_filtering = True  # Start filtering
         search_text_lower = search_text.lower()
         matching_files = 0
         matching_settings = 0
@@ -345,7 +364,11 @@ class SettingsTreeWidget(QTreeWidget):
             # If no ports found, provide some common defaults
             if not available_ports:
                 available_ports = ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"]
-                if current_value and isinstance(current_value, str) and current_value not in available_ports:
+                if (
+                    current_value
+                    and isinstance(current_value, str)
+                    and current_value not in available_ports
+                ):
                     available_ports.append(current_value)
                     available_ports.sort()
 
@@ -354,7 +377,11 @@ class SettingsTreeWidget(QTreeWidget):
         except ImportError:
             # If pyserial is not available, return common default ports
             default_ports = ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"]
-            if current_value and isinstance(current_value, str) and current_value not in default_ports:
+            if (
+                current_value
+                and isinstance(current_value, str)
+                and current_value not in default_ports
+            ):
                 default_ports.append(current_value)
                 default_ports.sort()
             return default_ports
