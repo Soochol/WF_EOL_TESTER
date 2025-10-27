@@ -332,6 +332,9 @@ class EOLForceTestUseCase(BaseUseCase):
             # Handle KeyboardInterrupt with emergency stop priority
             # Set flag to prevent normal cleanup in finally block
             self._keyboard_interrupt_raised = True
+            # Reset robot homing state to force homing on next test after interrupt
+            self._hardware_services.reset_robot_homing_state()
+            logger.info("Robot homing state reset due to keyboard interrupt")
             # Don't perform normal cleanup - let emergency stop handle hardware safety
             # Re-raise to allow emergency stop service to execute
             raise
@@ -339,6 +342,9 @@ class EOLForceTestUseCase(BaseUseCase):
             # Handle CancelledError (from asyncio.sleep interruptions) as KeyboardInterrupt
             # Set flag to prevent normal cleanup in finally block
             self._keyboard_interrupt_raised = True
+            # Reset robot homing state to force homing on next test after cancellation
+            self._hardware_services.reset_robot_homing_state()
+            logger.info("Robot homing state reset due to test cancellation")
             # Convert CancelledError back to KeyboardInterrupt for emergency stop service
             raise KeyboardInterrupt("Test cancelled by user interrupt") from None
         except Exception as e:
@@ -442,6 +448,11 @@ class EOLForceTestUseCase(BaseUseCase):
         )
 
         logger.error("EOL test execution failed: {}", error_context.get("user_message", str(error)))
+
+        # Reset robot homing state to force homing on next test
+        # This ensures robot position is verified after errors
+        self._hardware_services.reset_robot_homing_state()
+        logger.info("Robot homing state reset - next test will perform homing")
 
         # Update industrial status indication for error (with safety net)
         if self._industrial_system_manager:

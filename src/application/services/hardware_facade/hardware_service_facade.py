@@ -382,18 +382,25 @@ class HardwareServiceFacade:
 
     async def _ensure_robot_homed(self, axis_id: int) -> None:
         """
-        Ensure robot is homed (only perform homing on first call)
+        Ensure robot is homed (only perform homing on first call or after errors)
+
+        Homing is performed when:
+        - First test execution (_robot_homed is False)
+        - After test errors (flag is reset by error handlers)
+
+        Homing is skipped when:
+        - Previous test completed successfully (PASS or FAIL)
 
         Args:
             axis_id: Robot axis ID to home
         """
-        if not self._robot_homed or self._robot_state != RobotState.HOME:
-            logger.info("Performing initial robot homing...")
+        if not self._robot_homed:
+            logger.info("Performing robot homing (first run or after error)...")
             self._robot_state = RobotState.MOVING
             await self._robot.home_axis(axis_id)
             self._robot_homed = True
             self._robot_state = RobotState.HOME
-            logger.info("Initial robot homing completed")
+            logger.info("Robot homing completed")
         else:
             logger.debug("Robot already homed, skipping homing")
 
