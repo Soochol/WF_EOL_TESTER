@@ -1,7 +1,7 @@
 """
 Results Table
 
-Table widget for displaying search results from database.
+Tree widget for displaying search results from database with expandable measurement data.
 """
 
 # Standard library imports
@@ -9,16 +9,18 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 # Third-party imports
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QGroupBox,
     QHeaderView,
-    QTableWidget,
-    QTableWidgetItem,
+    QSizePolicy,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
+from loguru import logger
 
 # Local application imports
 from ui.gui.styles.common_styles import (
@@ -26,62 +28,73 @@ from ui.gui.styles.common_styles import (
     BACKGROUND_DARK,
     BACKGROUND_MEDIUM,
     BORDER_DEFAULT,
-    TEXT_MUTED,
+    get_groupbox_style,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
-    get_groupbox_style,
 )
 
 
 class ResultsTable(QWidget):
     """
-    Results table widget for displaying test results.
+    Results table widget for displaying test results with expandable measurement data.
+
+    Features:
+    - Tree structure showing test summaries as parent items
+    - Expandable child items showing individual measurement data
+    - Checkbox selection on parent items only
+    - On-demand loading of measurement data when expanded
 
     Signals:
         row_selected: Emitted when a row is selected (test_id)
         selection_changed: Emitted when checkbox selection changes (selected_count)
+        measurement_load_requested: Emitted when measurement data needs to be loaded (test_id)
     """
 
     row_selected = Signal(str)  # test_id
     selection_changed = Signal(int)  # selected_count
+    measurement_load_requested = Signal(str)  # test_id for loading measurements
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.test_results: List[Dict] = []
+        self.loaded_measurements: Dict[str, List[Dict]] = {}  # Cache for loaded measurements
         self.setup_ui()
 
     def setup_ui(self) -> None:
-        """Setup the table UI"""
+        """Setup the tree UI"""
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Group box for table
+        # Group box for tree
         table_group = QGroupBox("Test Results")
         table_group.setStyleSheet(get_groupbox_style())
         group_layout = QVBoxLayout(table_group)
 
-        # Create table
-        self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
+        # Create tree widget
+        self.tree = QTreeWidget()
+        self.tree.setColumnCount(6)
+        self.tree.setHeaderLabels(
             ["☑", "Test ID", "Serial Number", "Created At", "Measurements", "Status"]
         )
 
-        # Table properties
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QTableWidget.SelectionMode.MultiSelection)
-        self.table.setAlternatingRowColors(False)
-        self.table.setSortingEnabled(True)
-        self.table.verticalHeader().setVisible(False)
+        # Tree properties
+        self.tree.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
+        self.tree.setSelectionMode(QTreeWidget.SelectionMode.MultiSelection)
+        self.tree.setAlternatingRowColors(False)
+        self.tree.setSortingEnabled(True)
+        self.tree.setIndentation(0)  # Set to 0 to prevent checkbox from being pushed right
+        self.tree.setAnimated(True)  # Smooth expand/collapse animation
 
         # Disable editing and focus
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.tree.setEditTriggers(QTreeWidget.EditTrigger.NoEditTriggers)
+        self.tree.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         # Column widths
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Checkbox
+        header = self.tree.header()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Checkbox - Fixed width
+        header.setMinimumSectionSize(70)  # Set minimum column width
+        self.tree.setColumnWidth(0, 70)  # Fixed 70px width for checkbox column
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Test ID
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)  # Serial Number
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)  # Created At
@@ -89,26 +102,56 @@ class ResultsTable(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # Status
 
         # Style
-        self.table.setStyleSheet(self._get_table_style())
+        self.tree.setStyleSheet(self._get_tree_style())
 
         # Connect signals
-        self.table.itemSelectionChanged.connect(self._on_selection_changed)
+        self.tree.itemSelectionChanged.connect(self._on_selection_changed)
+        self.tree.itemExpanded.connect(self._on_item_expanded)
+        self.tree.itemCollapsed.connect(self._on_item_collapsed)
 
-        group_layout.addWidget(self.table)
+        group_layout.addWidget(self.tree)
         layout.addWidget(table_group)
 
     def update_results(self, results: List[Dict]) -> None:
-        """Update table with new results"""
+        """Update tree with new results (parent items only)"""
         self.test_results = results
-        self.table.setSortingEnabled(False)  # Disable sorting while updating
-        self.table.setRowCount(0)  # Clear existing rows
+        self.loaded_measurements.clear()  # Clear measurement cache
+        self.tree.setSortingEnabled(False)  # Disable sorting while updating
+        self.tree.clear()  # Clear existing items
 
-        for row_idx, result in enumerate(results):
-            self.table.insertRow(row_idx)
+        for result in results:
+            # Create parent item for test summary
+            parent_item = QTreeWidgetItem(self.tree)
 
-            # Checkbox (Column 0)
+            # Store full result data
+            parent_item.setData(1, Qt.ItemDataRole.UserRole, result)
+
+            # Test ID (Column 1)
+            parent_item.setText(1, result.get("test_id", ""))
+
+            # Serial Number (Column 2)
+            parent_item.setText(2, result.get("serial_number", "N/A"))
+
+            # Created At (Column 3)
+            created_at = result.get("created_at")
+            created_str = self._format_datetime(created_at) if created_at else "N/A"
+            parent_item.setText(3, created_str)
+
+            # Measurement Count (Column 4)
+            measurement_count = result.get("measurement_count", 0)
+            parent_item.setText(4, f"{measurement_count}")
+            parent_item.setTextAlignment(4, Qt.AlignmentFlag.AlignCenter)
+
+            # Status (Column 5)
+            status = result.get("status", "N/A")
+            status_text = status if status == "N/A" else self._format_status(status)
+            parent_item.setText(5, status_text)
+            parent_item.setTextAlignment(5, Qt.AlignmentFlag.AlignCenter)
+
+            # Checkbox (Column 0) - Only for parent items
             checkbox = QCheckBox()
-            checkbox.setStyleSheet(f"""
+            checkbox.setStyleSheet(
+                f"""
                 QCheckBox {{
                     background-color: transparent;
                 }}
@@ -127,59 +170,176 @@ class ResultsTable(QWidget):
                 QCheckBox::indicator:hover {{
                     border-color: {ACCENT_BLUE};
                 }}
-            """)
+            """
+            )
             checkbox.stateChanged.connect(self._on_checkbox_changed)
 
-            # Center checkbox in cell
+            # Left-align checkbox in cell with fixed size
             checkbox_widget = QWidget()
+            checkbox_widget.setStyleSheet("background-color: transparent;")  # Remove black shadow
+            checkbox_widget.setFixedSize(QSize(70, 30))  # Fixed size to match column width
+            checkbox_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             checkbox_layout = QVBoxLayout(checkbox_widget)
             checkbox_layout.addWidget(checkbox)
-            checkbox_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            checkbox_layout.setContentsMargins(0, 0, 0, 0)
-            self.table.setCellWidget(row_idx, 0, checkbox_widget)
+            checkbox_layout.setAlignment(
+                Qt.AlignmentFlag.AlignLeft
+            )  # Left align to prevent overlap
+            checkbox_layout.setContentsMargins(5, 0, 0, 0)  # Small left padding for spacing
+            self.tree.setItemWidget(parent_item, 0, checkbox_widget)
 
-            # Test ID (Column 1)
-            test_id_item = QTableWidgetItem(result.get("test_id", ""))
-            test_id_item.setData(Qt.ItemDataRole.UserRole, result)  # Store full result
-            self.table.setItem(row_idx, 1, test_id_item)
+            # Debug logging for checkbox positioning
+            logger.debug(
+                f"Checkbox created for {result.get('test_id')}: "
+                f"column_width={self.tree.columnWidth(0)}px, "
+                f"widget_size={checkbox_widget.size()}, "
+                f"indentation={self.tree.indentation()}px"
+            )
 
-            # Serial Number (Column 2)
-            serial_item = QTableWidgetItem(result.get("serial_number", "N/A"))
-            self.table.setItem(row_idx, 2, serial_item)
+            # Add placeholder child to show expand icon
+            # Will be replaced with actual data when expanded
+            if measurement_count > 0:
+                placeholder_child = QTreeWidgetItem(parent_item)
+                placeholder_child.setText(1, "Loading...")
+                placeholder_child.setData(1, Qt.ItemDataRole.UserRole, {"is_placeholder": True})
 
-            # Created At (Column 3)
-            created_at = result.get("created_at")
-            created_str = self._format_datetime(created_at) if created_at else "N/A"
-            created_item = QTableWidgetItem(created_str)
-            self.table.setItem(row_idx, 3, created_item)
-
-            # Measurement Count (Column 4)
-            measurement_count = result.get("measurement_count", 0)
-            count_item = QTableWidgetItem(f"{measurement_count}")
-            count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row_idx, 4, count_item)
-
-            # Status (Column 5) - N/A for raw_measurements
-            status = result.get("status", "N/A")
-            status_item = QTableWidgetItem(status if status == "N/A" else self._format_status(status))
-            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row_idx, 5, status_item)
-
-        self.table.setSortingEnabled(True)  # Re-enable sorting
-        self.table.resizeColumnsToContents()
+        self.tree.setSortingEnabled(True)  # Re-enable sorting
+        self.tree.resizeColumnToContents(1)
+        self.tree.resizeColumnToContents(2)
+        self.tree.resizeColumnToContents(3)
 
         # Emit initial selection count (0)
         self.selection_changed.emit(0)
 
+    def _on_item_expanded(self, item: QTreeWidgetItem) -> None:
+        """Handle item expansion - load measurement data"""
+        # Check if this is a parent item (has UserRole data with test_id)
+        result_data = item.data(1, Qt.ItemDataRole.UserRole)
+        if not result_data or not isinstance(result_data, dict):
+            return
+
+        test_id = result_data.get("test_id")
+        if not test_id:
+            return
+
+        # Check if children are placeholders
+        if item.childCount() > 0:
+            first_child_data = item.child(0).data(1, Qt.ItemDataRole.UserRole)
+            if first_child_data and first_child_data.get("is_placeholder"):
+                # Remove placeholder and load actual data
+                logger.info(f"Loading measurements for test_id: {test_id}")
+                self.measurement_load_requested.emit(test_id)
+
+    def _on_item_collapsed(self, item: QTreeWidgetItem) -> None:
+        """Handle item collapse - optional cleanup"""
+        # Currently no action needed on collapse
+        pass
+
+    def load_measurements_for_item(self, test_id: str, measurements: List[Dict]) -> None:
+        """
+        Load measurement data for a specific test_id and populate child items.
+        Called by parent widget after fetching data from DB.
+        """
+        logger.info(f"Loading {len(measurements)} measurements for test_id: {test_id}")
+
+        # Cache measurements
+        self.loaded_measurements[test_id] = measurements
+
+        # Find the parent item
+        parent_item = self._find_parent_item_by_test_id(test_id)
+        if not parent_item:
+            logger.warning(f"Parent item not found for test_id: {test_id}")
+            return
+
+        # Remove existing children (including placeholders)
+        parent_item.takeChildren()
+
+        # If no measurements, show message
+        if not measurements:
+            no_data_child = QTreeWidgetItem(parent_item)
+            no_data_child.setText(1, "No measurements found")
+            no_data_child.setForeground(1, Qt.GlobalColor.gray)
+            return
+
+        # Sort measurements by timestamp or cycle_number
+        sorted_measurements = sorted(
+            measurements, key=lambda m: (m.get("cycle_number") or 0, m.get("timestamp") or "")
+        )
+
+        # Add child items for each measurement
+        for idx, measurement in enumerate(sorted_measurements):
+            child_item = QTreeWidgetItem(parent_item)
+
+            # Store measurement data
+            child_item.setData(1, Qt.ItemDataRole.UserRole, measurement)
+
+            # Column 0: Empty (no checkbox for children)
+            child_item.setText(0, "")
+
+            # Column 1: Cycle number or sequence
+            cycle_num = measurement.get("cycle_number")
+            if cycle_num is not None:
+                child_item.setText(1, f"Cycle {cycle_num}")
+            else:
+                child_item.setText(1, f"#{idx + 1}")
+
+            # Column 2: Temperature
+            temperature = measurement.get("temperature")
+            if temperature is not None:
+                child_item.setText(2, f"{temperature:.1f}°C")
+            else:
+                child_item.setText(2, "N/A")
+
+            # Column 3: Position
+            position = measurement.get("position")
+            if position is not None:
+                child_item.setText(3, f"{position:.0f} μm")
+            else:
+                child_item.setText(3, "N/A")
+
+            # Column 4: Force
+            force = measurement.get("force")
+            if force is not None:
+                child_item.setText(4, f"{force:.2f} N")
+            else:
+                child_item.setText(4, "N/A")
+
+            # Column 5: Timestamp
+            timestamp = measurement.get("timestamp")
+            if timestamp:
+                timestamp_str = self._format_datetime(timestamp)
+                child_item.setText(5, timestamp_str)
+            else:
+                child_item.setText(5, "N/A")
+
+            # Style child item differently
+            for col in range(6):
+                child_item.setForeground(col, Qt.GlobalColor.lightGray)
+
+        logger.info(f"Loaded {len(sorted_measurements)} measurements for test_id: {test_id}")
+
+    def _find_parent_item_by_test_id(self, test_id: str) -> Optional[QTreeWidgetItem]:
+        """Find parent item by test_id"""
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            if item:
+                item_test_id = item.text(1)  # Test ID is in column 1
+                if item_test_id == test_id:
+                    return item
+        return None
+
     def _on_selection_changed(self) -> None:
         """Handle row selection change"""
-        selected_rows = self.table.selectedItems()
-        if selected_rows:
-            # Get test_id from second column (index 1) of selected row
-            row = selected_rows[0].row()
-            test_id_item = self.table.item(row, 1)
-            if test_id_item:
-                test_id = test_id_item.text()
+        selected_items = self.tree.selectedItems()
+        if selected_items:
+            # Get test_id from selected item
+            item = selected_items[0]
+
+            # If child item selected, get parent's test_id
+            if item.parent():
+                item = item.parent()
+
+            test_id = item.text(1)  # Column 1 is Test ID
+            if test_id and test_id != "Loading...":
                 self.row_selected.emit(test_id)
 
     def _on_checkbox_changed(self) -> None:
@@ -188,42 +348,47 @@ class ResultsTable(QWidget):
         self.selection_changed.emit(selected_count)
 
     def get_selected_test_ids(self) -> List[str]:
-        """Get list of test IDs for checked rows"""
+        """Get list of test IDs for checked parent items"""
         selected_ids = []
-        for row in range(self.table.rowCount()):
-            # Get checkbox widget
-            cell_widget = self.table.cellWidget(row, 0)
-            if cell_widget:
-                # Find QCheckBox in the cell widget
-                checkbox = cell_widget.findChild(QCheckBox)
-                if checkbox and checkbox.isChecked():
-                    # Get test_id from column 1
-                    test_id_item = self.table.item(row, 1)
-                    if test_id_item:
-                        selected_ids.append(test_id_item.text())
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            if item:
+                # Get checkbox widget
+                checkbox_widget = self.tree.itemWidget(item, 0)
+                if checkbox_widget:
+                    # Find QCheckBox in the widget
+                    checkbox = checkbox_widget.findChild(QCheckBox)
+                    if checkbox and checkbox.isChecked():
+                        test_id = item.text(1)  # Column 1 is Test ID
+                        if test_id:
+                            selected_ids.append(test_id)
         return selected_ids
 
     def get_selected_count(self) -> int:
-        """Get count of checked rows"""
+        """Get count of checked parent items"""
         return len(self.get_selected_test_ids())
 
     def select_all(self) -> None:
-        """Check all checkboxes"""
-        for row in range(self.table.rowCount()):
-            cell_widget = self.table.cellWidget(row, 0)
-            if cell_widget:
-                checkbox = cell_widget.findChild(QCheckBox)
-                if checkbox:
-                    checkbox.setChecked(True)
+        """Check all parent checkboxes"""
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            if item:
+                checkbox_widget = self.tree.itemWidget(item, 0)
+                if checkbox_widget:
+                    checkbox = checkbox_widget.findChild(QCheckBox)
+                    if checkbox:
+                        checkbox.setChecked(True)
 
     def deselect_all(self) -> None:
-        """Uncheck all checkboxes"""
-        for row in range(self.table.rowCount()):
-            cell_widget = self.table.cellWidget(row, 0)
-            if cell_widget:
-                checkbox = cell_widget.findChild(QCheckBox)
-                if checkbox:
-                    checkbox.setChecked(False)
+        """Uncheck all parent checkboxes"""
+        for i in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(i)
+            if item:
+                checkbox_widget = self.tree.itemWidget(item, 0)
+                if checkbox_widget:
+                    checkbox = checkbox_widget.findChild(QCheckBox)
+                    if checkbox:
+                        checkbox.setChecked(False)
 
     def _format_status(self, status: str) -> str:
         """Format status with emoji"""
@@ -248,10 +413,10 @@ class ResultsTable(QWidget):
 
         return str(dt)
 
-    def _get_table_style(self) -> str:
-        """Get table stylesheet"""
+    def _get_tree_style(self) -> str:
+        """Get tree widget stylesheet"""
         return f"""
-        QTableWidget {{
+        QTreeWidget {{
             background-color: {BACKGROUND_DARK};
             color: {TEXT_SECONDARY};
             gridline-color: {BORDER_DEFAULT};
@@ -261,22 +426,35 @@ class ResultsTable(QWidget):
             selection-color: {TEXT_SECONDARY};
             outline: none;
         }}
-        QTableWidget::item {{
+        QTreeWidget::item {{
             padding: 8px;
             border: none;
             outline: none;
         }}
-        QTableWidget::item:selected {{
+        QTreeWidget::item:selected {{
             background-color: transparent;
             color: {TEXT_SECONDARY};
         }}
-        QTableWidget::item:focus {{
+        QTreeWidget::item:focus {{
             background-color: transparent;
             outline: none;
             border: none;
         }}
-        QTableWidget::item:hover {{
+        QTreeWidget::item:hover {{
             background-color: rgba(0, 120, 212, 0.3);
+        }}
+        QTreeWidget::branch {{
+            background-color: {BACKGROUND_DARK};
+        }}
+        QTreeWidget::branch:has-children:!has-siblings:closed,
+        QTreeWidget::branch:closed:has-children:has-siblings {{
+            border-image: none;
+            image: none;
+        }}
+        QTreeWidget::branch:open:has-children:!has-siblings,
+        QTreeWidget::branch:open:has-children:has-siblings {{
+            border-image: none;
+            image: none;
         }}
         QHeaderView::section {{
             background-color: {BACKGROUND_MEDIUM};

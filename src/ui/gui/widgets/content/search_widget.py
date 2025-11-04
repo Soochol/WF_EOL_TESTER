@@ -85,6 +85,7 @@ class SearchWidget(QWidget):
         self.results_table = ResultsTable()
         self.results_table.row_selected.connect(self._on_row_selected)
         self.results_table.selection_changed.connect(self._on_selection_changed)
+        self.results_table.measurement_load_requested.connect(self._on_measurement_load_requested)
         main_layout.addWidget(self.results_table)
 
         # Button toolbar
@@ -164,6 +165,16 @@ class SearchWidget(QWidget):
         logger.info(f"Row selected: {test_id}")
         # Future: Highlight corresponding graph
 
+    def _on_measurement_load_requested(self, test_id: str) -> None:
+        """Handle measurement data load request from tree expansion"""
+        logger.info(f"Measurement load requested for test_id: {test_id}")
+
+        # Run async measurement load using QTimer for proper Qt-asyncio integration
+        # Third-party imports
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(0, lambda: self._run_measurement_load_async(test_id))
+
     def _on_selection_changed(self, selected_count: int) -> None:
         """Handle checkbox selection change"""
         logger.debug(f"Selection changed: {selected_count} items selected")
@@ -210,6 +221,48 @@ class SearchWidget(QWidget):
         from PySide6.QtCore import QTimer
 
         QTimer.singleShot(0, lambda: self._run_graph_update_async(selected_ids))
+
+    def _run_measurement_load_async(self, test_id: str) -> None:
+        """Run async measurement load using new event loop"""
+        # Third-party imports
+        import asyncio
+
+        try:
+            # Create new event loop for this operation
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self._load_measurements(test_id))
+            loop.close()
+        except Exception as e:
+            logger.error(f"Measurement load execution failed: {e}")
+            # Standard library imports
+            import traceback
+
+            traceback.print_exc()
+
+    async def _load_measurements(self, test_id: str) -> None:
+        """Load measurement data for a specific test_id"""
+        try:
+            logger.info(f"Loading measurements for test_id: {test_id}")
+
+            # Query raw measurements from database
+            measurements = await self.db_repo.query_raw_measurements(
+                test_id=test_id,
+                limit=1000,
+            )
+
+            logger.info(f"Loaded {len(measurements)} measurements for test_id: {test_id}")
+
+            # Update results table with measurement data
+            if self.results_table:
+                self.results_table.load_measurements_for_item(test_id, measurements)
+
+        except Exception as e:
+            logger.error(f"Failed to load measurements for test_id {test_id}: {e}")
+            # Standard library imports
+            import traceback
+
+            traceback.print_exc()
 
     def _run_graph_update_async(self, selected_test_ids: List[str]) -> None:
         """Run async graph update using new event loop"""
