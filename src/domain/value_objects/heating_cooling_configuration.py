@@ -10,7 +10,7 @@ from __future__ import annotations
 
 # Standard library imports
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 @dataclass(frozen=True)
@@ -75,6 +75,18 @@ class HeatingCoolingConfiguration:
     calculate_statistics: bool = True  # Calculate power consumption statistics
     show_detailed_results: bool = True  # Show detailed cycle-by-cycle results
 
+    # ========================================================================
+    # POWER ANALYZER MEASUREMENT PARAMETERS (Optional, Test-specific)
+    # ========================================================================
+    # If power analyzer is configured, these test-specific settings will override
+    # hardware config defaults. Leave as None to use hardware config values.
+    power_analyzer_voltage_range: Optional[str] = None  # e.g., "15V", "30V", "60V", "150V", "300V", "600V", "1000V"
+    power_analyzer_current_range: Optional[str] = None  # e.g., "1A", "2A", "5A", "10A", "20A", "50A"
+    power_analyzer_auto_range: Optional[bool] = None    # None = use hardware config default
+    power_analyzer_line_filter: Optional[str] = None    # e.g., "500HZ", "1KHZ", "10KHZ", "100KHZ"
+    power_analyzer_frequency_filter: Optional[str] = None  # e.g., "0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ"
+    power_analyzer_element: Optional[int] = None        # Measurement element/channel (1-6), None = use hardware config
+
     def __post_init__(self):
         """Validate configuration parameters"""
         if self.repeat_count < 1:
@@ -112,6 +124,11 @@ class HeatingCoolingConfiguration:
 
         if self.mcu_temperature_stabilization < 0:
             raise ValueError("mcu_temperature_stabilization must be non-negative")
+
+        # Validate power analyzer parameters (if specified)
+        if self.power_analyzer_element is not None:
+            if not (1 <= self.power_analyzer_element <= 6):
+                raise ValueError("power_analyzer_element must be between 1 and 6")
 
     @property
     def total_cycle_time_estimate(self) -> float:
@@ -174,6 +191,13 @@ class HeatingCoolingConfiguration:
             # STATISTICS PARAMETERS
             "calculate_statistics": self.calculate_statistics,
             "show_detailed_results": self.show_detailed_results,
+            # POWER ANALYZER MEASUREMENT PARAMETERS
+            "power_analyzer_voltage_range": self.power_analyzer_voltage_range,
+            "power_analyzer_current_range": self.power_analyzer_current_range,
+            "power_analyzer_auto_range": self.power_analyzer_auto_range,
+            "power_analyzer_line_filter": self.power_analyzer_line_filter,
+            "power_analyzer_frequency_filter": self.power_analyzer_frequency_filter,
+            "power_analyzer_element": self.power_analyzer_element,
         }
 
     @classmethod
@@ -206,4 +230,11 @@ class HeatingCoolingConfiguration:
             # STATISTICS PARAMETERS
             calculate_statistics=data.get("calculate_statistics", True),
             show_detailed_results=data.get("show_detailed_results", True),
+            # POWER ANALYZER MEASUREMENT PARAMETERS
+            power_analyzer_voltage_range=data.get("power_analyzer_voltage_range"),
+            power_analyzer_current_range=data.get("power_analyzer_current_range"),
+            power_analyzer_auto_range=data.get("power_analyzer_auto_range"),
+            power_analyzer_line_filter=data.get("power_analyzer_line_filter"),
+            power_analyzer_frequency_filter=data.get("power_analyzer_frequency_filter"),
+            power_analyzer_element=data.get("power_analyzer_element"),
         )

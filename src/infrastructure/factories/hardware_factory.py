@@ -89,6 +89,11 @@ class HardwareFactory(containers.DeclarativeContainer):
             port=config.power_analyzer.port,
             timeout=config.power_analyzer.timeout,
             element=config.power_analyzer.element,
+            voltage_range=config.power_analyzer.voltage_range,
+            current_range=config.power_analyzer.current_range,
+            auto_range=config.power_analyzer.auto_range,
+            line_filter=config.power_analyzer.line_filter,
+            frequency_filter=config.power_analyzer.frequency_filter,
         ),
         wt1800e=providers.Factory(
             WT1800EPowerAnalyzer,
@@ -96,6 +101,11 @@ class HardwareFactory(containers.DeclarativeContainer):
             port=config.power_analyzer.port,
             timeout=config.power_analyzer.timeout,
             element=config.power_analyzer.element,
+            voltage_range=config.power_analyzer.voltage_range,
+            current_range=config.power_analyzer.current_range,
+            auto_range=config.power_analyzer.auto_range,
+            line_filter=config.power_analyzer.line_filter,
+            frequency_filter=config.power_analyzer.frequency_filter,
         ),
     )
 

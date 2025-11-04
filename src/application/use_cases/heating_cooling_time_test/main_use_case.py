@@ -99,6 +99,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             await self._hardware_setup.setup_mcu(hc_config)
             await self._hardware_setup.initialize_temperature(hc_config)
 
+            # Apply test-specific power analyzer configuration (if configured)
+            await self._hardware_setup.apply_test_specific_power_analyzer_config(hc_config)
+
             # 3. Set system status to running
             if self._industrial_system_manager:
                 from application.services.industrial.tower_lamp_service import SystemStatus

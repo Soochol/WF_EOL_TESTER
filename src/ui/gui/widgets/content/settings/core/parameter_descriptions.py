@@ -133,6 +133,18 @@ class ParameterDescriptions:
         "power.channel": "Power supply output channel number (1-4, depending on model capacity).",
         "power.delimiter": "Command delimiter character for power supply protocol (usually newline or carriage return).",
 
+        # Power Analyzer Configuration (Hardware-level defaults)
+        "power_analyzer.model": "Power analyzer model. Options: 'mock' (simulation) or 'wt1800e' (Yokogawa WT1800E).",
+        "power_analyzer.host": "Power analyzer IP address for network communication (e.g., 192.168.1.100).",
+        "power_analyzer.port": "TCP port number for power analyzer communication (default WT1800E: 10001).",
+        "power_analyzer.timeout": "Network communication timeout in seconds (recommend 5-10s).",
+        "power_analyzer.element": "Default measurement element/channel number (1-6 for WT1800E). Can be overridden by test config.",
+        "power_analyzer.voltage_range": "Default voltage measurement range (e.g., '15V', '30V', '60V', '150V', '300V', '600V', '1000V'). null = auto-range.",
+        "power_analyzer.current_range": "Default current measurement range (e.g., '1A', '2A', '5A', '10A', '20A', '50A'). null = auto-range.",
+        "power_analyzer.auto_range": "Enable automatic range adjustment for optimal accuracy. Recommended for most use cases.",
+        "power_analyzer.line_filter": "Default line filter frequency for noise reduction (e.g., '500HZ', '1KHZ', '10KHZ', '100KHZ'). null = device default.",
+        "power_analyzer.frequency_filter": "Default frequency filter for signal processing (e.g., '0.5HZ', '1HZ', '10HZ', '100HZ', '1KHZ'). null = device default.",
+
         # Digital I/O Configuration
         "digital_io.model": "Digital I/O board model. Options: 'mock' (simulation) or 'ajinextek' (real hardware).",
         "digital_io.connection.board_id": "Digital I/O board ID for multi-board systems (0-3).",
@@ -209,8 +221,8 @@ class ParameterDescriptions:
     # Heating/Cooling Test Descriptions
     HEATING_COOLING_DESCRIPTIONS: Dict[str, str] = {
         "repeat_count": "Number of heating/cooling test cycles to perform (1-100). More cycles = better statistical data.",
-        "heating_wait_time": "Wait time (seconds) after heating phase completes before measurement or next step.",
-        "cooling_wait_time": "Wait time (seconds) after cooling phase completes before measurement or next step.",
+        "heating_wait_time": "Minimum total time (seconds) for heating phase. If actual heating < this value, additional wait is added. If actual heating >= this value, no additional wait.",
+        "cooling_wait_time": "Minimum total time (seconds) for cooling phase. If actual cooling < this value, additional wait is added. If actual cooling >= this value, no additional wait.",
         "stabilization_wait_time": "Wait time (seconds) for temperature stabilization after setpoint change.",
         "power_monitoring_interval": "Power measurement sampling interval in seconds (e.g., 0.5s = 2Hz). Lower = more data points.",
         "power_monitoring_enabled": "Enable real-time power consumption monitoring and logging during test.",
@@ -226,6 +238,13 @@ class ParameterDescriptions:
         "mcu_temperature_stabilization": "Delay (seconds) after temperature setpoint change for thermal equilibrium.",
         "calculate_statistics": "Calculate and display power consumption statistics (min, max, average, total energy).",
         "show_detailed_results": "Show detailed cycle-by-cycle test results in report (includes per-cycle timing and power data).",
+        # Power Analyzer Measurement Parameters (Test-specific overrides)
+        "power_analyzer_voltage_range": "Power analyzer voltage measurement range (e.g., '15V', '30V', '60V', '150V', '300V', '600V', '1000V'). Leave null to use hardware config default.",
+        "power_analyzer_current_range": "Power analyzer current measurement range (e.g., '1A', '2A', '5A', '10A', '20A', '50A'). Leave null to use hardware config default.",
+        "power_analyzer_auto_range": "Enable automatic range adjustment for optimal measurement accuracy. Recommended unless specific fixed range needed.",
+        "power_analyzer_line_filter": "Line filter frequency for noise reduction (e.g., '500HZ', '1KHZ', '10KHZ', '100KHZ'). Leave null to use hardware config default.",
+        "power_analyzer_frequency_filter": "Frequency filter for signal processing (e.g., '0.5HZ', '1HZ', '10HZ', '100HZ', '1KHZ'). Leave null to use hardware config default.",
+        "power_analyzer_element": "Power analyzer measurement element/channel number (1-6). Leave null to use hardware config default element.",
     }
 
     # DUT (Device Under Test) Descriptions

@@ -34,21 +34,25 @@ class HeatingCoolingCSVLogger:
         self.test_id = test_id
         self.repeat_count = repeat_count
 
-        # Create file path
+        # Create file paths
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"HC_Test_{timestamp}_{test_id}.csv"
+        timing_filename = f"HC_Test_{timestamp}_{test_id}.csv"
+        power_filename = f"HC_Test_{timestamp}_{test_id}_power.csv"
 
         self.log_dir = Path("../logs/Heating Cooling Test/cycle_data")
-        self.file_path = self.log_dir / filename
+        self.file_path = self.log_dir / timing_filename
+        self._power_file_path = self.log_dir / power_filename
 
         # Track data for summary statistics
         self.cycle_data: List[Dict[str, Any]] = []
         self.start_time = datetime.now()
 
-        # Track if file has been initialized
+        # Track if files have been initialized
         self._file_initialized = False
+        self._power_file_initialized = False
 
         logger.debug(f"CSV logger initialized: {self.file_path}")
+        logger.debug(f"Power CSV logger path: {self._power_file_path}")
 
     def write_cycle_data(
         self, cycle_number: int, heating_data: Dict[str, Any], cooling_data: Dict[str, Any]
@@ -246,5 +250,66 @@ class HeatingCoolingCSVLogger:
             raise
 
     def get_file_path(self) -> Path:
-        """Get the CSV file path"""
+        """Get the timing data CSV file path"""
         return self.file_path
+
+    def get_power_file_path(self) -> Path:
+        """Get the power data CSV file path"""
+        return self._power_file_path
+
+    def write_power_data(self, power_samples: List[Dict[str, Any]]) -> None:
+        """
+        Write power measurement raw data to separate CSV file
+
+        Args:
+            power_samples: List of power measurement samples with keys:
+                          'timestamp', 'voltage', 'current', 'power'
+        """
+        try:
+            if not power_samples:
+                logger.warning("No power samples to write to CSV")
+                return
+
+            # Create directory if it doesn't exist
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+
+            # Initialize power CSV file with header if first write
+            if not self._power_file_initialized:
+                self._initialize_power_csv_file()
+                self._power_file_initialized = True
+
+            # Write each sample as a row
+            with open(self._power_file_path, "a", newline="", encoding="utf-8") as csvfile:
+                fieldnames = ["Sample", "Timestamp", "Voltage_V", "Current_A", "Power_W"]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                for idx, sample in enumerate(power_samples, start=1):
+                    row_data = {
+                        "Sample": idx,
+                        "Timestamp": f"{sample['timestamp']:.3f}",
+                        "Voltage_V": f"{sample['voltage']:.4f}",
+                        "Current_A": f"{sample['current']:.4f}",
+                        "Power_W": f"{sample['power']:.4f}",
+                    }
+                    writer.writerow(row_data)
+
+            logger.info(
+                f"Power data written to CSV: {self._power_file_path} ({len(power_samples)} samples)"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to write power data to CSV: {e}")
+
+    def _initialize_power_csv_file(self) -> None:
+        """Initialize power data CSV file with header"""
+        try:
+            with open(self._power_file_path, "w", newline="", encoding="utf-8") as csvfile:
+                fieldnames = ["Sample", "Timestamp", "Voltage_V", "Current_A", "Power_W"]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+
+            logger.info(f"Power CSV file initialized with header: {self._power_file_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize power CSV file: {e}")
+            raise

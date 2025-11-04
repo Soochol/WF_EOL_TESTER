@@ -23,6 +23,7 @@ SUPPORTED_ROBOT_MODELS: Set[str] = {"ajinextek", "mock"}
 SUPPORTED_LOADCELL_MODELS: Set[str] = {"bs205", "mock"}
 SUPPORTED_MCU_MODELS: Set[str] = {"lma", "mock"}
 SUPPORTED_POWER_MODELS: Set[str] = {"oda", "mock"}
+SUPPORTED_POWER_ANALYZER_MODELS: Set[str] = {"wt1800e", "mock"}
 SUPPORTED_DIGITAL_INPUT_MODELS: Set[str] = {
     "ajinextek",
     "mock",
@@ -327,6 +328,68 @@ class PowerConfig:
 
 
 @dataclass(frozen=True)
+class PowerAnalyzerConfig:
+    """Power Analyzer configuration with model selection and connection parameters"""
+
+    # Hardware model selection
+    model: str = "mock"  # "mock", "wt1800e"
+
+    # Network connection parameters
+    host: str = "192.168.1.100"  # IP address of the power analyzer
+    port: int = 10001  # TCP port for communication (default for WT1800E)
+    timeout: float = 5.0  # Connection timeout in seconds
+
+    # Measurement configuration
+    element: int = 1  # Measurement element/channel number (1-6 for WT1800E)
+
+    # Input range configuration (optional)
+    voltage_range: Optional[str] = None  # e.g., "300V", "600V" (None = use auto-range)
+    current_range: Optional[str] = None  # e.g., "5A", "10A" (None = use auto-range)
+    auto_range: bool = True  # Enable automatic range adjustment
+
+    # Filter configuration (optional)
+    line_filter: Optional[str] = None  # e.g., "10KHZ" (None = default)
+    frequency_filter: Optional[str] = None  # e.g., "1HZ" (None = default)
+
+    def __post_init__(self) -> None:
+        """Validate power analyzer configuration after initialization"""
+        if self.model not in SUPPORTED_POWER_ANALYZER_MODELS:
+            raise ValidationException(
+                "power_analyzer.model",
+                self.model,
+                f"Unsupported power analyzer model. Supported: {', '.join(sorted(SUPPORTED_POWER_ANALYZER_MODELS))}",
+            )
+
+        if not self.host:
+            raise ValidationException(
+                "power_analyzer.host",
+                self.host,
+                "Power analyzer host cannot be empty",
+            )
+
+        if not 1 <= self.port <= 65535:
+            raise ValidationException(
+                "power_analyzer.port",
+                self.port,
+                "Power analyzer port must be between 1 and 65535",
+            )
+
+        if self.timeout <= 0:
+            raise ValidationException(
+                "power_analyzer.timeout",
+                self.timeout,
+                "Power analyzer timeout must be positive",
+            )
+
+        if not 1 <= self.element <= 6:
+            raise ValidationException(
+                "power_analyzer.element",
+                self.element,
+                "Power analyzer element must be between 1 and 6",
+            )
+
+
+@dataclass(frozen=True)
 class DigitalIOConfig:
     """Digital I/O Interface configuration with model selection and pin assignments"""
 
@@ -454,6 +517,7 @@ class HardwareConfig:
     loadcell: LoadCellConfig = field(default_factory=LoadCellConfig)
     mcu: MCUConfig = field(default_factory=MCUConfig)
     power: PowerConfig = field(default_factory=PowerConfig)
+    power_analyzer: PowerAnalyzerConfig = field(default_factory=PowerAnalyzerConfig)
     digital_io: DigitalIOConfig = field(default_factory=DigitalIOConfig)
 
     def __post_init__(self) -> None:
@@ -472,6 +536,7 @@ class HardwareConfig:
                 self.loadcell.model == "mock",
                 self.mcu.model == "mock",
                 self.power.model == "mock",
+                self.power_analyzer.model == "mock",
                 self.digital_io.model == "mock",
             ]
         )
@@ -496,6 +561,7 @@ class HardwareConfig:
             "loadcell": self.loadcell.model,
             "mcu": self.mcu.model,
             "power": self.power.model,
+            "power_analyzer": self.power_analyzer.model,
             "digital_io": self.digital_io.model,
         }
 
@@ -537,6 +603,7 @@ class HardwareConfig:
             "loadcell": self.loadcell,
             "mcu": self.mcu,
             "power": self.power,
+            "power_analyzer": self.power_analyzer,
             "digital_io": self.digital_io,
         }
 
@@ -549,6 +616,7 @@ class HardwareConfig:
             "loadcell": LoadCellConfig,
             "mcu": MCUConfig,
             "power": PowerConfig,
+            "power_analyzer": PowerAnalyzerConfig,
             "digital_io": DigitalIOConfig,
         }
 
@@ -566,6 +634,7 @@ class HardwareConfig:
             loadcell=cast(LoadCellConfig, current_values.get("loadcell", self.loadcell)),
             mcu=cast(MCUConfig, current_values.get("mcu", self.mcu)),
             power=cast(PowerConfig, current_values.get("power", self.power)),
+            power_analyzer=cast(PowerAnalyzerConfig, current_values.get("power_analyzer", self.power_analyzer)),
             digital_io=cast(DigitalIOConfig, current_values.get("digital_io", self.digital_io)),
         )
 
@@ -605,6 +674,18 @@ class HardwareConfig:
                 "timeout": self.power.timeout,
                 "channel": self.power.channel,
                 "delimiter": self.power.delimiter,
+            },
+            "power_analyzer": {
+                "model": self.power_analyzer.model,
+                "host": self.power_analyzer.host,
+                "port": self.power_analyzer.port,
+                "timeout": self.power_analyzer.timeout,
+                "element": self.power_analyzer.element,
+                "voltage_range": self.power_analyzer.voltage_range,
+                "current_range": self.power_analyzer.current_range,
+                "auto_range": self.power_analyzer.auto_range,
+                "line_filter": self.power_analyzer.line_filter,
+                "frequency_filter": self.power_analyzer.frequency_filter,
             },
             "digital_io": {
                 "model": self.digital_io.model,
@@ -681,6 +762,7 @@ class HardwareConfig:
             "loadcell": LoadCellConfig,
             "mcu": MCUConfig,
             "power": PowerConfig,
+            "power_analyzer": PowerAnalyzerConfig,
             "digital_io": DigitalIOConfig,
         }
 
@@ -698,6 +780,7 @@ class HardwareConfig:
             loadcell=cast(LoadCellConfig, data_copy.get("loadcell", LoadCellConfig())),
             mcu=cast(MCUConfig, data_copy.get("mcu", MCUConfig())),
             power=cast(PowerConfig, data_copy.get("power", PowerConfig())),
+            power_analyzer=cast(PowerAnalyzerConfig, data_copy.get("power_analyzer", PowerAnalyzerConfig())),
             digital_io=cast(DigitalIOConfig, data_copy.get("digital_io", DigitalIOConfig())),
         )
 
@@ -727,11 +810,11 @@ class HardwareConfig:
     def __str__(self) -> str:
         """Human-readable string representation"""
         mode = "Mock Mode" if self.is_mock_mode() else "Mixed/Real Hardware"
-        return f"HardwareConfig({mode}: robot={self.robot.model}, mcu={self.mcu.model}, loadcell={self.loadcell.model}, power={self.power.model}, digital_io={self.digital_io.model})"
+        return f"HardwareConfig({mode}: robot={self.robot.model}, mcu={self.mcu.model}, loadcell={self.loadcell.model}, power={self.power.model}, power_analyzer={self.power_analyzer.model}, digital_io={self.digital_io.model})"
 
     def __repr__(self) -> str:
         """Debug representation"""
         return (
             f"HardwareConfig(robot={self.robot}, loadcell={self.loadcell}, "
-            f"mcu={self.mcu}, power={self.power}, digital_io={self.digital_io})"
+            f"mcu={self.mcu}, power={self.power}, power_analyzer={self.power_analyzer}, digital_io={self.digital_io})"
         )

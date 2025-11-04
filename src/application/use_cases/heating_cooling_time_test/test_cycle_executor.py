@@ -6,6 +6,7 @@ Handles the core test execution logic for temperature transitions.
 """
 
 # Standard library imports
+import time
 from typing import Any, Dict, List, Optional
 
 # Third-party imports
@@ -96,6 +97,15 @@ class TestCycleExecutor:
             if self._csv_logger:
                 self._csv_logger.write_summary(completed_cycles=repeat_count)
 
+                # Write power data CSV if raw samples are available
+                if full_cycle_power_data and "raw_samples" in full_cycle_power_data:
+                    raw_samples = full_cycle_power_data["raw_samples"]
+                    if raw_samples:
+                        self._csv_logger.write_power_data(raw_samples)
+                        logger.info(
+                            f"Power data CSV written: {self._csv_logger.get_power_file_path()}"
+                        )
+
             return {
                 "success": True,
                 "timing_data": timing_data,
@@ -135,6 +145,15 @@ class TestCycleExecutor:
             # Write partial summary to CSV if logger is enabled
             if self._csv_logger:
                 self._csv_logger.write_summary(completed_cycles=completed_cycles)
+
+                # Write power data CSV even for partial results if available
+                if full_cycle_power_data and "raw_samples" in full_cycle_power_data:
+                    raw_samples = full_cycle_power_data["raw_samples"]
+                    if raw_samples:
+                        self._csv_logger.write_power_data(raw_samples)
+                        logger.info(
+                            f"Partial power data CSV written: {self._csv_logger.get_power_file_path()}"
+                        )
 
             return {
                 "success": False,
@@ -197,14 +216,24 @@ class TestCycleExecutor:
                 logger.info(
                     f"Heating: {hc_config.standby_temperature}°C → {hc_config.activation_temperature}°C"
                 )
+                heating_start = time.time()
                 await mcu_service.start_standby_heating(
                     operating_temp=hc_config.activation_temperature,
                     standby_temp=hc_config.standby_temperature,
                 )
+                heating_elapsed = time.time() - heating_start
 
-                # Wait after heating completion
-                logger.info(f"Heating wait time: {hc_config.heating_wait_time}s")
-                await asyncio.sleep(hc_config.heating_wait_time)
+                # Calculate remaining wait time to reach minimum heating time
+                remaining_heating_wait = max(0, hc_config.heating_wait_time - heating_elapsed)
+                if remaining_heating_wait > 0:
+                    logger.info(
+                        f"Heating: {heating_elapsed:.1f}s elapsed, waiting {remaining_heating_wait:.1f}s more to reach minimum {hc_config.heating_wait_time}s"
+                    )
+                    await asyncio.sleep(remaining_heating_wait)
+                else:
+                    logger.info(
+                        f"Heating: {heating_elapsed:.1f}s (exceeds minimum {hc_config.heating_wait_time}s)"
+                    )
 
                 # Collect heating timing data for this cycle
                 self._collect_cycle_timing_data(cycle_number=i + 1, phase="heating")
@@ -213,11 +242,21 @@ class TestCycleExecutor:
                 logger.info(
                     f"Cooling: {hc_config.activation_temperature}°C → {hc_config.standby_temperature}°C"
                 )
+                cooling_start = time.time()
                 await mcu_service.start_standby_cooling()
+                cooling_elapsed = time.time() - cooling_start
 
-                # Wait after cooling completion
-                logger.info(f"Cooling wait time: {hc_config.cooling_wait_time}s")
-                await asyncio.sleep(hc_config.cooling_wait_time)
+                # Calculate remaining wait time to reach minimum cooling time
+                remaining_cooling_wait = max(0, hc_config.cooling_wait_time - cooling_elapsed)
+                if remaining_cooling_wait > 0:
+                    logger.info(
+                        f"Cooling: {cooling_elapsed:.1f}s elapsed, waiting {remaining_cooling_wait:.1f}s more to reach minimum {hc_config.cooling_wait_time}s"
+                    )
+                    await asyncio.sleep(remaining_cooling_wait)
+                else:
+                    logger.info(
+                        f"Cooling: {cooling_elapsed:.1f}s (exceeds minimum {hc_config.cooling_wait_time}s)"
+                    )
 
                 # Collect cooling timing data for this cycle
                 self._collect_cycle_timing_data(cycle_number=i + 1, phase="cooling")

@@ -305,6 +305,20 @@ calculate_statistics: {str(config_data['calculate_statistics']).lower()}    # Ca
 show_detailed_results: {str(config_data['show_detailed_results']).lower()}   # Show detailed cycle-by-cycle results
 
 # ========================================================================
+# POWER ANALYZER MEASUREMENT PARAMETERS (Optional, Test-specific)
+# ========================================================================
+# If power analyzer is configured, these test-specific settings will override
+# hardware config defaults. Leave as null to use hardware config values.
+# These parameters allow different tests to use different measurement ranges/filters
+# while sharing the same hardware connection configuration.
+power_analyzer_voltage_range: {config_data.get('power_analyzer_voltage_range') or 'null'}        # Voltage range (e.g., "15V", "30V", "60V", "150V", "300V", "600V", "1000V")
+power_analyzer_current_range: {config_data.get('power_analyzer_current_range') or 'null'}        # Current range (e.g., "1A", "2A", "5A", "10A", "20A", "50A")
+power_analyzer_auto_range: {str(config_data.get('power_analyzer_auto_range', True)).lower()}           # Enable automatic range adjustment (recommended)
+power_analyzer_line_filter: {config_data.get('power_analyzer_line_filter') or 'null'}          # Line filter frequency (e.g., "500HZ", "1KHZ", "10KHZ", "100KHZ")
+power_analyzer_frequency_filter: {config_data.get('power_analyzer_frequency_filter') or 'null'}     # Frequency filter (e.g., "0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ")
+power_analyzer_element: {config_data.get('power_analyzer_element') or 'null'}              # Measurement element/channel (1-6), null = use hardware config
+
+# ========================================================================
 # METADATA
 # ========================================================================
 metadata:
@@ -320,6 +334,8 @@ metadata:
     - Power monitoring tracks energy consumption during test cycles
     - Temperature parameters define test operating ranges
     - Statistics options control data analysis and display
+    - Power analyzer parameters allow test-specific measurement settings
+      (overrides hardware config when specified, otherwise uses hardware defaults)
 
     Modify these values to customize test behavior according to your
     hardware specifications and testing requirements.

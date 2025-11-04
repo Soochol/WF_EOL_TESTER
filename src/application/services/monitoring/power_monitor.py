@@ -268,6 +268,8 @@ class PowerMonitor:
             # Efficiency ratios
             "power_stability_ratio": round(avg_power / peak_power, 3) if peak_power > 0 else 0,
             "power_utilization_ratio": round(avg_power / min(avg_power * 1.5, peak_power), 3),
+            # Raw measurement samples for CSV logging
+            "raw_samples": self._power_data.copy(),  # Include raw data for external processing
         }
 
     def _calculate_energy(self) -> float:

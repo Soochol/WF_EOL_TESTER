@@ -129,12 +129,19 @@ class EditorTypes:
     ENVIRONMENTS = ["development", "production", "testing"]
     ROBOT_MODELS = ["mock", "ajinextek"]
     POWER_MODELS = ["mock", "oda"]
+    POWER_ANALYZER_MODELS = ["mock", "wt1800e"]
     LOADCELL_MODELS = ["mock", "bs205"]
     MCU_MODELS = ["mock", "lma"]
     DIGITAL_IO_MODELS = ["mock", "ajinextek"]
     PARITY_OPTIONS = ["none", "even", "odd"]
     CONTACT_TYPES = ["A", "B"]
     EDGE_TYPES = ["rising", "falling"]
+
+    # Power Analyzer measurement range options
+    VOLTAGE_RANGES = ["15V", "30V", "60V", "150V", "300V", "600V", "1000V"]
+    CURRENT_RANGES = ["1A", "2A", "5A", "10A", "20A", "50A"]
+    LINE_FILTERS = ["500HZ", "1KHZ", "10KHZ", "100KHZ"]
+    FREQUENCY_FILTERS = ["0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ"]
 
     @staticmethod
     def get_combo_options(key: str) -> list[str] | None:
@@ -145,6 +152,7 @@ class EditorTypes:
             "robot.model": EditorTypes.ROBOT_MODELS,
             "digital_io.model": EditorTypes.DIGITAL_IO_MODELS,
             "power.model": EditorTypes.POWER_MODELS,
+            "power_analyzer.model": EditorTypes.POWER_ANALYZER_MODELS,
             "loadcell.model": EditorTypes.LOADCELL_MODELS,
             "mcu.model": EditorTypes.MCU_MODELS,
         }
@@ -160,6 +168,15 @@ class EditorTypes:
             return EditorTypes.CONTACT_TYPES
         elif key.endswith(".edge_type"):
             return EditorTypes.EDGE_TYPES
+        # Power Analyzer measurement parameters (works for both hardware and test config)
+        elif key.endswith(".voltage_range") or key.endswith("_voltage_range"):
+            return EditorTypes.VOLTAGE_RANGES
+        elif key.endswith(".current_range") or key.endswith("_current_range"):
+            return EditorTypes.CURRENT_RANGES
+        elif key.endswith(".line_filter") or key.endswith("_line_filter"):
+            return EditorTypes.LINE_FILTERS
+        elif key.endswith(".frequency_filter") or key.endswith("_frequency_filter"):
+            return EditorTypes.FREQUENCY_FILTERS
 
         return None
 
