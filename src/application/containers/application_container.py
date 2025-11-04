@@ -108,6 +108,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         power_service=hardware_factory.power_service,
         digital_io_service=hardware_factory.digital_io_service,
         gui_state_manager=gui_state_manager,
+        power_analyzer_service=hardware_factory.power_analyzer_service,
     )
 
     # ============================================================================

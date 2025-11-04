@@ -507,6 +507,21 @@ class PassCriteria:
         """
         return len(self.spec_points) > 0
 
+    def should_validate_force(self) -> bool:
+        """
+        Check if force validation should be performed
+
+        Returns:
+            True: Force validation enabled (spec_points defined)
+            False: Force validation disabled (spec_points empty) - AUTO PASS
+
+        Note:
+            When spec_points is empty, all force measurements will automatically PASS
+            without any validation. This is useful for development/debugging or when
+            product specifications are not yet defined.
+        """
+        return self.has_2d_specification()
+
     def get_measurement_summary(self) -> Dict[str, Union[str, int, float]]:
         """Get summary of measurement criteria
 

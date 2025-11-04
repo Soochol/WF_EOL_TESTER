@@ -61,6 +61,15 @@ class TestResultEvaluator:
         failed_points = []
         total_points = 0
 
+        # Check if force validation should be skipped
+        if not criteria.should_validate_force():
+            logger.warning(
+                "⚠️ Force validation DISABLED (spec_points empty) - All measurements will AUTO PASS"
+            )
+            logger.warning(
+                "⚠️ To enable validation, add spec_points to pass_criteria in configuration file"
+            )
+
         logger.info(f"Starting evaluation of {len(measurements)} measurement entries")
 
         for key, measurement in measurements.items():
@@ -171,9 +180,15 @@ class TestResultEvaluator:
 
             raise create_test_evaluation_error(failed_points, total_points)
 
-        logger.info(
-            f"✅ Evaluation PASSED: All {total_points} measurements within specification limits"
-        )
+        # Check if validation was skipped for all measurements
+        if not criteria.should_validate_force() and total_points > 0:
+            logger.info(
+                f"⚠️ Evaluation AUTO PASS: All {total_points} measurements skipped (no spec_points defined)"
+            )
+        else:
+            logger.info(
+                f"✅ Evaluation PASSED: All {total_points} measurements within specification limits"
+            )
 
     async def _evaluate_single_point(
         self,
@@ -197,6 +212,22 @@ class TestResultEvaluator:
             Dictionary containing evaluation result and details
         """
         try:
+            # Skip validation if no spec points defined
+            if not criteria.should_validate_force():
+                logger.debug(
+                    f"⏭️ {key}: Force validation SKIPPED (no spec_points) - AUTO PASS"
+                )
+                return {
+                    "key": key,
+                    "passed": True,
+                    "validation_skipped": True,
+                    "skip_reason": "no_spec_points_defined",
+                    "temperature": temperature,
+                    "stroke": stroke,
+                    "force": force,
+                    "note": "Force validation is disabled (spec_points empty)",
+                }
+
             # Get interpolated force limits for this temperature-stroke point
             lower_limit, upper_limit = criteria.get_force_limits_at_point(temperature, stroke)
 

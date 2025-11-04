@@ -8,7 +8,7 @@ Provides real-time power measurement and analysis capabilities.
 # Standard library imports
 import statistics
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 # Third-party imports
 import asyncio
@@ -16,6 +16,7 @@ from loguru import logger
 
 # Local application imports
 from application.interfaces.hardware.power import PowerService
+from application.interfaces.hardware.power_analyzer import PowerAnalyzerService
 
 
 class PowerMonitor:
@@ -24,16 +25,19 @@ class PowerMonitor:
 
     Monitors voltage, current, and calculates power consumption
     in real-time during test operations.
+
+    Supports both PowerService (power supply with measurement) and
+    PowerAnalyzerService (measurement-only analyzer) interfaces.
     """
 
-    def __init__(self, power_service: PowerService):
+    def __init__(self, power_device: Union[PowerService, PowerAnalyzerService]):
         """
         Initialize Power Monitor
 
         Args:
-            power_service: Power supply service interface
+            power_device: Power supply or power analyzer service interface
         """
-        self._power_service = power_service
+        self._power_device = power_device
         self._monitoring_task: Optional[asyncio.Task] = None
         self._is_monitoring = False
         self._power_data: List[Dict[str, float]] = []
@@ -52,18 +56,18 @@ class PowerMonitor:
             logger.warning("Power monitoring is already active")
             return
 
-        # Verify power service is available
-        if not self._power_service:
-            logger.error("❌ Power service is None - cannot start monitoring")
-            raise RuntimeError("Power service is not initialized")
+        # Verify power device is available
+        if not self._power_device:
+            logger.error("❌ Power device is None - cannot start monitoring")
+            raise RuntimeError("Power device is not initialized")
 
         logger.debug(
-            f"Power service object: {self._power_service} (type: {type(self._power_service)})"
+            f"Power device object: {self._power_device} (type: {type(self._power_device)})"
         )
 
         try:
-            # Test power service connection
-            is_connected = await self._power_service.is_connected()
+            # Test power device connection
+            is_connected = await self._power_device.is_connected()
             logger.info(
                 f"Power service connection status: {'✅ CONNECTED' if is_connected else '❌ DISCONNECTED'}"
             )
@@ -141,8 +145,15 @@ class PowerMonitor:
                 try:
                     logger.debug(f"📊 Taking power measurement sample #{len(self._power_data)}...")
 
-                    # Get all measurements at once using MEAS:ALL? command
-                    measurements = await self._power_service.get_all_measurements()
+                    # Get all measurements at once
+                    # Works with both PowerService and PowerAnalyzerService
+                    if isinstance(self._power_device, PowerAnalyzerService):
+                        # PowerAnalyzerService interface (power analyzer)
+                        measurements = await self._power_device.get_measurements()
+                    else:
+                        # PowerService interface (power supply)
+                        measurements = await self._power_device.get_all_measurements()
+
                     voltage = measurements["voltage"]
                     current = measurements["current"]
                     power = measurements["power"]

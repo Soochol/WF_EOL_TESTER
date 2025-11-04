@@ -24,6 +24,12 @@ from infrastructure.implementation.hardware.mcu.lma.lma_mcu import LMAMCU
 from infrastructure.implementation.hardware.mcu.mock.mock_mcu import MockMCU
 from infrastructure.implementation.hardware.power.mock.mock_power import MockPower
 from infrastructure.implementation.hardware.power.oda.oda_power import OdaPower
+from infrastructure.implementation.hardware.power_analyzer.mock.mock_power_analyzer import (
+    MockPowerAnalyzer,
+)
+from infrastructure.implementation.hardware.power_analyzer.wt1800e.wt1800e_power_analyzer import (
+    WT1800EPowerAnalyzer,
+)
 
 # Hardware implementations - Real hardware
 from infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot import (
@@ -71,6 +77,25 @@ class HardwareFactory(containers.DeclarativeContainer):
             port=config.power.port,
             timeout=config.power.timeout,
             channel=config.power.channel,
+        ),
+    )
+
+    # Power Analyzer service - Mock or Real hardware based on configuration
+    power_analyzer_service = providers.Selector(
+        config.power_analyzer.model,
+        mock=providers.Factory(
+            MockPowerAnalyzer,
+            host=config.power_analyzer.host,
+            port=config.power_analyzer.port,
+            timeout=config.power_analyzer.timeout,
+            element=config.power_analyzer.element,
+        ),
+        wt1800e=providers.Factory(
+            WT1800EPowerAnalyzer,
+            host=config.power_analyzer.host,
+            port=config.power_analyzer.port,
+            timeout=config.power_analyzer.timeout,
+            element=config.power_analyzer.element,
         ),
     )
 

@@ -44,18 +44,29 @@ class HardwareSetupService:
         """
         Connect required hardware components
 
-        Connects power supply and MCU services.
+        Connects power supply, MCU, and optional power analyzer services.
+        If power analyzer is configured, it will be used for power monitoring instead of power supply.
         """
         logger.info("Connecting hardware...")
         power_service = self._hardware_services.power_service
         mcu_service = self._hardware_services.mcu_service
+        power_analyzer = self._hardware_services.power_analyzer_service
 
+        # Always connect power supply (for power control)
         await power_service.connect()
         await mcu_service.connect()
 
-        # Initialize Power Monitor
-        self._power_monitor = PowerMonitor(power_service)
-        logger.info("Power monitor initialized")
+        # Connect power analyzer if available
+        if power_analyzer:
+            logger.info("Power analyzer detected - connecting...")
+            await power_analyzer.connect()
+            # Use power analyzer for monitoring
+            self._power_monitor = PowerMonitor(power_analyzer)
+            logger.info("Power monitor initialized with power analyzer")
+        else:
+            # Use power supply for monitoring (backward compatibility)
+            self._power_monitor = PowerMonitor(power_service)
+            logger.info("Power monitor initialized with power supply")
 
     async def setup_power_supply(
         self, voltage: float, current: float, poweron_stabilization: float
@@ -139,7 +150,7 @@ class HardwareSetupService:
         """
         Clean up hardware connections
 
-        Stops power monitoring and disables power supply and disconnects hardware services.
+        Stops power monitoring, disables power supply, and disconnects all hardware services.
         """
         try:
             logger.info("Cleaning up hardware...")
@@ -155,9 +166,22 @@ class HardwareSetupService:
 
             power_service = self._hardware_services.power_service
             mcu_service = self._hardware_services.mcu_service
+            power_analyzer = self._hardware_services.power_analyzer_service
 
+            # Disable power supply output
             await power_service.disable_output()
+
+            # Disconnect all hardware
             await power_service.disconnect()
             await mcu_service.disconnect()
+
+            # Disconnect power analyzer if it was connected
+            if power_analyzer:
+                try:
+                    if await power_analyzer.is_connected():
+                        await power_analyzer.disconnect()
+                        logger.info("Power analyzer disconnected")
+                except Exception as analyzer_error:
+                    logger.warning(f"Power analyzer cleanup warning: {analyzer_error}")
         except Exception as cleanup_error:
             logger.warning(f"Hardware cleanup warning: {cleanup_error}")

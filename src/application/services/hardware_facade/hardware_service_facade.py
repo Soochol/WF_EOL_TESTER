@@ -30,6 +30,7 @@ from application.interfaces.hardware.digital_io import DigitalIOService
 from application.interfaces.hardware.loadcell import LoadCellService
 from application.interfaces.hardware.mcu import MCUService
 from application.interfaces.hardware.power import PowerService
+from application.interfaces.hardware.power_analyzer import PowerAnalyzerService
 from application.interfaces.hardware.robot import RobotService
 from domain.enums.robot_state import RobotState
 from domain.value_objects.cycle_result import CycleResult
@@ -87,6 +88,7 @@ class HardwareServiceFacade:
             "RepositoryService"
         ] = None,  # Optional for cycle-by-cycle saving
         gui_state_manager = None,  # Optional for GUI cycle updates
+        power_analyzer_service: Optional[PowerAnalyzerService] = None,  # Optional power analyzer
     ):
         # Store services for property access (backward compatibility)
         if TYPE_CHECKING:
@@ -101,6 +103,9 @@ class HardwareServiceFacade:
             self._loadcell = loadcell_service
             self._power = power_service
             self._digital_io = digital_io_service
+
+        # Optional power analyzer for measurement-only operations
+        self._power_analyzer = power_analyzer_service
 
         # Repository service for cycle-by-cycle saving (optional)
         self._repository_service: Optional["RepositoryService"] = repository_service
@@ -192,6 +197,19 @@ class HardwareServiceFacade:
             Used by GUI state manager and I/O monitoring
         """
         return self._digital_io
+
+    @property
+    def power_analyzer_service(self) -> Optional[PowerAnalyzerService]:
+        """
+        Get power analyzer service instance for external access
+
+        Returns:
+            PowerAnalyzerService: Power analyzer hardware service interface (optional)
+
+        Note:
+            Used by power monitoring in specific test cases
+        """
+        return self._power_analyzer
 
     def _log_phase_separator(self, phase_name: str) -> None:
         """
