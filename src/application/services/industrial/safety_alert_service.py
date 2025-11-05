@@ -305,7 +305,7 @@ class SafetyAlertService:
             logger.info("🚦 SAFETY_ALERT: Visual alert triggered via tower lamp")
 
         except Exception as e:
-            logger.error`   (f"🚦 SAFETY_ALERT: Failed to show visual alert: {e}")
+            logger.error(f"🚦 SAFETY_ALERT: Failed to show visual alert: {e}")
 
     def _setup_alert_definitions(self) -> Dict[SafetyViolationType, Dict]:
         """Setup predefined alert definitions"""
