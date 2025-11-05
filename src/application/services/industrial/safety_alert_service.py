@@ -287,6 +287,9 @@ class SafetyAlertService:
             if not self.tower_lamp_service:
                 return
 
+            # Type narrowing for Pylance - ensure tower_lamp_service is not None
+            assert self.tower_lamp_service is not None
+
             # Import SystemStatus here to avoid circular imports
             # Local application imports
             from application.services.industrial.tower_lamp_service import SystemStatus
@@ -302,7 +305,7 @@ class SafetyAlertService:
             logger.info("🚦 SAFETY_ALERT: Visual alert triggered via tower lamp")
 
         except Exception as e:
-            logger.error(f"🚦 SAFETY_ALERT: Failed to show visual alert: {e}")
+            logger.error`   (f"🚦 SAFETY_ALERT: Failed to show visual alert: {e}")
 
     def _setup_alert_definitions(self) -> Dict[SafetyViolationType, Dict]:
         """Setup predefined alert definitions"""
