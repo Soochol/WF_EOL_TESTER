@@ -15,10 +15,8 @@ from PySide6.QtWidgets import QWidget
 from ...core import ConfigValue
 
 
-class BaseEditorMeta(type(QWidget), ABCMeta):  # type: ignore[misc]
+class BaseEditorMeta(ABCMeta, type(QWidget)):  # type: ignore[misc]
     """Metaclass to resolve conflicts between QWidget and ABC metaclasses"""
-
-    pass
 
 
 class BaseEditorWidget(QWidget, metaclass=BaseEditorMeta):
@@ -39,22 +37,22 @@ class BaseEditorWidget(QWidget, metaclass=BaseEditorMeta):
     @abstractmethod
     def setup_ui(self) -> None:
         """Setup the editor UI"""
-        pass
+        ...
 
     @abstractmethod
     def connect_signals(self) -> None:
         """Connect signals for value changes"""
-        pass
+        ...
 
     @abstractmethod
     def get_value(self) -> Any:
         """Get the current value from the editor"""
-        pass
+        ...
 
     @abstractmethod
     def set_value(self, value: Any) -> None:
         """Set the value in the editor"""
-        pass
+        ...
 
     def on_value_changed(self) -> None:
         """Handle value change and emit signal"""
