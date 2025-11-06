@@ -142,8 +142,8 @@ class ParameterDescriptions:
         "power_analyzer.voltage_range": "Default voltage measurement range (e.g., '15V', '30V', '60V', '150V', '300V', '600V', '1000V'). null = auto-range.",
         "power_analyzer.current_range": "Default current measurement range (e.g., '1A', '2A', '5A', '10A', '20A', '50A'). null = auto-range.",
         "power_analyzer.auto_range": "Enable automatic range adjustment for optimal accuracy. Recommended for most use cases.",
-        "power_analyzer.line_filter": "Default line filter frequency for noise reduction (e.g., '500HZ', '1KHZ', '10KHZ', '100KHZ'). null = device default.",
-        "power_analyzer.frequency_filter": "Default frequency filter for signal processing (e.g., '0.5HZ', '1HZ', '10HZ', '100HZ', '1KHZ'). null = device default.",
+        "power_analyzer.line_filter": "Default line filter frequency for noise reduction (e.g., 'None', '500HZ', '1KHZ', '10KHZ', '100KHZ'). 'None' = no filter applied, null = device default.",
+        "power_analyzer.frequency_filter": "Default frequency filter for signal processing (e.g., 'None', '0.5HZ', '1HZ', '10HZ', '100HZ', '1KHZ'). 'None' = no filter applied, null = device default.",
 
         # Digital I/O Configuration
         "digital_io.model": "Digital I/O board model. Options: 'mock' (simulation) or 'ajinextek' (real hardware).",
@@ -242,8 +242,8 @@ class ParameterDescriptions:
         "power_analyzer_voltage_range": "Power analyzer voltage measurement range (e.g., '15V', '30V', '60V', '150V', '300V', '600V', '1000V'). Leave null to use hardware config default.",
         "power_analyzer_current_range": "Power analyzer current measurement range (e.g., '1A', '2A', '5A', '10A', '20A', '50A'). Leave null to use hardware config default.",
         "power_analyzer_auto_range": "Enable automatic range adjustment for optimal measurement accuracy. Recommended unless specific fixed range needed.",
-        "power_analyzer_line_filter": "Line filter frequency for noise reduction (e.g., '500HZ', '1KHZ', '10KHZ', '100KHZ'). Leave null to use hardware config default.",
-        "power_analyzer_frequency_filter": "Frequency filter for signal processing (e.g., '0.5HZ', '1HZ', '10HZ', '100HZ', '1KHZ'). Leave null to use hardware config default.",
+        "power_analyzer_line_filter": "Line filter frequency for noise reduction (e.g., 'None', '500HZ', '1KHZ', '10KHZ', '100KHZ'). 'None' = no filter applied. Leave null to use hardware config default.",
+        "power_analyzer_frequency_filter": "Frequency filter for signal processing (e.g., 'None', '0.5HZ', '1HZ', '10HZ', '100HZ', '1KHZ'). 'None' = no filter applied. Leave null to use hardware config default.",
         "power_analyzer_element": "Power analyzer measurement element/channel number (1-6). Leave null to use hardware config default element.",
     }
 

@@ -140,8 +140,8 @@ class EditorTypes:
     # Power Analyzer measurement range options
     VOLTAGE_RANGES = ["15V", "30V", "60V", "150V", "300V", "600V", "1000V"]
     CURRENT_RANGES = ["1A", "2A", "5A", "10A", "20A", "50A"]
-    LINE_FILTERS = ["500HZ", "1KHZ", "10KHZ", "100KHZ"]
-    FREQUENCY_FILTERS = ["0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ"]
+    LINE_FILTERS = ["None", "500HZ", "1KHZ", "10KHZ", "100KHZ"]
+    FREQUENCY_FILTERS = ["None", "0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ"]
 
     @staticmethod
     def get_combo_options(key: str) -> list[str] | None:
