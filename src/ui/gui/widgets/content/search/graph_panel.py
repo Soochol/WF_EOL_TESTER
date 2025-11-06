@@ -7,6 +7,12 @@ Panel for displaying Force vs Temperature graphs grouped by serial number.
 # Standard library imports
 from typing import Dict, List, Optional
 
+import matplotlib
+import matplotlib.pyplot as plt
+from loguru import logger
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 # Third-party imports
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -16,12 +22,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from loguru import logger
-import matplotlib
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-
 
 # Set matplotlib to use Qt backend
 matplotlib.use("QtAgg")
@@ -31,8 +31,8 @@ from ui.gui.styles.common_styles import (
     BACKGROUND_DARK,
     BACKGROUND_MEDIUM,
     BORDER_DEFAULT,
-    get_groupbox_style,
     TEXT_SECONDARY,
+    get_groupbox_style,
 )
 
 
@@ -148,9 +148,17 @@ class SerialNumberGraph(QWidget):
                 logger.warning(f"No measurements for test_id={test_id}")
                 continue
 
-            # Extract temperature and force values
-            temps = [m.get("temperature") for m in measurements if m.get("temperature") is not None]
-            forces = [m.get("force") for m in measurements if m.get("force") is not None]
+            # Extract temperature and force values (filter out None values)
+            temps: List[float] = [
+                float(m.get("temperature"))  # type: ignore[arg-type]
+                for m in measurements
+                if m.get("temperature") is not None
+            ]
+            forces: List[float] = [
+                float(m.get("force"))  # type: ignore[arg-type]
+                for m in measurements
+                if m.get("force") is not None
+            ]
 
             logger.debug(
                 f"Test {test_id}: {len(temps)} temps, {len(forces)} forces "
@@ -301,7 +309,7 @@ class GraphPanel(QWidget):
         """Clear all graphs"""
         logger.debug(f"Clearing {len(self.serial_graphs)} graphs")
         # Remove all graph widgets
-        for serial_number, graph in self.serial_graphs.items():
+        for graph in self.serial_graphs.values():
             self.graph_layout.removeWidget(graph)
             graph.deleteLater()
 
