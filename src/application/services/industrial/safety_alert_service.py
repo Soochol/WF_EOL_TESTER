@@ -7,14 +7,13 @@ Provides GUI popups, console alerts, and audio warnings for safety issues.
 
 # Standard library imports
 from enum import Enum
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 # Third-party imports
 from loguru import logger
 
 # Local application imports
 from domain.value_objects.hardware_config import DigitalPin
-
 
 if TYPE_CHECKING:
     # Local application imports
@@ -296,7 +295,7 @@ class SafetyAlertService:
 
             # Map alert level to tower lamp status
             if alert.level == SafetyAlertLevel.EMERGENCY:
-                await self.tower_lamp_service.set_system_status(SystemStatus.SYSTEM_EMERGENCY)
+                await self.tower_lamp_service.set_system_status(SystemStatus.EMERGENCY_STOP)
             elif alert.level == SafetyAlertLevel.CRITICAL:
                 await self.tower_lamp_service.set_system_status(SystemStatus.SYSTEM_ERROR)
             else:  # WARNING
