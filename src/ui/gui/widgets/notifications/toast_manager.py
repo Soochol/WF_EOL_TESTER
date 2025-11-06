@@ -6,8 +6,9 @@ Handles displaying, positioning, and animating multiple toast notifications.
 # Standard library imports
 from typing import List
 
-# Third-party imports
 from loguru import logger
+
+# Third-party imports
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QWidget
 

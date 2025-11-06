@@ -5,13 +5,12 @@ These constants are defined based on the AXL library header files.
 """
 
 # Standard library imports
+import platform
 import sys
 from pathlib import Path
-import platform
-
 
 # Library paths - handle both development and PyInstaller environments
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     # Running in PyInstaller bundle
     BASE_DIR = Path(sys._MEIPASS)
     AXL_LIBRARY_DIR = BASE_DIR / "driver" / "AXL"

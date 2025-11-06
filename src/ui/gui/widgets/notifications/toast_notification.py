@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 if TYPE_CHECKING:
+    # Third-party imports
     from PySide6.QtCore import QParallelAnimationGroup
 
 
