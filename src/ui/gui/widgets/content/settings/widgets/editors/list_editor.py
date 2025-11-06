@@ -6,7 +6,7 @@ for spec_points configuration with temperature, stroke, and force limits.
 """
 
 # Standard library imports
-from typing import Any, List
+from typing import Any
 
 # Third-party imports
 from PySide6.QtCore import Qt
@@ -56,7 +56,7 @@ class DoubleSpinBoxDelegate(QStyledItemDelegate):
 
     def setEditorData(self, editor, index):
         """Set data from model to editor"""
-        value = index.model().data(index, Qt.EditRole)
+        value = index.model().data(index, Qt.ItemDataRole.EditRole)
         try:
             editor.setValue(float(value))
         except (ValueError, TypeError):
@@ -66,7 +66,7 @@ class DoubleSpinBoxDelegate(QStyledItemDelegate):
         """Set data from editor to model"""
         editor.interpretText()
         value = editor.value()
-        model.setData(index, value, Qt.EditRole)
+        model.setData(index, value, Qt.ItemDataRole.EditRole)
 
 
 class ListEditorWidget(BaseEditorWidget):
@@ -119,11 +119,11 @@ class ListEditorWidget(BaseEditorWidget):
 
         # Set column widths
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.Fixed)
-        header.setSectionResizeMode(3, QHeaderView.Fixed)
-        header.setSectionResizeMode(4, QHeaderView.Fixed)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, 100)  # Temperature
         self.table.setColumnWidth(1, 120)  # Stroke
         self.table.setColumnWidth(2, 110)  # Upper limit
@@ -191,29 +191,29 @@ class ListEditorWidget(BaseEditorWidget):
             if isinstance(row_data, (list, tuple)) and len(row_data) >= 4:
                 self.add_row_with_data(row_data)
 
-    def add_row_with_data(self, data: List[float]) -> None:
+    def add_row_with_data(self, data: Any) -> None:
         """Add a row with specific data"""
         row = self.table.rowCount()
         self.table.insertRow(row)
 
         # Temperature
         temp_item = QTableWidgetItem(str(data[0]))
-        temp_item.setTextAlignment(Qt.AlignCenter)
+        temp_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 0, temp_item)
 
         # Stroke
         stroke_item = QTableWidgetItem(str(data[1]))
-        stroke_item.setTextAlignment(Qt.AlignCenter)
+        stroke_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 1, stroke_item)
 
         # Upper limit
         upper_item = QTableWidgetItem(str(data[2]))
-        upper_item.setTextAlignment(Qt.AlignCenter)
+        upper_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 2, upper_item)
 
         # Lower limit
         lower_item = QTableWidgetItem(str(data[3]))
-        lower_item.setTextAlignment(Qt.AlignCenter)
+        lower_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 3, lower_item)
 
         # Delete button
@@ -248,14 +248,14 @@ class ListEditorWidget(BaseEditorWidget):
         # Re-connect delete buttons after row removal
         for r in range(self.table.rowCount()):
             btn = self.table.cellWidget(r, 4)
-            if btn:
+            if btn and isinstance(btn, QPushButton):
                 btn.clicked.disconnect()
                 btn.clicked.connect(lambda checked, row_num=r: self.delete_row(row_num))
         self.on_value_changed()
 
     def connect_signals(self) -> None:
         """Connect signals for value changes"""
-        self.table.itemChanged.connect(lambda: self.on_value_changed())
+        self.table.itemChanged.connect(self.on_value_changed)
 
     def get_value(self) -> Any:
         """Get the current value from the table as a list"""
