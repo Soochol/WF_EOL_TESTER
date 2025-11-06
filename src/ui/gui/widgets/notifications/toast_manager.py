@@ -4,7 +4,7 @@ Handles displaying, positioning, and animating multiple toast notifications.
 """
 
 # Standard library imports
-from typing import List, Optional
+from typing import List
 
 # Third-party imports
 from loguru import logger
@@ -148,7 +148,7 @@ class ToastManager:
         animation = ToastAnimations.create_slide_in_animation(toast, parent_width, duration=300)
 
         # Store animation reference to prevent garbage collection
-        toast._slide_in_animation = animation
+        toast._slide_in_animation = animation  # pylint: disable=protected-access
 
         animation.start()
 
@@ -165,7 +165,7 @@ class ToastManager:
         animation = ToastAnimations.create_slide_out_animation(toast, duration=200)
 
         # Store animation reference
-        toast._slide_out_animation = animation
+        toast._slide_out_animation = animation  # pylint: disable=protected-access
 
         # When animation finishes, remove toast
         animation.finished.connect(lambda: self._remove_toast(toast))

@@ -5,10 +5,10 @@ Provides a slide-down notification for test results and system messages.
 
 # Standard library imports
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 # Third-party imports
-from PySide6.QtCore import QTimer, Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
@@ -19,6 +19,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+if TYPE_CHECKING:
+    from PySide6.QtCore import QParallelAnimationGroup
 
 
 class ToastType(Enum):
@@ -77,6 +80,7 @@ class ToastNotification(QFrame):
         title: str,
         message: str,
         toast_type: ToastType = ToastType.INFO,
+        *,
         auto_dismiss: bool = True,
         duration: int = 4000,
         parent: Optional[QWidget] = None,
@@ -112,6 +116,10 @@ class ToastNotification(QFrame):
 
         # Auto-dismiss timer
         self.dismiss_timer: Optional[QTimer] = None
+
+        # Animation references (set by ToastManager to prevent garbage collection)
+        self._slide_in_animation: Optional["QParallelAnimationGroup"] = None
+        self._slide_out_animation: Optional["QParallelAnimationGroup"] = None
 
         self.setup_ui()
         self.apply_styling()
@@ -216,8 +224,8 @@ class ToastNotification(QFrame):
         """
         )
 
-        # Add subtle shadow effect
-        self.setGraphicsEffect(None)  # Clear any existing effect
+        # Clear any existing graphics effects (type: ignore for None argument)
+        self.setGraphicsEffect(None)  # type: ignore[arg-type]
 
     def start_dismiss_timer(self) -> None:
         """Start auto-dismiss timer."""
