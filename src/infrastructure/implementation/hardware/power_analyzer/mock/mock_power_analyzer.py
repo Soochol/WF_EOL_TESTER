@@ -7,7 +7,8 @@ Simulates power measurement functionality of a power analyzer.
 
 # Standard library imports
 import random
-from typing import Dict, Optional
+import time
+from typing import Any, Dict, Optional
 
 # Third-party imports
 import asyncio
@@ -23,8 +24,18 @@ class MockPowerAnalyzer(PowerAnalyzerService):
 
     def __init__(
         self,
+        interface_type: str = "tcp",
+        # TCP/IP parameters
         host: str = "192.168.1.100",
         port: int = 10001,
+        # USB parameters (ignored in mock)
+        usb_vendor_id: Optional[str] = None,
+        usb_model_code: Optional[str] = None,
+        usb_serial_number: Optional[str] = None,
+        # GPIB parameters (ignored in mock)
+        gpib_board: int = 0,
+        gpib_address: int = 7,
+        # Common parameters
         timeout: float = 5.0,
         element: int = 1,
         voltage_range: Optional[str] = None,
@@ -37,8 +48,14 @@ class MockPowerAnalyzer(PowerAnalyzerService):
         Initialize Mock Power Analyzer
 
         Args:
+            interface_type: Connection interface (ignored in mock)
             host: IP address or hostname (for simulation)
             port: TCP port number (for simulation)
+            usb_vendor_id: USB vendor ID (ignored in mock)
+            usb_model_code: USB model code (ignored in mock)
+            usb_serial_number: USB serial number (ignored in mock)
+            gpib_board: GPIB board number (ignored in mock)
+            gpib_address: GPIB device address (ignored in mock)
             timeout: Connection timeout in seconds
             element: Measurement element/channel number
             voltage_range: Voltage range (ignored in mock)
@@ -50,7 +67,8 @@ class MockPowerAnalyzer(PowerAnalyzerService):
         # Initialize state
         self._is_connected = False
 
-        # Connection parameters
+        # Connection parameters (interface parameters ignored in mock)
+        self._interface_type = interface_type
         self._host = host
         self._port = port
         self._timeout = timeout
@@ -73,6 +91,11 @@ class MockPowerAnalyzer(PowerAnalyzerService):
         self._voltage_noise = 0.02  # Voltage measurement noise (±20mV)
         self._current_noise = 0.005  # Current measurement noise (±5mA)
 
+        # Integration state tracking
+        self._integration_start_time: Optional[float] = None
+        self._integration_stop_time: Optional[float] = None
+        self._integration_active = False
+
         logger.info(
             f"MockPowerAnalyzer initialized (Element {self._element}, {self._host}:{self._port}, "
             f"Auto-range: {self._auto_range})"
@@ -92,9 +115,7 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             await asyncio.sleep(self._connection_delay)
 
             self._is_connected = True
-            logger.info(
-                f"Mock Power Analyzer connected successfully (Element {self._element})"
-            )
+            logger.info(f"Mock Power Analyzer connected successfully (Element {self._element})")
 
         except Exception as e:
             logger.error(f"Failed to connect to mock Power Analyzer: {e}")
@@ -157,14 +178,10 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             await asyncio.sleep(self._response_delay)
 
             # Simulate voltage with small random noise
-            voltage = self._base_voltage + random.uniform(
-                -self._voltage_noise, self._voltage_noise
-            )
+            voltage = self._base_voltage + random.uniform(-self._voltage_noise, self._voltage_noise)
 
             # Simulate current with small random noise
-            current = self._base_current + random.uniform(
-                -self._current_noise, self._current_noise
-            )
+            current = self._base_current + random.uniform(-self._current_noise, self._current_noise)
 
             # Ensure non-negative values
             voltage = max(0.0, voltage)
@@ -186,9 +203,7 @@ class MockPowerAnalyzer(PowerAnalyzerService):
 
         except Exception as e:
             logger.error(f"Failed to get mock Power Analyzer measurements: {e}")
-            raise HardwareOperationError(
-                "mock_power_analyzer", "get_measurements", str(e)
-            ) from e
+            raise HardwareOperationError("mock_power_analyzer", "get_measurements", str(e)) from e
 
     async def get_device_identity(self) -> str:
         """
@@ -331,7 +346,7 @@ class MockPowerAnalyzer(PowerAnalyzerService):
         )
 
     async def start_integration(self) -> None:
-        """Start integration measurement (mock - simulated)"""
+        """Start integration measurement (mock - starts time tracking)"""
         if not self._is_connected:
             raise HardwareConnectionError(
                 "mock_power_analyzer",
@@ -339,10 +354,16 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             )
 
         await asyncio.sleep(0.02)
-        logger.info("Mock Power Analyzer: integration started (simulated)")
+
+        # Record start time using high-resolution timer
+        self._integration_start_time = time.perf_counter()
+        self._integration_stop_time = None
+        self._integration_active = True
+
+        logger.info("Mock Power Analyzer: integration started (time tracking enabled)")
 
     async def stop_integration(self) -> None:
-        """Stop integration measurement (mock - simulated)"""
+        """Stop integration measurement (mock - records stop time)"""
         if not self._is_connected:
             raise HardwareConnectionError(
                 "mock_power_analyzer",
@@ -350,10 +371,17 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             )
 
         await asyncio.sleep(0.02)
-        logger.info("Mock Power Analyzer: integration stopped (simulated)")
+
+        # Record stop time
+        if self._integration_active:
+            self._integration_stop_time = time.perf_counter()
+            self._integration_active = False
+            logger.info("Mock Power Analyzer: integration stopped (time tracking stopped)")
+        else:
+            logger.warning("Mock Power Analyzer: stop called but integration was not active")
 
     async def reset_integration(self) -> None:
-        """Reset integration measurement (mock - simulated)"""
+        """Reset integration measurement (mock - clears time tracking)"""
         if not self._is_connected:
             raise HardwareConnectionError(
                 "mock_power_analyzer",
@@ -361,14 +389,20 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             )
 
         await asyncio.sleep(0.02)
-        logger.info("Mock Power Analyzer: integration reset (simulated)")
 
-    async def get_integration_time(self) -> Dict[str, Optional[str]]:
+        # Reset time tracking
+        self._integration_start_time = None
+        self._integration_stop_time = None
+        self._integration_active = False
+
+        logger.info("Mock Power Analyzer: integration reset (time tracking cleared)")
+
+    async def get_integration_state(self) -> str:
         """
-        Get integration elapsed time (mock - simulated)
+        Get current integration state (mock implementation)
 
         Returns:
-            Dictionary with simulated start and end times
+            Integration state: "RESET", "START", or "STOP"
         """
         if not self._is_connected:
             raise HardwareConnectionError(
@@ -376,28 +410,67 @@ class MockPowerAnalyzer(PowerAnalyzerService):
                 "Power Analyzer is not connected",
             )
 
-        import time
+        await asyncio.sleep(0.01)
+
+        if self._integration_active:
+            return "START"
+        elif self._integration_start_time is not None and self._integration_stop_time is not None:
+            return "STOP"
+        else:
+            return "RESET"
+
+    async def get_integration_time(self) -> Dict[str, Any]:
+        """
+        Get integration elapsed time (mock - actual timing data)
+
+        Returns:
+            Dictionary with actual start/stop times and elapsed time
+        """
+        if not self._is_connected:
+            raise HardwareConnectionError(
+                "mock_power_analyzer",
+                "Power Analyzer is not connected",
+            )
+
         await asyncio.sleep(self._response_delay)
 
-        # Simulate time data
-        current_time = time.strftime("%H:%M:%S")
-        result = {
-            'start': current_time,
-            'end': None,  # Simulating ongoing integration
-        }
+        # Return actual timing data
+        if self._integration_start_time is not None:
+            if self._integration_stop_time is not None:
+                elapsed_time = self._integration_stop_time - self._integration_start_time
+            else:
+                elapsed_time = time.perf_counter() - self._integration_start_time
 
-        logger.debug(f"Mock Power Analyzer: integration time query (simulated): {result}")
+            result = {
+                "start_time": self._integration_start_time,
+                "stop_time": self._integration_stop_time,
+                "elapsed_time": elapsed_time,
+            }
+        else:
+            result = {
+                "start_time": None,
+                "stop_time": None,
+                "elapsed_time": 0.0,
+            }
+
+        logger.debug(
+            f"Mock Power Analyzer: integration time query - "
+            f"Elapsed: {result['elapsed_time']:.2f}s"
+        )
         return result
 
     async def get_integration_data(self, element: Optional[int] = None) -> Dict[str, float]:
         """
-        Get integration data (mock - simulated)
+        Get integration data (mock - time-based calculation)
+
+        Calculates energy based on actual elapsed time since integration started.
+        Energy = Power × Time (E = P × t)
 
         Args:
             element: Measurement element (ignored in mock)
 
         Returns:
-            Dictionary with simulated energy values
+            Dictionary with calculated energy values based on elapsed time
         """
         if not self._is_connected:
             raise HardwareConnectionError(
@@ -407,14 +480,49 @@ class MockPowerAnalyzer(PowerAnalyzerService):
 
         await asyncio.sleep(self._response_delay)
 
-        # Simulate realistic integration values
-        # Assume 1 hour at base power: P = 24V * 2.5A = 60W -> 60Wh
-        active_energy_wh = 60.0 + random.uniform(-5.0, 5.0)
-        apparent_energy_vah = 65.0 + random.uniform(-5.0, 5.0)
-        reactive_energy_varh = 10.0 + random.uniform(-2.0, 2.0)
+        # Check if integration was started
+        if self._integration_start_time is None:
+            logger.warning("Mock Power Analyzer: get_integration_data called without start")
+            return {
+                "active_energy_wh": 0.0,
+                "apparent_energy_vah": 0.0,
+                "reactive_energy_varh": 0.0,
+            }
+
+        # Calculate elapsed time in hours
+        if self._integration_stop_time is not None:
+            # Integration was stopped - use stop time
+            elapsed_seconds = self._integration_stop_time - self._integration_start_time
+        else:
+            # Integration still active - use current time
+            elapsed_seconds = time.perf_counter() - self._integration_start_time
+
+        elapsed_hours = elapsed_seconds / 3600.0
+
+        # Calculate base power (P = V × I)
+        base_power_watts = self._base_voltage * self._base_current
+
+        # Calculate energy (E = P × t)
+        # Active energy = Real power × time
+        active_energy_wh = base_power_watts * elapsed_hours
+
+        # Add realistic measurement noise (±2% for high-precision power analyzer)
+        noise_factor = 1.0 + random.uniform(-0.02, 0.02)
+        active_energy_wh *= noise_factor
+
+        # Apparent energy is typically slightly higher (power factor ~0.92)
+        # Apparent = Active / power_factor
+        power_factor = 0.92
+        apparent_energy_vah = active_energy_wh / power_factor
+
+        # Reactive energy from power triangle: Q = √(S² - P²)
+        # Simplified: reactive ≈ active × tan(acos(pf))
+        reactive_energy_varh = active_energy_wh * 0.426  # tan(acos(0.92)) ≈ 0.426
 
         logger.debug(
-            f"Mock Power Analyzer: integration data (simulated) - "
+            f"Mock Power Analyzer: integration data (time-based) - "
+            f"Elapsed: {elapsed_seconds:.2f}s ({elapsed_hours:.4f}h), "
+            f"Base Power: {base_power_watts:.2f}W, "
             f"Active: {active_energy_wh:.4f}Wh, Apparent: {apparent_energy_vah:.4f}VAh, "
             f"Reactive: {reactive_energy_varh:.4f}varh"
         )

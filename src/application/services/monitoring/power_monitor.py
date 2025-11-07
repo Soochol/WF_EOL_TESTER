@@ -644,7 +644,8 @@ class PowerMonitor:
         """
         Stop cycle power measurement and return average power
 
-        Uses state manager to ensure safe stop operation with idempotent behavior.
+        Uses state manager with hardware synchronization to ensure safe stop operation.
+        Implements idempotent behavior with automatic error recovery.
 
         Returns:
             Dictionary containing:
@@ -662,6 +663,31 @@ class PowerMonitor:
             )
 
         analyzer = cast(PowerAnalyzerService, self._power_device)
+
+        # Synchronize state manager with actual hardware state (Clean Architecture)
+        try:
+            hw_state = await analyzer.get_integration_state()
+            logger.debug(f"🔋 Hardware integration state: {hw_state}")
+
+            # Update state manager to match hardware reality
+            if hw_state == "START" and not self._integration_state_manager.is_running():
+                # Hardware is running but state manager thinks it's not - sync
+                logger.warning(
+                    "⚠️  State desync detected: Hardware=START, Manager="
+                    f"{self._integration_state_manager.get_state_name()}"
+                )
+                self._integration_state_manager._state = IntegrationState.RUNNING
+
+            elif hw_state in ["STOP", "RESET"] and self._integration_state_manager.is_running():
+                # Hardware is stopped but state manager thinks it's running - sync
+                logger.warning(
+                    f"⚠️  State desync detected: Hardware={hw_state}, Manager="
+                    f"{self._integration_state_manager.get_state_name()}"
+                )
+                self._integration_state_manager._state = IntegrationState.STOPPED
+
+        except Exception as sync_error:
+            logger.warning(f"⚠️  Failed to sync hardware state: {sync_error}")
 
         # Stop integration with state validation (RUNNING → STOPPED)
         if self._integration_state_manager.can_stop():
