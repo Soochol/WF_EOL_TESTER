@@ -330,6 +330,9 @@ class TestCycleExecutor:
             logger.info(f"{cycle_header:^50}")
             logger.info(separator)
 
+            # Track if cycle integration was started (for cleanup in finally block)
+            cycle_integration_started = False
+
             try:
                 # Start per-cycle power measurement (if power monitoring enabled and integration capable)
                 if (
@@ -338,6 +341,7 @@ class TestCycleExecutor:
                 ):
                     try:
                         await self._power_monitor.start_cycle_power_measurement()
+                        cycle_integration_started = True  # Mark as started for cleanup
                         logger.debug(f"🔋 [Cycle {i+1}] Power integration started")
                     except Exception as e:
                         logger.warning(
@@ -449,6 +453,23 @@ class TestCycleExecutor:
                 logger.error(f"❌ Cycle {i+1}/{repeat_count} failed: {cycle_error}")
                 # Re-raise to be handled at higher level with partial data
                 raise cycle_error
+
+            finally:
+                # Ensure integration is reset if cycle was interrupted (cleanup on error)
+                # Note: Normal completion already calls stop_cycle_power_measurement() which has its own finally block
+                # This handles the case where cycle fails between start and stop
+                if cycle_integration_started and hc_config.power_monitoring_enabled:
+                    try:
+                        if self._power_monitor.has_integration_capability():
+                            # Force stop to ensure integration is reset
+                            # stop_cycle_power_measurement() is idempotent and has its own finally block
+                            # This ensures cleanup even if cycle failed mid-execution
+                            logger.debug(f"🔄 [Cycle {i+1}] Ensuring integration cleanup in finally block")
+                            await self._power_monitor.stop_cycle_power_measurement()
+                    except Exception as cleanup_error:
+                        logger.warning(
+                            f"⚠️ [Cycle {i+1}] Failed to cleanup cycle integration in finally block: {cleanup_error}"
+                        )
 
             # Stabilization wait between cycles
             if i < repeat_count - 1:  # Don't wait after last cycle

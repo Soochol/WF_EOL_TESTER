@@ -271,11 +271,6 @@ class PowerMonitor:
                 f"{result['average_power_watts']:.2f}W avg, {duration:.2f}s"
             )
 
-            # Reset integration to IDLE for front panel menu access
-            await analyzer.reset_integration()
-            self._integration_state_manager.reset()
-            logger.info("🔄 Integration reset to IDLE - front panel menu accessible")
-
             return result
 
         except Exception as e:
@@ -287,6 +282,15 @@ class PowerMonitor:
                 "error": str(e),
                 "duration_seconds": round(time.perf_counter() - self._start_time, 2),
             }
+
+        finally:
+            # Always reset integration to IDLE for front panel menu access (even on error)
+            try:
+                await analyzer.reset_integration()
+                self._integration_state_manager.reset()
+                logger.info("🔄 Integration reset to IDLE - front panel menu accessible")
+            except Exception as reset_error:
+                logger.error(f"❌ Failed to reset integration during cleanup: {reset_error}")
 
     async def _stop_polling_monitoring(self) -> Dict[str, Any]:
         """
@@ -669,69 +673,74 @@ class PowerMonitor:
 
         analyzer = cast(PowerAnalyzerService, self._power_device)
 
-        # Synchronize state manager with actual hardware state (Clean Architecture)
         try:
-            hw_state = await analyzer.get_integration_state()
-            logger.debug(f"🔋 Hardware integration state: {hw_state}")
+            # Synchronize state manager with actual hardware state (Clean Architecture)
+            try:
+                hw_state = await analyzer.get_integration_state()
+                logger.debug(f"🔋 Hardware integration state: {hw_state}")
 
-            # Update state manager to match hardware reality
-            if hw_state == "START" and not self._integration_state_manager.is_running():
-                # Hardware is running but state manager thinks it's not - sync
-                logger.warning(
-                    "⚠️  State desync detected: Hardware=START, Manager="
-                    f"{self._integration_state_manager.get_state_name()}"
+                # Update state manager to match hardware reality
+                if hw_state == "START" and not self._integration_state_manager.is_running():
+                    # Hardware is running but state manager thinks it's not - sync
+                    logger.warning(
+                        "⚠️  State desync detected: Hardware=START, Manager="
+                        f"{self._integration_state_manager.get_state_name()}"
+                    )
+                    self._integration_state_manager._state = IntegrationState.RUNNING
+
+                elif hw_state in ["STOP", "RESET"] and self._integration_state_manager.is_running():
+                    # Hardware is stopped but state manager thinks it's running - sync
+                    logger.warning(
+                        f"⚠️  State desync detected: Hardware={hw_state}, Manager="
+                        f"{self._integration_state_manager.get_state_name()}"
+                    )
+                    self._integration_state_manager._state = IntegrationState.STOPPED
+
+            except Exception as sync_error:
+                logger.warning(f"⚠️  Failed to sync hardware state: {sync_error}")
+
+            # Stop integration with state validation (RUNNING → STOPPED)
+            if self._integration_state_manager.can_stop():
+                await analyzer.stop_integration()
+                self._integration_state_manager.stop()
+                logger.debug(
+                    f"🔋 Cycle integration stopped (state: {self._integration_state_manager.get_state_name()})"
                 )
-                self._integration_state_manager._state = IntegrationState.RUNNING
-
-            elif hw_state in ["STOP", "RESET"] and self._integration_state_manager.is_running():
-                # Hardware is stopped but state manager thinks it's running - sync
+            elif self._integration_state_manager.is_stopped():
+                logger.debug("ℹ️  Cycle integration already stopped (idempotent)")
+            else:
                 logger.warning(
-                    f"⚠️  State desync detected: Hardware={hw_state}, Manager="
-                    f"{self._integration_state_manager.get_state_name()}"
+                    f"⚠️  Unexpected state during cycle stop: {self._integration_state_manager.get_state_name()}"
                 )
-                self._integration_state_manager._state = IntegrationState.STOPPED
 
-        except Exception as sync_error:
-            logger.warning(f"⚠️  Failed to sync hardware state: {sync_error}")
+            # Get integration data (includes elapsed time from WT1800E TIME item)
+            integration_data = await analyzer.get_integration_data()
 
-        # Stop integration with state validation (RUNNING → STOPPED)
-        if self._integration_state_manager.can_stop():
-            await analyzer.stop_integration()
-            self._integration_state_manager.stop()
+            # Extract elapsed time from integration data (WT1800E internal time measurement)
+            elapsed_seconds = integration_data.get("elapsed_time_seconds", 0.0)
+            elapsed_hours = elapsed_seconds / 3600.0
+
+            # Calculate average power (P = E / t)
+            avg_power_w = (
+                integration_data["active_energy_wh"] / elapsed_hours if elapsed_hours > 0 else 0.0
+            )
+
             logger.debug(
-                f"🔋 Cycle integration stopped (state: {self._integration_state_manager.get_state_name()})"
-            )
-        elif self._integration_state_manager.is_stopped():
-            logger.debug("ℹ️  Cycle integration already stopped (idempotent)")
-        else:
-            logger.warning(
-                f"⚠️  Unexpected state during cycle stop: {self._integration_state_manager.get_state_name()}"
+                f"🔋 Cycle power measurement stopped: {avg_power_w:.2f}W avg, "
+                f"{integration_data['active_energy_wh']:.4f}Wh, {elapsed_seconds:.2f}s"
             )
 
-        # Get integration data (includes elapsed time from WT1800E TIME item)
-        integration_data = await analyzer.get_integration_data()
+            return {
+                "average_power_w": avg_power_w,
+                "energy_wh": integration_data["active_energy_wh"],
+                "elapsed_seconds": elapsed_seconds,
+            }
 
-        # Extract elapsed time from integration data (WT1800E internal time measurement)
-        elapsed_seconds = integration_data.get("elapsed_time_seconds", 0.0)
-        elapsed_hours = elapsed_seconds / 3600.0
-
-        # Calculate average power (P = E / t)
-        avg_power_w = (
-            integration_data["active_energy_wh"] / elapsed_hours if elapsed_hours > 0 else 0.0
-        )
-
-        logger.debug(
-            f"🔋 Cycle power measurement stopped: {avg_power_w:.2f}W avg, "
-            f"{integration_data['active_energy_wh']:.4f}Wh, {elapsed_seconds:.2f}s"
-        )
-
-        # Reset integration to IDLE for front panel menu access
-        await analyzer.reset_integration()
-        self._integration_state_manager.reset()
-        logger.debug("🔄 Cycle integration reset to IDLE - front panel menu accessible")
-
-        return {
-            "average_power_w": avg_power_w,
-            "energy_wh": integration_data["active_energy_wh"],
-            "elapsed_seconds": elapsed_seconds,
-        }
+        finally:
+            # Always reset integration to IDLE for front panel menu access (even on error)
+            try:
+                await analyzer.reset_integration()
+                self._integration_state_manager.reset()
+                logger.debug("🔄 Cycle integration reset to IDLE - front panel menu accessible")
+            except Exception as reset_error:
+                logger.error(f"❌ Failed to reset cycle integration during cleanup: {reset_error}")

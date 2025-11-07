@@ -574,20 +574,28 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             raise HardwareConnectionError("wt1800e", "Power Analyzer is not connected")
 
         try:
-            # Use voltage range as-is (with unit)
-            # WT1800E expects format like: "10V", "5V", "1V", "500mV" (with unit)
-            # Manual example: :INPUT:CURRENT:RANGE:ELEMENT1 EXTERNAL,10V
-            voltage_with_unit = voltage_range.upper()
+            # Parse voltage value and remove unit (V or mV)
+            # Config example: "5V" -> send "EXTERNAL,5"
+            # WT1800E accepts just the numeric value without unit
+            voltage_upper = voltage_range.upper()
+
+            # Remove 'V' or 'MV' suffix to get numeric value
+            if voltage_upper.endswith('MV'):
+                voltage_numeric = voltage_upper[:-2]
+            elif voltage_upper.endswith('V'):
+                voltage_numeric = voltage_upper[:-1]
+            else:
+                voltage_numeric = voltage_upper  # Already numeric
 
             # Set external current sensor using RANGE command with EXTERNAL parameter
             # Command: :INPUT:CURRENT:RANGE:ELEMENT1 EXTERNAL,<voltage>
-            # Note: No parentheses, no space after comma (per WT1800E manual example)
+            # Note: No parentheses, no space after comma, no unit (numeric value only)
             await self._send_command(
-                f":INPut:CURRent:RANGe:ELEMent{self._element} EXTernal,{voltage_with_unit}"
+                f":INPut:CURRent:RANGe:ELEMent{self._element} EXTernal,{voltage_numeric}"
             )
             logger.info(
-                f"WT1800E external current sensor range set to EXTERNAL,{voltage_with_unit} "
-                f"(Element {self._element}, {scaling_ratio}A display range)"
+                f"WT1800E external current sensor range set to EXTERNAL,{voltage_numeric} "
+                f"(Element {self._element}, {scaling_ratio}A display range, config: {voltage_range})"
             )
 
             # Set external sensor display mode to MEAsure
