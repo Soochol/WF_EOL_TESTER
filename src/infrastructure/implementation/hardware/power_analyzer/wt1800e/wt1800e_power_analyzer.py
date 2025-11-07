@@ -576,12 +576,13 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
                 voltage_numeric = "1"
 
             # Set external current sensor using RANGE command with EXTERNAL parameter
-            # Command: :INPUT:CURRENT:RANGE:ELEMENT1 (EXTernal,<voltage>)
+            # Command: :INPUT:CURRENT:RANGE:ELEMENT1 (EXTernal, <voltage>)
+            # Note: Space after comma is required by WT1800E SCPI parser
             await self._send_command(
-                f":INPut:CURRent:RANGe:ELEMent{self._element} (EXTernal,{voltage_numeric})"
+                f":INPut:CURRent:RANGe:ELEMent{self._element} (EXTernal, {voltage_numeric})"
             )
             logger.info(
-                f"WT1800E external current sensor range set to (EXTernal,{voltage_numeric}) "
+                f"WT1800E external current sensor range set to (EXTernal, {voltage_numeric}) "
                 f"(Element {self._element})"
             )
 
