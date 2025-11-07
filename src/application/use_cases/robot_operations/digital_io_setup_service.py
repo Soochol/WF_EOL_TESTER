@@ -6,6 +6,7 @@ Manages connection verification and output channel control.
 """
 
 # Third-party imports
+import asyncio
 from loguru import logger
 
 # Local application imports
@@ -88,6 +89,10 @@ class DigitalIOSetupService:
         logger.info(
             f"Digital Output channel {servo_brake_channel} (servo brake release) enabled successfully"
         )
+
+        # Wait for brake to physically release (mechanical stabilization delay)
+        await asyncio.sleep(0.5)  # 500ms delay
+        logger.info("Brake release stabilization delay completed (500ms)")
 
     def _handle_setup_error(
         self, dio_error: Exception, servo_brake_channel: int, irq_no: int
