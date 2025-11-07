@@ -365,6 +365,9 @@ class PowerAnalyzerConfig:
     line_filter: Optional[str] = None  # e.g., "10KHZ" (None = default)
     frequency_filter: Optional[str] = None  # e.g., "1HZ" (None = default)
 
+    # External current sensor configuration (optional)
+    external_current_sensor: Optional[Dict[str, Any]] = None  # External current sensor settings
+
     def __post_init__(self) -> None:
         """Validate power analyzer configuration after initialization"""
         if self.model not in SUPPORTED_POWER_ANALYZER_MODELS:
@@ -675,7 +678,9 @@ class HardwareConfig:
             loadcell=cast(LoadCellConfig, current_values.get("loadcell", self.loadcell)),
             mcu=cast(MCUConfig, current_values.get("mcu", self.mcu)),
             power=cast(PowerConfig, current_values.get("power", self.power)),
-            power_analyzer=cast(PowerAnalyzerConfig, current_values.get("power_analyzer", self.power_analyzer)),
+            power_analyzer=cast(
+                PowerAnalyzerConfig, current_values.get("power_analyzer", self.power_analyzer)
+            ),
             digital_io=cast(DigitalIOConfig, current_values.get("digital_io", self.digital_io)),
         )
 
@@ -733,6 +738,7 @@ class HardwareConfig:
                 "auto_range": self.power_analyzer.auto_range,
                 "line_filter": self.power_analyzer.line_filter,
                 "frequency_filter": self.power_analyzer.frequency_filter,
+                "external_current_sensor": self.power_analyzer.external_current_sensor,
             },
             "digital_io": {
                 "model": self.digital_io.model,
@@ -827,7 +833,9 @@ class HardwareConfig:
             loadcell=cast(LoadCellConfig, data_copy.get("loadcell", LoadCellConfig())),
             mcu=cast(MCUConfig, data_copy.get("mcu", MCUConfig())),
             power=cast(PowerConfig, data_copy.get("power", PowerConfig())),
-            power_analyzer=cast(PowerAnalyzerConfig, data_copy.get("power_analyzer", PowerAnalyzerConfig())),
+            power_analyzer=cast(
+                PowerAnalyzerConfig, data_copy.get("power_analyzer", PowerAnalyzerConfig())
+            ),
             digital_io=cast(DigitalIOConfig, data_copy.get("digital_io", DigitalIOConfig())),
         )
 

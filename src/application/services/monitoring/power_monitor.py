@@ -271,6 +271,11 @@ class PowerMonitor:
                 f"{result['average_power_watts']:.2f}W avg, {duration:.2f}s"
             )
 
+            # Reset integration to IDLE for front panel menu access
+            await analyzer.reset_integration()
+            self._integration_state_manager.reset()
+            logger.info("🔄 Integration reset to IDLE - front panel menu accessible")
+
             return result
 
         except Exception as e:
@@ -720,6 +725,11 @@ class PowerMonitor:
             f"🔋 Cycle power measurement stopped: {avg_power_w:.2f}W avg, "
             f"{integration_data['active_energy_wh']:.4f}Wh, {elapsed_seconds:.2f}s"
         )
+
+        # Reset integration to IDLE for front panel menu access
+        await analyzer.reset_integration()
+        self._integration_state_manager.reset()
+        logger.debug("🔄 Cycle integration reset to IDLE - front panel menu accessible")
 
         return {
             "average_power_w": avg_power_w,
