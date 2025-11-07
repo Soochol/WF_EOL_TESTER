@@ -576,8 +576,11 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
         try:
             # Parse voltage range to numeric value
             voltage_numeric = voltage_range.upper().replace("V", "").replace("M", "E-3")
+            # Handle common cases: "1V" -> "1", "0.5V" -> "0.5", "500mV" -> "500E-3"
             if voltage_numeric == "1":
                 voltage_numeric = "1"
+            elif voltage_numeric == "0.5":
+                voltage_numeric = "0.5"
 
             # Set external current sensor using RANGE command with EXTERNAL parameter
             # Command: :INPUT:CURRENT:RANGE:ELEMENT1 EXTERNAL,<voltage>
@@ -586,19 +589,25 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
                 f":INPut:CURRent:RANGe:ELEMent{self._element} EXTernal,{voltage_numeric}"
             )
             logger.info(
-                f"WT1800E external current sensor range set to EXTERNAL,{voltage_numeric} "
-                f"(Element {self._element})"
+                f"WT1800E external current sensor range set to EXTERNAL,{voltage_numeric}V "
+                f"(Element {self._element}, {scaling_ratio}A range)"
             )
 
-            # Set current scaling ratio
-            # Command: :INPUT:CURRENT:SRATIO:ELEMENT1 <ratio>
-            await self._send_command(
-                f":INPut:CURRent:SRATio:ELEMent{self._element} {scaling_ratio}"
-            )
+            # Set external sensor display mode to MEAsure
+            # Command: :INPUT:CURRENT:EXTSENSOR:DISPLAY MEASURE
+            # Display mode: DIRect (sensor voltage) or MEAsure (scaled current)
+            await self._send_command(":INPut:CURRent:EXTSensor:DISPlay MEAsure")
             logger.info(
-                f"WT1800E current scaling ratio set to {scaling_ratio} "
-                f"(Element {self._element}, {voltage_range} = {scaling_ratio}A)"
+                f"WT1800E external current sensor display mode set to MEAsure "
+                f"(Display: {scaling_ratio}A instead of {voltage_range})"
             )
+
+            # Note: SRATio command is NOT used - display scaling is handled by MEAsure mode
+            # The WT1800E automatically calculates current from voltage based on the sensor range
+            # Keeping this commented for reference:
+            # await self._send_command(
+            #     f":INPut:CURRent:SRATio:ELEMent{self._element} {scaling_ratio}"
+            # )
 
             # Check for errors
             errors = await self._check_errors()
@@ -611,8 +620,8 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
                 )
 
             logger.info(
-                f"✅ External current sensor configured: {voltage_range} = {scaling_ratio}A "
-                f"(Sensor: {scaling_ratio/10}mV/A)"
+                f"✅ External current sensor configured: {voltage_range} sensor input, "
+                f"{scaling_ratio}A display range (Sensor: {scaling_ratio/10}mV/A)"
             )
 
         except Exception as e:
