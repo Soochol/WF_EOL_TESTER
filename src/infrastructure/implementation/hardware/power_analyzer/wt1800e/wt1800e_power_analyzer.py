@@ -450,10 +450,18 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
 
         try:
             if auto_range:
-                # Enable auto-range for voltage and current (Guide 4.1.1, 4.1.2)
+                # Enable auto-range for voltage (Guide 4.1.1)
                 await self._send_command(":INPut:VOLTage:AUTO:ALL ON")
-                await self._send_command(":INPut:CURRent:AUTO:ALL ON")
-                logger.info("WT1800E auto-range enabled for voltage and current")
+
+                # Enable auto-range for current ONLY if external sensor is NOT used
+                # External sensor conflicts with current range settings
+                if not self._external_current_sensor_enabled:
+                    await self._send_command(":INPut:CURRent:AUTO:ALL ON")
+                    logger.info("WT1800E auto-range enabled for voltage and current")
+                else:
+                    logger.info(
+                        "WT1800E auto-range enabled for voltage (current controlled by external sensor)"
+                    )
             else:
                 # Set manual ranges
                 if voltage_range:
@@ -461,10 +469,14 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
                     await self._send_command(cmd)
                     logger.info(f"WT1800E voltage range set to {voltage_range}")
 
-                if current_range:
+                # Set current range ONLY if external sensor is NOT used
+                # External sensor conflicts with current range settings
+                if current_range and not self._external_current_sensor_enabled:
                     cmd = f":INPut:CURRent:RANGe:ELEMent{self._element} {current_range}"
                     await self._send_command(cmd)
                     logger.info(f"WT1800E current range set to {current_range}")
+                elif self._external_current_sensor_enabled:
+                    logger.info("WT1800E current range skipped (external sensor enabled)")
 
             # Check for errors
             errors = await self._check_errors()
