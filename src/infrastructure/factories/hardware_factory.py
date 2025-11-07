@@ -118,6 +118,10 @@ class HardwareFactory(containers.DeclarativeContainer):
             auto_range=config.power_analyzer.auto_range,
             line_filter=config.power_analyzer.line_filter,
             frequency_filter=config.power_analyzer.frequency_filter,
+            # External current sensor configuration
+            external_current_sensor_enabled=config.power_analyzer.external_current_sensor.enabled,
+            external_current_sensor_voltage_range=config.power_analyzer.external_current_sensor.voltage_range,
+            external_current_sensor_scaling_ratio=config.power_analyzer.external_current_sensor.scaling_ratio,
         ),
     )
 
