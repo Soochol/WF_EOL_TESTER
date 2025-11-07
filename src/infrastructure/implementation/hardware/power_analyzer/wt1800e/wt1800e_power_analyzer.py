@@ -418,9 +418,13 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
         if not self._visa_comm:
             raise VISAConnectionError("wt1800e", "VISA communication not initialized")
 
+        # Debug: Log actual SCPI command being sent
+        logger.debug(f"📤 SCPI TX: {command!r}")
+
         # If command is a query (ends with ?), use query method
         if "?" in command:
             response = await self._visa_comm.query(command)
+            logger.debug(f"📥 SCPI RX: {response!r}")
             return response.strip()
         else:
             # Non-query command, just send
@@ -576,13 +580,13 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
                 voltage_numeric = "1"
 
             # Set external current sensor using RANGE command with EXTERNAL parameter
-            # Command: :INPUT:CURRENT:RANGE:ELEMENT1 (EXTernal, <voltage>)
-            # Note: Space after comma is required by WT1800E SCPI parser
+            # Command: :INPUT:CURRENT:RANGE:ELEMENT1 EXTERNAL,<voltage>
+            # Note: No parentheses, no space after comma (per WT1800E manual example)
             await self._send_command(
-                f":INPut:CURRent:RANGe:ELEMent{self._element} (EXTernal, {voltage_numeric})"
+                f":INPut:CURRent:RANGe:ELEMent{self._element} EXTernal,{voltage_numeric}"
             )
             logger.info(
-                f"WT1800E external current sensor range set to (EXTernal, {voltage_numeric}) "
+                f"WT1800E external current sensor range set to EXTERNAL,{voltage_numeric} "
                 f"(Element {self._element})"
             )
 
