@@ -470,7 +470,11 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             element: Measurement element (ignored in mock)
 
         Returns:
-            Dictionary with calculated energy values based on elapsed time
+            Dictionary containing:
+            - 'active_energy_wh': Active energy in Wh
+            - 'apparent_energy_vah': Apparent energy in VAh
+            - 'reactive_energy_varh': Reactive energy in varh
+            - 'elapsed_time_seconds': Integration time in seconds
         """
         if not self._is_connected:
             raise HardwareConnectionError(
@@ -487,6 +491,7 @@ class MockPowerAnalyzer(PowerAnalyzerService):
                 "active_energy_wh": 0.0,
                 "apparent_energy_vah": 0.0,
                 "reactive_energy_varh": 0.0,
+                "elapsed_time_seconds": 0.0,
             }
 
         # Calculate elapsed time in hours
@@ -531,4 +536,5 @@ class MockPowerAnalyzer(PowerAnalyzerService):
             "active_energy_wh": active_energy_wh,
             "apparent_energy_vah": apparent_energy_vah,
             "reactive_energy_varh": reactive_energy_varh,
+            "elapsed_time_seconds": elapsed_seconds,  # Include elapsed time for power calculation
         }

@@ -1208,6 +1208,7 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             - 'active_energy_wh': Active energy in Wh (WP)
             - 'apparent_energy_vah': Apparent energy in VAh (WS)
             - 'reactive_energy_varh': Reactive energy in varh (WQ)
+            - 'elapsed_time_seconds': Integration time in seconds (TIME item from WT1800E)
 
         Raises:
             HardwareConnectionError: If not connected
@@ -1223,6 +1224,9 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             "active_energy_wh": values["wh"],
             "apparent_energy_vah": 0.0,  # Not configured in NUMERIC items
             "reactive_energy_varh": 0.0,  # Not configured in NUMERIC items
+            "elapsed_time_seconds": values[
+                "time"
+            ],  # Integration time from WT1800E internal TIME item
         }
 
     # ========================================================================

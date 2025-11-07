@@ -708,12 +708,11 @@ class PowerMonitor:
                 f"⚠️  Unexpected state during cycle stop: {self._integration_state_manager.get_state_name()}"
             )
 
-        # Get integration data
+        # Get integration data (includes elapsed time from WT1800E TIME item)
         integration_data = await analyzer.get_integration_data()
 
-        # Get time data
-        time_data = await analyzer.get_integration_time()
-        elapsed_seconds = time_data["elapsed_time"]
+        # Extract elapsed time from integration data (WT1800E internal time measurement)
+        elapsed_seconds = integration_data.get("elapsed_time_seconds", 0.0)
         elapsed_hours = elapsed_seconds / 3600.0
 
         # Calculate average power (P = E / t)
