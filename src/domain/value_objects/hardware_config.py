@@ -334,9 +334,23 @@ class PowerAnalyzerConfig:
     # Hardware model selection
     model: str = "mock"  # "mock", "wt1800e"
 
-    # Network connection parameters
+    # Connection interface selection
+    interface_type: str = "tcp"  # "tcp", "usb", "gpib"
+
+    # TCP/IP connection parameters (used when interface_type='tcp')
     host: str = "192.168.1.100"  # IP address of the power analyzer
     port: int = 10001  # TCP port for communication (default for WT1800E)
+
+    # USB connection parameters (used when interface_type='usb')
+    usb_vendor_id: Optional[str] = None  # USB vendor ID (None = use default 0x0B21)
+    usb_model_code: Optional[str] = None  # USB model code (None = use default 0x0039)
+    usb_serial_number: Optional[str] = None  # USB serial number (None = auto-detect)
+
+    # GPIB connection parameters (used when interface_type='gpib')
+    gpib_board: int = 0  # GPIB board number
+    gpib_address: int = 7  # GPIB device address
+
+    # Common connection parameters
     timeout: float = 5.0  # Connection timeout in seconds
 
     # Measurement configuration
@@ -360,19 +374,46 @@ class PowerAnalyzerConfig:
                 f"Unsupported power analyzer model. Supported: {', '.join(sorted(SUPPORTED_POWER_ANALYZER_MODELS))}",
             )
 
-        if not self.host:
+        # Validate interface type
+        valid_interfaces = ["tcp", "usb", "gpib"]
+        if self.interface_type not in valid_interfaces:
             raise ValidationException(
-                "power_analyzer.host",
-                self.host,
-                "Power analyzer host cannot be empty",
+                "power_analyzer.interface_type",
+                self.interface_type,
+                f"Interface type must be one of: {', '.join(valid_interfaces)}",
             )
 
-        if not 1 <= self.port <= 65535:
-            raise ValidationException(
-                "power_analyzer.port",
-                self.port,
-                "Power analyzer port must be between 1 and 65535",
-            )
+        # Validate TCP/IP parameters (when using TCP interface)
+        if self.interface_type == "tcp":
+            if not self.host:
+                raise ValidationException(
+                    "power_analyzer.host",
+                    self.host,
+                    "Power analyzer host cannot be empty when using TCP interface",
+                )
+
+            if not 1 <= self.port <= 65535:
+                raise ValidationException(
+                    "power_analyzer.port",
+                    self.port,
+                    "Power analyzer port must be between 1 and 65535",
+                )
+
+        # Validate GPIB parameters (when using GPIB interface)
+        if self.interface_type == "gpib":
+            if self.gpib_board < 0:
+                raise ValidationException(
+                    "power_analyzer.gpib_board",
+                    self.gpib_board,
+                    "GPIB board number cannot be negative",
+                )
+
+            if not 0 <= self.gpib_address <= 30:
+                raise ValidationException(
+                    "power_analyzer.gpib_address",
+                    self.gpib_address,
+                    "GPIB address must be between 0 and 30",
+                )
 
         if self.timeout <= 0:
             raise ValidationException(
@@ -677,8 +718,14 @@ class HardwareConfig:
             },
             "power_analyzer": {
                 "model": self.power_analyzer.model,
+                "interface_type": self.power_analyzer.interface_type,
                 "host": self.power_analyzer.host,
                 "port": self.power_analyzer.port,
+                "usb_vendor_id": self.power_analyzer.usb_vendor_id,
+                "usb_model_code": self.power_analyzer.usb_model_code,
+                "usb_serial_number": self.power_analyzer.usb_serial_number,
+                "gpib_board": self.power_analyzer.gpib_board,
+                "gpib_address": self.power_analyzer.gpib_address,
                 "timeout": self.power_analyzer.timeout,
                 "element": self.power_analyzer.element,
                 "voltage_range": self.power_analyzer.voltage_range,

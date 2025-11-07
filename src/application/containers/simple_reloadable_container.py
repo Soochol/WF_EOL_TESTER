@@ -251,7 +251,7 @@ class SimpleReloadableContainer(ApplicationContainer):
 
         try:
             # Check hardware model changes
-            hardware_categories = ["robot", "power", "mcu", "loadcell", "digital_io"]
+            hardware_categories = ["robot", "power", "mcu", "loadcell", "digital_io", "power_analyzer"]
 
             for category in hardware_categories:
                 old_model = old_config.get("hardware", {}).get(category, {}).get("model")
@@ -335,6 +335,7 @@ class SimpleReloadableContainer(ApplicationContainer):
                 "mcu_service",
                 "loadcell_service",
                 "digital_io_service",
+                "power_analyzer_service",
             ]
 
             if hasattr(container_instance, "hardware_factory"):
@@ -537,7 +538,7 @@ class SimpleReloadableContainer(ApplicationContainer):
 
         try:
             # Check hardware model changes
-            hardware_categories = ["robot", "power", "mcu", "loadcell", "digital_io"]
+            hardware_categories = ["robot", "power", "mcu", "loadcell", "digital_io", "power_analyzer"]
 
             for category in hardware_categories:
                 old_model = old_config.get("hardware", {}).get(category, {}).get("model")
@@ -659,6 +660,7 @@ class SimpleReloadableContainer(ApplicationContainer):
                 "mcu_service",
                 "loadcell_service",
                 "digital_io_service",
+                "power_analyzer_service",
             ]
 
             for provider_name in hardware_factory_providers:

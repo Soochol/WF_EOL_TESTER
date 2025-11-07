@@ -108,10 +108,17 @@ class SettingsTreeWidget(QTreeWidget):
                             allowed_values = ["mock", "ajinextek"]
                         elif hardware_type == "power":
                             allowed_values = ["mock", "oda"]
+                        elif hardware_type == "power_analyzer":
+                            allowed_values = ["mock", "wt1800e"]
                         elif hardware_type == "loadcell":
                             allowed_values = ["mock", "bs205"]
                         elif hardware_type == "mcu":
                             allowed_values = ["mock", "lma"]
+                    elif key == "interface_type":
+                        # Power analyzer interface type options
+                        hardware_type = category_prefix.split(".")[-1] if category_prefix else None
+                        if hardware_type == "power_analyzer":
+                            allowed_values = ["tcp", "usb", "gpib"]
                     elif key == "port":
                         # Get available serial ports
                         allowed_values = self._get_available_ports(value)

@@ -5,6 +5,7 @@ Main application window with sidebar navigation and content area.
 """
 
 # Standard library imports
+import warnings
 from typing import Optional, TYPE_CHECKING
 
 # Third-party imports
@@ -1974,14 +1975,19 @@ class MainWindow(QMainWindow):
                     "test_error",
                     "log_message",
                 ]
-                for signal_name in signals_to_disconnect:
-                    try:
-                        signal = getattr(self.test_executor_thread, signal_name, None)
-                        if signal:
-                            signal.disconnect()
-                    except (RuntimeError, TypeError, AttributeError):
-                        # Signal not connected or already disconnected - safe to ignore
-                        pass
+
+                # Suppress RuntimeWarning for signal disconnect
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+                    for signal_name in signals_to_disconnect:
+                        try:
+                            signal = getattr(self.test_executor_thread, signal_name, None)
+                            if signal:
+                                signal.disconnect()
+                        except (RuntimeError, TypeError, AttributeError):
+                            # Signal not connected or already disconnected - safe to ignore
+                            pass
 
             logger.info("✅ All signals disconnected")
 

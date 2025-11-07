@@ -297,8 +297,12 @@ class HardwareServiceFacade:
         shutdown_tasks = []
 
         try:
-            # Disable power output first for safety
-            await self._power.disable_output()
+            # Disable power output first for safety (only if connected)
+            if await self._power.is_connected():
+                try:
+                    await self._power.disable_output()
+                except Exception as e:
+                    logger.warning(f"Failed to disable power output during shutdown: {e}")
 
             # Add disconnect tasks
             if await self._robot.is_connected():
