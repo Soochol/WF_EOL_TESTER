@@ -563,8 +563,8 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             HardwareOperationError: If configuration fails
 
         SCPI Commands:
-            :INPUT:CURRENT:EXTSENSOR:CONFIG:ELEMENT<x> <voltage>
-            :INPUT:CURRENT:SRATIO:ELEMENT<x> <ratio>  (Note: Not in manual, verify support)
+            :INPUT:CURRENT:RANGE:ELEMENT<x> (EXTernal,<voltage>)
+            :INPUT:CURRENT:SRATIO:ELEMENT<x> <ratio>
         """
         if not await self.is_connected():
             raise HardwareConnectionError("wt1800e", "Power Analyzer is not connected")
@@ -575,18 +575,18 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             if voltage_numeric == "1":
                 voltage_numeric = "1"
 
-            # Set external current sensor voltage range
+            # Set external current sensor using RANGE command with EXTERNAL parameter
+            # Command: :INPUT:CURRENT:RANGE:ELEMENT1 (EXTernal,<voltage>)
             await self._send_command(
-                f":INPut:CURRent:EXTSensor:CONFig:ELEMent{self._element} {voltage_numeric}"
+                f":INPut:CURRent:RANGe:ELEMent{self._element} (EXTernal,{voltage_numeric})"
             )
             logger.info(
-                f"WT1800E external current sensor range set to {voltage_range} "
+                f"WT1800E external current sensor range set to (EXTernal,{voltage_numeric}) "
                 f"(Element {self._element})"
             )
 
             # Set current scaling ratio
-            # Note: SRATIO command not found in provided manual section
-            # This command may be in a different section or specific to certain models
+            # Command: :INPUT:CURRENT:SRATIO:ELEMENT1 <ratio>
             await self._send_command(
                 f":INPut:CURRent:SRATio:ELEMent{self._element} {scaling_ratio}"
             )
