@@ -44,6 +44,10 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
         auto_range: bool = True,
         line_filter: Optional[str] = None,
         frequency_filter: Optional[str] = None,
+        # External Current Sensor parameters
+        external_current_sensor_enabled: bool = False,
+        external_current_sensor_voltage_range: Optional[str] = None,
+        external_current_sensor_scaling_ratio: Optional[int] = None,
     ):
         """
         Initialize WT1800E Power Analyzer with PyVISA
@@ -64,6 +68,9 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             auto_range: Enable automatic range adjustment
             line_filter: Line filter frequency (e.g., "10KHZ") - None for default
             frequency_filter: Frequency filter (e.g., "1HZ") - None for default
+            external_current_sensor_enabled: Enable external current sensor
+            external_current_sensor_voltage_range: Sensor voltage range (e.g., "1V")
+            external_current_sensor_scaling_ratio: Scaling ratio (e.g., 100 for 1V=100A)
         """
         # Connection interface
         self._interface_type = interface_type
@@ -93,6 +100,11 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
         # Filter configuration
         self._line_filter = line_filter
         self._frequency_filter = frequency_filter
+
+        # External Current Sensor configuration
+        self._external_current_sensor_enabled = external_current_sensor_enabled
+        self._external_current_sensor_voltage_range = external_current_sensor_voltage_range
+        self._external_current_sensor_scaling_ratio = external_current_sensor_scaling_ratio
 
         # State initialization
         self._is_connected = False
@@ -190,6 +202,22 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
                         line_filter=self._line_filter,
                         frequency_filter=self._frequency_filter,
                     )
+
+                # Configure external current sensor if enabled (Guide 5.3)
+                if self._external_current_sensor_enabled:
+                    if (
+                        self._external_current_sensor_voltage_range
+                        and self._external_current_sensor_scaling_ratio
+                    ):
+                        await self.configure_external_current_sensor(
+                            voltage_range=self._external_current_sensor_voltage_range,
+                            scaling_ratio=self._external_current_sensor_scaling_ratio,
+                        )
+                    else:
+                        logger.warning(
+                            "External current sensor enabled but voltage_range or scaling_ratio not specified. "
+                            "Skipping sensor configuration."
+                        )
 
                 # Configure NUMERIC display items for WT1806 compatibility
                 # WT1806 uses :NUMeric commands instead of :MEASure
@@ -493,6 +521,88 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
         except Exception as e:
             logger.error(f"Failed to configure WT1800E filters: {e}")
             raise HardwareOperationError("wt1800e", "configure_filter", str(e)) from e
+
+    async def configure_external_current_sensor(
+        self,
+        voltage_range: str = "1V",
+        scaling_ratio: int = 100,
+    ) -> None:
+        """
+        Configure external current sensor (Guide 5.3)
+
+        Configures the WT1800E to use an external current sensor with
+        specified voltage range and scaling ratio.
+
+        Example:
+            Sensor: 10mV/A, Range: 100A
+            → Sensor outputs 1V at 100A
+            → voltage_range="1V", scaling_ratio=100
+
+        Args:
+            voltage_range: Sensor input voltage range
+                          Crest Factor 3: "50mV", "100mV", "200mV", "500mV",
+                                          "1V", "2V", "5V", "10V"
+                          Crest Factor 6: "25mV", "50mV", "100mV", "250mV",
+                                          "500mV", "1V", "2.5V", "5V"
+            scaling_ratio: Current scaling ratio (e.g., 100 for 1V = 100A)
+
+        Raises:
+            HardwareConnectionError: If not connected
+            HardwareOperationError: If configuration fails
+
+        SCPI Commands:
+            :INPUT:CURRENT:EXTSENSOR:CONFIG:ELEMENT<x> <voltage>
+            :INPUT:CURRENT:SRATIO:ELEMENT<x> <ratio>  (Note: Not in manual, verify support)
+        """
+        if not await self.is_connected():
+            raise HardwareConnectionError("wt1800e", "Power Analyzer is not connected")
+
+        try:
+            # Parse voltage range to numeric value
+            voltage_numeric = voltage_range.upper().replace("V", "").replace("M", "E-3")
+            if voltage_numeric == "1":
+                voltage_numeric = "1"
+
+            # Set external current sensor voltage range
+            await self._send_command(
+                f":INPut:CURRent:EXTSensor:CONFig:ELEMent{self._element} {voltage_numeric}"
+            )
+            logger.info(
+                f"WT1800E external current sensor range set to {voltage_range} "
+                f"(Element {self._element})"
+            )
+
+            # Set current scaling ratio
+            # Note: SRATIO command not found in provided manual section
+            # This command may be in a different section or specific to certain models
+            await self._send_command(
+                f":INPut:CURRent:SRATio:ELEMent{self._element} {scaling_ratio}"
+            )
+            logger.info(
+                f"WT1800E current scaling ratio set to {scaling_ratio} "
+                f"(Element {self._element}, {voltage_range} = {scaling_ratio}A)"
+            )
+
+            # Check for errors
+            errors = await self._check_errors()
+            if errors:
+                logger.error(f"WT1800E external current sensor configuration errors: {errors}")
+                raise HardwareOperationError(
+                    "wt1800e",
+                    "configure_external_current_sensor",
+                    f"Configuration failed with errors: {errors}",
+                )
+
+            logger.info(
+                f"✅ External current sensor configured: {voltage_range} = {scaling_ratio}A "
+                f"(Sensor: {scaling_ratio/10}mV/A)"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to configure WT1800E external current sensor: {e}")
+            raise HardwareOperationError(
+                "wt1800e", "configure_external_current_sensor", str(e)
+            ) from e
 
     async def _configure_numeric_items(self) -> None:
         """
