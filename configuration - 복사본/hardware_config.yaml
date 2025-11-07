@@ -1,0 +1,91 @@
+
+robot:
+  model: ajinextek
+  axis_id: 0
+  irq_no: 7
+  timeout: 30.0
+  polling_interval: 250
+
+loadcell:
+  model: bs205
+  port: COM8
+  baudrate: 9600
+  timeout: 1.0
+  bytesize: 8
+  stopbits: 1
+  parity: even
+  indicator_id: 0
+
+mcu:
+  model: lma
+  port: COM9
+  baudrate: 115200
+  timeout: 10.0
+  bytesize: 8
+  stopbits: 1
+  parity: null
+
+power:
+  model: oda
+  host: 192.168.11.1
+  port: 5000
+  timeout: 5.0
+  channel: 1
+  delimiter: '
+
+    '
+
+power_analyzer:
+  model: mock
+  host: 192.168.1.100
+  port: 10001
+  timeout: 5.0
+  element: 1
+  voltage_range: null
+  current_range: null
+  auto_range: true
+  line_filter: null
+  frequency_filter: null
+
+digital_io:
+  model: ajinextek
+  emergency_stop_button:
+    pin_number: 3
+    contact_type: A
+    edge_type: rising
+    name: emergency_stop
+  operator_start_button_left:
+    pin_number: 8
+    contact_type: B
+    edge_type: falling
+    name: left_button
+  operator_start_button_right:
+    pin_number: 9
+    contact_type: B
+    edge_type: falling
+    name: right_button
+  safety_door_closed_sensor:
+    pin_number: 10
+    contact_type: B
+    edge_type: rising
+    name: door_sensor
+  dut_clamp_safety_sensor:
+    pin_number: 14
+    contact_type: A
+    edge_type: rising
+    name: clamp_sensor
+  dut_chain_safety_sensor:
+    pin_number: 15
+    contact_type: A
+    edge_type: rising
+    name: chain_sensor
+  servo1_brake_release: 0
+  tower_lamp_red: 4
+  tower_lamp_yellow: 5
+  tower_lamp_green: 6
+  beep: 7
+
+metadata:
+  created_at: '2025-09-17T16:15:50.721132'
+  note: Auto-generated default hardware configuration
+  created_by: YamlContainerConfigurationLoader (auto-generated)

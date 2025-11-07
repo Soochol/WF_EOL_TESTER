@@ -14,6 +14,9 @@ from typing import Any, Dict, List, Optional
 # Third-party imports
 from loguru import logger
 
+# Local application imports
+from domain.value_objects.application_config import LOGS_HEATING_COOLING_CYCLE_DATA_DIR
+
 
 class HeatingCoolingCSVLogger:
     """
@@ -38,10 +41,12 @@ class HeatingCoolingCSVLogger:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         timing_filename = f"HC_Test_{timestamp}_{test_id}.csv"
         power_filename = f"HC_Test_{timestamp}_{test_id}_power.csv"
+        force_filename = f"HC_Test_{timestamp}_{test_id}_force.csv"
 
-        self.log_dir = Path("../logs/Heating Cooling Test/cycle_data")
+        self.log_dir = LOGS_HEATING_COOLING_CYCLE_DATA_DIR
         self.file_path = self.log_dir / timing_filename
         self._power_file_path = self.log_dir / power_filename
+        self._force_file_path = self.log_dir / force_filename
 
         # Track data for summary statistics
         self.cycle_data: List[Dict[str, Any]] = []
@@ -50,6 +55,7 @@ class HeatingCoolingCSVLogger:
         # Track if files have been initialized
         self._file_initialized = False
         self._power_file_initialized = False
+        self._force_file_initialized = False
 
         logger.debug(f"CSV logger initialized: {self.file_path}")
         logger.debug(f"Power CSV logger path: {self._power_file_path}")
@@ -312,4 +318,102 @@ class HeatingCoolingCSVLogger:
 
         except Exception as e:
             logger.error(f"Failed to initialize power CSV file: {e}")
+            raise
+
+    def get_force_file_path(self) -> Path:
+        """Get the force measurement CSV file path"""
+        return self._force_file_path
+
+    def write_force_data(self, force_measurements: List[Dict[str, Any]]) -> None:
+        """
+        Write force measurement data to separate CSV file
+
+        Args:
+            force_measurements: List of force measurement dictionaries with keys:
+                               'cycle', 'position_um', 'force_kgf', 'velocity',
+                               'acceleration', 'deceleration', 'heating_wait_s',
+                               'cooling_wait_s', 'cycle_duration_s', 'total_energy_wh',
+                               'avg_power_w', 'timestamp'
+        """
+        try:
+            if not force_measurements:
+                logger.info("No force measurements to write")
+                return
+
+            # Create directory if it doesn't exist
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+
+            # Initialize force CSV file with header if first write
+            if not self._force_file_initialized:
+                self._initialize_force_csv_file()
+                self._force_file_initialized = True
+
+            # Write each measurement as a row
+            with open(self._force_file_path, "a", newline="", encoding="utf-8") as csvfile:
+                fieldnames = [
+                    "Cycle",
+                    "Position_um",
+                    "Velocity",
+                    "Acceleration",
+                    "Deceleration",
+                    "Force_kgf",
+                    "Heating_Wait_s",
+                    "Cooling_Wait_s",
+                    "Cycle_Duration_s",
+                    "Total_Energy_Wh",
+                    "Avg_Power_W",
+                    "Timestamp",
+                ]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                for measurement in force_measurements:
+                    row_data = {
+                        "Cycle": measurement["cycle"],
+                        "Position_um": f"{measurement['position_um']:.1f}",
+                        "Velocity": f"{measurement['velocity']:.1f}",
+                        "Acceleration": f"{measurement['acceleration']:.1f}",
+                        "Deceleration": f"{measurement['deceleration']:.1f}",
+                        "Force_kgf": f"{measurement['force_kgf']:.3f}",
+                        "Heating_Wait_s": f"{measurement['heating_wait_s']:.1f}",
+                        "Cooling_Wait_s": f"{measurement['cooling_wait_s']:.1f}",
+                        "Cycle_Duration_s": f"{measurement['cycle_duration_s']:.2f}",
+                        "Total_Energy_Wh": f"{measurement['total_energy_wh']:.4f}",
+                        "Avg_Power_W": f"{measurement['avg_power_w']:.2f}",
+                        "Timestamp": measurement['timestamp'],
+                    }
+                    writer.writerow(row_data)
+
+            logger.info(
+                f"Force data written to CSV: {self._force_file_path} "
+                f"({len(force_measurements)} measurements)"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to write force data to CSV: {e}")
+
+    def _initialize_force_csv_file(self) -> None:
+        """Initialize force measurement CSV file with header"""
+        try:
+            with open(self._force_file_path, "w", newline="", encoding="utf-8") as csvfile:
+                fieldnames = [
+                    "Cycle",
+                    "Position_um",
+                    "Velocity",
+                    "Acceleration",
+                    "Deceleration",
+                    "Force_kgf",
+                    "Heating_Wait_s",
+                    "Cooling_Wait_s",
+                    "Cycle_Duration_s",
+                    "Total_Energy_Wh",
+                    "Avg_Power_W",
+                    "Timestamp",
+                ]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+
+            logger.info(f"Force CSV file initialized with header: {self._force_file_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize force CSV file: {e}")
             raise

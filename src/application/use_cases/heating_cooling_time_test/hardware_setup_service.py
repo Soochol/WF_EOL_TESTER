@@ -40,26 +40,53 @@ class HardwareSetupService:
             raise RuntimeError("Power monitor not initialized. Call connect_hardware() first.")
         return self._power_monitor
 
-    async def connect_hardware(self) -> None:
+    async def connect_hardware(self, hc_config) -> None:
         """
         Connect required hardware components
 
-        Connects power supply, MCU, and optional power analyzer services.
+        Connects power supply, MCU, optional power analyzer, and robot-related services.
         If power analyzer is configured, it will be used for power monitoring instead of power supply.
+
+        Args:
+            hc_config: Heating/cooling configuration object
         """
         logger.info("Connecting hardware...")
         power_service = self._hardware_services.power_service
         mcu_service = self._hardware_services.mcu_service
         power_analyzer = self._hardware_services.power_analyzer_service
 
-        # Always connect power supply (for power control)
-        await power_service.connect()
-        await mcu_service.connect()
+        # Basic connection tasks
+        connection_tasks = [
+            power_service.connect(),
+            mcu_service.connect(),
+        ]
 
-        # Connect power analyzer if available
+        # Robot-related services (conditional)
+        if hc_config.enable_robot:
+            robot_service = self._hardware_services.robot_service
+            loadcell_service = self._hardware_services.loadcell_service
+            digital_io_service = self._hardware_services.digital_io_service
+
+            connection_tasks.extend(
+                [
+                    robot_service.connect(),
+                    loadcell_service.connect(),
+                    digital_io_service.connect(),
+                ]
+            )
+            logger.info("Connecting robot, loadcell, and digital I/O services...")
+
+        # Power analyzer (optional)
         if power_analyzer:
             logger.info("Power analyzer detected - connecting...")
-            await power_analyzer.connect()
+            connection_tasks.append(power_analyzer.connect())
+
+        # Connect all hardware in parallel
+        await asyncio.gather(*connection_tasks)
+        logger.info("All hardware connected successfully")
+
+        # Initialize power monitor
+        if power_analyzer:
             # Use power analyzer for monitoring
             self._power_monitor = PowerMonitor(power_analyzer)
             logger.info("Power monitor initialized with power analyzer")
@@ -146,6 +173,48 @@ class HardwareSetupService:
         # Clear timing history (exclude initial setup)
         mcu_service.clear_timing_history()
 
+    async def initialize_robot(self, hc_config, hardware_config) -> None:
+        """
+        Initialize robot to initial position for heating/cooling test
+
+        Args:
+            hc_config: Heating/cooling configuration object
+            hardware_config: Hardware configuration object
+        """
+        if not hc_config.enable_robot:
+            logger.info("Robot disabled in configuration, skipping robot initialization")
+            return
+
+        logger.info("Initializing robot for heating/cooling test...")
+
+        # Access services via facade (Clean Architecture)
+        robot_service = self._hardware_services.robot_service
+        digital_io_service = self._hardware_services.digital_io_service
+
+        # 1. Enable servo brake release
+        await digital_io_service.write_output(hardware_config.digital_io.servo1_brake_release, True)
+        logger.info("✅ Servo brake release enabled")
+
+        # 2. Enable robot servo
+        await robot_service.enable_servo(hardware_config.robot.axis_id)
+        logger.info("✅ Robot servo enabled")
+
+        # 3. Ensure robot is homed (reuse facade method)
+        await self._hardware_services._ensure_robot_homed(hardware_config.robot.axis_id)
+        logger.info("✅ Robot homing completed")
+
+        # 4. Move to initial position (원점)
+        await robot_service.move_absolute(
+            position=hc_config.initial_position,
+            axis_id=hardware_config.robot.axis_id,
+            velocity=hc_config.velocity,
+            acceleration=hc_config.acceleration,
+            deceleration=hc_config.deceleration,
+        )
+        await asyncio.sleep(hc_config.robot_move_stabilization)
+
+        logger.info(f"✅ Robot initialized at initial position: {hc_config.initial_position}μm")
+
     async def apply_test_specific_power_analyzer_config(self, hc_config) -> None:
         """
         Apply test-specific power analyzer configuration (overrides hardware config)
@@ -212,10 +281,7 @@ class HardwareSetupService:
                 )
 
             # Apply filter settings if specified
-            if (
-                hc_config.power_analyzer_line_filter
-                or hc_config.power_analyzer_frequency_filter
-            ):
+            if hc_config.power_analyzer_line_filter or hc_config.power_analyzer_frequency_filter:
                 await power_analyzer.configure_filter(
                     line_filter=hc_config.power_analyzer_line_filter,
                     frequency_filter=hc_config.power_analyzer_frequency_filter,
@@ -229,19 +295,22 @@ class HardwareSetupService:
             logger.info("Test-specific power analyzer configuration applied successfully")
 
         except Exception as e:
-            logger.warning(
-                f"Failed to apply test-specific power analyzer configuration: {e}"
-            )
+            logger.warning(f"Failed to apply test-specific power analyzer configuration: {e}")
             logger.warning(
                 "Continuing with hardware config defaults. "
                 "Test may proceed with non-optimal measurement settings."
             )
 
-    async def cleanup_hardware(self) -> None:
+    async def cleanup_hardware(self, hc_config, hardware_config) -> None:
         """
         Clean up hardware connections
 
-        Stops power monitoring, disables power supply, and disconnects all hardware services.
+        Stops power monitoring, disables power supply, returns robot to safe position,
+        and disconnects all hardware services.
+
+        Args:
+            hc_config: Heating/cooling configuration object
+            hardware_config: Hardware configuration object
         """
         try:
             logger.info("Cleaning up hardware...")
@@ -256,23 +325,66 @@ class HardwareSetupService:
                     logger.warning(f"Power monitor cleanup warning: {power_monitor_error}")
 
             power_service = self._hardware_services.power_service
-            mcu_service = self._hardware_services.mcu_service
-            power_analyzer = self._hardware_services.power_analyzer_service
+
+            # Robot cleanup (conditional)
+            if hc_config.enable_robot:
+                robot_service = self._hardware_services.robot_service
+
+                # Return to initial position (safe position)
+                if await robot_service.is_connected():
+                    try:
+                        current_pos = await robot_service.get_position(
+                            hardware_config.robot.axis_id
+                        )
+                        if abs(current_pos - hc_config.initial_position) > 100:  # 100μm tolerance
+                            logger.info("Returning robot to initial position...")
+                            await robot_service.move_absolute(
+                                position=hc_config.initial_position,
+                                axis_id=hardware_config.robot.axis_id,
+                                velocity=hc_config.velocity,
+                                acceleration=hc_config.acceleration,
+                                deceleration=hc_config.deceleration,
+                            )
+                            logger.info("✅ Robot returned to initial position")
+                    except Exception as robot_error:
+                        logger.warning(f"Robot cleanup warning: {robot_error}")
 
             # Disable power supply output
             await power_service.disable_output()
 
-            # Disconnect all hardware
-            await power_service.disconnect()
-            await mcu_service.disconnect()
+            # Disconnect all services
+            await self._disconnect_all_services(hc_config)
+            logger.info("✅ Hardware cleanup completed")
 
-            # Disconnect power analyzer if it was connected
-            if power_analyzer:
-                try:
-                    if await power_analyzer.is_connected():
-                        await power_analyzer.disconnect()
-                        logger.info("Power analyzer disconnected")
-                except Exception as analyzer_error:
-                    logger.warning(f"Power analyzer cleanup warning: {analyzer_error}")
         except Exception as cleanup_error:
             logger.warning(f"Hardware cleanup warning: {cleanup_error}")
+
+    async def _disconnect_all_services(self, hc_config) -> None:
+        """
+        Disconnect all hardware services
+
+        Args:
+            hc_config: Heating/cooling configuration object
+        """
+        disconnect_tasks = [
+            self._hardware_services.power_service.disconnect(),
+            self._hardware_services.mcu_service.disconnect(),
+        ]
+
+        # Robot-related services (conditional)
+        if hc_config.enable_robot:
+            disconnect_tasks.extend(
+                [
+                    self._hardware_services.robot_service.disconnect(),
+                    self._hardware_services.loadcell_service.disconnect(),
+                    self._hardware_services.digital_io_service.disconnect(),
+                ]
+            )
+
+        # Power analyzer (optional)
+        power_analyzer = self._hardware_services.power_analyzer_service
+        if power_analyzer:
+            disconnect_tasks.append(power_analyzer.disconnect())
+
+        # Disconnect all in parallel, catch individual errors
+        await asyncio.gather(*disconnect_tasks, return_exceptions=True)

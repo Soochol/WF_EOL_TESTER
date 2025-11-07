@@ -21,7 +21,9 @@ class HeatingCoolingTimeTestInput(BaseUseCaseInput):
     repeat count and operator identification.
     """
 
-    def __init__(self, dut_info: DUTCommandInfo, operator_id: str = "cli_user", repeat_count: int = 1):
+    def __init__(
+        self, dut_info: DUTCommandInfo, operator_id: str = "cli_user", repeat_count: int = 1
+    ):
         """
         Initialize test input
 

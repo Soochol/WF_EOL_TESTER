@@ -146,6 +146,7 @@ Real hardware implementations are in `src/infrastructure/implementation/hardware
 - **Power Supply**: ODA power supply, Mock implementation
 - **Robot**: Ajinextek robot controller, Mock implementation
 - **Digital I/O**: Ajinextek digital I/O board, Mock implementation
+- **Power Analyzer**: Yokogawa WT1800E (TCP/IP, USB, GPIB), Mock implementation
 
 Each hardware type supports both production hardware and mock implementations for development/testing.
 
@@ -200,6 +201,108 @@ The application supports both development (mock hardware) and production configu
   }
 }
 ```
+
+### Yokogawa WT1800E Power Analyzer Configuration
+
+The WT1800E Power Analyzer supports multiple connection interfaces via PyVISA.
+
+#### TCP/IP Connection (Ethernet)
+```yaml
+power_analyzer:
+  model: wt1800e
+  interface_type: tcp
+  host: 192.168.11.7
+  port: 10001
+  timeout: 5.0
+  element: 1
+  auto_range: true
+```
+
+**Network Setup:**
+1. WT1800E front panel: `UTILITY` → `Remote Control` → `Network`
+2. Configure:
+   - DHCP: OFF
+   - IP Address: 192.168.11.7
+   - Subnet Mask: 255.255.255.0
+   - Gateway: 192.168.11.1
+   - DNS: OFF
+   - Port: 10001
+
+#### USB Connection (USB-TMC)
+```yaml
+power_analyzer:
+  model: wt1800e
+  interface_type: usb
+  usb_vendor_id: null  # Default: 0x0B21 (Yokogawa)
+  usb_model_code: null  # Default: 0x0039 (WT1800E)
+  usb_serial_number: "91M950263"  # Your device serial number
+  timeout: 5.0
+  element: 1
+  auto_range: true
+```
+
+**USB Setup:**
+1. Connect WT1800E via USB cable
+2. PyVISA-py and PyUSB automatically installed with `uv sync`
+3. Find serial number on WT1800E: `UTILITY` → `Remote Control` → `USB`
+4. **Install Windows USB Driver** (see below)
+5. Test connection: `uv run python test_wt1800e_usb_simple.py`
+
+**Windows USB Driver Setup (libusb):**
+
+PyUSB requires libusb driver for USB-TMC communication on Windows. Use Zadig to install:
+
+1. **Download Zadig**: https://zadig.akeo.ie/
+2. **Connect WT1800E** via USB and power on
+3. **Run Zadig as Administrator**
+4. **Enable "List All Devices"**: `Options` → `List All Devices` ✓
+5. **Select WT1800E** from dropdown (may appear as "YOKOGAWA WT1800E" or "USB Test and Measurement Device")
+6. **Select Driver**: Choose `libusbK` or `WinUSB` from the driver dropdown
+7. **Install/Replace Driver**: Click "Install Driver" or "Replace Driver"
+8. **Verify**: Run `uv run python test_wt1800e_usb_simple.py`
+
+**Alternative: Check Current Driver in Device Manager**
+- Open Device Manager (`devmgmt.msc`)
+- Look for "USB Test and Measurement Device" or "YOKOGAWA WT1800E"
+- If using generic driver, use Zadig to replace with libusbK
+
+**USB Resource String Format:**
+- `USB::0x0B21::0x0039::91M950263::INSTR`
+- Vendor ID: `0x0B21` (Yokogawa)
+- Model Code: `0x0039` (WT1800E)
+- Serial Number: Device-specific (e.g., `91M950263`)
+
+#### GPIB Connection (IEEE 488.2)
+```yaml
+power_analyzer:
+  model: wt1800e
+  interface_type: gpib
+  gpib_board: 0
+  gpib_address: 7
+  timeout: 5.0
+  element: 1
+  auto_range: true
+```
+
+#### Testing Connection
+
+**List Available VISA Resources:**
+```bash
+uv run python test_visa_usb_connection.py
+```
+
+**Quick USB Test:**
+```bash
+uv run python test_wt1800e_usb_simple.py
+```
+
+**Troubleshooting:**
+- **"No module named 'usb'"**: PyUSB not installed → Run `uv sync`
+- **"Please install PyUSB"**: Missing PyUSB dependency → Run `uv sync`
+- **No USB devices found**: libusb driver not installed → Use Zadig to install libusbK/WinUSB driver
+- **Connection timeout**: Verify device is powered on and not in local mode
+- **Access denied**: Ensure no other software is using the device
+- **"Device not found"**: Check Device Manager, verify USB driver is libusbK or WinUSB
 
 ## Development Guidelines
 

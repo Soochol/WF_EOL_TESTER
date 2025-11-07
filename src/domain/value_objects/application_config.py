@@ -9,11 +9,11 @@ services configuration, and logging configuration.
 from __future__ import annotations
 
 # Standard library imports
-import os
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime
+import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, Optional
 
 
@@ -53,7 +53,9 @@ if not IS_DEVELOPMENT:
     try:
         if __file__ and "src" in str(__file__):
             IS_DEVELOPMENT = True
-            print("[WARNING] sys.frozen was True but __file__ indicates development mode. Forcing IS_DEVELOPMENT=True")
+            print(
+                "[WARNING] sys.frozen was True but __file__ indicates development mode. Forcing IS_DEVELOPMENT=True"
+            )
     except NameError:
         pass  # __file__ not defined (should never happen)
 
@@ -106,6 +108,8 @@ else:
 LOGS_TEST_RESULTS_JSON_DIR = LOGS_DIR / "test_results" / "json"
 LOGS_EOL_RAW_DATA_DIR = LOGS_DIR / "EOL Force Test" / "raw_data"
 LOGS_EOL_SUMMARY_DIR = LOGS_DIR / "EOL Force Test"
+LOGS_HEATING_COOLING_DIR = LOGS_DIR / "Heating Cooling Test"
+LOGS_HEATING_COOLING_CYCLE_DATA_DIR = LOGS_HEATING_COOLING_DIR / "cycle_data"
 
 
 def ensure_project_directories():
@@ -122,6 +126,8 @@ def ensure_project_directories():
         LOGS_TEST_RESULTS_JSON_DIR,
         LOGS_EOL_RAW_DATA_DIR,
         LOGS_EOL_SUMMARY_DIR,
+        LOGS_HEATING_COOLING_DIR,
+        LOGS_HEATING_COOLING_CYCLE_DATA_DIR,
         DATABASE_DIR,  # Database directory (development or AppData)
     ]
 

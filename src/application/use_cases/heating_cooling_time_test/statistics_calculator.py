@@ -6,7 +6,8 @@ Handles timing analysis and power consumption calculations.
 """
 
 # Standard library imports
-from typing import Any, Dict, List
+import statistics
+from typing import Any, Dict, List, Optional
 
 # Third-party imports
 from loguru import logger
@@ -26,6 +27,7 @@ class StatisticsCalculator:
         cooling_results: List[Dict[str, Any]],
         power_data: Dict[str, Any],
         repeat_count: int,
+        force_measurements: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Calculate comprehensive statistics from test results
@@ -35,6 +37,7 @@ class StatisticsCalculator:
             cooling_results: List of cooling cycle measurements
             power_data: Power monitoring data
             repeat_count: Number of test cycles performed
+            force_measurements: List of force measurement data (optional)
 
         Returns:
             Dictionary containing calculated statistics
@@ -52,11 +55,17 @@ class StatisticsCalculator:
             heating_results, cooling_results, power_data
         )
 
+        # Calculate force statistics (if available)
+        force_stats = {}
+        if force_measurements:
+            force_stats = StatisticsCalculator._calculate_force_statistics(force_measurements)
+
         # Combine all statistics
         return {
             **timing_stats,
             **power_stats,
             **energy_stats,
+            **force_stats,
             "total_cycles": repeat_count,
             "total_heating_cycles": len(heating_results),
             "total_cooling_cycles": len(cooling_results),
@@ -168,6 +177,63 @@ class StatisticsCalculator:
         }
 
     @staticmethod
+    def _calculate_force_statistics(force_measurements: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Calculate force measurement statistics
+
+        Args:
+            force_measurements: List of force measurement data with keys:
+                               'cycle', 'position_um', 'force_kgf', 'force_n', 'timestamp'
+
+        Returns:
+            Dictionary containing force statistics
+        """
+        if not force_measurements:
+            return {}
+
+        # Extract all force values
+        forces_kgf = [m["force_kgf"] for m in force_measurements]
+        forces_n = [m["force_n"] for m in force_measurements]
+
+        # Overall statistics
+        force_stats = {
+            "total_force_measurements": len(force_measurements),
+            "average_force_kgf": statistics.mean(forces_kgf),
+            "average_force_n": statistics.mean(forces_n),
+            "min_force_kgf": min(forces_kgf),
+            "min_force_n": min(forces_n),
+            "max_force_kgf": max(forces_kgf),
+            "max_force_n": max(forces_n),
+        }
+
+        # Calculate standard deviation if we have multiple measurements
+        if len(forces_kgf) > 1:
+            force_stats["stdev_force_kgf"] = statistics.stdev(forces_kgf)
+            force_stats["stdev_force_n"] = statistics.stdev(forces_n)
+
+        # Position-wise statistics
+        positions = {}
+        for measurement in force_measurements:
+            pos = measurement["position_um"]
+            if pos not in positions:
+                positions[pos] = []
+            positions[pos].append(measurement["force_n"])
+
+        # Calculate average force per position
+        position_stats = {}
+        for pos, force_values in positions.items():
+            position_stats[f"position_{int(pos)}_um_avg_force_n"] = statistics.mean(force_values)
+            if len(force_values) > 1:
+                position_stats[f"position_{int(pos)}_um_stdev_force_n"] = statistics.stdev(
+                    force_values
+                )
+
+        # Combine overall and position-wise statistics
+        force_stats.update(position_stats)
+
+        return force_stats
+
+    @staticmethod
     def log_summary(statistics: Dict[str, Any]) -> None:
         """
         Log test summary statistics
@@ -190,3 +256,27 @@ class StatisticsCalculator:
         logger.info(
             f"Measurement duration: {statistics.get('measurement_duration_seconds', 0):.1f}s"
         )
+
+        # Log force statistics if available
+        if statistics.get("total_force_measurements", 0) > 0:
+            logger.info("=== Force Measurement Statistics ===")
+            logger.info(
+                f"Total force measurements: {statistics.get('total_force_measurements', 0)}"
+            )
+            logger.info(
+                f"Average force: {statistics.get('average_force_kgf', 0):.3f} kgf "
+                f"({statistics.get('average_force_n', 0):.3f} N)"
+            )
+            logger.info(
+                f"Min force: {statistics.get('min_force_kgf', 0):.3f} kgf "
+                f"({statistics.get('min_force_n', 0):.3f} N)"
+            )
+            logger.info(
+                f"Max force: {statistics.get('max_force_kgf', 0):.3f} kgf "
+                f"({statistics.get('max_force_n', 0):.3f} N)"
+            )
+            if statistics.get("stdev_force_kgf") is not None:
+                logger.info(
+                    f"Force std dev: {statistics.get('stdev_force_kgf', 0):.3f} kgf "
+                    f"({statistics.get('stdev_force_n', 0):.3f} N)"
+                )

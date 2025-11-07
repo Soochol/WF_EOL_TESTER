@@ -574,23 +574,20 @@ class WT1800EPowerAnalyzer(PowerAnalyzerService):
             raise HardwareConnectionError("wt1800e", "Power Analyzer is not connected")
 
         try:
-            # Parse voltage range to numeric value
-            voltage_numeric = voltage_range.upper().replace("V", "").replace("M", "E-3")
-            # Handle common cases: "1V" -> "1", "0.5V" -> "0.5", "500mV" -> "500E-3"
-            if voltage_numeric == "1":
-                voltage_numeric = "1"
-            elif voltage_numeric == "0.5":
-                voltage_numeric = "0.5"
+            # Use voltage range as-is (with unit)
+            # WT1800E expects format like: "10V", "5V", "1V", "500mV" (with unit)
+            # Manual example: :INPUT:CURRENT:RANGE:ELEMENT1 EXTERNAL,10V
+            voltage_with_unit = voltage_range.upper()
 
             # Set external current sensor using RANGE command with EXTERNAL parameter
             # Command: :INPUT:CURRENT:RANGE:ELEMENT1 EXTERNAL,<voltage>
             # Note: No parentheses, no space after comma (per WT1800E manual example)
             await self._send_command(
-                f":INPut:CURRent:RANGe:ELEMent{self._element} EXTernal,{voltage_numeric}"
+                f":INPut:CURRent:RANGe:ELEMent{self._element} EXTernal,{voltage_with_unit}"
             )
             logger.info(
-                f"WT1800E external current sensor range set to EXTERNAL,{voltage_numeric}V "
-                f"(Element {self._element}, {scaling_ratio}A range)"
+                f"WT1800E external current sensor range set to EXTERNAL,{voltage_with_unit} "
+                f"(Element {self._element}, {scaling_ratio}A display range)"
             )
 
             # Set external sensor display mode to MEAsure

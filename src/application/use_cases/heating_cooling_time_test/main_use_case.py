@@ -20,8 +20,11 @@ from application.services.monitoring.emergency_stop_service import (
     EmergencyStopService,
 )
 
+
 if TYPE_CHECKING:
     from application.services.industrial.industrial_system_manager import IndustrialSystemManager
+
+# Local application imports
 from application.use_cases.common.base_use_case import BaseUseCase
 from domain.enums.test_status import TestStatus
 
@@ -65,6 +68,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         # Emergency stop and interruption handling
         self._keyboard_interrupt_raised = False
 
+        # Store configurations for cleanup
+        self._hc_config = None
+        self._hardware_config = None
+
     async def _execute_implementation(
         self, input_data: HeatingCoolingTimeTestInput, context
     ) -> HeatingCoolingTimeTestResult:
@@ -88,15 +95,23 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         try:
             # 1. Load configurations
             logger.info("Loading configurations...")
-            await self._configuration_service.load_hardware_config()  # Validate config exists
-            hc_config = await self._configuration_service.load_heating_cooling_config()
+            self._hardware_config = await self._configuration_service.load_hardware_config()
+            self._hc_config = await self._configuration_service.load_heating_cooling_config()
+
+            # Use local variables for convenience
+            hardware_config = self._hardware_config
+            hc_config = self._hc_config
 
             # 2. Connect and setup hardware
-            await self._hardware_setup.connect_hardware()
+            await self._hardware_setup.connect_hardware(hc_config)
             await self._hardware_setup.setup_power_supply(
                 hc_config.voltage, hc_config.current, hc_config.poweron_stabilization
             )
             await self._hardware_setup.setup_mcu(hc_config)
+
+            # Initialize robot (if enabled)
+            await self._hardware_setup.initialize_robot(hc_config, hardware_config)
+
             await self._hardware_setup.initialize_temperature(hc_config)
 
             # Apply test-specific power analyzer configuration (if configured)
@@ -104,7 +119,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
 
             # 3. Set system status to running
             if self._industrial_system_manager:
+                # Local application imports
                 from application.services.industrial.tower_lamp_service import SystemStatus
+
                 await self._industrial_system_manager.set_system_status(SystemStatus.SYSTEM_RUNNING)
 
             # 4. Execute test cycles
@@ -121,17 +138,19 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             )
 
             # Generate test ID for CSV logging using UUID format
+            # Local application imports
             from domain.value_objects.identifiers import TestId
 
             test_id_str = str(TestId.generate())  # UUID format - always unique
 
             cycle_results = await test_executor.execute_test_cycles(
-                hc_config, actual_repeat_count, test_id_str
+                hc_config, hardware_config, actual_repeat_count, test_id_str
             )
 
             # 5. Process results based on execution success
             timing_data = cycle_results["timing_data"]
             power_data = cycle_results["power_data"]
+            force_measurements = cycle_results.get("force_measurements", [])
             execution_success = cycle_results.get("success", True)
             completed_cycles = cycle_results.get("completed_cycles", 0)
             execution_error = cycle_results.get("error_message")
@@ -165,6 +184,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                 "heating_measurements": heating_results,
                 "cooling_measurements": cooling_results,
                 "full_cycle_power_data": power_data,
+                "force_measurements": force_measurements,
                 "statistics": statistics,
             }
 
@@ -199,7 +219,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
 
                     # Set system status to warning on partial success
                     if self._industrial_system_manager:
-                        await self._industrial_system_manager.handle_test_completion(test_success=False)
+                        await self._industrial_system_manager.handle_test_completion(
+                            test_success=False
+                        )
 
                     return HeatingCoolingTimeTestResult(
                         test_status=TestStatus.COMPLETED,  # Partial success still provides data
@@ -210,7 +232,9 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
                 else:
                     # Set system status to error on complete failure
                     if self._industrial_system_manager:
-                        await self._industrial_system_manager.handle_test_completion(test_success=False, test_error=True)
+                        await self._industrial_system_manager.handle_test_completion(
+                            test_success=False, test_error=True
+                        )
 
                     # Complete failure - no cycles completed, delegate to error handler
                     raise RuntimeError(execution_error)
@@ -218,6 +242,12 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             # Handle KeyboardInterrupt with emergency stop priority
             # Set flag to prevent normal cleanup in finally block
             self._keyboard_interrupt_raised = True
+
+            # Reset robot homing state if robot enabled
+            if hc_config.enable_robot:
+                self._hardware_services.reset_robot_homing_state()
+                logger.info("Robot homing state reset due to keyboard interrupt")
+
             # Don't perform normal cleanup - let emergency stop handle hardware safety
             # Re-raise to allow emergency stop service to execute
             raise
@@ -225,8 +255,20 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
             # Handle CancelledError (from asyncio.sleep interruptions) as KeyboardInterrupt
             # Set flag to prevent normal cleanup in finally block
             self._keyboard_interrupt_raised = True
+
+            # Reset robot homing state if robot enabled
+            if hc_config.enable_robot:
+                self._hardware_services.reset_robot_homing_state()
+                logger.info("Robot homing state reset due to cancellation")
+
             # Convert CancelledError back to KeyboardInterrupt for emergency stop service
             raise KeyboardInterrupt("Test cancelled by user interrupt") from None
+        except Exception as error:
+            # Reset robot homing state on any error if robot enabled
+            if hc_config.enable_robot:
+                self._hardware_services.reset_robot_homing_state()
+                logger.info("Robot homing state reset due to error")
+            raise
 
     def _create_failure_result(
         self,
@@ -284,7 +326,10 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
         Clean up resources after test execution
         """
         try:
-            await self._hardware_setup.cleanup_hardware()
+            if self._hc_config and self._hardware_config:
+                await self._hardware_setup.cleanup_hardware(self._hc_config, self._hardware_config)
+            else:
+                logger.warning("Configurations not loaded, skipping hardware cleanup")
         except Exception as cleanup_error:
             logger.warning(f"Cleanup warning in main use case: {cleanup_error}")
 

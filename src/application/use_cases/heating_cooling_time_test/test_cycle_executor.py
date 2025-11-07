@@ -7,6 +7,7 @@ Handles the core test execution logic for temperature transitions.
 
 # Standard library imports
 import time
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 # Third-party imports
@@ -16,6 +17,7 @@ from loguru import logger
 # Local application imports
 from application.services.hardware_facade import HardwareServiceFacade
 from application.services.monitoring.power_monitor import PowerMonitor
+from domain.value_objects.hardware_config import HardwareConfig
 
 # Local folder imports
 from .csv_logger import HeatingCoolingCSVLogger
@@ -42,23 +44,30 @@ class TestCycleExecutor:
         # Track partial results during execution
         self._partial_heating_results: List[Dict[str, Any]] = []
         self._partial_cooling_results: List[Dict[str, Any]] = []
+        # Track force measurement results
+        self._force_measurements: List[Dict[str, Any]] = []
         # CSV logger for test data
         self._csv_logger: Optional[HeatingCoolingCSVLogger] = None
+        # Hardware configuration (set during execute_test_cycles)
+        self._hardware_config: Optional[HardwareConfig] = None
 
     async def execute_test_cycles(
-        self, hc_config, repeat_count: int, test_id: Optional[str] = None
+        self, hc_config, hardware_config, repeat_count: int, test_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute all heating/cooling test cycles
 
         Args:
             hc_config: Heating/cooling configuration
+            hardware_config: Hardware configuration object
             repeat_count: Number of cycles to perform
             test_id: Optional test identifier for CSV logging
 
         Returns:
             Dictionary containing cycle results, power data, and execution status
         """
+        # Store hardware_config for use in force measurement
+        self._hardware_config = hardware_config
         logger.info(
             f"Temperature range: {hc_config.standby_temperature}°C ↔ {hc_config.activation_temperature}°C"
         )
@@ -69,6 +78,7 @@ class TestCycleExecutor:
         # Clear partial results from previous runs
         self._partial_heating_results.clear()
         self._partial_cooling_results.clear()
+        self._force_measurements.clear()
 
         # Initialize CSV logger if test_id provided
         if test_id:
@@ -106,10 +116,16 @@ class TestCycleExecutor:
                             f"Power data CSV written: {self._csv_logger.get_power_file_path()}"
                         )
 
+                # Write force data CSV if force measurements are available
+                if self._force_measurements:
+                    self._csv_logger.write_force_data(self._force_measurements)
+                    logger.info(f"Force data CSV written: {self._csv_logger.get_force_file_path()}")
+
             return {
                 "success": True,
                 "timing_data": timing_data,
                 "power_data": full_cycle_power_data,
+                "force_measurements": self._force_measurements,
                 "completed_cycles": repeat_count,
                 "error_message": None,
             }
@@ -159,11 +175,114 @@ class TestCycleExecutor:
                 "success": False,
                 "timing_data": partial_timing_data,
                 "power_data": full_cycle_power_data,
+                "force_measurements": self._force_measurements,
                 "completed_cycles": completed_cycles,
                 "requested_cycles": repeat_count,
                 "error_message": str(execution_error),
                 "partial": True,
             }
+
+    async def measure_force_at_positions(self, cycle_num: int, hc_config) -> List[Dict[str, Any]]:
+        """
+        Measure force at multiple positions after heating
+
+        Sequence:
+        1. Move robot to each measurement position
+        2. Measure force with loadcell
+        3. Return to initial position
+
+        Note: Temperature is maintained at operating level during measurement
+
+        Args:
+            cycle_num: Current cycle number
+            hc_config: Heating/cooling configuration
+
+        Returns:
+            List of force measurement dictionaries
+        """
+        if not hc_config.enable_force_measurement:
+            logger.debug("Force measurement disabled, skipping")
+            return []
+
+        # Ensure hardware config is available
+        if self._hardware_config is None:
+            logger.error("Hardware configuration not initialized")
+            raise RuntimeError("Hardware configuration must be set before force measurement")
+
+        logger.info(
+            f"📏 [Cycle {cycle_num}] Starting force measurement at "
+            f"{len(hc_config.measurement_positions)} positions..."
+        )
+
+        # Access services via facade (Clean Architecture)
+        robot_service = self._hardware_services.robot_service
+        loadcell_service = self._hardware_services.loadcell_service
+
+        force_results = []
+
+        # Measure force at each position
+        for idx, position in enumerate(hc_config.measurement_positions, 1):
+            # Move robot to measurement position
+            logger.info(
+                f"🤖 [Cycle {cycle_num}] Moving robot to position "
+                f"{idx}/{len(hc_config.measurement_positions)}: {position}μm"
+            )
+            await robot_service.move_absolute(
+                position=position,
+                axis_id=self._hardware_config.robot.axis_id,
+                velocity=hc_config.velocity,
+                acceleration=hc_config.acceleration,
+                deceleration=hc_config.deceleration,
+            )
+
+            # Stabilization delay
+            await asyncio.sleep(hc_config.robot_move_stabilization)
+
+            # Additional measurement delay
+            if hc_config.force_measurement_delay > 0:
+                await asyncio.sleep(hc_config.force_measurement_delay)
+
+            # Measure force
+            force = await loadcell_service.read_peak_force()
+
+            force_results.append(
+                {
+                    "cycle": cycle_num,
+                    "position_um": position,
+                    "force_kgf": force.value,
+                    "velocity": hc_config.velocity,
+                    "acceleration": hc_config.acceleration,
+                    "deceleration": hc_config.deceleration,
+                    "heating_wait_s": hc_config.heating_wait_time,
+                    "cooling_wait_s": hc_config.cooling_wait_time,
+                    "total_energy_wh": 0.0,  # Will be updated after cycle completes
+                    "avg_power_w": 0.0,  # Will be updated after cycle completes
+                    "cycle_duration_s": 0.0,  # Will be updated after cycle completes
+                    "timestamp": datetime.now().isoformat(sep=' ', timespec='milliseconds'),
+                }
+            )
+
+            logger.info(f"⚖️  [Cycle {cycle_num}] Force at {position}μm: {force.value:.3f}kgf")
+
+        # Return to initial position
+        logger.info(
+            f"🏠 [Cycle {cycle_num}] Returning robot to initial position: "
+            f"{hc_config.initial_position}μm"
+        )
+        await robot_service.move_absolute(
+            position=hc_config.initial_position,
+            axis_id=self._hardware_config.robot.axis_id,
+            velocity=hc_config.velocity,
+            acceleration=hc_config.acceleration,
+            deceleration=hc_config.deceleration,
+        )
+        await asyncio.sleep(hc_config.robot_move_stabilization)
+
+        logger.info(
+            f"✅ [Cycle {cycle_num}] Force measurement completed: {len(force_results)} measurements"
+        )
+
+        return force_results
 
     async def _start_power_monitoring(self, hc_config) -> None:
         """
@@ -212,6 +331,19 @@ class TestCycleExecutor:
             logger.info(separator)
 
             try:
+                # Start per-cycle power measurement (if power monitoring enabled and integration capable)
+                if (
+                    hc_config.power_monitoring_enabled
+                    and self._power_monitor.has_integration_capability()
+                ):
+                    try:
+                        await self._power_monitor.start_cycle_power_measurement()
+                        logger.debug(f"🔋 [Cycle {i+1}] Power integration started")
+                    except Exception as e:
+                        logger.warning(
+                            f"⚠️ Failed to start cycle power measurement: {e}. Continuing without per-cycle power data."
+                        )
+
                 # Heating phase (standby → activation)
                 logger.info(
                     f"Heating: {hc_config.standby_temperature}°C → {hc_config.activation_temperature}°C"
@@ -223,16 +355,31 @@ class TestCycleExecutor:
                 )
                 heating_elapsed = time.time() - heating_start
 
-                # Calculate remaining wait time to reach minimum heating time
-                remaining_heating_wait = max(0, hc_config.heating_wait_time - heating_elapsed)
+                # Force measurement phase (if enabled) - MOVED HERE (after heating, before wait)
+                robot_start = time.time()
+                robot_elapsed = 0.0
+                force_results = []
+                if hc_config.enable_robot and hc_config.enable_force_measurement:
+                    force_results = await self.measure_force_at_positions(
+                        cycle_num=i + 1, hc_config=hc_config
+                    )
+                    # Store force results (will update total_energy_wh and avg_power_w later)
+                    if force_results:
+                        self._force_measurements.extend(force_results)
+                robot_elapsed = time.time() - robot_start
+
+                # Calculate adjusted heating wait time (heating + robot time)
+                total_elapsed = heating_elapsed + robot_elapsed
+                remaining_heating_wait = max(0, hc_config.heating_wait_time - total_elapsed)
                 if remaining_heating_wait > 0:
                     logger.info(
-                        f"Heating: {heating_elapsed:.1f}s elapsed, waiting {remaining_heating_wait:.1f}s more to reach minimum {hc_config.heating_wait_time}s"
+                        f"Heating: {heating_elapsed:.1f}s + Robot: {robot_elapsed:.1f}s = {total_elapsed:.1f}s elapsed, "
+                        f"waiting {remaining_heating_wait:.1f}s more to reach minimum {hc_config.heating_wait_time}s"
                     )
                     await asyncio.sleep(remaining_heating_wait)
                 else:
                     logger.info(
-                        f"Heating: {heating_elapsed:.1f}s (exceeds minimum {hc_config.heating_wait_time}s)"
+                        f"Heating + Robot: {total_elapsed:.1f}s (exceeds minimum {hc_config.heating_wait_time}s, no additional wait needed)"
                     )
 
                 # Collect heating timing data for this cycle
@@ -260,6 +407,41 @@ class TestCycleExecutor:
 
                 # Collect cooling timing data for this cycle
                 self._collect_cycle_timing_data(cycle_number=i + 1, phase="cooling")
+
+                # Stop per-cycle power measurement and update force measurements
+                if (
+                    hc_config.power_monitoring_enabled
+                    and self._power_monitor.has_integration_capability()
+                ):
+                    try:
+                        cycle_power_data = await self._power_monitor.stop_cycle_power_measurement()
+                        cycle_energy_wh = cycle_power_data["energy_wh"]
+                        cycle_avg_power = cycle_power_data["average_power_w"]
+                        logger.info(
+                            f"🔋 [Cycle {i+1}] Energy: {cycle_energy_wh:.4f}Wh, "
+                            f"Average power: {cycle_avg_power:.2f}W "
+                            f"(Duration: {cycle_power_data['elapsed_seconds']:.2f}s)"
+                        )
+
+                        # Update force measurements with cycle energy, average power, and duration
+                        if force_results:
+                            for measurement in force_results:
+                                measurement["total_energy_wh"] = cycle_energy_wh
+                                measurement["avg_power_w"] = cycle_avg_power
+                                measurement["cycle_duration_s"] = cycle_power_data["elapsed_seconds"]
+                            logger.debug(
+                                f"Updated {len(force_results)} force measurements with "
+                                f"energy: {cycle_energy_wh:.4f}Wh, avg power: {cycle_avg_power:.2f}W, "
+                                f"duration: {cycle_power_data['elapsed_seconds']:.2f}s"
+                            )
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to get cycle power data: {e}")
+                        # Set all power-related values to 0.0 for this cycle's force measurements
+                        if force_results:
+                            for measurement in force_results:
+                                measurement["total_energy_wh"] = 0.0
+                                measurement["avg_power_w"] = 0.0
+                                measurement["cycle_duration_s"] = 0.0
 
                 logger.info(f"✅ Cycle {i+1}/{repeat_count} completed successfully")
 

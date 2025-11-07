@@ -9,8 +9,8 @@ wait times, power monitoring settings, and test execution parameters.
 from __future__ import annotations
 
 # Standard library imports
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -62,6 +62,27 @@ class HeatingCoolingConfiguration:
     upper_temperature: float = 80.0  # Maximum temperature limit (°C)
 
     # ========================================================================
+    # ROBOT INTEGRATION PARAMETERS
+    # ========================================================================
+    enable_robot: bool = True  # Enable robot integration
+    enable_force_measurement: bool = True  # Enable force measurement during test
+
+    # Robot motion parameters
+    velocity: float = 100000.0  # Robot velocity (μm/s)
+    acceleration: float = 85000.0  # Robot acceleration (μm/s²)
+    deceleration: float = 85000.0  # Robot deceleration (μm/s²)
+
+    # Robot positions (μm)
+    initial_position: float = 1000.0  # Initial/safe position
+    measurement_positions: List[float] = field(
+        default_factory=lambda: [100000.0, 130000.0, 170000.0]
+    )  # Force measurement positions
+
+    # Robot timing (seconds)
+    robot_move_stabilization: float = 0.1  # Post-movement stabilization time
+    force_measurement_delay: float = 0.05  # Pre-measurement delay
+
+    # ========================================================================
     # STABILIZATION TIME PARAMETERS
     # ========================================================================
     poweron_stabilization: float = 0.5  # Power-on stabilization time (s)
@@ -80,12 +101,20 @@ class HeatingCoolingConfiguration:
     # ========================================================================
     # If power analyzer is configured, these test-specific settings will override
     # hardware config defaults. Leave as None to use hardware config values.
-    power_analyzer_voltage_range: Optional[str] = None  # e.g., "15V", "30V", "60V", "150V", "300V", "600V", "1000V"
-    power_analyzer_current_range: Optional[str] = None  # e.g., "1A", "2A", "5A", "10A", "20A", "50A"
-    power_analyzer_auto_range: Optional[bool] = None    # None = use hardware config default
-    power_analyzer_line_filter: Optional[str] = None    # e.g., "500HZ", "1KHZ", "10KHZ", "100KHZ"
-    power_analyzer_frequency_filter: Optional[str] = None  # e.g., "0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ"
-    power_analyzer_element: Optional[int] = None        # Measurement element/channel (1-6), None = use hardware config
+    power_analyzer_voltage_range: Optional[str] = (
+        None  # e.g., "15V", "30V", "60V", "150V", "300V", "600V", "1000V"
+    )
+    power_analyzer_current_range: Optional[str] = (
+        None  # e.g., "1A", "2A", "5A", "10A", "20A", "50A"
+    )
+    power_analyzer_auto_range: Optional[bool] = None  # None = use hardware config default
+    power_analyzer_line_filter: Optional[str] = None  # e.g., "500HZ", "1KHZ", "10KHZ", "100KHZ"
+    power_analyzer_frequency_filter: Optional[str] = (
+        None  # e.g., "0.5HZ", "1HZ", "10HZ", "100HZ", "1KHZ"
+    )
+    power_analyzer_element: Optional[int] = (
+        None  # Measurement element/channel (1-6), None = use hardware config
+    )
 
     def __post_init__(self):
         """Validate configuration parameters"""
@@ -129,6 +158,33 @@ class HeatingCoolingConfiguration:
         if self.power_analyzer_element is not None:
             if not (1 <= self.power_analyzer_element <= 6):
                 raise ValueError("power_analyzer_element must be between 1 and 6")
+
+        # Validate robot parameters (if robot enabled)
+        if self.enable_robot:
+            if self.velocity <= 0:
+                raise ValueError("velocity must be positive")
+
+            if self.acceleration <= 0:
+                raise ValueError("acceleration must be positive")
+
+            if self.deceleration <= 0:
+                raise ValueError("deceleration must be positive")
+
+            if self.initial_position < 0:
+                raise ValueError("initial_position must be non-negative")
+
+            if not self.measurement_positions:
+                raise ValueError("measurement_positions cannot be empty when robot is enabled")
+
+            for pos in self.measurement_positions:
+                if pos < 0:
+                    raise ValueError("all measurement_positions must be non-negative")
+
+            if self.robot_move_stabilization < 0:
+                raise ValueError("robot_move_stabilization must be non-negative")
+
+            if self.force_measurement_delay < 0:
+                raise ValueError("force_measurement_delay must be non-negative")
 
     @property
     def total_cycle_time_estimate(self) -> float:
@@ -183,6 +239,16 @@ class HeatingCoolingConfiguration:
             # MCU PARAMETERS
             "fan_speed": self.fan_speed,
             "upper_temperature": self.upper_temperature,
+            # ROBOT INTEGRATION PARAMETERS
+            "enable_robot": self.enable_robot,
+            "enable_force_measurement": self.enable_force_measurement,
+            "velocity": self.velocity,
+            "acceleration": self.acceleration,
+            "deceleration": self.deceleration,
+            "initial_position": self.initial_position,
+            "measurement_positions": self.measurement_positions,
+            "robot_move_stabilization": self.robot_move_stabilization,
+            "force_measurement_delay": self.force_measurement_delay,
             # STABILIZATION TIME PARAMETERS
             "poweron_stabilization": self.poweron_stabilization,
             "mcu_boot_complete_stabilization": self.mcu_boot_complete_stabilization,
@@ -222,6 +288,16 @@ class HeatingCoolingConfiguration:
             # MCU PARAMETERS
             fan_speed=data.get("fan_speed", 10),
             upper_temperature=data.get("upper_temperature", 80.0),
+            # ROBOT INTEGRATION PARAMETERS
+            enable_robot=data.get("enable_robot", True),
+            enable_force_measurement=data.get("enable_force_measurement", True),
+            velocity=data.get("velocity", 100000.0),
+            acceleration=data.get("acceleration", 85000.0),
+            deceleration=data.get("deceleration", 85000.0),
+            initial_position=data.get("initial_position", 1000.0),
+            measurement_positions=data.get("measurement_positions", [100000.0, 130000.0, 170000.0]),
+            robot_move_stabilization=data.get("robot_move_stabilization", 0.1),
+            force_measurement_delay=data.get("force_measurement_delay", 0.05),
             # STABILIZATION TIME PARAMETERS
             poweron_stabilization=data.get("poweron_stabilization", 0.5),
             mcu_boot_complete_stabilization=data.get("mcu_boot_complete_stabilization", 2.0),
