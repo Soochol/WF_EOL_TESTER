@@ -750,7 +750,7 @@ class EOLForceTestUseCase(BaseUseCase):
                             "code": f"FORCE_T{temp}_P{pos}",
                             "name": f"Force at T={temp}°C, P={pos}mm",
                             "value": force_val,
-                            "unit": "N",
+                            "unit": reading.force_value.unit.value if reading.force_value else "kgf",
                             "result": meas_result,
                         })
                     except Exception:
@@ -785,9 +785,10 @@ class EOLForceTestUseCase(BaseUseCase):
                         if reading.force_value and hasattr(reading.force_value, "is_valid"):
                             if not reading.force_value.is_valid:
                                 force_val = float(reading.force_value.value)
+                                unit_str = reading.force_value.unit.value if reading.force_value else "kgf"
                                 defects.append({
                                     "code": f"FORCE_T{temp}_P{pos}",
-                                    "reason": f"Force out of spec: {force_val}N",
+                                    "reason": f"Force out of spec: {force_val}{unit_str}",
                                 })
                     except Exception:
                         continue
