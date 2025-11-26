@@ -59,9 +59,11 @@ class YamlContainerConfigurationLoader:
             "hardware:",
             "digital_io:",
             "power:",
+            "power_analyzer:",
             "loadcell:",
             "mcu:",
             "robot:",
+            "neurohub:",
         ]
 
         # Add blank line before each major section (except if it's at the start of file)
@@ -136,16 +138,114 @@ class YamlContainerConfigurationLoader:
             return ApplicationConfig().to_dict()
 
     def _load_hardware_config_dict(self) -> Dict[str, Any]:
-        """Load hardware configuration from file and return as dictionary."""
+        """
+        Load hardware configuration from file and return as dictionary.
+
+        Automatically merges new default settings if the file is missing any keys
+        that exist in the HardwareConfig domain object. This ensures that when
+        new hardware configurations are added to the codebase, existing YAML files
+        are automatically updated with the new default values.
+        """
         try:
-            config_data = self._load_yaml_file(self.hardware_config_path)
+            # Get default configuration from HardwareConfig (contains all settings)
+            default_config = HardwareConfig().to_dict()
+
+            # Load existing configuration from file
+            file_config = self._load_yaml_file(self.hardware_config_path)
+
+            # Deep merge: default values + file values (file values take priority)
+            merged_config = self._deep_merge(default_config, file_config)
+
+            # If file was missing any keys, update the file with merged config
+            if self._has_missing_keys(file_config, default_config):
+                self._update_hardware_config_file(merged_config)
+                logger.info(
+                    f"Hardware config updated with new default settings: "
+                    f"{self.hardware_config_path}"
+                )
+
             logger.info(f"Hardware configuration loaded from: {self.hardware_config_path}")
-            return config_data
+            return merged_config
 
         except Exception as e:
             logger.error(f"Failed to load hardware config: {e}")
             logger.info("Using default hardware configuration")
             return HardwareConfig().to_dict()
+
+    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Deep merge two dictionaries. Override values take priority over base values.
+
+        Args:
+            base: Base dictionary (default values from HardwareConfig)
+            override: Override dictionary (user's existing YAML file values)
+
+        Returns:
+            Merged dictionary with override values taking priority
+        """
+        result = base.copy()
+
+        for key, override_value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(override_value, dict):
+                # Recursively merge nested dictionaries
+                result[key] = self._deep_merge(result[key], override_value)
+            else:
+                # Override with file value (user's setting takes priority)
+                result[key] = override_value
+
+        return result
+
+    def _has_missing_keys(
+        self, file_config: Dict[str, Any], default_config: Dict[str, Any]
+    ) -> bool:
+        """
+        Check if file configuration is missing any keys from default configuration.
+
+        Args:
+            file_config: Configuration loaded from YAML file
+            default_config: Default configuration from HardwareConfig
+
+        Returns:
+            True if file_config is missing any top-level keys from default_config
+        """
+        for key in default_config:
+            if key not in file_config:
+                logger.debug(f"Missing configuration key detected: {key}")
+                return True
+        return False
+
+    def _update_hardware_config_file(self, config_data: Dict[str, Any]) -> None:
+        """
+        Update hardware configuration file with merged configuration.
+
+        Args:
+            config_data: Merged configuration data to write
+        """
+        try:
+            target_file = Path(self.hardware_config_path)
+
+            # Update metadata
+            config_data["metadata"] = {
+                "created_at": config_data.get("metadata", {}).get(
+                    "created_at", datetime.now().isoformat()
+                ),
+                "updated_at": datetime.now().isoformat(),
+                "note": "Auto-updated with new default settings",
+                "created_by": "YamlContainerConfigurationLoader (auto-merged)",
+            }
+
+            # Write to file with formatting
+            yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
+            formatted_content = self._format_yaml_with_spacing(yaml_content)
+
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(formatted_content)
+
+            logger.debug(f"Hardware config file updated: {target_file}")
+
+        except Exception as e:
+            logger.error(f"Failed to update hardware config file: {e}")
+            # Don't raise - the merged config is still valid in memory
 
     def _load_active_test_profile(self) -> Dict[str, Any]:
         """
