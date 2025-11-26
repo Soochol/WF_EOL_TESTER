@@ -7,7 +7,7 @@ editor widgets and validation feedback.
 
 # Standard library imports
 import os
-from typing import Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 # Third-party imports
 from PySide6.QtCore import Signal
@@ -15,6 +15,9 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 # Local folder imports
 from ..core import Colors, ConfigValidator, ConfigValue
+
+if TYPE_CHECKING:
+    from .editors.base_editor import BaseEditorWidget
 
 
 class PropertyEditorWidget(QWidget):
@@ -25,7 +28,8 @@ class PropertyEditorWidget(QWidget):
     def __init__(self, config_value: ConfigValue, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.config_value = config_value
-        self.editor_widget: Optional[QWidget] = None
+        # Editor widget can be BaseEditorWidget or plain QWidget
+        self.editor_widget: Optional[Union[QWidget, "BaseEditorWidget"]] = None
         self.validator = ConfigValidator()
         self.setup_ui()
         self.validate_current_value()
@@ -206,3 +210,26 @@ class PropertyEditorWidget(QWidget):
                     border-radius: 8px;
                     """
                 )
+
+    def commit_pending_changes(self) -> bool:
+        """
+        Commit any pending changes from the editor widget.
+        Called on focus lost or window close.
+
+        Returns:
+            True if changes were committed, False if no pending changes
+        """
+        if self.editor_widget and hasattr(self.editor_widget, "commit_pending_changes"):
+            return self.editor_widget.commit_pending_changes()
+        return False
+
+    def has_pending_changes(self) -> bool:
+        """
+        Check if the editor has uncommitted changes.
+
+        Returns:
+            True if there are pending changes
+        """
+        if self.editor_widget and hasattr(self.editor_widget, "has_pending_changes"):
+            return self.editor_widget.has_pending_changes()
+        return False

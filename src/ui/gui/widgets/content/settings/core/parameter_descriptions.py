@@ -148,6 +148,14 @@ class ParameterDescriptions:
         # Digital I/O Configuration
         "digital_io.model": "Digital I/O board model. Options: 'mock' (simulation) or 'ajinextek' (real hardware).",
         "digital_io.connection.board_id": "Digital I/O board ID for multi-board systems (0-3).",
+
+        # NeuroHub MES Configuration
+        "neurohub.enabled": "Enable NeuroHub MES integration for 착공/완공 (START/COMPLETE) messages.",
+        "neurohub.host": "NeuroHub Client host address (IP or hostname). Default: 127.0.0.1 (localhost).",
+        "neurohub.port": "NeuroHub Client TCP port number (1-65535). Default: 9000.",
+        "neurohub.timeout": "Connection timeout in seconds. Increase if network latency is high.",
+        "neurohub.retry_attempts": "Number of connection retry attempts before giving up (1-10).",
+        "neurohub.retry_delay": "Delay in seconds between retry attempts.",
     }
 
     # Digital I/O Pin Descriptions

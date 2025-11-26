@@ -26,6 +26,7 @@ from application.services.test.test_result_evaluator import TestResultEvaluator
 
 if TYPE_CHECKING:
     from application.services.industrial.industrial_system_manager import IndustrialSystemManager
+    from application.services.industrial.neurohub_service import NeuroHubService
 
 # Local application imports
 from domain.entities.eol_test import EOLTest
@@ -88,6 +89,7 @@ class EOLForceTestUseCase(BaseUseCase):
         exception_handler: ExceptionHandler,
         emergency_stop_service: Optional[EmergencyStopService] = None,
         industrial_system_manager: Optional["IndustrialSystemManager"] = None,
+        neurohub_service: Optional["NeuroHubService"] = None,
         db_logger_service: Optional[Any] = None,
     ):
         # Initialize BaseUseCase
@@ -97,6 +99,7 @@ class EOLForceTestUseCase(BaseUseCase):
         self._hardware_services = hardware_services
         self._exception_handler = exception_handler
         self._industrial_system_manager = industrial_system_manager
+        self._neurohub_service = neurohub_service
         self._db_logger_service = db_logger_service
 
         # Inject repository service into hardware facade for cycle-by-cycle saving
@@ -202,6 +205,10 @@ class EOLForceTestUseCase(BaseUseCase):
         # Reset KeyboardInterrupt flag for each execution
         self._keyboard_interrupt_raised = False
 
+        # Track if 착공 (START) was sent - 완공 (COMPLETE) must be sent if this is True
+        neurohub_start_sent = False
+        neurohub_complete_sent = False  # 완공 전송 여부 추적
+
         # Execute test with proper error handling (BaseUseCase handles _is_running)
         start_time = asyncio.get_event_loop().time()
         measurements: Optional[TestMeasurements] = None
@@ -262,6 +269,10 @@ class EOLForceTestUseCase(BaseUseCase):
                 session_timestamp,
             )
 
+            # NeuroHub: Send START (착공) message
+            # 반환값으로 실제 착공 전송 여부 확인 (enabled 상태에서만 True)
+            neurohub_start_sent = await self._send_neurohub_start(command.dut_info.serial_number)
+
             # Phase 2: Execute test
             test_entity.prepare_test()
 
@@ -320,6 +331,14 @@ class EOLForceTestUseCase(BaseUseCase):
                     test_success=is_test_passed, test_error=False
                 )
 
+            # NeuroHub: Send COMPLETE (완공) message
+            await self._send_neurohub_complete(
+                serial_number=command.dut_info.serial_number,
+                result="PASS" if is_test_passed else "FAIL",
+                measurements=measurements,
+            )
+            neurohub_complete_sent = True
+
             return self._create_success_result(
                 test_entity,
                 measurements,
@@ -354,6 +373,19 @@ class EOLForceTestUseCase(BaseUseCase):
             )
 
         finally:
+            # NeuroHub: 착공이 시작되었으면 반드시 완공을 보내야 함
+            # (KeyboardInterrupt, CancelledError 포함 모든 경우)
+            if neurohub_start_sent and not neurohub_complete_sent:
+                try:
+                    logger.info("🔗 NeuroHub: Sending COMPLETE (완공) in finally block (interrupted/error)")
+                    await self._send_neurohub_complete(
+                        serial_number=command.dut_info.serial_number,
+                        result="FAIL",
+                        measurements=measurements,
+                    )
+                except Exception as neurohub_error:
+                    logger.warning(f"🔗 NeuroHub: Failed to send COMPLETE in finally: {neurohub_error}")
+
             # Phase 6: Cleanup hardware resources (only if not interrupted)
             # Skip cleanup entirely if KeyboardInterrupt was raised - let Emergency Stop handle hardware safety
             if self._keyboard_interrupt_raised:
@@ -462,6 +494,9 @@ class EOLForceTestUseCase(BaseUseCase):
                 )
             except Exception as lamp_error:
                 logger.warning(f"⚠️ Failed to indicate error on Tower Lamp: {lamp_error}")
+
+        # NeuroHub: 완공은 finally 블록에서 처리됨
+        # (착공 여부 체크와 중복 방지를 위해 finally에서 일괄 처리)
 
         # Try to save error state if test entity exists
         if test_entity is not None:
@@ -597,3 +632,166 @@ class EOLForceTestUseCase(BaseUseCase):
         except Exception as e:
             logger.warning(f"Failed to log test to database: {e}")
             # Don't raise - database logging is optional
+
+    # ============================================================================
+    # NEUROHUB MES INTEGRATION (착공/완공)
+    # ============================================================================
+
+    async def _send_neurohub_start(self, serial_number: str) -> bool:
+        """
+        Send START (착공) message to NeuroHub MES
+
+        Args:
+            serial_number: WIP serial number
+
+        Returns:
+            bool: True if START was actually sent (enabled and successful),
+                  False if disabled or failed
+
+        Note:
+            NeuroHub communication failures are logged but never raise exceptions
+            to avoid blocking test execution.
+        """
+        if not self._neurohub_service:
+            return False  # 서비스 없음 - 착공 안 보냄
+
+        try:
+            # Check if service is enabled
+            if not await self._neurohub_service.is_enabled():
+                logger.debug("🔗 NeuroHub: Service disabled, skipping START")
+                return False  # disabled - 착공 안 보냄
+
+            logger.info(f"🔗 NeuroHub: Sending START (착공) for {serial_number}")
+            success = await self._neurohub_service.send_start(serial_number)
+            if success:
+                logger.info(f"🔗 NeuroHub: START acknowledged for {serial_number}")
+                return True  # 착공 실제로 전송됨
+            else:
+                logger.warning(f"🔗 NeuroHub: START failed for {serial_number}")
+                return True  # 시도했으나 실패 - 완공도 시도해야 함
+        except Exception as e:
+            logger.warning(f"🔗 NeuroHub: Error sending START: {e}")
+            return True  # 시도했으나 에러 - 완공도 시도해야 함
+
+    async def _send_neurohub_complete(
+        self,
+        serial_number: str,
+        result: str,
+        measurements: Optional[TestMeasurements] = None,
+    ) -> None:
+        """
+        Send COMPLETE (완공) message to NeuroHub MES
+
+        Args:
+            serial_number: WIP serial number
+            result: Test result ("PASS" or "FAIL")
+            measurements: Test measurements data
+
+        Note:
+            NeuroHub communication failures are logged but never raise exceptions
+            to avoid blocking test completion.
+        """
+        if not self._neurohub_service:
+            return
+
+        try:
+            # Convert measurements to NeuroHub format
+            neurohub_measurements = self._convert_measurements_for_neurohub(measurements)
+            defects = self._extract_defects_for_neurohub(measurements, result)
+
+            logger.info(f"🔗 NeuroHub: Sending COMPLETE (완공) [{result}] for {serial_number}")
+            success = await self._neurohub_service.send_complete(
+                serial_number=serial_number,
+                result=result,
+                measurements=neurohub_measurements,
+                defects=defects if result == "FAIL" else None,
+            )
+            if success:
+                logger.info(f"🔗 NeuroHub: COMPLETE acknowledged for {serial_number}")
+            else:
+                logger.warning(f"🔗 NeuroHub: COMPLETE failed for {serial_number}")
+        except Exception as e:
+            logger.warning(f"🔗 NeuroHub: Error sending COMPLETE: {e}")
+            # Don't raise - NeuroHub communication is optional
+
+    def _convert_measurements_for_neurohub(
+        self, measurements: Optional[TestMeasurements]
+    ) -> list:
+        """
+        Convert TestMeasurements to NeuroHub measurement format
+
+        Args:
+            measurements: Test measurements data
+
+        Returns:
+            List of measurement dictionaries in NeuroHub format
+        """
+        if not measurements:
+            return []
+
+        neurohub_measurements = []
+        try:
+            # TestMeasurements is iterable over (temperature, PositionMeasurements) pairs
+            for temp, position_measurements in measurements:
+                # PositionMeasurements is iterable over (position, MeasurementReading) pairs
+                for pos, reading in position_measurements:
+                    try:
+                        force_val = (
+                            float(reading.force_value.value)
+                            if reading.force_value is not None
+                            else None
+                        )
+                        # Determine pass/fail for this measurement
+                        meas_result = "PASS"
+                        if reading.force_value and hasattr(reading.force_value, "is_valid"):
+                            meas_result = "PASS" if reading.force_value.is_valid else "FAIL"
+
+                        neurohub_measurements.append({
+                            "code": f"FORCE_T{temp}_P{pos}",
+                            "name": f"Force at T={temp}°C, P={pos}mm",
+                            "value": force_val,
+                            "unit": "N",
+                            "result": meas_result,
+                        })
+                    except Exception:
+                        continue
+        except Exception as e:
+            logger.debug(f"Error converting measurements for NeuroHub: {e}")
+
+        return neurohub_measurements
+
+    def _extract_defects_for_neurohub(
+        self, measurements: Optional[TestMeasurements], result: str
+    ) -> list:
+        """
+        Extract defect information for NeuroHub FAIL results
+
+        Args:
+            measurements: Test measurements data
+            result: Test result ("PASS" or "FAIL")
+
+        Returns:
+            List of defect dictionaries in NeuroHub format
+        """
+        if result != "FAIL" or not measurements:
+            return []
+
+        defects = []
+        try:
+            # Find failed measurements
+            for temp, position_measurements in measurements:
+                for pos, reading in position_measurements:
+                    try:
+                        if reading.force_value and hasattr(reading.force_value, "is_valid"):
+                            if not reading.force_value.is_valid:
+                                force_val = float(reading.force_value.value)
+                                defects.append({
+                                    "code": f"FORCE_T{temp}_P{pos}",
+                                    "reason": f"Force out of spec: {force_val}N",
+                                })
+                    except Exception:
+                        continue
+        except Exception as e:
+            logger.debug(f"Error extracting defects for NeuroHub: {e}")
+
+        return defects

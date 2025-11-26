@@ -330,3 +330,26 @@ class SettingsWidget(QWidget):
             UIHelpers.show_error_message(
                 self, "Configuration Error", f"Error updating configuration:\\n\\n{str(e)}"
             )
+
+    def commit_all_pending_changes(self) -> bool:
+        """
+        Commit any pending changes from the property editor.
+        Called before window close to ensure no changes are lost.
+
+        Returns:
+            True if changes were committed, False if no pending changes
+        """
+        if self.property_widget:
+            return self.property_widget.commit_pending_changes()
+        return False
+
+    def has_pending_changes(self) -> bool:
+        """
+        Check if there are any uncommitted changes.
+
+        Returns:
+            True if there are pending changes
+        """
+        if self.property_widget:
+            return self.property_widget.has_pending_changes()
+        return False

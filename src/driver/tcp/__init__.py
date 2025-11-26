@@ -14,6 +14,11 @@ from driver.tcp.exceptions import (
     TCPError,
     TCPTimeoutError,
 )
+from driver.tcp.neurohub_protocol import (
+    NeuroHubAck,
+    NeuroHubMessage,
+    NeuroHubProtocol,
+)
 
 
 __all__ = [
@@ -24,4 +29,7 @@ __all__ = [
     "TCPTimeoutError",
     "DEFAULT_PORT",
     "DEFAULT_TIMEOUT",
+    "NeuroHubProtocol",
+    "NeuroHubMessage",
+    "NeuroHubAck",
 ]

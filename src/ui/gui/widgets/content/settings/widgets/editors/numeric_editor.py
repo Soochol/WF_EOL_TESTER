@@ -2,6 +2,7 @@
 Numeric value editor widget.
 
 Provides spin box controls for integer and float configuration values.
+Uses deferred save (Focus Lost) - VS Code style.
 """
 
 # Standard library imports
@@ -16,11 +17,14 @@ from .base_editor import BaseEditorWidget
 
 
 class NumericEditorWidget(BaseEditorWidget):
-    """Numeric editor for int and float values"""
+    """Numeric editor for int and float values - saves on focus lost"""
+
+    # Deferred save: commit on focus lost, not on every value change
+    IMMEDIATE_SAVE = False
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.spin_box: Union[QSpinBox, QDoubleSpinBox]
+        super().__init__(*args, **kwargs)
 
     def setup_ui(self) -> None:
         """Setup numeric editor UI"""
@@ -97,8 +101,15 @@ class NumericEditorWidget(BaseEditorWidget):
         layout.addStretch()
 
     def connect_signals(self) -> None:
-        """Connect spin box signals"""
+        """Connect spin box signals for deferred save"""
+        # Track changes for pending state
         self.spin_box.valueChanged.connect(self.on_value_changed)
+        # Commit on focus lost or Enter
+        self.spin_box.editingFinished.connect(self._on_editing_finished)
+
+    def _on_editing_finished(self) -> None:
+        """Called when spin box loses focus or Enter is pressed"""
+        self.commit_pending_changes()
 
     def get_value(self) -> Any:
         """Get spin box value"""

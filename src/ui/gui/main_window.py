@@ -1918,6 +1918,14 @@ class MainWindow(QMainWindow):
 
         logger.info("🚪 Application closing - cleaning up resources...")
 
+        # 0. Commit any pending settings changes (VS Code style - save on close)
+        try:
+            if self.settings_page and hasattr(self.settings_page, "commit_all_pending_changes"):
+                if self.settings_page.commit_all_pending_changes():
+                    logger.info("💾 Pending settings changes committed before close")
+        except Exception as e:
+            logger.warning(f"Error committing pending settings (non-critical): {e}")
+
         # 1. Disconnect ALL signals to prevent memory leaks
         try:
             logger.info("🔌 Disconnecting signals...")

@@ -2,12 +2,14 @@
 Text value editor widget.
 
 Provides line edit and text edit controls for string configuration values.
+Uses deferred save (Focus Lost) - VS Code style.
 """
 
 # Standard library imports
 from typing import Any, Callable, Optional, Union
 
 # Third-party imports
+from PySide6.QtCore import QEvent, QObject
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QPlainTextEdit, QWidget
 
 # Local folder imports
@@ -16,7 +18,10 @@ from .base_editor import BaseEditorWidget
 
 
 class TextEditorWidget(BaseEditorWidget):
-    """Text editor for string values"""
+    """Text editor for string values - saves on focus lost"""
+
+    # Deferred save: commit on focus lost, not on every keystroke
+    IMMEDIATE_SAVE = False
 
     def __init__(
         self,
@@ -24,8 +29,8 @@ class TextEditorWidget(BaseEditorWidget):
         value_changed_callback: Callable[[Any], None],
         parent: Optional[QWidget] = None,
     ) -> None:
-        super().__init__(config_value, value_changed_callback, parent)
         self.text_widget: Union[QLineEdit, QPlainTextEdit]
+        super().__init__(config_value, value_changed_callback, parent)
 
     def setup_ui(self) -> None:
         """Setup text editor UI"""
@@ -66,11 +71,26 @@ class TextEditorWidget(BaseEditorWidget):
         layout.addWidget(self.text_widget)
 
     def connect_signals(self) -> None:
-        """Connect text widget signals"""
+        """Connect text widget signals for deferred save"""
+        # Track changes for pending state
         if isinstance(self.text_widget, QLineEdit):
             self.text_widget.textChanged.connect(self.on_value_changed)
+            # Commit on Enter or focus lost
+            self.text_widget.editingFinished.connect(self._on_editing_finished)
         else:
             self.text_widget.textChanged.connect(self.on_value_changed)
+            # QPlainTextEdit doesn't have editingFinished, use event filter
+            self.text_widget.installEventFilter(self)
+
+    def _on_editing_finished(self) -> None:
+        """Called when QLineEdit loses focus or Enter is pressed"""
+        self.commit_pending_changes()
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        """Handle focus out event for QPlainTextEdit"""
+        if obj == self.text_widget and event.type() == QEvent.Type.FocusOut:
+            self.commit_pending_changes()
+        return super().eventFilter(obj, event)
 
     def get_value(self) -> str:
         """Get text value"""

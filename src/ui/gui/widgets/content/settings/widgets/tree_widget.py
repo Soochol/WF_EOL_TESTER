@@ -86,7 +86,7 @@ class SettingsTreeWidget(QTreeWidget):
 
                 # Recursively add sub-items
                 self.add_config_items(category_item, value, file_path, item_key)
-                category_item.setExpanded(True)
+                category_item.setExpanded(False)
             else:
                 # Create setting item
                 setting_item = QTreeWidgetItem(parent_item, [key])
@@ -120,8 +120,16 @@ class SettingsTreeWidget(QTreeWidget):
                         if hardware_type == "power_analyzer":
                             allowed_values = ["tcp", "usb", "gpib"]
                     elif key == "port":
-                        # Get available serial ports
-                        allowed_values = self._get_available_ports(value)
+                        # Determine if this is a serial port or TCP port based on parent category
+                        hardware_type = category_prefix.split(".")[-1] if category_prefix else None
+                        # TCP ports: power, power_analyzer, neurohub (numeric input, not combo)
+                        # Serial ports: loadcell, mcu (COM port selection)
+                        if hardware_type in ("power", "power_analyzer", "neurohub"):
+                            # TCP port - use numeric input (no allowed_values)
+                            allowed_values = None
+                        else:
+                            # Serial port - get available COM ports
+                            allowed_values = self._get_available_ports(value)
                     elif key == "baudrate":
                         # Common baudrate values for serial communication
                         allowed_values = [
@@ -394,7 +402,7 @@ class SettingsTreeWidget(QTreeWidget):
             return default_ports
 
     def update_item_text(self, key: str, new_value: Any) -> None:
-        """Update tree item text after value change"""
+        """Update tree item text and color after value change"""
         # Update the ConfigValue in our dictionary
         if key in self.config_values:
             self.config_values[key].value = new_value
@@ -411,6 +419,16 @@ class SettingsTreeWidget(QTreeWidget):
                     # Update the item text
                     key_name = key.split(".")[-1]  # Get the last part of the key
                     self._set_item_display_text(item, key_name, new_value)
+
+                    # Update color based on value type
+                    if isinstance(new_value, bool):
+                        # Green for True, Red for False
+                        color = "#00D9A5" if new_value else "#F44336"
+                        item.setForeground(0, QBrush(QColor(color)))
+                    elif isinstance(new_value, (int, float)):
+                        # Blue for numbers
+                        item.setForeground(0, QBrush(QColor("#2196F3")))
+
                     break
 
             iterator += 1

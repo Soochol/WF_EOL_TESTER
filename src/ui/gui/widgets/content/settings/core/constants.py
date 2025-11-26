@@ -108,8 +108,13 @@ class ValidationRules:
             "mcu.model": {"allowed": ["mock", "lma"], "type": "str"},
             "power.model": {"allowed": ["mock", "oda"], "type": "str"},
             "digital_io.model": {"allowed": ["mock", "ajinextek"], "type": "str"},
-            # Port validations
-            "*.port": {"pattern": r"^COM\d+$", "type": "str"},
+            # Port validations (serial ports only - loadcell, mcu)
+            "loadcell.port": {"pattern": r"^COM\d+$", "type": "str"},
+            "mcu.port": {"pattern": r"^COM\d+$", "type": "str"},
+            # TCP port validations (integer ports - power, power_analyzer, neurohub)
+            "power.port": {"min": 1, "max": 65535, "type": "int"},
+            "power_analyzer.port": {"min": 1, "max": 65535, "type": "int"},
+            "neurohub.port": {"min": 1, "max": 65535, "type": "int"},
             "*.baudrate": {"allowed": [9600, 19200, 38400, 57600, 115200], "type": "int"},
             # DUT (Device Under Test) validations
             "default.dut_id": {"type": "str", "min_length": 1, "max_length": 50},

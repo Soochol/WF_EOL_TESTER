@@ -22,6 +22,7 @@ from application.services.core.repository_service import RepositoryService
 from application.services.industrial.industrial_system_manager import (
     IndustrialSystemManager,
 )
+from application.services.industrial.neurohub_service import NeuroHubService
 
 # Monitoring Services
 from application.services.monitoring.emergency_stop_service import EmergencyStopService
@@ -114,6 +115,11 @@ class ServiceContainer(containers.DeclarativeContainer):
         gui_alert_callback=None,  # Will be set by GUI if available
     )
 
+    neurohub_service = providers.Singleton(
+        NeuroHubService,
+        configuration_service=config_container.configuration_service,
+    )
+
     # ============================================================================
     # USE CASES
     # ============================================================================
@@ -129,6 +135,7 @@ class ServiceContainer(containers.DeclarativeContainer):
         exception_handler=exception_handler,
         emergency_stop_service=emergency_stop_service,
         industrial_system_manager=industrial_system_manager,
+        neurohub_service=neurohub_service,
     )
 
     # Standard Use Cases (with industrial system integration)
@@ -177,6 +184,7 @@ class ServiceContainer(containers.DeclarativeContainer):
                 "test_result_evaluator",
                 "repository_service",
                 "industrial_system_manager",
+                "neurohub_service",
                 "json_result_repository",
             ]
 

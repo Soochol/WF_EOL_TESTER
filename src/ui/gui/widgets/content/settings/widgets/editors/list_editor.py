@@ -70,7 +70,10 @@ class DoubleSpinBoxDelegate(QStyledItemDelegate):
 
 
 class ListEditorWidget(BaseEditorWidget):
-    """Table-based editor for list configuration values"""
+    """Table-based editor for list configuration values - saves immediately on changes"""
+
+    # Immediate save: table changes (add/delete row, cell edit) are applied instantly
+    IMMEDIATE_SAVE = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

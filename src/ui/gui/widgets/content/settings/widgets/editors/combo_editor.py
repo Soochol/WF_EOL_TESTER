@@ -16,7 +16,10 @@ from .base_editor import BaseEditorWidget
 
 
 class ComboEditorWidget(BaseEditorWidget):
-    """Combo box editor for values with allowed options"""
+    """Combo box editor for values with allowed options - saves immediately on selection"""
+
+    # Immediate save: dropdown selection is applied instantly
+    IMMEDIATE_SAVE = True
 
     def setup_ui(self) -> None:
         """Setup combo box editor UI"""

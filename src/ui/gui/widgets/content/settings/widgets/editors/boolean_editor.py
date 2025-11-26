@@ -6,14 +6,17 @@ Provides a checkbox editor for boolean configuration values.
 
 from typing import Any
 
-from PySide6.QtWidgets import QCheckBox, QHBoxLayout
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel
 
 from ...core import Colors
 from .base_editor import BaseEditorWidget
 
 
 class BooleanEditorWidget(BaseEditorWidget):
-    """Checkbox editor for boolean values"""
+    """Checkbox editor for boolean values - saves immediately on toggle"""
+
+    # Immediate save: checkbox changes are applied instantly
+    IMMEDIATE_SAVE = True
 
     def setup_ui(self) -> None:
         """Setup boolean editor UI"""
@@ -22,6 +25,18 @@ class BooleanEditorWidget(BaseEditorWidget):
 
         self.checkbox = QCheckBox()
         self.checkbox.setChecked(bool(self.config_value.value))
+        self._apply_checkbox_style()
+
+        # Status label to show enabled/disabled text with dynamic color
+        self.status_label = QLabel()
+        self._update_status_label(self.checkbox.isChecked())
+
+        layout.addWidget(self.checkbox)
+        layout.addWidget(self.status_label)
+        layout.addStretch()
+
+    def _apply_checkbox_style(self) -> None:
+        """Apply styling to checkbox"""
         self.checkbox.setStyleSheet(
             f"""
             QCheckBox {{
@@ -49,12 +64,41 @@ class BooleanEditorWidget(BaseEditorWidget):
         """
         )
 
-        layout.addWidget(self.checkbox)
-        layout.addStretch()
+    def _update_status_label(self, is_checked: bool) -> None:
+        """Update status label text and color based on checkbox state"""
+        if is_checked:
+            self.status_label.setText("Enabled")
+            self.status_label.setStyleSheet(
+                f"""
+                QLabel {{
+                    color: {Colors.SUCCESS};
+                    font-size: 14px;
+                    font-weight: 600;
+                    margin-left: 8px;
+                }}
+                """
+            )
+        else:
+            self.status_label.setText("Disabled")
+            self.status_label.setStyleSheet(
+                f"""
+                QLabel {{
+                    color: {Colors.ERROR};
+                    font-size: 14px;
+                    font-weight: 600;
+                    margin-left: 8px;
+                }}
+                """
+            )
 
     def connect_signals(self) -> None:
         """Connect checkbox signals"""
-        self.checkbox.toggled.connect(self.on_value_changed)
+        self.checkbox.toggled.connect(self._on_checkbox_toggled)
+
+    def _on_checkbox_toggled(self, checked: bool) -> None:
+        """Handle checkbox toggle - update status label and emit value change"""
+        self._update_status_label(checked)
+        self.on_value_changed()
 
     def get_value(self) -> bool:
         """Get checkbox value"""
@@ -63,3 +107,4 @@ class BooleanEditorWidget(BaseEditorWidget):
     def set_value(self, value: Any) -> None:
         """Set checkbox value"""
         self.checkbox.setChecked(bool(value))
+        self._update_status_label(bool(value))

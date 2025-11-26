@@ -16,6 +16,7 @@ from typing import Any, cast, Dict, Optional, Set
 from domain.exceptions.validation_exceptions import (
     ValidationException,
 )
+from domain.value_objects.neurohub_config import NeuroHubConfig
 
 
 # Supported hardware models
@@ -563,6 +564,7 @@ class HardwareConfig:
     power: PowerConfig = field(default_factory=PowerConfig)
     power_analyzer: PowerAnalyzerConfig = field(default_factory=PowerAnalyzerConfig)
     digital_io: DigitalIOConfig = field(default_factory=DigitalIOConfig)
+    neurohub: NeuroHubConfig = field(default_factory=NeuroHubConfig)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization"""
@@ -649,6 +651,7 @@ class HardwareConfig:
             "power": self.power,
             "power_analyzer": self.power_analyzer,
             "digital_io": self.digital_io,
+            "neurohub": self.neurohub,
         }
 
         # Apply overrides
@@ -662,6 +665,7 @@ class HardwareConfig:
             "power": PowerConfig,
             "power_analyzer": PowerAnalyzerConfig,
             "digital_io": DigitalIOConfig,
+            "neurohub": NeuroHubConfig,
         }
 
         for config_name, config_class in config_classes.items():
@@ -682,6 +686,7 @@ class HardwareConfig:
                 PowerAnalyzerConfig, current_values.get("power_analyzer", self.power_analyzer)
             ),
             digital_io=cast(DigitalIOConfig, current_values.get("digital_io", self.digital_io)),
+            neurohub=cast(NeuroHubConfig, current_values.get("neurohub", self.neurohub)),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -786,6 +791,14 @@ class HardwareConfig:
                 "tower_lamp_green": self.digital_io.tower_lamp_green,
                 "beep": self.digital_io.beep,
             },
+            "neurohub": {
+                "enabled": self.neurohub.enabled,
+                "host": self.neurohub.host,
+                "port": self.neurohub.port,
+                "timeout": self.neurohub.timeout,
+                "retry_attempts": self.neurohub.retry_attempts,
+                "retry_delay": self.neurohub.retry_delay,
+            },
         }
 
     def to_structured_dict(self) -> Dict[str, Any]:
@@ -817,6 +830,7 @@ class HardwareConfig:
             "power": PowerConfig,
             "power_analyzer": PowerAnalyzerConfig,
             "digital_io": DigitalIOConfig,
+            "neurohub": NeuroHubConfig,
         }
 
         for config_name, config_class in config_classes.items():
@@ -837,6 +851,7 @@ class HardwareConfig:
                 PowerAnalyzerConfig, data_copy.get("power_analyzer", PowerAnalyzerConfig())
             ),
             digital_io=cast(DigitalIOConfig, data_copy.get("digital_io", DigitalIOConfig())),
+            neurohub=cast(NeuroHubConfig, data_copy.get("neurohub", NeuroHubConfig())),
         )
 
     @classmethod
