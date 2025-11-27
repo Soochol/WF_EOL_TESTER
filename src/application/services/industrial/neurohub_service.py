@@ -108,8 +108,13 @@ class NeuroHubService:
         last_error = ""
         for attempt in range(self._config.retry_attempts):
             try:
-                if not self._protocol.is_connected:
-                    await self._protocol.connect()
+                # Check if already connected and connection is valid
+                if self._protocol.is_connected:
+                    return True, ""
+
+                # Attempt to connect
+                logger.info(f"🔗 NEUROHUB: Connection attempt {attempt + 1}/{self._config.retry_attempts}")
+                await self._protocol.connect()
                 return True, ""
 
             except Exception as e:
@@ -118,9 +123,17 @@ class NeuroHubService:
                 logger.warning(
                     f"🔗 NEUROHUB: Connection attempt {attempt + 1}/{self._config.retry_attempts} failed: {error_type}: {e}"
                 )
+
+                # Reset protocol for next retry to ensure clean reconnection
                 if attempt < self._config.retry_attempts - 1:
+                    logger.info(f"🔗 NEUROHUB: Waiting {self._config.retry_delay}s before retry...")
                     import asyncio
                     await asyncio.sleep(self._config.retry_delay)
+                    # Reset connection state for next attempt
+                    try:
+                        await self._protocol.disconnect()
+                    except Exception:
+                        pass  # Ignore errors during cleanup
 
         error_msg = f"NeuroHub connection failed: {last_error}"
         logger.error(f"🔗 NEUROHUB: {error_msg}")
