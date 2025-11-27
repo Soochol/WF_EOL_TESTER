@@ -6,7 +6,7 @@ Sends START (착공) and COMPLETE (완공) messages via TCP/IP.
 """
 
 # Standard library imports
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 # Third-party imports
 from loguru import logger
@@ -95,32 +95,36 @@ class NeuroHubService:
             self._enabled = False
             return False
 
-    async def _connect_with_retry(self) -> bool:
+    async def _connect_with_retry(self) -> Tuple[bool, str]:
         """
         Connect to NeuroHub Client with retry logic
 
         Returns:
-            bool: True if connected successfully
+            tuple[bool, str]: (success, error_message)
         """
         if not self._protocol or not self._config:
-            return False
+            return False, "NeuroHub protocol not initialized"
 
+        last_error = ""
         for attempt in range(self._config.retry_attempts):
             try:
                 if not self._protocol.is_connected:
                     await self._protocol.connect()
-                return True
+                return True, ""
 
             except Exception as e:
+                last_error = str(e)
+                error_type = type(e).__name__
                 logger.warning(
-                    f"🔗 NEUROHUB: Connection attempt {attempt + 1}/{self._config.retry_attempts} failed: {e}"
+                    f"🔗 NEUROHUB: Connection attempt {attempt + 1}/{self._config.retry_attempts} failed: {error_type}: {e}"
                 )
                 if attempt < self._config.retry_attempts - 1:
                     import asyncio
                     await asyncio.sleep(self._config.retry_delay)
 
-        logger.error("🔗 NEUROHUB: All connection attempts failed")
-        return False
+        error_msg = f"NeuroHub connection failed: {last_error}"
+        logger.error(f"🔗 NEUROHUB: {error_msg}")
+        return False, error_msg
 
     async def send_start(self, serial_number: str) -> bool:
         """
@@ -141,8 +145,9 @@ class NeuroHubService:
 
         try:
             # Connect if not connected
-            if not await self._connect_with_retry():
-                logger.warning("🔗 NEUROHUB: Could not connect, skipping START")
+            connected, error_msg = await self._connect_with_retry()
+            if not connected:
+                logger.warning(f"🔗 NEUROHUB: {error_msg}")
                 return False
 
             # Send START message
@@ -159,7 +164,8 @@ class NeuroHubService:
                 return False
 
         except Exception as e:
-            logger.error(f"🔗 NEUROHUB: Error sending START: {e}")
+            error_type = type(e).__name__
+            logger.error(f"🔗 NEUROHUB: Error sending START: {error_type}: {e}")
             # Disconnect on error to allow reconnection
             await self._safe_disconnect()
             return False
@@ -192,8 +198,9 @@ class NeuroHubService:
 
         try:
             # Connect if not connected
-            if not await self._connect_with_retry():
-                logger.warning("🔗 NEUROHUB: Could not connect, skipping COMPLETE")
+            connected, error_msg = await self._connect_with_retry()
+            if not connected:
+                logger.warning(f"🔗 NEUROHUB: {error_msg}")
                 return False
 
             # Send COMPLETE message
@@ -217,7 +224,8 @@ class NeuroHubService:
                 return False
 
         except Exception as e:
-            logger.error(f"🔗 NEUROHUB: Error sending COMPLETE: {e}")
+            error_type = type(e).__name__
+            logger.error(f"🔗 NEUROHUB: Error sending COMPLETE: {error_type}: {e}")
             # Disconnect on error to allow reconnection
             await self._safe_disconnect()
             return False
@@ -271,13 +279,16 @@ class NeuroHubService:
             return False
 
         try:
-            connected = await self._connect_with_retry()
+            connected, error_msg = await self._connect_with_retry()
             if connected:
                 logger.info("🔗 NEUROHUB: Connection test successful")
+            else:
+                logger.warning(f"🔗 NEUROHUB: {error_msg}")
             return connected
 
         except Exception as e:
-            logger.error(f"🔗 NEUROHUB: Connection test failed: {e}")
+            error_type = type(e).__name__
+            logger.error(f"🔗 NEUROHUB: Connection test failed: {error_type}: {e}")
             return False
 
     async def get_status(self) -> Dict[str, Any]:
