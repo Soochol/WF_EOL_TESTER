@@ -298,10 +298,12 @@ class NeuroHubProtocol:
             message.timestamp = datetime.now().isoformat()
 
         # Encode and send
-        encoded = self._encode_message(message.to_dict())
-        logger.info(
-            f"NeuroHub sending {message.message_type}: serial={message.serial_number}"
-        )
+        message_dict = message.to_dict()
+        encoded = self._encode_message(message_dict)
+
+        # Log detailed message content
+        logger.info(f"NeuroHub sending {message.message_type}: serial={message.serial_number}")
+        logger.debug(f"NeuroHub message payload: {json.dumps(message_dict, indent=2, ensure_ascii=False)}")
 
         await self._send_raw(encoded)
         return await self._receive_ack()

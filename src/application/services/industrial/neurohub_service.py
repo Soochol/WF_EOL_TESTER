@@ -6,6 +6,7 @@ Sends START (착공) and COMPLETE (완공) messages via TCP/IP.
 """
 
 # Standard library imports
+import json
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 # Third-party imports
@@ -219,6 +220,20 @@ class NeuroHubService:
 
             # Send COMPLETE message
             logger.info(f"🔗 NEUROHUB: Sending COMPLETE ({result}) for {serial_number}")
+
+            # Log measurements and defects
+            if measurements:
+                logger.info(f"🔗 NEUROHUB: Measurements ({len(measurements)} items):")
+                logger.info(f"🔗 NEUROHUB: {json.dumps(measurements, indent=2, ensure_ascii=False)}")
+            else:
+                logger.info("🔗 NEUROHUB: No measurements included")
+
+            if defects:
+                logger.info(f"🔗 NEUROHUB: Defects ({len(defects)} items):")
+                logger.info(f"🔗 NEUROHUB: {json.dumps(defects, indent=2, ensure_ascii=False)}")
+            else:
+                logger.info("🔗 NEUROHUB: No defects")
+
             ack = await self._protocol.send_complete(
                 serial_number=serial_number,
                 result=result,
