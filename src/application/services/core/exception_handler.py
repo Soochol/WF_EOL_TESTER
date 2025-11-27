@@ -472,6 +472,13 @@ class ExceptionHandler:
             )
 
         # Prepare handling result
+        # For RuntimeError, use original message if it has meaningful context
+        user_message = classification.user_message
+        if isinstance(exception, RuntimeError) and str(exception):
+            exc_message = str(exception).strip()
+            if exc_message and not exc_message.lower().startswith("no module named"):
+                user_message = exc_message
+
         result = {
             "exception_type": type(exception).__name__,
             "operation_name": operation_name,
@@ -479,7 +486,7 @@ class ExceptionHandler:
             "handled": True,
             "recovery_attempted": False,
             "recovery_successful": False,
-            "user_message": classification.user_message,
+            "user_message": user_message,
             "requires_escalation": classification.escalation_required,
             "context": context or {},
         }
@@ -514,6 +521,14 @@ class ExceptionHandler:
             User-friendly error message
         """
         classification = self.classify_exception(exception)
+
+        # For RuntimeError, preserve the original message if it has meaningful context
+        # (e.g., NeuroHub errors should show specific details, not generic message)
+        if isinstance(exception, RuntimeError) and str(exception):
+            exc_message = str(exception).strip()
+            # Only use generic message if exception has no specific message
+            if exc_message and not exc_message.lower().startswith("no module named"):
+                return exc_message
 
         if classification.user_message:
             return classification.user_message
