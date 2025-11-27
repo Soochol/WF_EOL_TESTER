@@ -356,12 +356,17 @@ class EOLForceTestUseCase(BaseUseCase):
                 )
 
             # NeuroHub: Send COMPLETE (완공) message
-            await self._send_neurohub_complete(
+            neurohub_complete_success = await self._send_neurohub_complete(
                 serial_number=command.dut_info.serial_number,
                 result="PASS" if is_test_passed else "FAIL",
                 measurements=measurements,
             )
             neurohub_complete_sent = True
+
+            # If NeuroHub is enabled and COMPLETE failed, mark test as FAIL
+            if not neurohub_complete_success:
+                is_test_passed = False
+                logger.error("🔗 NeuroHub: COMPLETE failed - test result changed to FAIL")
 
             return self._create_success_result(
                 test_entity,
@@ -402,13 +407,16 @@ class EOLForceTestUseCase(BaseUseCase):
             if neurohub_start_sent and not neurohub_complete_sent:
                 try:
                     logger.info("🔗 NeuroHub: Sending COMPLETE (완공) in finally block (interrupted/error)")
-                    await self._send_neurohub_complete(
+                    neurohub_complete_success = await self._send_neurohub_complete(
                         serial_number=command.dut_info.serial_number,
                         result="FAIL",
                         measurements=measurements,
                     )
+                    if not neurohub_complete_success:
+                        logger.error("🔗 NeuroHub: COMPLETE failed in finally block")
                 except Exception as neurohub_error:
-                    logger.warning(f"🔗 NeuroHub: Failed to send COMPLETE in finally: {neurohub_error}")
+                    error_type = type(neurohub_error).__name__
+                    logger.error(f"🔗 NeuroHub: Failed to send COMPLETE in finally: {error_type}: {neurohub_error}")
 
             # Phase 6: Cleanup hardware resources (only if not interrupted)
             # Skip cleanup entirely if KeyboardInterrupt was raised - let Emergency Stop handle hardware safety
@@ -707,7 +715,7 @@ class EOLForceTestUseCase(BaseUseCase):
         serial_number: str,
         result: str,
         measurements: Optional[TestMeasurements] = None,
-    ) -> None:
+    ) -> bool:
         """
         Send COMPLETE (완공) message to NeuroHub MES
 
@@ -716,14 +724,24 @@ class EOLForceTestUseCase(BaseUseCase):
             result: Test result ("PASS" or "FAIL")
             measurements: Test measurements data
 
+        Returns:
+            bool: True if COMPLETE sent successfully, False if failed when NeuroHub is enabled
+
         Note:
-            NeuroHub communication failures are logged but never raise exceptions
-            to avoid blocking test completion.
+            When NeuroHub is ENABLED, COMPLETE failure causes test to fail.
+            When NeuroHub is DISABLED, this returns True silently (test not affected).
         """
         if not self._neurohub_service:
-            return
+            return True  # Service not available - treat as success to not block test
 
         try:
+            # Check if NeuroHub is enabled
+            is_enabled = await self._neurohub_service.is_enabled()
+            if not is_enabled:
+                logger.debug("🔗 NeuroHub: Service disabled, skipping COMPLETE")
+                return True  # Disabled - treat as success to not block test
+
+            # NeuroHub is ENABLED - COMPLETE must succeed for test to succeed
             # Convert measurements to NeuroHub format
             neurohub_measurements = self._convert_measurements_for_neurohub(measurements)
             defects = self._extract_defects_for_neurohub(measurements, result)
@@ -737,11 +755,15 @@ class EOLForceTestUseCase(BaseUseCase):
             )
             if success:
                 logger.info(f"🔗 NeuroHub: COMPLETE acknowledged for {serial_number}")
+                return True
             else:
-                logger.warning(f"🔗 NeuroHub: COMPLETE failed for {serial_number}")
+                logger.error(f"🔗 NeuroHub: COMPLETE failed for {serial_number} - test marked as FAIL")
+                return False  # COMPLETE failed - test should fail
+
         except Exception as e:
-            logger.warning(f"🔗 NeuroHub: Error sending COMPLETE: {e}")
-            # Don't raise - NeuroHub communication is optional
+            error_type = type(e).__name__
+            logger.error(f"🔗 NeuroHub: Error sending COMPLETE: {error_type}: {e}", exc_info=True)
+            return False  # Exception during COMPLETE - test should fail
 
     def _convert_measurements_for_neurohub(
         self, measurements: Optional[TestMeasurements]
