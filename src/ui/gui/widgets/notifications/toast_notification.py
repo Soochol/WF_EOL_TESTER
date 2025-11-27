@@ -130,49 +130,68 @@ class ToastNotification(QFrame):
             self.start_dismiss_timer()
 
     def setup_ui(self) -> None:
-        """Setup toast UI layout."""
+        """Setup toast UI layout as a single unified card."""
         # Set fixed width, auto height
-        self.setFixedWidth(400)
+        self.setFixedWidth(450)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
 
-        # Main layout
+        # Main layout - single card structure
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(16, 12, 16, 12)
-        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(20, 16, 20, 16)
+        main_layout.setSpacing(12)
 
-        # Header layout (icon + title + close button)
-        header_layout = QHBoxLayout()
-        header_layout.setSpacing(12)
+        # Top row: Icon + Title/Message + Close button
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(16)
 
-        # Icon
+        # Icon on the left
         style = self.TOAST_STYLES[self.toast_type]
         self.icon_label = QLabel(style["icon"])
-        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignTop)
         icon_font = QFont()
-        icon_font.setPointSize(20)
+        icon_font.setPointSize(24)
         icon_font.setBold(True)
         self.icon_label.setFont(icon_font)
-        self.icon_label.setFixedSize(32, 32)
+        self.icon_label.setFixedSize(40, 40)
         self.icon_label.setStyleSheet(
             f"""
             color: {style['icon_color']};
             background: transparent;
         """
         )
-        header_layout.addWidget(self.icon_label)
+        top_layout.addWidget(self.icon_label, alignment=Qt.AlignmentFlag.AlignTop)
+
+        # Content column: Title + Message
+        content_layout = QVBoxLayout()
+        content_layout.setSpacing(6)
 
         # Title
         self.title_label = QLabel(self.title)
         title_font = QFont()
-        title_font.setPointSize(11)
+        title_font.setPointSize(12)
         title_font.setBold(True)
         self.title_label.setFont(title_font)
         self.title_label.setStyleSheet("color: #ffffff; background: transparent;")
-        header_layout.addWidget(self.title_label, stretch=1)
+        self.title_label.setWordWrap(True)
+        content_layout.addWidget(self.title_label)
 
-        # Close button
+        # Message
+        if self.message:
+            self.message_label = QLabel(self.message)
+            self.message_label.setWordWrap(True)
+            message_font = QFont()
+            message_font.setPointSize(10)
+            self.message_label.setFont(message_font)
+            self.message_label.setStyleSheet(
+                "color: #e0e0e0; background: transparent;"
+            )
+            content_layout.addWidget(self.message_label)
+
+        top_layout.addLayout(content_layout, stretch=1)
+
+        # Close button on the right
         self.close_button = QPushButton("×")
-        self.close_button.setFixedSize(24, 24)
+        self.close_button.setFixedSize(28, 28)
         self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.close_button.setStyleSheet(
             """
@@ -180,33 +199,21 @@ class ToastNotification(QFrame):
                 background: transparent;
                 border: none;
                 color: #999999;
-                font-size: 20px;
+                font-size: 24px;
                 font-weight: bold;
                 padding: 0px;
             }
             QPushButton:hover {
                 color: #ffffff;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 14px;
             }
         """
         )
         self.close_button.clicked.connect(self.dismiss)
-        header_layout.addWidget(self.close_button)
+        top_layout.addWidget(self.close_button, alignment=Qt.AlignmentFlag.AlignTop)
 
-        main_layout.addLayout(header_layout)
-
-        # Message
-        if self.message:
-            self.message_label = QLabel(self.message)
-            self.message_label.setWordWrap(True)
-            message_font = QFont()
-            message_font.setPointSize(9)
-            self.message_label.setFont(message_font)
-            self.message_label.setStyleSheet(
-                "color: #cccccc; background: transparent; padding-left: 44px;"
-            )
-            main_layout.addWidget(self.message_label)
+        main_layout.addLayout(top_layout)
 
     def apply_styling(self) -> None:
         """Apply type-specific styling."""
