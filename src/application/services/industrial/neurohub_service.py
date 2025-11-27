@@ -157,7 +157,7 @@ class NeuroHubService:
             return True  # Return True to not block test execution
 
         try:
-            # Connect if not connected
+            # Connect with retry
             connected, error_msg = await self._connect_with_retry()
             if not connected:
                 logger.warning(f"🔗 NEUROHUB: {error_msg}")
@@ -179,9 +179,10 @@ class NeuroHubService:
         except Exception as e:
             error_type = type(e).__name__
             logger.error(f"🔗 NEUROHUB: Error sending START: {error_type}: {e}")
-            # Disconnect on error to allow reconnection
-            await self._safe_disconnect()
             return False
+        finally:
+            # Always disconnect after START to ensure fresh connection for COMPLETE
+            await self._safe_disconnect()
 
     async def send_complete(
         self,
@@ -210,7 +211,7 @@ class NeuroHubService:
             return True  # Return True to not block test execution
 
         try:
-            # Connect if not connected
+            # Connect with retry
             connected, error_msg = await self._connect_with_retry()
             if not connected:
                 logger.warning(f"🔗 NEUROHUB: {error_msg}")
@@ -239,9 +240,10 @@ class NeuroHubService:
         except Exception as e:
             error_type = type(e).__name__
             logger.error(f"🔗 NEUROHUB: Error sending COMPLETE: {error_type}: {e}")
-            # Disconnect on error to allow reconnection
-            await self._safe_disconnect()
             return False
+        finally:
+            # Always disconnect after COMPLETE
+            await self._safe_disconnect()
 
     async def _safe_disconnect(self) -> None:
         """Safely disconnect from NeuroHub"""
