@@ -258,8 +258,16 @@ class TestExecutorThread(QThread):
                 else:
                     return False, "EOL Force Test completed but failed validation"
             elif result.test_status == TestStatus.FAILED:
+                # Use detailed error_message if available, otherwise fallback to generic message
+                error_msg = getattr(result, "error_message", None)
+                if error_msg:
+                    return False, error_msg
                 return False, "EOL Force Test failed"
             elif result.test_status == TestStatus.ERROR:
+                # Use detailed error_message if available, otherwise fallback to generic message
+                error_msg = getattr(result, "error_message", None)
+                if error_msg:
+                    return False, error_msg
                 return False, "EOL Force Test encountered an error"
             elif result.test_status == TestStatus.CANCELLED:
                 return False, "EOL Force Test was cancelled"
