@@ -60,8 +60,9 @@ class LoadcellEventHandlers(QObject):
             self.state.set_connected(True)
             self.connect_completed.emit(True, "Loadcell connected successfully")
         except Exception as e:
-            logger.error(f"Loadcell connect failed: {e}")
-            self.connect_completed.emit(False, f"Connect failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Loadcell connect failed: {error_type}: {e}", exc_info=True)
+            self.connect_completed.emit(False, f"Connect failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -90,8 +91,9 @@ class LoadcellEventHandlers(QObject):
             self.state.set_connected(False)
             self.disconnect_completed.emit(True, "Loadcell disconnected")
         except Exception as e:
-            logger.error(f"Loadcell disconnect failed: {e}")
-            self.disconnect_completed.emit(False, f"Disconnect failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Loadcell disconnect failed: {error_type}: {e}", exc_info=True)
+            self.disconnect_completed.emit(False, f"Disconnect failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -112,8 +114,9 @@ class LoadcellEventHandlers(QObject):
             await self.loadcell_service.zero_calibration()
             self.zero_calibration_completed.emit(True, "Zero calibration completed")
         except Exception as e:
-            logger.error(f"Zero calibration failed: {e}")
-            self.zero_calibration_completed.emit(False, f"Calibration failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Zero calibration failed: {error_type}: {e}", exc_info=True)
+            self.zero_calibration_completed.emit(False, f"Calibration failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -135,8 +138,9 @@ class LoadcellEventHandlers(QObject):
             self.force_read.emit(force_value.value)
             self.state.update_status(f"Force: {force_value.value:.3f} kgf", "info")
         except Exception as e:
-            logger.error(f"Read force failed: {e}")
-            self.state.update_status(f"Read force failed: {str(e)}", "error")
+            error_type = type(e).__name__
+            logger.error(f"Read force failed: {error_type}: {e}", exc_info=True)
+            self.state.update_status(f"Read force failed: {error_type}: {str(e)}", "error")
         finally:
             self.state.hide_progress()
 
@@ -161,8 +165,9 @@ class LoadcellEventHandlers(QObject):
             self.peak_force_read.emit(peak_force.value)
             self.state.update_status(f"Peak Force: {peak_force.value:.3f} kgf", "info")
         except Exception as e:
-            logger.error(f"Read peak force failed: {e}")
-            self.state.update_status(f"Read peak force failed: {str(e)}", "error")
+            error_type = type(e).__name__
+            logger.error(f"Read peak force failed: {error_type}: {e}", exc_info=True)
+            self.state.update_status(f"Read peak force failed: {error_type}: {str(e)}", "error")
         finally:
             self.state.set_measurement_in_progress(False)
             self.state.hide_progress()
@@ -188,8 +193,9 @@ class LoadcellEventHandlers(QObject):
             else:
                 self.hold_completed.emit(False, "Hold operation failed")
         except Exception as e:
-            logger.error(f"Hold failed: {e}")
-            self.hold_completed.emit(False, f"Hold failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Hold failed: {error_type}: {e}", exc_info=True)
+            self.hold_completed.emit(False, f"Hold failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -213,7 +219,8 @@ class LoadcellEventHandlers(QObject):
             else:
                 self.hold_release_completed.emit(False, "Release operation failed")
         except Exception as e:
-            logger.error(f"Hold release failed: {e}")
-            self.hold_release_completed.emit(False, f"Release failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Hold release failed: {error_type}: {e}", exc_info=True)
+            self.hold_release_completed.emit(False, f"Release failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()

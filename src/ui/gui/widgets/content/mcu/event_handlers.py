@@ -70,8 +70,9 @@ class MCUEventHandlers(QObject):
             self.state.set_connected(True)
             self.connect_completed.emit(True, "MCU connected successfully")
         except Exception as e:
-            logger.error(f"MCU connect failed: {e}")
-            self.connect_completed.emit(False, f"Connect failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"MCU connect failed: {error_type}: {e}", exc_info=True)
+            self.connect_completed.emit(False, f"Connect failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -92,8 +93,9 @@ class MCUEventHandlers(QObject):
             self.state.set_connected(False)
             self.disconnect_completed.emit(True, "MCU disconnected")
         except Exception as e:
-            logger.error(f"MCU disconnect failed: {e}")
-            self.disconnect_completed.emit(False, f"Disconnect failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"MCU disconnect failed: {error_type}: {e}", exc_info=True)
+            self.disconnect_completed.emit(False, f"Disconnect failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -114,8 +116,9 @@ class MCUEventHandlers(QObject):
             self.state.set_temperature(temperature)
             self.temperature_read.emit(temperature)
         except Exception as e:
-            logger.error(f"Read temperature failed: {e}")
-            self.state.update_status(f"Read temperature failed: {str(e)}", "error")
+            error_type = type(e).__name__
+            logger.error(f"Read temperature failed: {error_type}: {e}", exc_info=True)
+            self.state.update_status(f"Read temperature failed: {error_type}: {str(e)}", "error")
             self.temperature_read.emit(-999.0)  # Error indicator
         finally:
             self.state.hide_progress()
@@ -136,8 +139,9 @@ class MCUEventHandlers(QObject):
             await self.mcu_service.set_operating_temperature(temperature)
             self.operating_temp_set.emit(True, f"Operating temperature set to {temperature:.1f}°C")
         except Exception as e:
-            logger.error(f"Set operating temperature failed: {e}")
-            self.operating_temp_set.emit(False, f"Set operating temperature failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Set operating temperature failed: {error_type}: {e}", exc_info=True)
+            self.operating_temp_set.emit(False, f"Set operating temperature failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -157,8 +161,9 @@ class MCUEventHandlers(QObject):
             await self.mcu_service.set_cooling_temperature(temperature)
             self.cooling_temp_set.emit(True, f"Cooling temperature set to {temperature:.1f}°C")
         except Exception as e:
-            logger.error(f"Set cooling temperature failed: {e}")
-            self.cooling_temp_set.emit(False, f"Set cooling temperature failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Set cooling temperature failed: {error_type}: {e}", exc_info=True)
+            self.cooling_temp_set.emit(False, f"Set cooling temperature failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -178,8 +183,9 @@ class MCUEventHandlers(QObject):
             await self.mcu_service.set_upper_temperature(temperature)
             self.upper_temp_set.emit(True, f"Upper temperature limit set to {temperature:.1f}°C")
         except Exception as e:
-            logger.error(f"Set upper temperature failed: {e}")
-            self.upper_temp_set.emit(False, f"Set upper temperature failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Set upper temperature failed: {error_type}: {e}", exc_info=True)
+            self.upper_temp_set.emit(False, f"Set upper temperature failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -201,8 +207,9 @@ class MCUEventHandlers(QObject):
             self.state.set_test_mode("Test Mode")
             self.test_mode_completed.emit(True, "Entered test mode successfully")
         except Exception as e:
-            logger.error(f"Enter test mode failed: {e}")
-            self.test_mode_completed.emit(False, f"Enter test mode failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Enter test mode failed: {error_type}: {e}", exc_info=True)
+            self.test_mode_completed.emit(False, f"Enter test mode failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -229,8 +236,9 @@ class MCUEventHandlers(QObject):
             await self.mcu_service.set_fan_speed(service_fan_speed)
             self.fan_speed_set.emit(True, f"Fan speed set to level {fan_speed}")
         except Exception as e:
-            logger.error(f"Set fan speed failed: {e}")
-            self.fan_speed_set.emit(False, f"Set fan speed failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Set fan speed failed: {error_type}: {e}", exc_info=True)
+            self.fan_speed_set.emit(False, f"Set fan speed failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -254,8 +262,9 @@ class MCUEventHandlers(QObject):
                 await asyncio.sleep(2.0)  # Fallback
             self.boot_wait_completed.emit(True, "Boot complete signal received")
         except Exception as e:
-            logger.error(f"Wait boot complete failed: {e}")
-            self.boot_wait_completed.emit(False, f"Wait boot complete failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Wait boot complete failed: {error_type}: {e}", exc_info=True)
+            self.boot_wait_completed.emit(False, f"Wait boot complete failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -296,8 +305,9 @@ class MCUEventHandlers(QObject):
             )
             self.heating_completed.emit(True, "Standby heating started successfully")
         except Exception as e:
-            logger.error(f"Start heating failed: {e}")
-            self.heating_completed.emit(False, f"Start heating failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Start heating failed: {error_type}: {e}", exc_info=True)
+            self.heating_completed.emit(False, f"Start heating failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -321,7 +331,8 @@ class MCUEventHandlers(QObject):
             await self.mcu_service.start_standby_cooling()
             self.cooling_completed.emit(True, "Standby cooling started successfully")
         except Exception as e:
-            logger.error(f"Start cooling failed: {e}")
-            self.cooling_completed.emit(False, f"Start cooling failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Start cooling failed: {error_type}: {e}", exc_info=True)
+            self.cooling_completed.emit(False, f"Start cooling failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()

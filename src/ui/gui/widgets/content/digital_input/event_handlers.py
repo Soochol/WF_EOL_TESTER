@@ -70,9 +70,10 @@ class DigitalInputEventHandlers(QObject):
             self.state.hide_progress()
             self.connect_completed.emit(True, "Digital Input connected successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to connect to Digital Input: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to connect to Digital Input: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.connect_completed.emit(False, error_msg)
 
     def on_disconnect_clicked(self) -> None:
@@ -93,9 +94,10 @@ class DigitalInputEventHandlers(QObject):
             self.state.hide_progress()
             self.disconnect_completed.emit(True, "Digital Input disconnected successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to disconnect from Digital Input: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to disconnect from Digital Input: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.disconnect_completed.emit(False, error_msg)
 
     # Input operations
@@ -123,7 +125,8 @@ class DigitalInputEventHandlers(QObject):
             self.state.set_input_state(channel, actual_state)
             self.input_read.emit(channel, raw_state, actual_state)
         except Exception as e:
-            logger.error(f"Failed to read input channel {channel}: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read input channel {channel}: {error_type}: {e}", exc_info=True)
             self.input_read.emit(channel, False, False)
 
     def on_read_all_inputs_clicked(self) -> None:
@@ -151,5 +154,6 @@ class DigitalInputEventHandlers(QObject):
             self.state.set_all_input_states(actual_states)
             self.all_inputs_read.emit(actual_states)
         except Exception as e:
-            logger.error(f"Failed to read all inputs: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read all inputs: {error_type}: {e}", exc_info=True)
             self.all_inputs_read.emit([False] * self.state.input_count)

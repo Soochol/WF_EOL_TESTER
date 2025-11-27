@@ -66,8 +66,9 @@ class RobotEventHandlers(QObject):
             self.state.set_connected(True)
             self.connect_completed.emit(True, "Robot connected successfully")
         except Exception as e:
-            logger.error(f"Robot connect failed: {e}")
-            self.connect_completed.emit(False, f"Connect failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Robot connect failed: {error_type}: {e}", exc_info=True)
+            self.connect_completed.emit(False, f"Connect failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -96,8 +97,9 @@ class RobotEventHandlers(QObject):
             self.state.set_connected(False)
             self.disconnect_completed.emit(True, "Robot disconnected")
         except Exception as e:
-            logger.error(f"Robot disconnect failed: {e}")
-            self.disconnect_completed.emit(False, f"Disconnect failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Robot disconnect failed: {error_type}: {e}", exc_info=True)
+            self.disconnect_completed.emit(False, f"Disconnect failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -119,8 +121,9 @@ class RobotEventHandlers(QObject):
             self.state.set_servo_enabled(True)
             self.servo_on_completed.emit(True, "Servo enabled")
         except Exception as e:
-            logger.error(f"Servo on failed: {e}")
-            self.servo_on_completed.emit(False, f"Servo on failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Servo on failed: {error_type}: {e}", exc_info=True)
+            self.servo_on_completed.emit(False, f"Servo on failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -141,8 +144,9 @@ class RobotEventHandlers(QObject):
             self.state.set_servo_enabled(False)
             self.servo_off_completed.emit(True, "Servo disabled")
         except Exception as e:
-            logger.error(f"Servo off failed: {e}")
-            self.servo_off_completed.emit(False, f"Servo off failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Servo off failed: {error_type}: {e}", exc_info=True)
+            self.servo_off_completed.emit(False, f"Servo off failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -168,8 +172,9 @@ class RobotEventHandlers(QObject):
             self.state.set_position(position)
             self.home_completed.emit(True, "Homing completed")
         except Exception as e:
-            logger.error(f"Homing failed: {e}")
-            self.home_completed.emit(False, f"Homing failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Homing failed: {error_type}: {e}", exc_info=True)
+            self.home_completed.emit(False, f"Homing failed: {error_type}: {str(e)}")
         finally:
             logger.debug("_async_home finally block - restoring button states")
             self.state.set_homing_in_progress(False)  # Restore buttons after homing
@@ -218,8 +223,9 @@ class RobotEventHandlers(QObject):
             self.state.set_position(new_position)
             self.move_completed.emit(True, f"Moved to {position:.2f} μm")
         except Exception as e:
-            logger.error(f"Absolute move failed: {e}")
-            self.move_completed.emit(False, f"Move failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Absolute move failed: {error_type}: {e}", exc_info=True)
+            self.move_completed.emit(False, f"Move failed: {error_type}: {str(e)}")
         finally:
             self.state.set_motion_in_progress(False)  # Restore buttons after motion
             self.state.hide_progress()
@@ -266,8 +272,9 @@ class RobotEventHandlers(QObject):
             self.state.set_position(new_position)
             self.move_completed.emit(True, f"Moved {distance:.2f} μm")
         except Exception as e:
-            logger.error(f"Relative move failed: {e}")
-            self.move_completed.emit(False, f"Move failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Relative move failed: {error_type}: {e}", exc_info=True)
+            self.move_completed.emit(False, f"Move failed: {error_type}: {str(e)}")
         finally:
             self.state.set_motion_in_progress(False)  # Restore buttons after motion
             self.state.hide_progress()
@@ -288,8 +295,9 @@ class RobotEventHandlers(QObject):
             self.state.set_position(position)
             self.position_read.emit(position)
         except Exception as e:
-            logger.error(f"Get position failed: {e}")
-            self.state.update_status(f"Get position failed: {str(e)}", "error")
+            error_type = type(e).__name__
+            logger.error(f"Get position failed: {error_type}: {e}", exc_info=True)
+            self.state.update_status(f"Get position failed: {error_type}: {str(e)}", "error")
         finally:
             self.state.hide_progress()
 
@@ -309,8 +317,9 @@ class RobotEventHandlers(QObject):
             await self.robot_service.stop_motion(self.axis_id, 5000.0)
             self.stop_completed.emit(True, "Motion stopped")
         except Exception as e:
-            logger.error(f"Stop motion failed: {e}")
-            self.stop_completed.emit(False, f"Stop failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Stop motion failed: {error_type}: {e}", exc_info=True)
+            self.stop_completed.emit(False, f"Stop failed: {error_type}: {str(e)}")
         finally:
             self.state.hide_progress()
 
@@ -348,8 +357,9 @@ class RobotEventHandlers(QObject):
             self.state.set_emergency_stopped()
             self.emergency_stop_completed.emit(True, "EMERGENCY STOP ACTIVATED - Servo ON or Home to recover")
         except Exception as e:
-            logger.error(f"Emergency stop failed: {e}")
-            self.emergency_stop_completed.emit(False, f"Emergency stop failed: {str(e)}")
+            error_type = type(e).__name__
+            logger.error(f"Emergency stop failed: {error_type}: {e}", exc_info=True)
+            self.emergency_stop_completed.emit(False, f"Emergency stop failed: {error_type}: {str(e)}")
 
     # Diagnostic operations
     def on_get_load_ratio_clicked(self, ratio_type: int = 0) -> None:
@@ -369,7 +379,8 @@ class RobotEventHandlers(QObject):
             self.load_ratio_read.emit(load_ratio)
             logger.info(f"Load ratio (type {ratio_type}): {load_ratio:.2f}%")
         except Exception as e:
-            logger.error(f"Load ratio read failed: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Load ratio read failed: {error_type}: {e}", exc_info=True)
             self.load_ratio_read.emit(-1.0)  # Error indicator
         finally:
             self.state.hide_progress()
@@ -391,7 +402,8 @@ class RobotEventHandlers(QObject):
             self.torque_read.emit(torque)
             logger.info(f"Torque: {torque:.2f}")
         except Exception as e:
-            logger.error(f"Torque read failed: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Torque read failed: {error_type}: {e}", exc_info=True)
             self.torque_read.emit(-1.0)  # Error indicator
         finally:
             self.state.hide_progress()

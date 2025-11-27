@@ -151,8 +151,9 @@ class TestControlEventHandlers(QObject):
             self.robot_home_requested.emit()
 
         except Exception as e:
-            logger.error(f"Robot homing failed: {e}", exc_info=True)
-            self.state_manager.update_status(f"Robot Homing Failed: {str(e)}", "status_error", 0)
+            error_type = type(e).__name__
+            logger.error(f"Robot homing failed: {error_type}: {e}", exc_info=True)
+            self.state_manager.update_status(f"Robot Homing Failed: {error_type}: {str(e)}", "status_error", 0)
 
         finally:
             # Always re-enable home button
@@ -204,8 +205,9 @@ class TestControlEventHandlers(QObject):
             self.state_manager.set_button_enabled("start", True)
 
         except Exception as e:
-            logger.error(f"Failed to clear error: {e}", exc_info=True)
-            self.state_manager.update_status(f"Clear Error Failed: {str(e)}", "status_error", 0)
+            error_type = type(e).__name__
+            logger.error(f"Failed to clear error: {error_type}: {e}", exc_info=True)
+            self.state_manager.update_status(f"Clear Error Failed: {error_type}: {str(e)}", "status_error", 0)
             self.state_manager.set_button_enabled("clear_error", True)
 
     def handle_emergency_stop_clicked(self) -> None:

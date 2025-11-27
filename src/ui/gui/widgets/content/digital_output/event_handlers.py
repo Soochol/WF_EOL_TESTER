@@ -71,9 +71,10 @@ class DigitalOutputEventHandlers(QObject):
             self.state.hide_progress()
             self.connect_completed.emit(True, "Digital Output connected successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to connect to Digital Output: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to connect to Digital Output: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.connect_completed.emit(False, error_msg)
 
     def on_disconnect_clicked(self) -> None:
@@ -94,9 +95,10 @@ class DigitalOutputEventHandlers(QObject):
             self.state.hide_progress()
             self.disconnect_completed.emit(True, "Digital Output disconnected successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to disconnect from Digital Output: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to disconnect from Digital Output: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.disconnect_completed.emit(False, error_msg)
 
     # Output operations
@@ -122,8 +124,9 @@ class DigitalOutputEventHandlers(QObject):
             else:
                 self.output_written.emit(False, f"Failed to set output {channel}")
         except Exception as e:
-            error_msg = f"Failed to write output {channel}: {str(e)}"
-            logger.error(error_msg)
+            error_type = type(e).__name__
+            error_msg = f"Failed to write output {channel}: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.output_written.emit(False, error_msg)
 
     def on_read_output_clicked(self, channel: int) -> None:
@@ -143,7 +146,8 @@ class DigitalOutputEventHandlers(QObject):
             self.state.set_output_state(channel, state)
             self.output_read.emit(channel, state)
         except Exception as e:
-            logger.error(f"Failed to read output channel {channel}: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read output channel {channel}: {error_type}: {e}", exc_info=True)
             self.output_read.emit(channel, False)
 
     def on_reset_all_outputs_clicked(self) -> None:
@@ -169,8 +173,9 @@ class DigitalOutputEventHandlers(QObject):
             else:
                 self.all_outputs_reset.emit(False, "Failed to reset all outputs")
         except Exception as e:
-            error_msg = f"Failed to reset all outputs: {str(e)}"
-            logger.error(error_msg)
+            error_type = type(e).__name__
+            error_msg = f"Failed to reset all outputs: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.all_outputs_reset.emit(False, error_msg)
 
     def on_read_all_outputs_clicked(self) -> None:
@@ -192,4 +197,5 @@ class DigitalOutputEventHandlers(QObject):
                 if i < self.state.output_count:
                     self.state.set_output_state(i, state)
         except Exception as e:
-            logger.error(f"Failed to read all outputs: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read all outputs: {error_type}: {e}", exc_info=True)

@@ -63,9 +63,10 @@ class PowerSupplyEventHandlers(QObject):
             self.state.hide_progress()
             self.connect_completed.emit(True, "Power supply connected successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to connect to power supply: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to connect to power supply: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.connect_completed.emit(False, error_msg)
 
     def on_disconnect_clicked(self) -> None:
@@ -87,9 +88,10 @@ class PowerSupplyEventHandlers(QObject):
             self.state.hide_progress()
             self.disconnect_completed.emit(True, "Power supply disconnected successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to disconnect from power supply: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to disconnect from power supply: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.disconnect_completed.emit(False, error_msg)
 
     # Output control operations
@@ -111,9 +113,10 @@ class PowerSupplyEventHandlers(QObject):
             self.state.hide_progress()
             self.enable_output_completed.emit(True, "Power output enabled successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to enable output: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to enable output: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.enable_output_completed.emit(False, error_msg)
 
     def on_disable_output_clicked(self) -> None:
@@ -134,9 +137,10 @@ class PowerSupplyEventHandlers(QObject):
             self.state.hide_progress()
             self.disable_output_completed.emit(True, "Power output disabled successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to disable output: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to disable output: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.disable_output_completed.emit(False, error_msg)
 
     # Voltage/Current control operations
@@ -159,9 +163,10 @@ class PowerSupplyEventHandlers(QObject):
             self.state.hide_progress()
             self.set_voltage_completed.emit(True, f"Voltage set to {voltage}V successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to set voltage: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to set voltage: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.set_voltage_completed.emit(False, error_msg)
 
     def on_set_current_clicked(self, current: float) -> None:
@@ -183,9 +188,10 @@ class PowerSupplyEventHandlers(QObject):
             self.state.hide_progress()
             self.set_current_completed.emit(True, f"Current limit set to {current}A successfully")
         except Exception as e:
+            error_type = type(e).__name__
             self.state.hide_progress()
-            error_msg = f"Failed to set current: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Failed to set current: {error_type}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.set_current_completed.emit(False, error_msg)
 
     # Measurement operations
@@ -203,7 +209,8 @@ class PowerSupplyEventHandlers(QObject):
             voltage = await self.power_service.get_voltage()
             self.voltage_read.emit(voltage)
         except Exception as e:
-            logger.error(f"Failed to read voltage: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read voltage: {error_type}: {e}", exc_info=True)
             self.voltage_read.emit(-1.0)
 
     def on_get_current_clicked(self) -> None:
@@ -220,7 +227,8 @@ class PowerSupplyEventHandlers(QObject):
             current = await self.power_service.get_current()
             self.current_read.emit(current)
         except Exception as e:
-            logger.error(f"Failed to read current: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read current: {error_type}: {e}", exc_info=True)
             self.current_read.emit(-1.0)
 
     def on_get_all_measurements_clicked(self) -> None:
@@ -242,5 +250,6 @@ class PowerSupplyEventHandlers(QObject):
             power = measurements.get("power", 0.0)
             self.measurements_read.emit(voltage, current, power)
         except Exception as e:
-            logger.error(f"Failed to read measurements: {e}")
+            error_type = type(e).__name__
+            logger.error(f"Failed to read measurements: {error_type}: {e}", exc_info=True)
             self.measurements_read.emit(-1.0, -1.0, -1.0)
