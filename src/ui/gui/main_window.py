@@ -3069,20 +3069,6 @@ class MainWindow(QMainWindow):
         log_level = "INFO" if success else "ERROR"
         self.state_manager.add_log_message(log_level, "TEST", f"Test completed: {message}")
 
-        # Display toast notification with test result
-        if self.toast_manager:
-            if success:
-                self.toast_manager.show_success(
-                    "Test Passed",
-                    message or "Test completed successfully"
-                )
-            else:
-                self.toast_manager.show_error(
-                    "Test Failed",
-                    message or "Test execution failed",
-                    duration=8000  # Longer duration for error messages
-                )
-
         # Reset GUI state
         self._set_test_running_state(False)
         # DO NOT call state_manager.set_system_status("Ready") here!
