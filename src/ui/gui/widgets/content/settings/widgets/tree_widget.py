@@ -6,11 +6,12 @@ with search and filtering capabilities.
 """
 
 # Standard library imports
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Third-party imports
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QBrush, QColor
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon
 from PySide6.QtWidgets import (
     QTreeWidget,
     QTreeWidgetItem,
@@ -19,8 +20,18 @@ from PySide6.QtWidgets import (
 )
 
 # Local folder imports
-from ..core import Colors, ConfigFile, ConfigValue, EditorTypes, Styles
+from ..core import Colors, ConfigFile, ConfigValue, EditorTypes, Styles, TreeIcons
 from ..core.parameter_descriptions import ParameterDescriptions
+
+
+def _get_icons_path() -> Path:
+    """Get the path to the icons directory"""
+    # Navigate from this file to the resources/icons directory
+    current_file = Path(__file__).resolve()
+    # widgets/tree_widget.py -> widgets -> settings -> content -> widgets -> gui -> ui -> src
+    src_dir = current_file.parents[6]
+    icons_path = src_dir / "ui" / "gui" / "resources" / "icons"
+    return icons_path
 
 
 class SettingsTreeWidget(QTreeWidget):
@@ -32,6 +43,8 @@ class SettingsTreeWidget(QTreeWidget):
         super().__init__(parent)
         self.config_values: Dict[str, ConfigValue] = {}
         self.is_filtering = False  # Track if currently filtering/searching
+        self._icons_path = _get_icons_path()
+        self._icon_cache: Dict[str, QIcon] = {}
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -41,9 +54,32 @@ class SettingsTreeWidget(QTreeWidget):
         self.setAlternatingRowColors(False)
         self.setStyleSheet(Styles.TREE_WIDGET)
 
+        # Enhanced indentation for better hierarchy visibility
+        self.setIndentation(28)  # Increased from default ~20px
+
         # Connect signals
         self.itemClicked.connect(self.on_item_clicked)
         self.itemExpanded.connect(self.on_item_expanded)
+
+    def _get_icon(self, icon_name: str) -> QIcon:
+        """Get icon from cache or load it"""
+        if icon_name not in self._icon_cache:
+            icon_path = self._icons_path / icon_name
+            if icon_path.exists():
+                self._icon_cache[icon_name] = QIcon(str(icon_path))
+            else:
+                # Return empty icon if file not found
+                self._icon_cache[icon_name] = QIcon()
+        return self._icon_cache[icon_name]
+
+    def _get_item_depth(self, item: QTreeWidgetItem) -> int:
+        """Calculate the depth of an item in the tree"""
+        depth = 0
+        parent = item.parent()
+        while parent is not None:
+            depth += 1
+            parent = parent.parent()
+        return depth
 
     def load_config_data(self, config_files: Dict[str, ConfigFile]) -> None:
         """Load configuration data into tree"""
@@ -57,11 +93,28 @@ class SettingsTreeWidget(QTreeWidget):
                 0, Qt.ItemDataRole.UserRole, {"type": "file", "config_file": config_file}
             )
 
+            # Apply file-level styling (top hierarchy)
+            self._apply_file_styling(file_item)
+
             # Add categories and settings
             self.add_config_items(file_item, config_file.data, config_file.path, "")
 
             # All files start collapsed by default
             file_item.setExpanded(False)
+
+    def _apply_file_styling(self, item: QTreeWidgetItem) -> None:
+        """Apply styling to file-level items (root level)"""
+        # Set file icon
+        item.setIcon(0, self._get_icon(TreeIcons.FILE))
+
+        # Bold font for file items
+        font = QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        item.setFont(0, font)
+
+        # White text for maximum visibility
+        item.setForeground(0, QBrush(QColor(Colors.TEXT_PRIMARY)))
 
     def add_config_items(
         self,
@@ -83,6 +136,10 @@ class SettingsTreeWidget(QTreeWidget):
                 category_item.setData(
                     0, Qt.ItemDataRole.UserRole, {"type": "category", "key": item_key}
                 )
+
+                # Apply category styling based on depth and category type
+                depth = self._get_item_depth(category_item)
+                self._apply_category_styling(category_item, key, item_key, depth)
 
                 # Recursively add sub-items
                 self.add_config_items(category_item, value, file_path, item_key)
@@ -176,36 +233,80 @@ class SettingsTreeWidget(QTreeWidget):
                 )
                 self.config_values[item_key] = config_value
 
-                # Set modern glassmorphism background for setting items (leaf nodes)
-                setting_item.setBackground(0, QBrush(QColor(Colors.TREE_SETTING_ITEM_BACKGROUND)))
+                # Apply setting item styling
+                self._apply_setting_styling(setting_item, key, value)
 
-                # Add modern tooltip
-                setting_item.setToolTip(0, "✏️ Click to edit this setting")
+    def _apply_category_styling(
+        self, item: QTreeWidgetItem, key: str, item_key: str, depth: int
+    ) -> None:
+        """Apply styling to category items based on depth and type"""
+        # Get category-specific icon
+        icon_name = TreeIcons.get_category_icon(key)
+        item.setIcon(0, self._get_icon(icon_name))
 
-                # Set text color based on value type for better visual distinction
-                if isinstance(value, bool):
-                    # Green for True, Red for False
-                    setting_item.setForeground(0, QBrush(QColor("#00D9A5" if value else "#F44336")))
-                elif isinstance(value, (int, float)):
-                    # Blue for numbers
-                    setting_item.setForeground(0, QBrush(QColor("#2196F3")))
+        # Font styling based on depth
+        font = QFont()
+        if depth == 1:
+            # First level category (e.g., robot, loadcell) - semi-bold
+            font.setPointSize(10)
+            font.setBold(True)
+            item.setForeground(0, QBrush(QColor(Colors.TEXT_PRIMARY)))
+        else:
+            # Nested category (e.g., buttons, sensors) - medium weight
+            font.setPointSize(10)
+            font.setBold(False)
+            item.setForeground(0, QBrush(QColor(Colors.TEXT_SECONDARY)))
+        item.setFont(0, font)
 
-                # Set display text based on type
-                self._set_item_display_text(setting_item, key, value)
+        # Apply category-specific background color for first-level categories
+        if depth == 1:
+            bg_color = TreeIcons.get_category_color(key)
+            item.setBackground(0, QBrush(QColor(bg_color)))
+
+        # Set tooltip
+        item.setToolTip(0, f"Category: {item_key}")
+
+    def _apply_setting_styling(
+        self, item: QTreeWidgetItem, key: str, value: Any
+    ) -> None:
+        """Apply styling to setting items (leaf nodes)"""
+        # Set edit icon for setting items
+        item.setIcon(0, self._get_icon(TreeIcons.EDIT))
+
+        # Set modern glassmorphism background for setting items (leaf nodes)
+        item.setBackground(0, QBrush(QColor(Colors.TREE_SETTING_ITEM_BACKGROUND)))
+
+        # Add modern tooltip
+        item.setToolTip(0, "Click to edit this setting")
+
+        # Smaller font for leaf items
+        font = QFont()
+        font.setPointSize(9)
+        item.setFont(0, font)
+
+        # Set text color based on value type for better visual distinction
+        if isinstance(value, bool):
+            # Green for True, Red for False
+            item.setForeground(0, QBrush(QColor(Colors.SUCCESS if value else Colors.ERROR)))
+        elif isinstance(value, (int, float)):
+            # Blue for numbers
+            item.setForeground(0, QBrush(QColor(Colors.PRIMARY_ACCENT)))
+
+        # Set display text based on type
+        self._set_item_display_text(item, key, value)
 
     def _set_item_display_text(self, item: QTreeWidgetItem, key: str, value: Any) -> None:
         """Set display text for tree item based on value type"""
-        # Add edit icon (📝) to indicate this is an editable leaf node
-        edit_icon = "📝 "
-
         if isinstance(value, bool):
-            item.setText(0, f"{edit_icon}{key} ✓" if value else f"{edit_icon}{key} ✗")
+            # Use check/cross symbols for boolean
+            symbol = " [ON]" if value else " [OFF]"
+            item.setText(0, f"{key}{symbol}")
         else:
             value_str = str(value)
-            if len(value_str) > 50:
-                item.setText(0, f"{edit_icon}{key}: {value_str[:50]}...")
+            if len(value_str) > 40:
+                item.setText(0, f"{key}: {value_str[:40]}...")
             else:
-                item.setText(0, f"{edit_icon}{key}: {value_str}")
+                item.setText(0, f"{key}: {value_str}")
 
     def on_item_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
         """Handle item click"""
@@ -423,11 +524,11 @@ class SettingsTreeWidget(QTreeWidget):
                     # Update color based on value type
                     if isinstance(new_value, bool):
                         # Green for True, Red for False
-                        color = "#00D9A5" if new_value else "#F44336"
+                        color = Colors.SUCCESS if new_value else Colors.ERROR
                         item.setForeground(0, QBrush(QColor(color)))
                     elif isinstance(new_value, (int, float)):
                         # Blue for numbers
-                        item.setForeground(0, QBrush(QColor("#2196F3")))
+                        item.setForeground(0, QBrush(QColor(Colors.PRIMARY_ACCENT)))
 
                     break
 

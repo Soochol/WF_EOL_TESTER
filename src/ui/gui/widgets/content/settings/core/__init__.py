@@ -6,7 +6,7 @@ for the settings system.
 """
 
 from .config_file import ConfigFile, ConfigPaths, ConfigValue
-from .constants import Colors, EditorTypes, Styles, UIConstants, ValidationRules
+from .constants import Colors, EditorTypes, Styles, TreeIcons, UIConstants, ValidationRules
 from .validator import ConfigValidator
 
 __all__ = [
@@ -21,6 +21,7 @@ __all__ = [
     "Styles",
     "ValidationRules",
     "EditorTypes",
+    "TreeIcons",
 
     # Validation
     "ConfigValidator",

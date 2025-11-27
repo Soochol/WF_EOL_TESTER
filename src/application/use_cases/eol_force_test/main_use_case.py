@@ -273,6 +273,30 @@ class EOLForceTestUseCase(BaseUseCase):
             # 반환값으로 실제 착공 전송 여부 확인 (enabled 상태에서만 True)
             neurohub_start_sent = await self._send_neurohub_start(command.dut_info.serial_number)
 
+            # If NeuroHub is enabled and START failed, block test execution
+            if not neurohub_start_sent:
+                # Check if this is due to enabled NeuroHub failure (not just disabled)
+                is_neurohub_enabled = (
+                    self._neurohub_service and
+                    await self._neurohub_service.is_enabled()
+                )
+                if is_neurohub_enabled:
+                    # NeuroHub is enabled but START failed - cannot proceed
+                    error_msg = f"NeuroHub START (착공) failed for {command.dut_info.serial_number} - test execution blocked"
+                    logger.error(f"🔗 NeuroHub: {error_msg}")
+                    # Return error result without executing test
+                    return EOLTestResult(
+                        test_id=test_entity.test_id,
+                        dut=test_entity.dut,
+                        operator_id=test_entity.operator_id,
+                        status="FAILED",
+                        error_message=error_msg,
+                        error_type="NeuroHub_START_Failed",
+                        measurements=None,
+                        cycles=None,
+                        individual_cycle_results=[],
+                    )
+
             # Phase 2: Execute test
             test_entity.prepare_test()
 
@@ -645,33 +669,38 @@ class EOLForceTestUseCase(BaseUseCase):
             serial_number: WIP serial number
 
         Returns:
-            bool: True if START was actually sent (enabled and successful),
-                  False if disabled or failed
+            bool: True if START was successfully sent,
+                  False if disabled or failed (when enabled)
 
         Note:
-            NeuroHub communication failures are logged but never raise exceptions
-            to avoid blocking test execution.
+            When NeuroHub is ENABLED and START fails, this returns False
+            to prevent test execution and completion messages.
+
+            When NeuroHub is DISABLED, this returns False silently.
         """
         if not self._neurohub_service:
             return False  # 서비스 없음 - 착공 안 보냄
 
         try:
             # Check if service is enabled
-            if not await self._neurohub_service.is_enabled():
+            is_enabled = await self._neurohub_service.is_enabled()
+            if not is_enabled:
                 logger.debug("🔗 NeuroHub: Service disabled, skipping START")
-                return False  # disabled - 착공 안 보냄
+                return False  # disabled - 착공 안 보냄 (테스트는 진행)
 
+            # NeuroHub is ENABLED - START must succeed for test to proceed
             logger.info(f"🔗 NeuroHub: Sending START (착공) for {serial_number}")
             success = await self._neurohub_service.send_start(serial_number)
             if success:
                 logger.info(f"🔗 NeuroHub: START acknowledged for {serial_number}")
                 return True  # 착공 실제로 전송됨
             else:
-                logger.warning(f"🔗 NeuroHub: START failed for {serial_number}")
-                return True  # 시도했으나 실패 - 완공도 시도해야 함
+                # NeuroHub is enabled but START failed - block test execution
+                logger.error(f"🔗 NeuroHub: START failed for {serial_number} - blocking test execution")
+                return False  # 착공 실패 = 테스트 진행 안 함, 완공도 안 함
         except Exception as e:
-            logger.warning(f"🔗 NeuroHub: Error sending START: {e}")
-            return True  # 시도했으나 에러 - 완공도 시도해야 함
+            logger.error(f"🔗 NeuroHub: Error sending START: {e} - blocking test execution")
+            return False  # 착공 에러 = 테스트 진행 안 함, 완공도 안 함
 
     async def _send_neurohub_complete(
         self,

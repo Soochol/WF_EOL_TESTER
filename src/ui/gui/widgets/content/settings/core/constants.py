@@ -69,6 +69,90 @@ class Colors:
     # Tree widget specific colors
     TREE_SETTING_ITEM_BACKGROUND = "rgba(45, 45, 45, 0.95)"  # Glassmorphism for leaf items
 
+    # Tree hierarchy category colors (subtle backgrounds)
+    CATEGORY_ROBOT = "rgba(0, 188, 212, 0.12)"  # Cyan/Teal
+    CATEGORY_LOADCELL = "rgba(0, 200, 150, 0.12)"  # Teal-Green
+    CATEGORY_MCU = "rgba(33, 150, 243, 0.12)"  # Blue
+    CATEGORY_POWER = "rgba(255, 152, 0, 0.12)"  # Orange
+    CATEGORY_POWER_ANALYZER = "rgba(156, 39, 176, 0.12)"  # Purple
+    CATEGORY_DIGITAL_IO = "rgba(76, 175, 80, 0.12)"  # Green
+    CATEGORY_NEUROHUB = "rgba(233, 30, 99, 0.12)"  # Pink
+    CATEGORY_APPLICATION = "rgba(255, 193, 7, 0.12)"  # Amber
+    CATEGORY_SERVICES = "rgba(33, 150, 243, 0.12)"  # Blue
+    CATEGORY_LOGGING = "rgba(121, 85, 72, 0.12)"  # Brown
+    CATEGORY_GUI = "rgba(103, 58, 183, 0.12)"  # Deep Purple
+    CATEGORY_DEFAULT = "rgba(158, 158, 158, 0.08)"  # Grey
+
+
+class TreeIcons:
+    """Icon paths for tree hierarchy visualization"""
+
+    # Hierarchy icons
+    FILE = "file_document.svg"
+    FOLDER = "folder.svg"
+    FOLDER_OPEN = "folder_open.svg"
+    EDIT = "edit.svg"
+
+    # Hardware category icons
+    ROBOT = "robot.svg"
+    LOADCELL = "scale.svg"
+    MCU = "chip.svg"
+    POWER = "power_plug.svg"
+    POWER_ANALYZER = "chart_line.svg"
+    DIGITAL_IO = "bolt.svg"
+    NEUROHUB = "network.svg"
+
+    # Application category icons
+    APPLICATION = "app.svg"
+    SERVICES = "wrench.svg"
+    LOGGING = "activity.svg"
+    GUI = "dashboard.svg"
+    SETTINGS = "settings.svg"
+    HARDWARE = "hardware.svg"
+
+    # Category icon mapping
+    CATEGORY_ICONS: Dict[str, str] = {
+        "robot": ROBOT,
+        "loadcell": LOADCELL,
+        "mcu": MCU,
+        "power": POWER,
+        "power_analyzer": POWER_ANALYZER,
+        "digital_io": DIGITAL_IO,
+        "neurohub": NEUROHUB,
+        "application": APPLICATION,
+        "services": SERVICES,
+        "logging": LOGGING,
+        "gui": GUI,
+        "hardware": HARDWARE,
+    }
+
+    # Category color mapping
+    CATEGORY_COLORS: Dict[str, str] = {
+        "robot": Colors.CATEGORY_ROBOT,
+        "loadcell": Colors.CATEGORY_LOADCELL,
+        "mcu": Colors.CATEGORY_MCU,
+        "power": Colors.CATEGORY_POWER,
+        "power_analyzer": Colors.CATEGORY_POWER_ANALYZER,
+        "digital_io": Colors.CATEGORY_DIGITAL_IO,
+        "neurohub": Colors.CATEGORY_NEUROHUB,
+        "application": Colors.CATEGORY_APPLICATION,
+        "services": Colors.CATEGORY_SERVICES,
+        "logging": Colors.CATEGORY_LOGGING,
+        "gui": Colors.CATEGORY_GUI,
+    }
+
+    @staticmethod
+    def get_category_icon(category_key: str) -> str:
+        """Get icon filename for a category"""
+        base_category = category_key.split(".")[0].lower()
+        return TreeIcons.CATEGORY_ICONS.get(base_category, TreeIcons.FOLDER)
+
+    @staticmethod
+    def get_category_color(category_key: str) -> str:
+        """Get background color for a category"""
+        base_category = category_key.split(".")[0].lower()
+        return TreeIcons.CATEGORY_COLORS.get(base_category, Colors.CATEGORY_DEFAULT)
+
 
 class ValidationRules:
     """Configuration validation rules"""
