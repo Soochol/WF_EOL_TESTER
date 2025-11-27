@@ -135,13 +135,14 @@ class ToastNotification(QFrame):
         self.setFixedWidth(450)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
 
-        # Main layout - single card structure
+        # Main layout - single card structure with NO margin to prevent border breaks
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 16, 20, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Top row: Icon + Title/Message + Close button
+        # Top row: Icon + Title/Message + Close button (all in one horizontal line to prevent visual breaks)
         top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(16, 12, 16, 12)
         top_layout.setSpacing(16)
 
         # Icon on the left
@@ -163,6 +164,7 @@ class ToastNotification(QFrame):
 
         # Content column: Title + Message
         content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(6)
 
         # Title
