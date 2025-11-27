@@ -25,6 +25,7 @@ from application.services.hardware_facade import HardwareServiceFacade
 from application.services.industrial.industrial_system_manager import (
     IndustrialSystemManager,
 )
+from application.services.industrial.neurohub_service import NeuroHubService
 
 # Monitoring Services
 from application.services.monitoring.emergency_stop_service import EmergencyStopService
@@ -178,6 +179,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         gui_alert_callback=None,  # Will be set by GUI if available
     )
 
+    neurohub_service = providers.Singleton(
+        NeuroHubService,
+        configuration_service=configuration_service,
+    )
+
     # ============================================================================
     # MONITORING SERVICES (depends on industrial services)
     # ============================================================================
@@ -204,6 +210,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         exception_handler=exception_handler,
         emergency_stop_service=emergency_stop_service,
         industrial_system_manager=industrial_system_manager,
+        neurohub_service=neurohub_service,
         db_logger_service=db_logger_service,
     )
 
