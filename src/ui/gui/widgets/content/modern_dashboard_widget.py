@@ -7,7 +7,7 @@ Beautiful card-based dashboard with Material Design 3.
 from typing import Optional
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame
 )
 from loguru import logger
@@ -162,19 +162,24 @@ class ModernDashboardWidget(QWidget):
             }
         """)
 
-        # Statistics cards row (4 cards)
-        stats_layout = QHBoxLayout()
-        stats_layout.setSpacing(15)
+        # Statistics cards grid (2x2 layout)
+        stats_layout = QGridLayout()
+        stats_layout.setSpacing(20)
+        stats_layout.setColumnStretch(0, 1)
+        stats_layout.setColumnStretch(1, 1)
+        stats_layout.setRowStretch(0, 0)
+        stats_layout.setRowStretch(1, 0)
 
         self.total_card = StatCard("Total Tests", "0", "check_circle", "#2196F3")
         self.passed_card = StatCard("Passed", "0", "check_circle", "#00D9A5")
         self.failed_card = StatCard("Failed", "0", "x_circle", "#F44336")
         self.rate_card = StatCard("Pass Rate", "0%", "statistics", "#FF9800")
 
-        stats_layout.addWidget(self.total_card)
-        stats_layout.addWidget(self.passed_card)
-        stats_layout.addWidget(self.failed_card)
-        stats_layout.addWidget(self.rate_card)
+        # Add cards to grid: row, column
+        stats_layout.addWidget(self.total_card, 0, 0)
+        stats_layout.addWidget(self.passed_card, 0, 1)
+        stats_layout.addWidget(self.failed_card, 1, 0)
+        stats_layout.addWidget(self.rate_card, 1, 1)
 
         main_layout.addLayout(stats_layout)
 
