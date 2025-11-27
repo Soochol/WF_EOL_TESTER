@@ -678,11 +678,15 @@ class EOLForceTestUseCase(BaseUseCase):
 
         Returns:
             bool: True if START was successfully sent,
-                  False if disabled or failed (when enabled)
+                  False if disabled (service not enabled)
+
+        Raises:
+            RuntimeError: When NeuroHub is ENABLED and START fails
+                         (includes detailed error message for UI display)
 
         Note:
-            When NeuroHub is ENABLED and START fails, this returns False
-            to prevent test execution and completion messages.
+            When NeuroHub is ENABLED and START fails, RuntimeError is raised
+            to signal the UI to display an error toast and prevent test execution.
 
             When NeuroHub is DISABLED, this returns False silently.
         """
@@ -704,11 +708,19 @@ class EOLForceTestUseCase(BaseUseCase):
                 return True  # 착공 실제로 전송됨
             else:
                 # NeuroHub is enabled but START failed - block test execution
-                logger.error(f"🔗 NeuroHub: START failed for {serial_number} - blocking test execution")
-                return False  # 착공 실패 = 테스트 진행 안 함, 완공도 안 함
+                error_msg = f"NeuroHub START failed for {serial_number}"
+                logger.error(f"🔗 NeuroHub: {error_msg} - blocking test execution")
+                # Raise exception so UI can display error toast
+                raise RuntimeError(error_msg)
+        except RuntimeError:
+            # Re-raise RuntimeError with NeuroHub error details
+            raise
         except Exception as e:
-            logger.error(f"🔗 NeuroHub: Error sending START: {e} - blocking test execution")
-            return False  # 착공 에러 = 테스트 진행 안 함, 완공도 안 함
+            error_type = type(e).__name__
+            error_msg = f"NeuroHub START error: {error_type}: {e}"
+            logger.error(f"🔗 NeuroHub: {error_msg} - blocking test execution")
+            # Raise exception so UI can display error toast
+            raise RuntimeError(error_msg) from e
 
     async def _send_neurohub_complete(
         self,
