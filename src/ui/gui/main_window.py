@@ -3023,7 +3023,11 @@ class MainWindow(QMainWindow):
                     timestamp=datetime.now(),
                     duration_seconds=getattr(result_data, "test_duration_seconds", 0.0),
                     cycles=cycles,
+                    error_message=getattr(result_data, "error_message", None),  # Add error details
                 )
+
+                # Store for use in toast notification
+                self._last_test_result = test_result
 
                 # Add result to state manager (will be displayed in Results page)
                 self.state_manager.add_test_result(test_result)
@@ -3095,7 +3099,17 @@ class MainWindow(QMainWindow):
                     "테스트 완료", f"테스트가 성공적으로 완료되었습니다.\n{message}"
                 )
             else:
-                self.toast_manager.show_error("테스트 실패", f"테스트가 실패했습니다.\n{message}")
+                # Use detailed error message from result if available
+                detailed_error = message
+                if hasattr(self, '_last_test_result') and self._last_test_result:
+                    if self._last_test_result.error_message:
+                        detailed_error = self._last_test_result.error_message
+
+                self.toast_manager.show_error(
+                    "테스트 실패",
+                    f"테스트가 실패했습니다.\n\n{detailed_error}",
+                    duration=8000  # Longer duration for error messages
+                )
 
     def _on_thread_test_error(self, error_message: str) -> None:
         """Handle test error from thread"""

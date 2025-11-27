@@ -66,6 +66,7 @@ class ResultsTableWidget(QWidget):
             "Heat(s)",
             "Cool(s)",
             "Status",
+            "Error",  # NEW: Error column
             "Time",
         ]
 
@@ -93,6 +94,7 @@ class ResultsTableWidget(QWidget):
         self.results_tree.setColumnWidth(4, 90)   # Heat
         self.results_tree.setColumnWidth(5, 90)   # Cool
         self.results_tree.setColumnWidth(6, 70)   # Status
+        self.results_tree.setColumnWidth(7, 100)  # Error
         # Time column will stretch
 
         # Set minimum height
@@ -120,7 +122,16 @@ class ResultsTableWidget(QWidget):
         parent_item.setText(4, "")  # Heat - show in cycles
         parent_item.setText(5, "")  # Cool - show in cycles
         parent_item.setText(6, result.status)
-        parent_item.setText(7, result.timestamp.strftime("%Y-%m-%d %H:%M"))
+
+        # Error column (index 7)
+        if result.error_message:
+            parent_item.setText(7, "⚠️")
+            parent_item.setToolTip(7, result.error_message)
+            parent_item.setForeground(7, QColor("#F44336"))  # Red color
+        else:
+            parent_item.setText(7, "")
+
+        parent_item.setText(8, result.timestamp.strftime("%Y-%m-%d %H:%M"))
 
         # Color coding for status
         status_color = self._get_status_color(result.status)
@@ -129,7 +140,7 @@ class ResultsTableWidget(QWidget):
         # Make parent item bold
         font = parent_item.font(0)
         font.setBold(True)
-        for col in range(8):
+        for col in range(9):
             parent_item.setFont(col, font)
 
         # Store serial number for toggle

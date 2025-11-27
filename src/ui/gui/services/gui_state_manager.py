@@ -42,6 +42,7 @@ class TestResult:
     timestamp: datetime  # Test completion time
     duration_seconds: float  # Total test duration
     cycles: List["CycleData"]  # List of individual cycle measurements
+    error_message: Optional[str] = None  # Error details if test failed
 
 
 @dataclass
