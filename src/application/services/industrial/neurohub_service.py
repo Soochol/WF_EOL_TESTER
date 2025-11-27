@@ -246,12 +246,32 @@ class NeuroHubService:
             await self._safe_disconnect()
 
     async def _safe_disconnect(self) -> None:
-        """Safely disconnect from NeuroHub"""
-        if self._protocol:
+        """Safely disconnect from NeuroHub - guarantees connection is closed"""
+        if not self._protocol:
+            return
+
+        # Always attempt to close the connection, even if errors occur
+        try:
+            if self._protocol.is_connected:
+                logger.debug("🔗 NEUROHUB: Closing TCP connection...")
+                success = await self._protocol.disconnect()
+                if success:
+                    logger.info("🔗 NEUROHUB: TCP connection closed successfully")
+                else:
+                    logger.warning("🔗 NEUROHUB: Failed to close TCP connection")
+        except Exception as e:
+            logger.error(f"🔗 NEUROHUB: Error during disconnect: {e}")
+            # Force reset connection state even if disconnect() fails
             try:
-                await self._protocol.disconnect()
-            except Exception as e:
-                logger.warning(f"🔗 NEUROHUB: Error during disconnect: {e}")
+                if self._protocol.writer:
+                    self._protocol.writer.close()
+                    await self._protocol.writer.wait_closed()
+                self._protocol.is_connected = False
+                logger.warning("🔗 NEUROHUB: Force closed TCP socket")
+            except Exception as force_close_error:
+                logger.error(f"🔗 NEUROHUB: Error during force close: {force_close_error}")
+                # Last resort: mark as disconnected
+                self._protocol.is_connected = False
 
     async def disconnect(self) -> None:
         """Disconnect from NeuroHub Client"""
