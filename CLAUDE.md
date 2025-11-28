@@ -22,10 +22,9 @@ pip install -e .
 
 ### Running the Application
 
-#### GUI Application (Multiple Options)
 ```bash
 # Option 1: Standard command line (shows both CMD and GUI windows)
-uv run src/main_gui.py
+uv run src/main.py
 
 # Option 2: GUI-only launcher (Windows - minimal console visibility)
 ./run_gui.bat
@@ -33,26 +32,6 @@ uv run src/main_gui.py
 # Option 3: Silent GUI launcher (Windows - completely hidden console)
 ./run_gui_silent.vbs
 # or double-click: run_gui_silent.vbs
-
-# Option 4: Create desktop shortcut for easy access
-./create_desktop_shortcut.bat
-```
-
-#### CLI Application
-```bash
-# CLI-only version (main entry point)
-uv run src/main_cli.py
-# or: python src/main_cli.py
-
-# Generate configuration files
-uv run src/main_cli.py --generate-config default    # Development config with mock hardware
-uv run src/main_cli.py --generate-config production # Production config with real hardware
-
-# Run with specific configuration
-uv run src/main_cli.py --config config_default.json
-
-# Debug mode
-uv run src/main_cli.py --debug
 ```
 
 ### Code Quality and Testing
@@ -116,7 +95,6 @@ This project uses a simplified Clean Architecture pattern with dependency inject
   - `serial/` - Serial communication drivers
   - `tcp/` - TCP/IP communication drivers
 - `src/ui/` - User interface implementations
-  - `cli/` - Command-line interface with rich presentation
   - `gui/` - GUI implementation using PySide6
   - `components/` - Shared UI components
 - `src/utils/` - Utility functions and helpers
@@ -406,7 +384,7 @@ uv run pylint src/ --output-format=json        # Machine-readable output
 1. Create new directory in `src/application/use_cases/`
 2. Implement use case following existing patterns
 3. Register in `SimpleReloadableContainer`
-4. Add CLI/GUI integration points
+4. Add GUI integration points
 
 ## Troubleshooting
 
@@ -416,7 +394,7 @@ If you encounter PySide6 import errors:
 1. **Use UV Auto-Installation** (Recommended):
    ```bash
    # UV automatically installs compatible PySide6
-   uv run src/main_gui.py
+   uv run src/main.py
 
    # Check compatibility if needed
    python src/utils/platform_detection.py
@@ -445,7 +423,7 @@ If you encounter PySide6 import errors:
    ```bash
    # Most issues can be resolved with:
    uv cache clean && uv sync         # Clean reinstall
-   uv run src/main_gui.py            # Auto-detects and installs compatible PySide6
+   uv run src/main.py                # Auto-detects and installs compatible PySide6
 
    # GUI-only execution (no console window)
    ./run_gui_silent.vbs              # Completely silent (recommended)
@@ -467,10 +445,10 @@ For distribution without requiring Python/UV installation:
 uv sync
 
 # Create standalone GUI executable (Windows)
-uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" src/main_gui.py
+uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" src/main.py
 
 # Create with custom icon (if available)
-uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" --icon="src/ui/gui/resources/icons/app.ico" src/main_gui.py
+uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" --icon="src/ui/gui/resources/icons/app.ico" src/main.py
 
 # Output location: dist/WF_EOL_Tester.exe
 ```
@@ -488,8 +466,7 @@ uv run pyinstaller --windowed --onefile --name "WF_EOL_Tester" --icon="src/ui/gu
 
 ## Key Files to Understand
 
-- `src/main_cli.py` - CLI entry point with dependency injection setup
+- `src/main.py` - GUI entry point with dependency injection setup
 - `src/application/containers/simple_reloadable_container.py` - Hot-reloadable dependency injection configuration
 - `src/application/services/hardware_facade/hardware_service_facade.py` - Hardware abstraction layer
 - `pyproject.toml` - Project configuration, dependencies, and tool settings
-- `CLI_USAGE.md` - Detailed CLI usage instructions

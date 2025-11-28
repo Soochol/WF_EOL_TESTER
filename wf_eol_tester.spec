@@ -173,7 +173,7 @@ hiddenimports = [
 
 # Analysis: Determine what to bundle
 a = Analysis(
-    ['src/main_gui.py'],
+    ['src/main.py'],
     pathex=[str(src_dir)],
     binaries=[],
     datas=datas,

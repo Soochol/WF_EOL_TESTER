@@ -106,7 +106,7 @@ build_installer.bat
 PyInstaller 빌드 설정 파일
 
 **주요 설정**:
-- 진입점: `src/main_gui.py`
+- 진입점: `src/main.py`
 - 윈도우 모드: GUI (콘솔 창 없음)
 - 포함 데이터:
   - `configuration/` - 모든 설정 파일

@@ -2,7 +2,7 @@
 REM ============================================================================
 REM WF EOL Tester - GUI Launcher
 REM ============================================================================
-REM This script runs the GUI application (src/main_gui.py)
+REM This script runs the GUI application (src/main.py)
 REM
 REM Usage:
 REM   run_gui.bat           - Run GUI with console window (for debugging)
@@ -22,18 +22,18 @@ REM Check if virtual environment exists (priority)
 if exist ".venv\Scripts\python.exe" (
     echo [INFO] Using virtual environment Python...
     echo.
-    .venv\Scripts\python.exe src\main_gui.py
+    .venv\Scripts\python.exe src\main.py
 ) else (
     REM Fallback: Check if UV is available
     where uv >nul 2>&1
     if errorlevel 1 (
         echo [INFO] Virtual environment not found, using system Python...
         echo.
-        python src\main_gui.py
+        python src\main.py
     ) else (
         echo [INFO] Using UV to run GUI...
         echo.
-        uv run src/main_gui.py
+        uv run src/main.py
     )
 )
 

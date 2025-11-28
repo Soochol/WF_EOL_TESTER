@@ -25,11 +25,11 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo [INFO] Using virtual environment: .venv\Scripts\python.exe
-echo [INFO] Running: src\main_gui.py
+echo [INFO] Running: src\main.py
 echo.
 
 REM Run GUI directly with virtual environment Python
-.venv\Scripts\python.exe src\main_gui.py
+.venv\Scripts\python.exe src\main.py
 
 echo.
 echo [INFO] GUI application closed.

@@ -52,19 +52,16 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Python: EOL Test CLI",
+            "name": "Python: EOL Test GUI",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/main_cli.py",
+            "program": "${workspaceFolder}/src/main.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"
             },
-            "cwd": "${workspaceFolder}",
-            "args": [
-                "--help"
-            ]
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "Python: Format All Files",

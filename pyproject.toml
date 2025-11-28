@@ -53,11 +53,10 @@ dependencies = [
 ]
 
 [project.scripts]
-wf-eol-cli = "main_cli:main"
-wf-eol-gui = "main_gui:main"
+wf-eol = "main:main"
 
 [project.gui-scripts]
-wf-eol-gui-windows = "main_gui:main"
+wf-eol-gui = "main:main"
 
 [project.optional-dependencies]
 dev = [
