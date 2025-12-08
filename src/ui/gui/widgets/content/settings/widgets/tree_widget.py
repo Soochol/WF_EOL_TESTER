@@ -33,20 +33,25 @@ def _get_icons_path() -> Path:
         # Try multiple possible locations for PyInstaller
         exe_dir = Path(sys.executable).parent
 
-        # 1. COLLECT mode (--onedir): files are in exe directory
+        # 1. COLLECT mode with _internal folder (PyInstaller 6.x default)
+        icons_path = exe_dir / "_internal" / "ui" / "gui" / "resources" / "icons"
+        if icons_path.exists():
+            return icons_path
+
+        # 2. COLLECT mode (--onedir): files directly in exe directory
         icons_path = exe_dir / "ui" / "gui" / "resources" / "icons"
         if icons_path.exists():
             return icons_path
 
-        # 2. _MEIPASS (--onefile mode): files are in temp directory
+        # 3. _MEIPASS (--onefile mode): files are in temp directory
         if hasattr(sys, "_MEIPASS"):
             meipass_path = Path(getattr(sys, "_MEIPASS"))
             icons_path = meipass_path / "ui" / "gui" / "resources" / "icons"
             if icons_path.exists():
                 return icons_path
 
-        # 3. Fallback: return exe_dir path anyway
-        return exe_dir / "ui" / "gui" / "resources" / "icons"
+        # 4. Fallback: return _internal path
+        return exe_dir / "_internal" / "ui" / "gui" / "resources" / "icons"
     else:
         # Development mode: navigate from this file
         current_file = Path(__file__).resolve()
