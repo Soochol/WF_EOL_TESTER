@@ -268,17 +268,17 @@ class MotionControlGroup:
         # Velocity input
         vel_label = QLabel("Velocity (μm/s):")
         vel_label.setStyleSheet("color: #999999; font-size: 12px;")
-        vel_input = self._create_input_spinbox(min_val=1.0, max_val=100000.0, default=1000.0, decimals=1)
+        vel_input = self._create_input_spinbox(min_val=1.0, max_val=200000.0, default=100000.0, decimals=1)
 
         # Acceleration input
         acc_label = QLabel("Accel (μm/s²):")
         acc_label.setStyleSheet("color: #999999; font-size: 12px;")
-        acc_input = self._create_input_spinbox(min_val=1.0, max_val=100000.0, default=5000.0, decimals=1)
+        acc_input = self._create_input_spinbox(min_val=1.0, max_val=200000.0, default=85000.0, decimals=1)
 
         # Deceleration input
         dec_label = QLabel("Decel (μm/s²):")
         dec_label.setStyleSheet("color: #999999; font-size: 12px;")
-        dec_input = self._create_input_spinbox(min_val=1.0, max_val=100000.0, default=5000.0, decimals=1)
+        dec_input = self._create_input_spinbox(min_val=1.0, max_val=200000.0, default=85000.0, decimals=1)
 
         # Move button
         move_btn = ModernButton(f"Move {move_type.upper()}", "arrow-right", "secondary")

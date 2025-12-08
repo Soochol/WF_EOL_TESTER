@@ -184,9 +184,9 @@ class RobotEventHandlers(QObject):
     def on_move_absolute(
         self,
         position: float,
-        velocity: float = 1000.0,
-        acceleration: float = 5000.0,
-        deceleration: float = 5000.0
+        velocity: float = 100000.0,
+        acceleration: float = 85000.0,
+        deceleration: float = 85000.0
     ) -> None:
         """Handle absolute move request"""
         if not self.executor_thread:
@@ -233,9 +233,9 @@ class RobotEventHandlers(QObject):
     def on_move_relative(
         self,
         distance: float,
-        velocity: float = 1000.0,
-        acceleration: float = 5000.0,
-        deceleration: float = 5000.0
+        velocity: float = 100000.0,
+        acceleration: float = 85000.0,
+        deceleration: float = 85000.0
     ) -> None:
         """Handle relative move request"""
         if not self.executor_thread:
