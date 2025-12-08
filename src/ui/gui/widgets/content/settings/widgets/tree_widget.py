@@ -6,6 +6,7 @@ with search and filtering capabilities.
 """
 
 # Standard library imports
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -26,12 +27,17 @@ from ..core.parameter_descriptions import ParameterDescriptions
 
 
 def _get_icons_path() -> Path:
-    """Get the path to the icons directory"""
-    # Navigate from this file to the resources/icons directory
-    current_file = Path(__file__).resolve()
-    # widgets/tree_widget.py -> widgets -> settings -> content -> widgets -> gui -> ui -> src
-    src_dir = current_file.parents[6]
-    icons_path = src_dir / "ui" / "gui" / "resources" / "icons"
+    """Get the path to the icons directory (supports both dev and PyInstaller)"""
+    # Check if running from PyInstaller bundle
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # PyInstaller bundle: use _MEIPASS base path
+        base_path = Path(getattr(sys, "_MEIPASS"))
+        icons_path = base_path / "ui" / "gui" / "resources" / "icons"
+    else:
+        # Development mode: navigate from this file
+        current_file = Path(__file__).resolve()
+        src_dir = current_file.parents[6]
+        icons_path = src_dir / "ui" / "gui" / "resources" / "icons"
     return icons_path
 
 
