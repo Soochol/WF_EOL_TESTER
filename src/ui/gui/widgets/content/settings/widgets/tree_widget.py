@@ -29,16 +29,30 @@ from ..core.parameter_descriptions import ParameterDescriptions
 def _get_icons_path() -> Path:
     """Get the path to the icons directory (supports both dev and PyInstaller)"""
     # Check if running from PyInstaller bundle
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        # PyInstaller bundle: use _MEIPASS base path
-        base_path = Path(getattr(sys, "_MEIPASS"))
-        icons_path = base_path / "ui" / "gui" / "resources" / "icons"
+    if getattr(sys, "frozen", False):
+        # Try multiple possible locations for PyInstaller
+        exe_dir = Path(sys.executable).parent
+
+        # 1. COLLECT mode (--onedir): files are in exe directory
+        icons_path = exe_dir / "ui" / "gui" / "resources" / "icons"
+        if icons_path.exists():
+            return icons_path
+
+        # 2. _MEIPASS (--onefile mode): files are in temp directory
+        if hasattr(sys, "_MEIPASS"):
+            meipass_path = Path(getattr(sys, "_MEIPASS"))
+            icons_path = meipass_path / "ui" / "gui" / "resources" / "icons"
+            if icons_path.exists():
+                return icons_path
+
+        # 3. Fallback: return exe_dir path anyway
+        return exe_dir / "ui" / "gui" / "resources" / "icons"
     else:
         # Development mode: navigate from this file
         current_file = Path(__file__).resolve()
         src_dir = current_file.parents[6]
         icons_path = src_dir / "ui" / "gui" / "resources" / "icons"
-    return icons_path
+        return icons_path
 
 
 class SettingsTreeWidget(QTreeWidget):
@@ -72,19 +86,37 @@ class SettingsTreeWidget(QTreeWidget):
         """Get icon from cache or load it using QSvgRenderer for proper rendering"""
         if icon_name not in self._icon_cache:
             icon_path = self._icons_path / icon_name
+            icon_loaded = False
+
             if icon_path.exists():
                 # Use QSvgRenderer for explicit rendering with proper size
                 renderer = QSvgRenderer(str(icon_path))
-                pixmap = QPixmap(20, 20)
-                pixmap.fill(Qt.GlobalColor.transparent)
-                painter = QPainter(pixmap)
-                renderer.render(painter)
-                painter.end()
-                self._icon_cache[icon_name] = QIcon(pixmap)
-            else:
-                # Return empty icon if file not found
-                self._icon_cache[icon_name] = QIcon()
+                if renderer.isValid():
+                    pixmap = QPixmap(20, 20)
+                    pixmap.fill(Qt.GlobalColor.transparent)
+                    painter = QPainter(pixmap)
+                    renderer.render(painter)
+                    painter.end()
+                    self._icon_cache[icon_name] = QIcon(pixmap)
+                    icon_loaded = True
+
+            if not icon_loaded:
+                # Fallback: create a simple colored circle icon
+                self._icon_cache[icon_name] = self._create_fallback_icon()
+
         return self._icon_cache[icon_name]
+
+    def _create_fallback_icon(self) -> QIcon:
+        """Create a simple fallback icon when SVG fails to load"""
+        pixmap = QPixmap(20, 20)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor("#2196F3")))  # Blue color
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(2, 2, 16, 16)
+        painter.end()
+        return QIcon(pixmap)
 
     def _get_item_depth(self, item: QTreeWidgetItem) -> int:
         """Calculate the depth of an item in the tree"""
