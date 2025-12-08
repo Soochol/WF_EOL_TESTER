@@ -342,17 +342,21 @@ class MotionControlGroup:
 
     def _on_abs_move_clicked(self) -> None:
         """Handle absolute move button click"""
-        if self.abs_pos_input and self.abs_vel_input:
+        if self.abs_pos_input and self.abs_vel_input and self.abs_acc_input and self.abs_dec_input:
             position = self.abs_pos_input.value()
             velocity = self.abs_vel_input.value()
-            self.event_handlers.on_move_absolute(position, velocity)
+            acceleration = self.abs_acc_input.value()
+            deceleration = self.abs_dec_input.value()
+            self.event_handlers.on_move_absolute(position, velocity, acceleration, deceleration)
 
     def _on_rel_move_clicked(self) -> None:
         """Handle relative move button click"""
-        if self.rel_pos_input and self.rel_vel_input:
+        if self.rel_pos_input and self.rel_vel_input and self.rel_acc_input and self.rel_dec_input:
             distance = self.rel_pos_input.value()
             velocity = self.rel_vel_input.value()
-            self.event_handlers.on_move_relative(distance, velocity)
+            acceleration = self.rel_acc_input.value()
+            deceleration = self.rel_dec_input.value()
+            self.event_handlers.on_move_relative(distance, velocity, acceleration, deceleration)
 
     def get_buttons(self) -> Dict[str, Optional[QPushButton]]:
         """Get button references"""
