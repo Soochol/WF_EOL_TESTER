@@ -11,7 +11,8 @@ from typing import Any, Dict, List, Optional
 
 # Third-party imports
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QIcon
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QTreeWidget,
     QTreeWidgetItem,
@@ -62,11 +63,18 @@ class SettingsTreeWidget(QTreeWidget):
         self.itemExpanded.connect(self.on_item_expanded)
 
     def _get_icon(self, icon_name: str) -> QIcon:
-        """Get icon from cache or load it"""
+        """Get icon from cache or load it using QSvgRenderer for proper rendering"""
         if icon_name not in self._icon_cache:
             icon_path = self._icons_path / icon_name
             if icon_path.exists():
-                self._icon_cache[icon_name] = QIcon(str(icon_path))
+                # Use QSvgRenderer for explicit rendering with proper size
+                renderer = QSvgRenderer(str(icon_path))
+                pixmap = QPixmap(20, 20)
+                pixmap.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(pixmap)
+                renderer.render(painter)
+                painter.end()
+                self._icon_cache[icon_name] = QIcon(pixmap)
             else:
                 # Return empty icon if file not found
                 self._icon_cache[icon_name] = QIcon()
