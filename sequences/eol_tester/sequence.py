@@ -225,7 +225,7 @@ class EOLForceTestSequence(SequenceBase):
             self.emit_log("info", "Connecting to hardware devices...")
             await self.hardware.connect()
 
-            # Log hardware status (emit_measurement skipped due to SDK serialization issue)
+            # Log hardware status
             status = await self.hardware.get_hardware_status()
             self.emit_log("info", f"Hardware status: {status}")
 
@@ -301,8 +301,8 @@ class EOLForceTestSequence(SequenceBase):
                 self._measurements = measurements.to_dict() if hasattr(measurements, 'to_dict') else {}
                 self._cycle_results = cycle_results
 
-                # Note: emit_measurement calls skipped due to SDK serialization issue
-                # await self._emit_test_measurements(measurements)
+                # Emit measurement events
+                await self._emit_test_measurements(measurements)
 
                 # Evaluate results
                 self._test_passed = self._evaluate_results(measurements)
@@ -517,17 +517,21 @@ class EOLForceTestSequence(SequenceBase):
         test_config = self.hardware.test_config
         pass_criteria = test_config.pass_criteria
 
-        # Get force limits from parameters or pass_criteria
-        force_limit_min = self.get_parameter("force_limit_min", pass_criteria.force_limit_min)
-        force_limit_max = self.get_parameter("force_limit_max", pass_criteria.force_limit_max)
+        # Get force limits from parameters or pass_criteria (ensure float type)
+        force_limit_min = float(self.get_parameter("force_limit_min", pass_criteria.force_limit_min))
+        force_limit_max = float(self.get_parameter("force_limit_max", pass_criteria.force_limit_max))
 
         for temp, positions in data.get('measurements', {}).items():
             for pos, measurement in positions.items():
-                force = measurement.get('force', 0.0)
+                force = float(measurement.get('force', 0.0))
+
+                # Convert temp/pos to int if whole number for cleaner names
+                temp_str = int(temp) if float(temp) == int(temp) else temp
+                pos_str = int(pos) if float(pos) == int(pos) else pos
 
                 # emit_measurement with auto pass/fail calculation (passed=None)
                 self.emit_measurement(
-                    name=f"force_{temp}C_{pos}um",
+                    name=f"force_{temp_str}C_{pos_str}um",
                     value=force,
                     unit="kgf",
                     min_value=force_limit_min,
