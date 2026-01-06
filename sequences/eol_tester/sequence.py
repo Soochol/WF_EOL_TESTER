@@ -93,11 +93,23 @@ except ImportError:
         def emit_step_start(self, name: str, index: int, total: int, description: str = "") -> None:
             logger.info(f"Step {index}/{total}: {name} - {description}")
 
-        def emit_step_complete(self, name: str, index: int, passed: bool, duration: float = 0.0, error: str = "") -> None:
+        def emit_step_complete(
+            self,
+            name: str,
+            index: int,
+            passed: bool,
+            duration: float = 0.0,
+            error: str = "",
+            measurements: Dict[str, Any] = None,
+            data: Dict[str, Any] = None,
+        ) -> None:
             status = "PASS" if passed else "FAIL"
             logger.info(f"Step {index} {name}: {status} ({duration:.2f}s)")
             if error:
                 logger.error(f"  Error: {error}")
+            if measurements:
+                for m_name, m_data in measurements.items():
+                    logger.info(f"  Measurement {m_name}: {m_data}")
 
         def emit_measurement(self, name: str, value: float, unit: str = "", min_value: float = None, max_value: float = None) -> None:
             logger.info(f"Measurement {name}: {value} {unit}")
@@ -301,6 +313,9 @@ class EOLForceTestSequence(SequenceBase):
                 self._measurements = measurements.to_dict() if hasattr(measurements, 'to_dict') else {}
                 self._cycle_results = cycle_results
 
+                # Build step measurements for emit_step_complete
+                step_measurements = self._build_step_measurements(measurements)
+
                 # Emit measurement events
                 await self._emit_test_measurements(measurements)
 
@@ -312,6 +327,7 @@ class EOLForceTestSequence(SequenceBase):
                     1,
                     self._test_passed,
                     test_config.estimate_test_duration_seconds(),
+                    measurements=step_measurements,
                 )
 
             except Exception as e:
@@ -508,10 +524,10 @@ class EOLForceTestSequence(SequenceBase):
             serial_number=serial_number,
         )
 
-    async def _emit_test_measurements(self, measurements: Any) -> None:
-        """Emit measurement events for each temperature/position."""
+    def _build_step_measurements(self, measurements: Any) -> Dict[str, Any]:
+        """Build measurements dict for emit_step_complete."""
         if not hasattr(measurements, 'to_dict'):
-            return
+            return {}
 
         data = measurements.to_dict()
         test_config = self.hardware.test_config
@@ -521,6 +537,7 @@ class EOLForceTestSequence(SequenceBase):
         force_limit_min = float(self.get_parameter("force_limit_min", pass_criteria.force_limit_min))
         force_limit_max = float(self.get_parameter("force_limit_max", pass_criteria.force_limit_max))
 
+        result = {}
         for temp, positions in data.get('measurements', {}).items():
             for pos, measurement in positions.items():
                 force = float(measurement.get('force', 0.0))
@@ -529,14 +546,31 @@ class EOLForceTestSequence(SequenceBase):
                 temp_str = int(temp) if float(temp) == int(temp) else temp
                 pos_str = int(pos) if float(pos) == int(pos) else pos
 
-                # emit_measurement with auto pass/fail calculation (passed=None)
-                self.emit_measurement(
-                    name=f"force_{temp_str}C_{pos_str}um",
-                    value=force,
-                    unit="kgf",
-                    min_value=force_limit_min,
-                    max_value=force_limit_max,
-                )
+                name = f"force_{temp_str}C_{pos_str}um"
+                passed = force_limit_min <= force <= force_limit_max
+
+                result[name] = {
+                    "value": force,
+                    "unit": "kgf",
+                    "min": force_limit_min,
+                    "max": force_limit_max,
+                    "passed": passed,
+                }
+
+        return result
+
+    async def _emit_test_measurements(self, measurements: Any) -> None:
+        """Emit measurement events for each temperature/position."""
+        step_measurements = self._build_step_measurements(measurements)
+
+        for name, m_data in step_measurements.items():
+            self.emit_measurement(
+                name=name,
+                value=m_data["value"],
+                unit=m_data["unit"],
+                min_value=m_data["min"],
+                max_value=m_data["max"],
+            )
 
     def _evaluate_results(self, measurements: Any) -> bool:
         """Evaluate test results against pass criteria."""
