@@ -5,7 +5,7 @@ Hardware service interfaces for standalone EOL Tester sequence.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Union
 
 
 class TestMode(Enum):
@@ -134,7 +134,7 @@ class MCUService(ABC):
         ...
 
     @abstractmethod
-    async def set_test_mode(self, mode: TestMode) -> None:
+    async def set_test_mode(self, mode: Union[TestMode, int]) -> None:
         """Set MCU test mode."""
         ...
 
@@ -162,12 +162,12 @@ class LoadCellService(ABC):
         ...
 
     @abstractmethod
-    async def read_force(self) -> Force:
+    async def read_force(self) -> Union[Force, float]:
         """Read current force."""
         ...
 
     @abstractmethod
-    async def read_peak_force(self) -> Force:
+    async def read_peak_force(self) -> Union[Force, float]:
         """Read peak force."""
         ...
 
@@ -288,7 +288,7 @@ class DigitalIOService(ABC):
         ...
 
     @abstractmethod
-    async def write_output(self, channel: int, level: bool) -> bool:
+    async def write_output(self, channel: int, value: bool) -> Union[bool, None]:
         """Write digital output."""
         ...
 
@@ -312,8 +312,9 @@ class DigitalIOService(ABC):
     async def write_multiple_outputs(self, pin_values: Dict[int, bool]) -> bool:
         """Write multiple outputs."""
         success_count = 0
-        for channel, level in pin_values.items():
-            if await self.write_output(channel, level):
+        for channel, value in pin_values.items():
+            result = await self.write_output(channel, value)
+            if result is None or result:
                 success_count += 1
         return success_count == len(pin_values)
 

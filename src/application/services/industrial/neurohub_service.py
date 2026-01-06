@@ -14,10 +14,7 @@ from loguru import logger
 
 # Local application imports
 from domain.value_objects.neurohub_config import NeuroHubConfig
-from driver.tcp.neurohub_protocol import (
-    NeuroHubAck,
-    NeuroHubProtocol,
-)
+from driver.tcp.neurohub_protocol import NeuroHubProtocol
 
 
 if TYPE_CHECKING:

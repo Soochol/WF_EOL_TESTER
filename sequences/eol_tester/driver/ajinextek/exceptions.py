@@ -32,19 +32,15 @@ class AXLError(Exception):
 
 class AXLMotionError(AXLError):
     """AXL motion control error"""
-    pass
 
 
 class AXLDIOError(AXLError):
     """AXL digital I/O error"""
-    pass
 
 
 class AXLConnectionError(AXLError):
     """AXL connection/initialization error"""
-    pass
 
 
 class AXLPlatformError(AXLError):
     """AXL platform incompatibility error (non-Windows)"""
-    pass

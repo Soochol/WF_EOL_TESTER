@@ -284,10 +284,10 @@ class MockDigitalIOService(DigitalIOService):
     async def get_input_count(self) -> int:
         return self._input_count
 
-    async def write_output(self, channel: int, level: bool) -> bool:
+    async def write_output(self, channel: int, value: bool) -> bool:
         if 0 <= channel < self._output_count:
-            self._outputs[channel] = level
-            logger.debug(f"MockDigitalIO: Output {channel} = {level}")
+            self._outputs[channel] = value
+            logger.debug(f"MockDigitalIO: Output {channel} = {value}")
             return True
         return False
 

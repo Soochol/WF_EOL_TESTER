@@ -139,12 +139,12 @@ class EOLHardwareAdapter:
     async def read_force(self) -> float:
         """Read current force value from loadcell."""
         force = await self._facade.loadcell_service.read_force()
-        return force.value
+        return force.value if hasattr(force, "value") else force
 
     async def read_peak_force(self) -> float:
         """Read peak force value from loadcell."""
         force = await self._facade.loadcell_service.read_peak_force()
-        return force.value
+        return force.value if hasattr(force, "value") else force
 
     async def move_robot_to_position(self, position: float) -> None:
         """

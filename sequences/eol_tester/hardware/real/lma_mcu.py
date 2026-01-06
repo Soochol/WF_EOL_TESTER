@@ -248,7 +248,7 @@ class LMAMCU(MCUService):
             return None
         return self._current_temperature
 
-    async def set_test_mode(self, mode: int) -> None:
+    async def set_test_mode(self, mode: "Union[TestMode, int]") -> None:
         """Set test mode."""
         self._ensure_connected()
 

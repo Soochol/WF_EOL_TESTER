@@ -347,14 +347,14 @@ class HardwareServiceFacade:
 
                     # Store measurement
                     if repeat_count == 1:
-                        measurements_dict[temperature][position] = {"force": force.value}
+                        measurements_dict[temperature][position] = {"force": force.value if hasattr(force, "value") else force}
                     else:
                         if position not in measurements_dict[temperature]:
                             measurements_dict[temperature][position] = {"force": []}
-                        measurements_dict[temperature][position]["force"].append(force.value)
+                        measurements_dict[temperature][position]["force"].append(force.value if hasattr(force, "value") else force)
 
-                    cycle_measurements_dict[temperature][position] = {"force": force.value}
-                    logger.debug(f"Force: {force.value:.3f}kgf")
+                    cycle_measurements_dict[temperature][position] = {"force": force.value if hasattr(force, "value") else force}
+                    logger.debug(f"Force: {force.value if hasattr(force, "value") else force:.3f}kgf")
 
                 # Return to initial position
                 if self._robot_state != RobotState.INITIAL_POSITION:

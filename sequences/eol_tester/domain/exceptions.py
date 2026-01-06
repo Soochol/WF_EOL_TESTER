@@ -36,12 +36,10 @@ class HardwareException(Exception):
 
 class HardwareConnectionException(HardwareException):
     """Exception raised when hardware connection fails."""
-    pass
 
 
 class HardwareOperationException(HardwareException):
     """Exception raised when hardware operation fails."""
-    pass
 
 
 class HardwareOperationError(Exception):

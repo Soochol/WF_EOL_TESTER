@@ -460,7 +460,7 @@ class TowerLampService:
                 if channel == self.green_lamp_channel:
                     # GREEN must always stay ON
                     await self._set_lamp_output(channel, True)
-                    logger.debug(f"🚦 TOWER_LAMP: GREEN lamp kept ON after cancel")
+                    logger.debug("🚦 TOWER_LAMP: GREEN lamp kept ON after cancel")
                 else:
                     # RED/YELLOW turn OFF when cancelled
                     await self._set_lamp_output(channel, False)

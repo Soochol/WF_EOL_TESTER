@@ -174,15 +174,11 @@ class EmergencyStopService:
         # Additional hardware safety actions can be added here
         # (e.g., pneumatic systems, hydraulics, etc.)
 
-        pass
-
     async def _handle_software_cleanup(self) -> None:
         """Handle software cleanup during emergency stop"""
 
         try:
             # Software cleanup operations
-            pass
-
             # Disconnect all hardware services to ensure clean state
             await self._disconnect_all_hardware()
 
@@ -209,8 +205,6 @@ class EmergencyStopService:
 
     async def _verify_hardware_safe_state(self) -> None:
         """Verify that all hardware is in safe state after emergency stop"""
-        pass
-
         # Check robot state
         try:
             robot_service = self.hardware_facade.robot_service
@@ -285,8 +279,6 @@ class EmergencyStopService:
 
     async def _disconnect_all_hardware(self) -> None:
         """Disconnect all hardware services during emergency stop cleanup"""
-        pass
-
         # Robot service: DO NOT disconnect
         # Emergency stop puts robot in servo OFF state, which is safe
         # Keeping connection allows quick recovery via Home button
@@ -300,7 +292,6 @@ class EmergencyStopService:
             power_service = self.hardware_facade.power_service
             if power_service and await power_service.is_connected():
                 await power_service.disconnect()
-                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect power service: {e}")
 
@@ -309,7 +300,6 @@ class EmergencyStopService:
             mcu_service = self.hardware_facade.mcu_service
             if mcu_service and await mcu_service.is_connected():
                 await mcu_service.disconnect()
-                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect MCU service: {e}")
 
@@ -318,8 +308,5 @@ class EmergencyStopService:
             loadcell_service = self.hardware_facade.loadcell_service
             if loadcell_service and await loadcell_service.is_connected():
                 await loadcell_service.disconnect()
-                pass
         except Exception as e:
             logger.warning(f"Failed to disconnect loadcell service: {e}")
-
-        pass

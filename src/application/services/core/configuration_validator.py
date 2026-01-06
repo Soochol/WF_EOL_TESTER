@@ -35,7 +35,6 @@ class ConfigurationValidator:
 
     def __init__(self) -> None:
         """Initialize the configuration validator"""
-        pass
 
     async def validate_test_configuration(self, config: TestConfiguration) -> None:
         """

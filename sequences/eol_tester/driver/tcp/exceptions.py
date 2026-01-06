@@ -38,14 +38,11 @@ class TCPError(Exception):
 
 class TCPConnectionError(TCPError):
     """TCP connection establishment errors."""
-    pass
 
 
 class TCPCommunicationError(TCPError):
     """TCP communication errors (send/receive failures)."""
-    pass
 
 
 class TCPTimeoutError(TCPError):
     """TCP operation timeout errors."""
-    pass

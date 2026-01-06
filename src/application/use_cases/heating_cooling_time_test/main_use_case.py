@@ -263,7 +263,7 @@ class HeatingCoolingTimeTestUseCase(BaseUseCase):
 
             # Convert CancelledError back to KeyboardInterrupt for emergency stop service
             raise KeyboardInterrupt("Test cancelled by user interrupt") from None
-        except Exception as error:
+        except Exception:
             # Reset robot homing state on any error if robot enabled
             if hc_config.enable_robot:
                 self._hardware_services.reset_robot_homing_state()

@@ -4,8 +4,8 @@ Provides statistical analysis and data aggregation for EOL Force Test results.
 """
 
 # Standard library imports
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List
 
 # Third-party imports
 import numpy as np
@@ -258,7 +258,7 @@ class EOLStatisticsService:
             # Collect all positions
             all_positions_data = []
             for temp_data in stats_by_temp.values():
-                for pos_key, pos_data in temp_data.items():
+                for pos_data in temp_data.values():
                     all_positions_data.append(
                         {"mm": pos_data["position_mm"], "um": pos_data["position_um"]}
                     )

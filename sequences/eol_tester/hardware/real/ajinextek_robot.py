@@ -6,18 +6,14 @@ Standalone version for EOL Tester package (Windows only).
 """
 
 import asyncio
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ...interfaces import RobotService
 from ...driver.ajinextek import (
     AXLWrapper,
     AXT_RT_SUCCESS,
-    SERVO_ON,
-    SERVO_OFF,
     HOME_SUCCESS,
     HOME_SEARCHING,
-    POS_ABS,
-    get_error_message,
 )
 from ...driver.ajinextek.exceptions import AXLError, AXLMotionError
 
@@ -370,3 +366,84 @@ class AjinextekRobot(RobotService):
             await asyncio.sleep(0.01)
 
         raise RuntimeError(f"Motion timeout for axis {axis}")
+
+    # =========================================================================
+    # RobotService Interface Implementation
+    # =========================================================================
+
+    async def enable_servo(self, axis_id: int) -> None:
+        """Enable servo for specified axis (interface method)."""
+        await self.servo_on(axis_id)
+
+    async def home_axis(self, axis_id: int) -> None:
+        """Home specified axis (interface method)."""
+        if not await self.is_connected():
+            raise RuntimeError("Ajinextek Robot is not connected")
+
+        if not self._axl:
+            raise RuntimeError("AXL wrapper not initialized")
+
+        try:
+            # Enable servo first
+            result = self._axl.servo_on(axis_id)
+            if result != AXT_RT_SUCCESS:
+                raise AXLMotionError(f"Failed to enable servo for axis {axis_id}")
+
+            await asyncio.sleep(0.5)
+
+            # Start homing
+            result = self._axl.home_set_start(axis_id)
+            if result != AXT_RT_SUCCESS:
+                raise AXLMotionError(f"Failed to start homing for axis {axis_id}")
+
+            # Wait for homing to complete
+            max_wait = 60.0
+            start_time = asyncio.get_event_loop().time()
+
+            while asyncio.get_event_loop().time() - start_time < max_wait:
+                home_result = self._axl.home_get_result(axis_id)
+                if home_result == HOME_SUCCESS:
+                    self._is_homed = True
+                    return
+                elif home_result != HOME_SEARCHING:
+                    raise AXLMotionError(
+                        f"Homing failed for axis {axis_id}: result={home_result}"
+                    )
+
+                await asyncio.sleep(0.1)
+
+            raise RuntimeError(f"Homing timeout for axis {axis_id}")
+
+        except AXLError as e:
+            raise RuntimeError(f"Homing axis {axis_id} failed: {e}") from e
+
+    async def move_absolute(
+        self,
+        position: float,
+        axis_id: int,
+        velocity: float,
+        acceleration: float,
+        deceleration: float,
+    ) -> None:
+        """Move axis to absolute position (interface method)."""
+        if not await self.is_connected():
+            raise RuntimeError("Ajinextek Robot is not connected")
+
+        if not self._axl:
+            raise RuntimeError("AXL wrapper not initialized")
+
+        if axis_id < 0 or axis_id >= self._axis_count:
+            raise ValueError(f"Invalid axis: {axis_id}")
+
+        try:
+            result = self._axl.move_start_pos(
+                axis_id, position, velocity, acceleration, deceleration
+            )
+            if result != AXT_RT_SUCCESS:
+                raise AXLMotionError(f"Failed to start motion for axis {axis_id}")
+
+            # Wait for motion to complete
+            await self._wait_axis_motion_complete(axis_id)
+
+        except AXLError as e:
+            raise RuntimeError(f"Move absolute failed: {e}") from e

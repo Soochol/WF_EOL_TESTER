@@ -38,24 +38,19 @@ class SerialError(Exception):
 
 class SerialConnectionError(SerialError):
     """Serial connection establishment errors."""
-    pass
 
 
 class SerialCommunicationError(SerialError):
     """Serial communication errors (send/receive failures)."""
-    pass
 
 
 class SerialTimeoutError(SerialError):
     """Serial operation timeout errors."""
-    pass
 
 
 class SerialConfigurationError(SerialError):
     """Serial configuration errors."""
-    pass
 
 
 class SerialBufferError(SerialError):
     """Serial buffer operation errors."""
-    pass

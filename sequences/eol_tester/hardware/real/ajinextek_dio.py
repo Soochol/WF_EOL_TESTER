@@ -10,8 +10,6 @@ from typing import Any, Dict, List, Optional
 from ...interfaces import DigitalIOService
 from ...driver.ajinextek import (
     AXLWrapper,
-    AXT_RT_SUCCESS,
-    get_error_message,
 )
 from ...driver.ajinextek.exceptions import AXLError, AXLDIOError
 
@@ -199,3 +197,19 @@ class AjinextekDIO(DigitalIOService):
                 status["last_error"] = str(e)
 
         return status
+
+    async def get_input_count(self) -> int:
+        """Get number of input channels."""
+        return self._input_count
+
+    async def get_output_count(self) -> int:
+        """Get number of output channels."""
+        return self._output_count
+
+    async def reset_all_outputs(self) -> bool:
+        """Reset all outputs to LOW."""
+        try:
+            await self.set_all_outputs(False)
+            return True
+        except Exception:
+            return False

@@ -19,15 +19,6 @@ class RobotHomeInput(BaseUseCaseInput):
     Simple input containing operator identification for robot homing.
     """
 
-    def __init__(self, operator_id: str = "system"):
-        """
-        Initialize robot home input
-
-        Args:
-            operator_id: ID of the operator executing the operation
-        """
-        super().__init__(operator_id)
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert input to dictionary representation

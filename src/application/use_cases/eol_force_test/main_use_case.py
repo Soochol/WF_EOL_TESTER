@@ -6,10 +6,10 @@ Refactored from monolithic class for better maintainability while preserving exa
 """
 
 # Standard library imports
+import asyncio
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 # Third-party imports
-import asyncio
 from loguru import logger
 
 # Local application imports
@@ -22,16 +22,8 @@ from application.services.monitoring.emergency_stop_service import (
     EmergencyStopService,
 )
 from application.services.test.test_result_evaluator import TestResultEvaluator
-
-
-if TYPE_CHECKING:
-    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
-    from application.services.industrial.neurohub_service import NeuroHubService
-
-# Local application imports
 from domain.entities.eol_test import EOLTest
 from domain.enums.test_status import TestStatus
-from domain.exceptions.test_exceptions import TestExecutionException
 from domain.value_objects.dut_command_info import DUTCommandInfo
 from domain.value_objects.eol_test_result import EOLTestResult
 from domain.value_objects.identifiers import TestId
@@ -49,6 +41,10 @@ from .measurement_converter import MeasurementConverter
 from .result_evaluator import ResultEvaluator
 from .test_entity_factory import TestEntityFactory
 from .test_state_manager import TestStateManager
+
+if TYPE_CHECKING:
+    from application.services.industrial.industrial_system_manager import IndustrialSystemManager
+    from application.services.industrial.neurohub_service import NeuroHubService
 
 
 class EOLForceTestInput(BaseUseCaseInput):

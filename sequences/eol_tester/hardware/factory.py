@@ -6,7 +6,7 @@ Supports both mock (development/testing) and real (production) hardware.
 """
 
 import platform
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict
 
 from ..interfaces import (
     LoadCellService,

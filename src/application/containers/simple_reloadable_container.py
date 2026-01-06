@@ -580,10 +580,7 @@ class SimpleReloadableContainer(ApplicationContainer):
         try:
             logger.info("🔄 Performing hardware reload with connection preservation...")
 
-            # Step 1: Store current connection states (if services support it)
-            preserved_states = {}
-
-            # Step 2: Reset hardware-related providers
+            # Step 1: Reset hardware-related providers
             hardware_providers = [
                 "hardware_service_facade",
                 "industrial_system_manager",

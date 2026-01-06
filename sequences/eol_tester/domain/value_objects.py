@@ -7,7 +7,6 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .exceptions import ValidationException
 
 
 @dataclass(frozen=True)

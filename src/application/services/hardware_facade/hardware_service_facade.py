@@ -6,21 +6,12 @@ Previously 786 lines, now significantly reduced by delegating to specialized ser
 """
 
 # Standard library imports
-# Standard library imports
-# Standard library imports
-# Standard library imports
-from typing import cast, Dict, List, Optional, Tuple, TYPE_CHECKING
-
-
-if TYPE_CHECKING:
-    from application.services.core.repository_service import RepositoryService
-
-# Standard library imports
+import asyncio
 import time
 from datetime import datetime
+from typing import cast, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 # Third-party imports
-import asyncio
 from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
@@ -40,12 +31,11 @@ from domain.value_objects.measurements import TestMeasurements
 from domain.value_objects.test_configuration import TestConfiguration
 from domain.value_objects.time_values import TestDuration
 
-
 # Note: All hardware service functionality has been integrated directly into this facade
 
 # IDE 개발용 타입 힌트 - 런타임에는 영향 없음
 if TYPE_CHECKING:
-    # Local application imports
+    from application.services.core.repository_service import RepositoryService
     from infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio import (
         AjinextekDIO,
     )

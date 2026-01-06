@@ -10,8 +10,6 @@ When running standalone without SDK, it provides its own minimal implementation.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from loguru import logger
@@ -33,7 +31,6 @@ try:
 except ImportError:
     # SDK not available - provide minimal standalone implementations
     from dataclasses import dataclass, field
-    from typing import Callable
 
     RunResult = Dict[str, Any]
 
@@ -47,11 +44,9 @@ except ImportError:
 
     class SetupError(Exception):
         """Setup phase error."""
-        pass
 
     class TeardownError(Exception):
         """Teardown phase error."""
-        pass
 
     class StepError(Exception):
         """Step execution error."""
@@ -61,7 +56,6 @@ except ImportError:
 
     class HardwareConnectionError(Exception):
         """Hardware connection error."""
-        pass
 
     class SequenceBase:
         """Minimal SequenceBase for standalone mode."""
@@ -100,8 +94,8 @@ except ImportError:
             passed: bool,
             duration: float = 0.0,
             error: str = "",
-            measurements: Dict[str, Any] = None,
-            data: Dict[str, Any] = None,
+            measurements: Optional[Dict[str, Any]] = None,
+            data: Optional[Dict[str, Any]] = None,
         ) -> None:
             status = "PASS" if passed else "FAIL"
             logger.info(f"Step {index} {name}: {status} ({duration:.2f}s)")
@@ -156,7 +150,7 @@ except ImportError:
         return cls
 
 # Standalone imports (self-contained)
-from .domain.value_objects import DUTCommandInfo, TestConfiguration, HardwareConfig
+from .domain.value_objects import DUTCommandInfo, TestConfiguration
 
 if TYPE_CHECKING:
     from .hardware_adapter import EOLHardwareAdapter

@@ -29,7 +29,6 @@ class TestResultEvaluator:
 
     def __init__(self) -> None:
         """Initialize the test result evaluator"""
-        pass
 
     async def evaluate_measurements(
         self,

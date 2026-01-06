@@ -7,7 +7,7 @@ Provides selective reload strategies based on change types while preserving conn
 
 # Standard library imports
 from enum import Enum
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Callable
 import hashlib
 import json
 
@@ -500,5 +500,5 @@ class ReloadableApplicationContainer:
         """Ensure cleanup on deletion."""
         try:
             self.shutdown()
-        except:
+        except Exception:
             pass  # Ignore errors during cleanup
