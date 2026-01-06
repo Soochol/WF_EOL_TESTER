@@ -1,0 +1,31 @@
+# EOL Tester Sequence - Hardware Configuration
+# This file makes the sequence self-contained
+# Change 'model' values to switch between mock and real hardware
+
+robot:
+  model: mock          # mock | ajinextek
+  axis_id: 0
+  irq_no: 7
+
+loadcell:
+  model: mock          # mock | bs205
+  port: COM8
+  baudrate: 9600
+
+mcu:
+  model: mock          # mock | lma
+  port: COM10
+  baudrate: 115200
+
+power:
+  model: mock          # mock | oda
+  host: 192.168.11.1
+  port: 5000
+
+digital_io:
+  model: mock          # mock | ajinextek
+  servo1_brake_release: 0
+  tower_lamp_red: 4
+  tower_lamp_yellow: 5
+  tower_lamp_green: 6
+  beep: 7

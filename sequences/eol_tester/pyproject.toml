@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eol-force-test-sequence"
+version = "1.0.0"
+description = "End-of-Line force test sequence for WF devices - Standalone with real/mock hardware support"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "loguru>=0.7.0",
+    "pyserial>=3.5",
+    "pyserial-asyncio>=0.6",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=22.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+
+# Optional: For integration with main WF_EOL_TESTER project
+integration = [
+    "wf-eol-tester",
+]
+
+[project.scripts]
+eol-force-test = "eol_tester.sequence:EOLForceTestSequence.run_from_cli"
+
+[tool.setuptools]
+packages = [
+    "eol_tester",
+    "eol_tester.config",
+    "eol_tester.domain",
+    "eol_tester.interfaces",
+    "eol_tester.hardware",
+    "eol_tester.hardware.mock",
+    "eol_tester.hardware.real",
+    "eol_tester.driver",
+    "eol_tester.driver.serial",
+    "eol_tester.driver.tcp",
+    "eol_tester.driver.ajinextek",
+    "eol_tester.services",
+]
+package-dir = {"eol_tester" = "."}
+
+[tool.setuptools.package-data]
+"eol_tester" = ["manifest.yaml", "config/*.yaml"]
+"eol_tester.driver.ajinextek" = ["lib/**/*.dll"]

@@ -2454,6 +2454,19 @@ wheels = [
 ]
 
 [[package]]
+name = "station-service-sdk"
+version = "1.0.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/72/efc4052a2743c22a957b3f30288490f7009546fc0c0d68e06348427b5343/station_service_sdk-1.0.6.tar.gz", hash = "sha256:dd77b26a283cfaa8b5c76b9c314dbcf4caceb3d57223034dc75d78f019b33f16", size = 70233, upload-time = "2026-01-06T03:39:01.272Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/6e/8554a1aa2c611494ca1818fef028129ec1ca6ddf0adefd31114edd2b6b89/station_service_sdk-1.0.6-py3-none-any.whl", hash = "sha256:528e798181adeef5701974caeb23c67049e676481f16ff1fc0bf019a67d7d48d", size = 74301, upload-time = "2026-01-06T03:38:59.964Z" },
+]
+
+[[package]]
 name = "structlog"
 version = "25.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2820,6 +2833,7 @@ dependencies = [
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sqlalchemy" },
+    { name = "station-service-sdk" },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "websockets" },
@@ -2885,6 +2899,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.14.0" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
+    { name = "station-service-sdk", specifier = ">=1.0.6" },
     { name = "structlog", specifier = ">=23.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },
     { name = "websockets", specifier = ">=11.0" },

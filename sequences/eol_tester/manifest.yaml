@@ -1,0 +1,324 @@
+# EOL Force Test Sequence Manifest
+# This file defines the sequence configuration for station-service-sdk
+
+# Top-level sequence metadata
+name: eol_force_test
+version: "1.0.0"
+author: "WF EOL Tester Team"
+description: "End-of-Line force test sequence for WF devices"
+
+# Entry point configuration
+entry_point:
+  module: sequence
+  class: EOLForceTestSequence
+
+# Execution modes
+modes:
+  automatic: true
+  manual: true
+  interactive: true
+  cli: true
+
+# Sequence parameters (configurable at runtime)
+parameters:
+  # Execution Control
+  stop_on_failure:
+    display_name: "Stop on Failure"
+    type: boolean
+    default: true
+    description: "Stop sequence immediately when a step fails"
+
+  # Power Supply Settings
+  voltage:
+    display_name: "Operating Voltage"
+    type: float
+    unit: "V"
+    default: 18.0
+    min: 0.0
+    max: 50.0
+    description: "Power supply voltage for DUT"
+
+  current:
+    display_name: "Operating Current"
+    type: float
+    unit: "A"
+    default: 20.0
+    min: 0.0
+    max: 48.0
+    description: "Power supply current for DUT"
+
+  # Temperature Settings
+  temperature_list:
+    display_name: "Temperature Test Points"
+    type: string
+    unit: "C"
+    default: "38.0,52.0,66.0"
+    description: "Comma-separated list of temperatures to test at (e.g., 38.0,52.0,66.0)"
+
+  standby_temperature:
+    display_name: "Standby Temperature"
+    type: float
+    unit: "C"
+    default: 38.0
+    min: 20.0
+    max: 80.0
+    description: "MCU standby temperature"
+
+  activation_temperature:
+    display_name: "Activation Temperature"
+    type: float
+    unit: "C"
+    default: 52.0
+    min: 30.0
+    max: 80.0
+    description: "MCU activation temperature"
+
+  # Position Settings
+  stroke_positions:
+    display_name: "Stroke Positions"
+    type: string
+    unit: "um"
+    default: "170000.0"
+    description: "Comma-separated list of stroke positions to test at (e.g., 170000.0)"
+
+  initial_position:
+    display_name: "Initial Position"
+    type: float
+    unit: "um"
+    default: 1000.0
+    min: 0.0
+    max: 180000.0
+    description: "Robot initial/home position"
+
+  operating_position:
+    display_name: "Operating Position"
+    type: float
+    unit: "um"
+    default: 170000.0
+    min: 0.0
+    max: 180000.0
+    description: "Maximum robot stroke position"
+
+  # Motion Control
+  velocity:
+    display_name: "Robot Velocity"
+    type: float
+    unit: "um/s"
+    default: 100000.0
+    min: 1000.0
+    max: 100000.0
+    description: "Robot movement velocity"
+
+  acceleration:
+    display_name: "Robot Acceleration"
+    type: float
+    unit: "um/s2"
+    default: 85000.0
+    min: 1000.0
+    max: 100000.0
+    description: "Robot acceleration"
+
+  # Test Execution
+  repeat_count:
+    display_name: "Repeat Count"
+    type: integer
+    default: 1
+    min: 1
+    max: 100
+    description: "Number of times to repeat the test sequence"
+
+  timeout_seconds:
+    display_name: "Test Timeout"
+    type: float
+    unit: "s"
+    default: 60.0
+    min: 10.0
+    max: 3600.0
+    description: "Maximum time for test operations"
+
+  # Pass/Fail Criteria
+  force_limit_min:
+    display_name: "Minimum Force Limit"
+    type: float
+    unit: "kgf"
+    default: 0.0
+    min: 0.0
+    max: 100.0
+    description: "Minimum acceptable force value"
+
+  force_limit_max:
+    display_name: "Maximum Force Limit"
+    type: float
+    unit: "kgf"
+    default: 100.0
+    min: 0.0
+    max: 200.0
+    description: "Maximum acceptable force value"
+
+# Hardware definitions (using existing WF_EOL_TESTER infrastructure)
+hardware:
+  robot:
+    display_name: "Robot Controller"
+    driver: infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot
+    class: AjinextekRobot
+    config_schema:
+      model:
+        type: string
+        required: true
+        default: "mock"
+        description: "Hardware model (mock or ajinextek)"
+      axis_id:
+        type: integer
+        required: false
+        default: 0
+        description: "Robot axis ID"
+      irq_no:
+        type: integer
+        required: false
+        default: 7
+        description: "Hardware interrupt number"
+
+  loadcell:
+    display_name: "Load Cell"
+    driver: infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell
+    class: BS205LoadCell
+    config_schema:
+      model:
+        type: string
+        required: true
+        default: "mock"
+        description: "Hardware model (mock or bs205)"
+      port:
+        type: string
+        required: false
+        default: "COM8"
+        description: "Serial port"
+      baudrate:
+        type: integer
+        required: false
+        default: 9600
+        description: "Communication baudrate"
+
+  mcu:
+    display_name: "MCU Controller"
+    driver: infrastructure.implementation.hardware.mcu.lma.lma_mcu
+    class: LMAMCU
+    config_schema:
+      model:
+        type: string
+        required: true
+        default: "mock"
+        description: "Hardware model (mock or lma)"
+      port:
+        type: string
+        required: false
+        default: "COM10"
+        description: "Serial port"
+      baudrate:
+        type: integer
+        required: false
+        default: 115200
+        description: "Communication baudrate"
+
+  power:
+    display_name: "Power Supply"
+    driver: infrastructure.implementation.hardware.power.oda.oda_power
+    class: OdaPower
+    config_schema:
+      model:
+        type: string
+        required: true
+        default: "mock"
+        description: "Hardware model (mock or oda)"
+      host:
+        type: string
+        required: false
+        default: "192.168.11.1"
+        description: "TCP/IP host address"
+      port:
+        type: integer
+        required: false
+        default: 5000
+        description: "TCP/IP port"
+
+  digital_io:
+    display_name: "Digital I/O"
+    driver: infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio
+    class: AjinextekDIO
+    config_schema:
+      model:
+        type: string
+        required: true
+        default: "mock"
+        description: "Hardware model (mock or ajinextek)"
+
+# Test steps definition
+# Note: SDK automatically emits setup (step 0) and teardown (last step)
+# Run steps start from order 1
+steps:
+  - name: setup
+    display_name: "Setup"
+    order: 0
+    timeout: 120.0
+    description: "Initialize and connect hardware"
+    lifecycle: true  # SDK auto-manages this step
+
+  - name: force_test
+    display_name: "Force Test"
+    order: 1
+    timeout: 600.0
+    description: "Execute force test measurement sequence"
+
+  - name: teardown
+    display_name: "Teardown"
+    order: 2
+    timeout: 60.0
+    description: "Shutdown and disconnect hardware"
+    lifecycle: true  # SDK auto-manages this step
+
+# Manual commands for interactive mode
+manual_commands:
+  - name: home_robot
+    display_name: "Home Robot"
+    description: "Move robot to home position"
+    hardware: robot
+
+  - name: move_to_position
+    display_name: "Move to Position"
+    description: "Move robot to specified position"
+    hardware: robot
+    parameters:
+      position:
+        type: float
+        unit: "um"
+        description: "Target position"
+
+  - name: read_force
+    display_name: "Read Force"
+    description: "Read current force from loadcell"
+    hardware: loadcell
+
+  - name: read_temperature
+    display_name: "Read Temperature"
+    description: "Read current MCU temperature"
+    hardware: mcu
+
+  - name: set_temperature
+    display_name: "Set Temperature"
+    description: "Set MCU operating temperature"
+    hardware: mcu
+    parameters:
+      temperature:
+        type: float
+        unit: "C"
+        description: "Target temperature"
+
+  - name: power_on
+    display_name: "Power On"
+    description: "Enable power output"
+    hardware: power
+
+  - name: power_off
+    display_name: "Power Off"
+    description: "Disable power output"
+    hardware: power

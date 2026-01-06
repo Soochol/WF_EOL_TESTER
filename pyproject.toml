@@ -50,6 +50,7 @@ dependencies = [
     "pyvisa-py>=0.8.0",
     "pyusb>=1.2.1",
     "libusb-package>=1.0.26.1",
+    "station-service-sdk>=1.0.6",
 ]
 
 [project.scripts]
