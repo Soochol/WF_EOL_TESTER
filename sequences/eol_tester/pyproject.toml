@@ -5,10 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eol-force-test-sequence"
 version = "1.0.0"
-description = "End-of-Line force test sequence for WF devices - Standalone with real/mock hardware support"
+description = "End-of-Line force test sequence for WF devices using station-service-sdk v2"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "station-service-sdk>=2.0.0",
     "loguru>=0.7.0",
     "pyserial>=3.5",
     "pyserial-asyncio>=0.6",
@@ -22,11 +23,6 @@ dev = [
     "black>=22.0.0",
     "mypy>=1.0.0",
     "ruff>=0.1.0",
-]
-
-# Optional: For integration with main WF_EOL_TESTER project
-integration = [
-    "wf-eol-tester",
 ]
 
 [project.scripts]

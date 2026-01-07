@@ -16,7 +16,6 @@ entry_point:
 modes:
   automatic: true
   manual: true
-  interactive: true
   cli: true
 
 # Sequence parameters (configurable at runtime)
@@ -155,11 +154,11 @@ parameters:
     max: 200.0
     description: "Maximum acceptable force value"
 
-# Hardware definitions (using existing WF_EOL_TESTER infrastructure)
+# Hardware definitions
 hardware:
   robot:
     display_name: "Robot Controller"
-    driver: infrastructure.implementation.hardware.robot.ajinextek.ajinextek_robot
+    driver: hardware.real.ajinextek_robot
     class: AjinextekRobot
     config_schema:
       model:
@@ -169,18 +168,16 @@ hardware:
         description: "Hardware model (mock or ajinextek)"
       axis_id:
         type: integer
-        required: false
         default: 0
         description: "Robot axis ID"
       irq_no:
         type: integer
-        required: false
         default: 7
         description: "Hardware interrupt number"
 
   loadcell:
     display_name: "Load Cell"
-    driver: infrastructure.implementation.hardware.loadcell.bs205.bs205_loadcell
+    driver: hardware.real.bs205_loadcell
     class: BS205LoadCell
     config_schema:
       model:
@@ -190,18 +187,16 @@ hardware:
         description: "Hardware model (mock or bs205)"
       port:
         type: string
-        required: false
         default: "COM8"
         description: "Serial port"
       baudrate:
         type: integer
-        required: false
         default: 9600
         description: "Communication baudrate"
 
   mcu:
     display_name: "MCU Controller"
-    driver: infrastructure.implementation.hardware.mcu.lma.lma_mcu
+    driver: hardware.real.lma_mcu
     class: LMAMCU
     config_schema:
       model:
@@ -211,18 +206,16 @@ hardware:
         description: "Hardware model (mock or lma)"
       port:
         type: string
-        required: false
         default: "COM10"
         description: "Serial port"
       baudrate:
         type: integer
-        required: false
         default: 115200
         description: "Communication baudrate"
 
   power:
     display_name: "Power Supply"
-    driver: infrastructure.implementation.hardware.power.oda.oda_power
+    driver: hardware.real.oda_power
     class: OdaPower
     config_schema:
       model:
@@ -232,18 +225,16 @@ hardware:
         description: "Hardware model (mock or oda)"
       host:
         type: string
-        required: false
         default: "192.168.11.1"
         description: "TCP/IP host address"
       port:
         type: integer
-        required: false
         default: 5000
         description: "TCP/IP port"
 
   digital_io:
     display_name: "Digital I/O"
-    driver: infrastructure.implementation.hardware.digital_io.ajinextek.ajinextek_dio
+    driver: hardware.real.ajinextek_dio
     class: AjinextekDIO
     config_schema:
       model:

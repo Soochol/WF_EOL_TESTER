@@ -1,30 +1,21 @@
 """
-EOL Force Test Sequence Package (Standalone)
+EOL Force Test Sequence Package
 
-This package provides the End-of-Line force test sequence implementation.
-It can run in two modes:
-
-1. Standalone Mode (Mock Hardware):
-   - Uses built-in mock hardware implementations
-   - Only requires loguru (no station-service-sdk needed)
-   - Suitable for testing and development
-
-2. Integrated Mode (Real Hardware):
-   - Requires wf-eol-tester main project
-   - Uses real hardware implementations
-   - For production use
+This package provides the End-of-Line force test sequence implementation
+using the station-service-sdk v2 framework.
 
 Usage:
-    # Run from CLI (standalone mode)
+    # Run from CLI
     python -m eol_tester --start
 
     # Use programmatically
-    from eol_tester import EOLForceTestSequence, ExecutionContext, create_standalone_hardware_adapter
+    from eol_tester import EOLForceTestSequence
+    from station_service_sdk import ExecutionContext
 
     context = ExecutionContext(
         execution_id="test001",
         serial_number="DUT001",
-        parameters={"voltage": 18.0, ...},
+        parameters={"voltage": 18.0},
     )
     sequence = EOLForceTestSequence(context)
     result = await sequence._execute()
@@ -32,33 +23,26 @@ Usage:
 
 from __future__ import annotations
 
+# Configure loguru to disable default stderr handler
+# This prevents duplicate logging when running under station-service
+# SDK's emit_log is the primary logging mechanism
 import sys
-
-# Configure loguru to output to stdout instead of stderr (before any other imports)
 from loguru import logger
 
 logger.remove()  # Remove default stderr handler
-logger.add(
-    sys.stdout,
-    format="{time:HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-    level="DEBUG",
-    colorize=True,
-)
+logger.add(sys.stdout, level="DEBUG")  # Output to stdout (not stderr) to avoid [WARNING] [stderr] prefix
 
-# Import main sequence class and ExecutionContext
-from .sequence import EOLForceTestSequence, ExecutionContext
+# Re-export ExecutionContext from SDK for convenience
+from station_service_sdk import ExecutionContext
+
+# Import main sequence class
+from .sequence import EOLForceTestSequence
 
 # Import hardware adapter and factory functions
 from .hardware_adapter import (
     EOLHardwareAdapter,
     create_standalone_hardware_adapter,
 )
-
-# Try to import integration function (only available with main project)
-try:
-    from .hardware_adapter import create_hardware_adapter_from_container
-except ImportError:
-    create_hardware_adapter_from_container = None
 
 # Import domain value objects for convenience
 from .domain.value_objects import (
@@ -95,7 +79,6 @@ __all__ = [
     # Hardware adapter
     "EOLHardwareAdapter",
     "create_standalone_hardware_adapter",
-    "create_hardware_adapter_from_container",
     # Value objects
     "TestConfiguration",
     "HardwareConfig",

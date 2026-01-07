@@ -1010,8 +1010,9 @@ class HardwareServiceFacade:
                     return
                 else:
                     if attempt < max_retries:
-                        logger.warning(
-                            f"❌ Temperature verification attempt {attempt + 1}/{max_retries + 1} failed - Actual: {actual_temp:.1f}°C, Expected: {expected_temp:.1f}°C, Diff: {temp_diff:.1f}°C (>{test_config.temperature_tolerance:.1f}°C) - Retrying in {retry_delay}s..."
+                        logger.debug(
+                            f"Temperature stabilizing: {actual_temp:.1f}°C → {expected_temp:.1f}°C "
+                            f"(diff: {temp_diff:.1f}°C, attempt {attempt + 1}/{max_retries})"
                         )
                         await asyncio.sleep(retry_delay)
                     else:

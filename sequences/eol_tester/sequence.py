@@ -1,11 +1,8 @@
 """
 EOL Force Test Sequence
 
-This sequence implements the End-of-Line force testing protocol.
-Supports both standalone (mock hardware) and integrated (real hardware via main project) modes.
-
-When station-service-sdk is available, it uses the SDK framework.
-When running standalone without SDK, it provides its own minimal implementation.
+This sequence implements the End-of-Line force testing protocol
+using the station-service-sdk v2 framework.
 """
 
 from __future__ import annotations
@@ -14,142 +11,16 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from loguru import logger
 
-# Try to import station-service-sdk (optional dependency)
-_SDK_AVAILABLE = False
-try:
-    from station_service_sdk import (
-        SequenceBase,
-        RunResult,
-        ExecutionContext,
-        SetupError,
-        TeardownError,
-        StepError,
-        HardwareConnectionError,
-        register_sequence,
-    )
-    _SDK_AVAILABLE = True
-except ImportError:
-    # SDK not available - provide minimal standalone implementations
-    from dataclasses import dataclass, field
+from station_service_sdk import (
+    SequenceBase,
+    RunResult,
+    ExecutionContext,
+    SetupError,
+    TeardownError,
+    StepError,
+    ConnectionError,
+)
 
-    RunResult = Dict[str, Any]
-
-    @dataclass
-    class ExecutionContext:
-        """Minimal execution context for standalone mode."""
-        execution_id: str = "standalone"
-        serial_number: str = "UNKNOWN"
-        wip_id: str = ""
-        parameters: Dict[str, Any] = field(default_factory=dict)
-
-    class SetupError(Exception):
-        """Setup phase error."""
-
-    class TeardownError(Exception):
-        """Teardown phase error."""
-
-    class StepError(Exception):
-        """Step execution error."""
-        def __init__(self, message: str, step_name: str = ""):
-            super().__init__(message)
-            self.step_name = step_name
-
-    class HardwareConnectionError(Exception):
-        """Hardware connection error."""
-
-    class SequenceBase:
-        """Minimal SequenceBase for standalone mode."""
-        name = "sequence"
-        version = "1.0.0"
-        description = ""
-
-        def __init__(self, context: ExecutionContext, **kwargs):
-            self.context = context
-            self._last_error: Optional[str] = None
-
-        @property
-        def last_error(self) -> Optional[str]:
-            return self._last_error
-
-        def get_parameter(self, name: str, default: Any = None) -> Any:
-            return self.context.parameters.get(name, default)
-
-        def check_abort(self) -> None:
-            pass
-
-        def emit_log(self, level: str, message: str) -> None:
-            getattr(logger, level.lower(), logger.info)(message)
-
-        def emit_error(self, code: str, message: str, recoverable: bool = False) -> None:
-            logger.error(f"[{code}] {message}")
-            self._last_error = message
-
-        def emit_step_start(self, name: str, index: int, total: int, description: str = "") -> None:
-            logger.info(f"Step {index}/{total}: {name} - {description}")
-
-        def emit_step_complete(
-            self,
-            name: str,
-            index: int,
-            passed: bool,
-            duration: float = 0.0,
-            error: str = "",
-            measurements: Optional[Dict[str, Any]] = None,
-            data: Optional[Dict[str, Any]] = None,
-        ) -> None:
-            status = "PASS" if passed else "FAIL"
-            logger.info(f"Step {index} {name}: {status} ({duration:.2f}s)")
-            if error:
-                logger.error(f"  Error: {error}")
-            if measurements:
-                for m_name, m_data in measurements.items():
-                    logger.info(f"  Measurement {m_name}: {m_data}")
-
-        def emit_measurement(self, name: str, value: float, unit: str = "", min_value: float = None, max_value: float = None) -> None:
-            logger.info(f"Measurement {name}: {value} {unit}")
-
-        async def _execute(self) -> RunResult:
-            """Execute the full sequence lifecycle."""
-            try:
-                await self.setup()
-                result = await self.run()
-                await self.teardown()
-                return result
-            except Exception as e:
-                self._last_error = str(e)
-                try:
-                    await self.teardown()
-                except Exception:
-                    pass
-                raise
-
-        async def setup(self) -> None:
-            pass
-
-        async def run(self) -> RunResult:
-            return {"passed": True}
-
-        async def teardown(self) -> None:
-            pass
-
-        @classmethod
-        def run_from_cli(cls) -> int:
-            """Run sequence from command line."""
-            import asyncio
-            context = ExecutionContext()
-            sequence = cls(context)
-            try:
-                result = asyncio.run(sequence._execute())
-                return 0 if result.get("passed", False) else 1
-            except Exception as e:
-                logger.error(f"Sequence failed: {e}")
-                return 1
-
-    def register_sequence(cls):
-        """No-op decorator for standalone mode."""
-        return cls
-
-# Standalone imports (self-contained)
 from .domain.value_objects import DUTCommandInfo, TestConfiguration
 
 if TYPE_CHECKING:
@@ -257,7 +128,7 @@ class EOLForceTestSequence(SequenceBase):
 
             self.emit_log("info", "EOL Force Test setup completed successfully")
 
-        except HardwareConnectionError as e:
+        except ConnectionError as e:
             self.emit_error("HARDWARE_CONNECTION", str(e), recoverable=False)
             raise SetupError(f"Hardware connection failed: {e}") from e
         except Exception as e:
@@ -591,10 +462,6 @@ class EOLForceTestSequence(SequenceBase):
                     )
 
         return all_passed
-
-
-# Register the sequence for discovery
-register_sequence(EOLForceTestSequence)
 
 
 # CLI entry point
