@@ -527,12 +527,14 @@ class BS205LoadCell(LoadCellService):
                 # ID=1 → 31H, ID=5 → 35H, R → 52H
                 id_byte = 0x30 + self._indicator_id  # ID=1 → 0x31, ID=5 → 0x35
                 cmd_byte = ord(command)  # 'R' → 0x52
-                command_bytes = bytes([id_byte, cmd_byte])
+                # User found that CRLF is required for response
+                command_bytes = bytes([id_byte, cmd_byte, 0x0D, 0x0A])
 
                 logger.debug(f"Sending BS205 command: {command} (ID={self._indicator_id})")
                 logger.debug(
-                    f"Command bytes: {command_bytes.hex().upper()} (ID=0x{id_byte:02X}, CMD=0x{cmd_byte:02X})"
+                    f"Command bytes: {command_bytes.hex().upper()} (ID=0x{id_byte:02X}, CMD=0x{cmd_byte:02X}, CRLF)"
                 )
+                print(f"[DEBUG] Sending BS205 bytes: {command_bytes.hex().upper()}")
 
                 # 바이너리 명령어 전송
                 await self._connection.write(command_bytes)
@@ -583,6 +585,8 @@ class BS205LoadCell(LoadCellService):
                 raise BS205CommunicationError("No connection available")
             # BS205 응답은 STX(1) + ID + Sign + Value(7) + ETX(1) = 10바이트 고정
             response = await self._connection.read(size=10, timeout=timeout)
+            if response:
+                print(f"[DEBUG] Read BS205 bytes: {response.hex().upper()}")
             # If first read is incomplete, try one more time
             if response and len(response) < 10:  # BS205 fixed frame size
                 additional = await self._connection.read(size=10 - len(response), timeout=0.5)
@@ -622,6 +626,7 @@ class BS205LoadCell(LoadCellService):
         """
         try:
             logger.debug(f"BS205 raw response: {response_bytes.hex().upper()}")
+            print(f"[DEBUG] Parsing BS205 response: {response_bytes.hex().upper()}")
 
             if len(response_bytes) < 10:  # BS205 고정 길이
                 logger.warning(f"BS205 response too short: {len(response_bytes)} bytes")
