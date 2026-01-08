@@ -53,6 +53,8 @@ from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
 class AjinextekRobot(RobotService):
     """AJINEXTEK 로봇 통합 서비스"""
 
+    SERVICE_NAME = "AjinextekRobot"
+
     def __init__(self, axis_id: int, irq_no: int):
         """
         초기화
@@ -112,8 +114,8 @@ class AjinextekRobot(RobotService):
             #         details=f"DLL path: {dll_info['dll_path']}, Available DLLs: {dll_info['available_dlls']}",
             #     )
 
-            # 중앙화된 연결 관리 사용
-            self._axl.connect(self._irq_no)
+            # 중앙화된 연결 관리 사용 (서비스 이름으로 추적)
+            self._axl.connect(self._irq_no, service_name=self.SERVICE_NAME)
 
             # Get board count for verification (with error handling)
             try:
@@ -182,8 +184,8 @@ class AjinextekRobot(RobotService):
         try:
             if self._is_connected:
                 try:
-                    # 중앙화된 연결 해제 사용
-                    self._axl.disconnect()
+                    # 중앙화된 연결 해제 사용 (서비스 이름으로 추적)
+                    self._axl.disconnect(service_name=self.SERVICE_NAME)
                     logger.debug("Ajinextek robot AXL disconnect completed")
                 except Exception as axl_error:
                     disconnect_error = axl_error

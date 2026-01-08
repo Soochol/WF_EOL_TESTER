@@ -6,9 +6,12 @@ Standalone version for EOL Tester package.
 """
 
 import asyncio
+import logging
 from typing import Any, Dict, Optional
 
 from ...interfaces import LoadCellService
+
+logger = logging.getLogger(__name__)
 from ...driver.serial import SerialConnection, SerialManager
 from ...driver.serial.exceptions import (
     SerialCommunicationError,
@@ -83,6 +86,10 @@ class BS205LoadCell(LoadCellService):
                 parity=self._parity,
             )
             self._is_connected = True
+            logger.info(
+                f"BS205 LoadCell connected on {self._port} "
+                f"(baudrate={self._baudrate}, parity={self._parity}, indicator_id={self._indicator_id})"
+            )
 
         except (SerialCommunicationError, SerialConnectionError, SerialTimeoutError) as e:
             self._is_connected = False
@@ -145,6 +152,8 @@ class BS205LoadCell(LoadCellService):
         target_end_time = start_time + (duration_ms / 1000.0)
 
         sample_count = 0
+        error_count = 0
+        last_error = None
         while asyncio.get_event_loop().time() < target_end_time and sample_count < max_samples:
             try:
                 force_value = await self.read_force()
@@ -153,11 +162,18 @@ class BS205LoadCell(LoadCellService):
 
                 if sample_count < max_samples:
                     await asyncio.sleep(min_interval / 1000.0)
-            except Exception:
+            except Exception as e:
+                error_count += 1
+                last_error = e
+                logger.debug(f"Force sample read failed (attempt {error_count}): {e}")
                 continue
 
         if not samples:
-            raise RuntimeError("No valid force samples collected")
+            error_msg = f"No valid force samples collected after {error_count} attempts"
+            if last_error:
+                error_msg += f". Last error: {last_error}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         return max(samples, key=abs)
 
@@ -211,10 +227,10 @@ class BS205LoadCell(LoadCellService):
 
             cmd_timeout = timeout if timeout is not None else 3.0
 
-            # BS205 binary command: ID + Command
+            # BS205 command: ID + Command + CR
             id_byte = 0x30 + self._indicator_id
             cmd_byte = ord(command)
-            command_bytes = bytes([id_byte, cmd_byte])
+            command_bytes = bytes([id_byte, cmd_byte, 0x0D])  # 0x0D = CR
 
             await self._connection.write(command_bytes)
             self._last_command_time = asyncio.get_event_loop().time()

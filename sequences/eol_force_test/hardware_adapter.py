@@ -395,6 +395,11 @@ def create_standalone_hardware_adapter(
             "connection": {
                 "port": hardware_config.loadcell.port,
                 "baudrate": hardware_config.loadcell.baudrate,
+                "timeout": hardware_config.loadcell.timeout,
+                "bytesize": hardware_config.loadcell.bytesize,
+                "stopbits": hardware_config.loadcell.stopbits,
+                "parity": hardware_config.loadcell.parity,
+                "indicator_id": hardware_config.loadcell.indicator_id,
             },
         },
         "mcu": {
@@ -415,9 +420,12 @@ def create_standalone_hardware_adapter(
             "type": hardware_config.robot.model,
             "axis_id": hardware_config.robot.axis_id,
             "irq_no": hardware_config.robot.irq_no,
+            "motion_param_file": hardware_config.robot.motion_param_file,
         },
         "digital_io": {
             "type": hardware_config.digital_io.model,
+            "input_module_no": hardware_config.digital_io.input_module_no,
+            "output_module_no": hardware_config.digital_io.output_module_no,
         },
     }
 

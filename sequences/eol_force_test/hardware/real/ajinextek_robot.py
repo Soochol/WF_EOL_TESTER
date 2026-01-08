@@ -27,6 +27,7 @@ class AjinextekRobot(RobotService):
         velocity: float = 100.0,
         acceleration: float = 500.0,
         deceleration: float = 500.0,
+        motion_param_file: Optional[str] = None,
     ):
         """
         Initialize Ajinextek Robot.
@@ -36,11 +37,13 @@ class AjinextekRobot(RobotService):
             velocity: Default motion velocity
             acceleration: Default acceleration
             deceleration: Default deceleration
+            motion_param_file: Path to .mot motion parameter file (optional)
         """
         self._axis_count = axis_count
         self._default_velocity = velocity
         self._default_accel = acceleration
         self._default_decel = deceleration
+        self._motion_param_file = motion_param_file
 
         self._axl: Optional[AXLWrapper] = None
         self._is_connected = False
@@ -51,6 +54,17 @@ class AjinextekRobot(RobotService):
         try:
             self._axl = AXLWrapper.get_instance()
             self._axl.connect()
+
+            # Load motion parameters if file specified
+            if self._motion_param_file:
+                try:
+                    self._axl.load_motion_parameters(self._motion_param_file)
+                    print(f"DEBUG: Loaded motion parameters from {self._motion_param_file}")
+                except FileNotFoundError as e:
+                    print(f"WARNING: Motion parameter file not found: {e}")
+                except Exception as e:
+                    print(f"WARNING: Failed to load motion parameters: {e}")
+
             self._is_connected = True
 
         except AXLError as e:

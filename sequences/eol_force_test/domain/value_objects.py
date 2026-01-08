@@ -149,6 +149,9 @@ class RobotConfig:
     model: str = "mock"
     axis_id: int = 0
     irq_no: int = 7
+    timeout: float = 30.0
+    polling_interval: int = 250
+    motion_param_file: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -157,6 +160,11 @@ class LoadCellConfig:
     model: str = "mock"
     port: str = "COM8"
     baudrate: int = 9600
+    timeout: float = 1.0
+    bytesize: int = 8
+    stopbits: int = 1
+    parity: str = "even"
+    indicator_id: int = 0
 
 
 @dataclass(frozen=True)
@@ -165,6 +173,10 @@ class MCUConfig:
     model: str = "mock"
     port: str = "COM10"
     baudrate: int = 115200
+    timeout: float = 10.0
+    bytesize: int = 8
+    stopbits: int = 1
+    parity: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -173,12 +185,34 @@ class PowerConfig:
     model: str = "mock"
     host: str = "192.168.11.1"
     port: int = 5000
+    timeout: float = 5.0
+    channel: int = 1
+    delimiter: str = "\n"
+
+
+@dataclass(frozen=True)
+class DigitalInputConfig:
+    """Digital input pin configuration."""
+    pin_number: int = 0
+    contact_type: str = "A"
+    edge_type: str = "rising"
+    name: str = ""
 
 
 @dataclass(frozen=True)
 class DigitalIOConfig:
     """Digital I/O configuration."""
     model: str = "mock"
+    input_module_no: int = 0   # Module for digital inputs
+    output_module_no: int = 1  # Module for digital outputs
+    # Input sensors
+    emergency_stop_button: Optional[DigitalInputConfig] = None
+    operator_start_button_left: Optional[DigitalInputConfig] = None
+    operator_start_button_right: Optional[DigitalInputConfig] = None
+    safety_door_closed_sensor: Optional[DigitalInputConfig] = None
+    dut_clamp_safety_sensor: Optional[DigitalInputConfig] = None
+    dut_chain_safety_sensor: Optional[DigitalInputConfig] = None
+    # Output pins
     servo1_brake_release: int = 0
     tower_lamp_red: int = 4
     tower_lamp_yellow: int = 5

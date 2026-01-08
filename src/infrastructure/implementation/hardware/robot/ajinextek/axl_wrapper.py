@@ -9,10 +9,11 @@ This module provides ctypes bindings for the AXL motion control library.
 
 # Standard library imports
 import ctypes
-import platform
-from ctypes import POINTER, c_char_p, c_double, c_long, c_ulong, wintypes
+from ctypes import c_char_p, c_double, c_long, c_ulong, POINTER, wintypes
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+import platform
+import threading
+from typing import Any, List, Optional, Set, Tuple
 
 # Local application imports
 from domain.exceptions.robot_exceptions import (
@@ -26,6 +27,7 @@ from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
     AXT_RT_SUCCESS,
     get_error_message,
 )
+
 
 # Platform-specific WinDLL handling
 if platform.system() == "Windows":
@@ -118,8 +120,10 @@ class AXLWrapper:
         self.board_count: int = 0
         self.version: str = "Unknown"
 
-        # Connection management
+        # Connection management (thread-safe)
         self._connection_count: int = 0
+        self._connection_lock: threading.RLock = threading.RLock()
+        self._connected_services: Set[str] = set()
 
         if not self.is_windows:
             # For development/testing, we can create a mock wrapper that simulates the DLL loading
@@ -2101,12 +2105,13 @@ class AXLWrapper:
             cls._instance = cls()
         return cls._instance
 
-    def connect(self, irq_no: int = 7) -> None:
+    def connect(self, irq_no: int = 7, service_name: str = "unknown") -> None:
         """
-        중앙화된 연결 관리.
+        Thread-safe 중앙화된 연결 관리.
 
         Args:
             irq_no: IRQ 번호 (기본값: 7)
+            service_name: 연결하는 서비스 이름 (추적용)
 
         Raises:
             AXLError: 연결 실패 시
@@ -2114,46 +2119,122 @@ class AXLWrapper:
         # Third-party imports
         from loguru import logger
 
-        if self.is_opened():
-            self._connection_count += 1
-            logger.info(f"AXL already connected (ref count: {self._connection_count})")
-            return
+        with self._connection_lock:
+            if self.is_opened():
+                self._connection_count += 1
+                self._connected_services.add(service_name)
+                logger.info(
+                    f"AXL already connected - added {service_name} "
+                    f"(ref count: {self._connection_count}, services: {self._connected_services})"
+                )
+                return
 
-        logger.info(f"Connecting AXL with IRQ {irq_no}...")
-        result = self.open(irq_no)
-        if result == AXT_RT_SUCCESS:
-            self._connection_count = 1
-            logger.info("AXL connected successfully")
-        else:
-            # Local application imports
-            from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
-                get_error_message,
-            )
+            logger.info(f"Connecting AXL with IRQ {irq_no} for {service_name}...")
+            result = self.open(irq_no)
+            if result == AXT_RT_SUCCESS:
+                self._connection_count = 1
+                self._connected_services.add(service_name)
+                logger.info(f"AXL connected successfully by {service_name}")
+            else:
+                # Local application imports
+                from infrastructure.implementation.hardware.robot.ajinextek.error_codes import (
+                    get_error_message,
+                )
 
-            error_msg = get_error_message(result)
-            logger.error(f"AXL connection failed: {error_msg} (Code: {result})")
-            raise AXLError(f"Connection failed: {error_msg} (Code: {result})")
+                error_msg = get_error_message(result)
+                logger.error(f"AXL connection failed: {error_msg} (Code: {result})")
+                raise AXLError(f"Connection failed: {error_msg} (Code: {result})")
 
-    def disconnect(self) -> None:
-        """참조 카운팅으로 안전한 해제."""
+    def disconnect(self, service_name: str = "unknown") -> None:
+        """
+        Thread-safe 참조 카운팅으로 안전한 해제.
+
+        Args:
+            service_name: 연결 해제하는 서비스 이름 (추적용)
+        """
         # Third-party imports
         from loguru import logger
 
-        if self._connection_count <= 0:
-            logger.warning("disconnect() called but connection count is already 0")
-            return
+        with self._connection_lock:
+            if self._connection_count <= 0:
+                logger.warning(f"disconnect() by {service_name} but connection count is already 0")
+                return
 
-        self._connection_count -= 1
-        logger.info(f"AXL disconnect requested (ref count: {self._connection_count})")
+            self._connection_count -= 1
+            self._connected_services.discard(service_name)
 
-        if self._connection_count <= 0:
-            if self.is_opened():
-                result = self.close()
-                if result == AXT_RT_SUCCESS:
-                    logger.info("AXL disconnected successfully")
-                else:
-                    logger.warning(f"AXL disconnect failed (Code: {result})")
-            self._connection_count = 0
+            logger.info(
+                f"AXL disconnect by {service_name} "
+                f"(ref count: {self._connection_count}, remaining: {self._connected_services})"
+            )
+
+            if self._connection_count <= 0:
+                if self.is_opened():
+                    result = self.close()
+                    if result == AXT_RT_SUCCESS:
+                        logger.info("AXL disconnected successfully")
+                    else:
+                        logger.warning(f"AXL disconnect failed (Code: {result})")
+                self._connection_count = 0
+                self._connected_services.clear()
+
+    def ensure_connected(self, irq_no: int = 7, service_name: str = "unknown") -> bool:
+        """
+        핸들 손실 감지 및 자동 복구.
+
+        Args:
+            irq_no: 재연결용 IRQ 번호
+            service_name: 연결 요청 서비스 이름
+
+        Returns:
+            True: 연결됨 (기존 또는 복구), False: 복구 실패
+        """
+        # Third-party imports
+        from loguru import logger
+
+        with self._connection_lock:
+            is_hw_opened = self.is_opened()
+
+            # 핸들 손실 감지: 카운트 > 0 이지만 실제로는 닫힘
+            if self._connection_count > 0 and not is_hw_opened:
+                logger.warning(
+                    f"AXL handle loss detected! Count={self._connection_count}, "
+                    f"services={self._connected_services}, attempting recovery..."
+                )
+
+                # 상태 저장 후 리셋
+                saved_services = self._connected_services.copy()
+                self._connection_count = 0
+                self._connected_services.clear()
+
+                # 재연결 시도
+                try:
+                    result = self.open(irq_no)
+                    if result == AXT_RT_SUCCESS:
+                        self._connection_count = len(saved_services) + 1
+                        self._connected_services = saved_services
+                        self._connected_services.add(service_name)
+                        logger.info(
+                            f"AXL handle recovered successfully, "
+                            f"restored services: {self._connected_services}"
+                        )
+                        return True
+                    else:
+                        logger.error(f"AXL handle recovery failed (Code: {result})")
+                        return False
+                except Exception as e:
+                    logger.error(f"AXL handle recovery exception: {e}")
+                    return False
+
+            # 정상: 이미 연결됨
+            if is_hw_opened:
+                if service_name not in self._connected_services:
+                    self._connection_count += 1
+                    self._connected_services.add(service_name)
+                return True
+
+            # 연결되지 않음
+            return False
 
     @classmethod
     def reset_for_testing(cls) -> None:

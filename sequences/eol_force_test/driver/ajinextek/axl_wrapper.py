@@ -119,13 +119,29 @@ class AXLWrapper:
         """Load the AXL DLL."""
         dll_path = Path(DLL_PATH)
 
-        if not dll_path.exists():
-            raise FileNotFoundError(f"AXL DLL not found at {DLL_PATH}")
+        # Try explicit path first
+        if dll_path.exists():
+            try:
+                self.dll = WinDLL(str(dll_path))
+                return
+            except OSError as e:
+                # If the file exists but fails to load, it's likely a dependency issue or arch mismatch
+                # Do not silence this error as it's critical info for debugging
+                raise RuntimeError(
+                    f"Found AXL DLL at {dll_path} but failed to load it. "
+                    f"Error: {e}. Possible causes: missing dependencies (VC++ Redist), "
+                    "architecture mismatch (32/64bit), or corrupted file."
+                ) from e
 
+        # strict fallback removed because if we found the file we should have succeeded or failed noisily
+        # specific check for system path if local file was NOT found
         try:
-            self.dll = WinDLL(str(DLL_PATH))
+            self.dll = WinDLL("AXL.dll")
         except OSError as e:
-            raise RuntimeError(f"Failed to load AXL DLL: {e}") from e
+            raise FileNotFoundError(
+                f"AXL DLL not found at {DLL_PATH} and not in system PATH. "
+                "Please install Ajinextek driver or place AXL.dll in driver/ajinextek/lib/"
+            ) from e
 
     def _setup_functions(self) -> None:
         """Set up function signatures for ctypes."""
@@ -329,6 +345,12 @@ class AXLWrapper:
         try:
             self.dll.AxmMoveVel.argtypes = [c_long, c_double, c_double, c_double]
             self.dll.AxmMoveVel.restype = c_long
+        except AttributeError:
+            pass
+
+        try:
+            self.dll.AxmMotLoadParaAll.argtypes = [c_char_p]
+            self.dll.AxmMotLoadParaAll.restype = c_long
         except AttributeError:
             pass
 
@@ -966,6 +988,36 @@ class AXLWrapper:
             if self.is_opened():
                 self.close()
             self._connection_count = 0
+
+    def load_motion_parameters(self, file_path: str) -> None:
+        """
+        Load motion parameters from .mot file.
+
+        Args:
+            file_path: Path to the .mot parameter file
+
+        Raises:
+            AXLMotionError: If loading fails
+            FileNotFoundError: If file doesn't exist
+        """
+        if self.dll is None:
+            raise AXLError("DLL not loaded")
+
+        # Check file exists
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Motion parameter file not found: {file_path}")
+
+        # Convert to bytes for ctypes
+        file_path_bytes = str(path.absolute()).encode("utf-8")
+
+        result = self.dll.AxmMotLoadParaAll(file_path_bytes)
+        if result != AXT_RT_SUCCESS:
+            error_msg = get_error_message(result)
+            raise AXLMotionError(
+                f"Failed to load motion parameters: {error_msg}",
+                result
+            )
 
     @classmethod
     def reset_for_testing(cls) -> None:

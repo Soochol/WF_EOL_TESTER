@@ -39,6 +39,8 @@ from infrastructure.implementation.hardware.digital_io.ajinextek.error_codes imp
 class AjinextekDIO(DigitalIOService):
     """Ajinextek DIO 카드 통합 서비스"""
 
+    SERVICE_NAME = "AjinextekDIO"
+
     def __init__(self, irq_no: int = 7):
         """
         초기화
@@ -86,8 +88,8 @@ class AjinextekDIO(DigitalIOService):
         try:
             logger.info("Connecting to Ajinextek DIO hardware")
 
-            # 중앙화된 연결 관리 사용
-            self._axl_lib.connect(self._irq_no)
+            # 중앙화된 연결 관리 사용 (서비스 이름으로 추적)
+            self._axl_lib.connect(self._irq_no, service_name=self.SERVICE_NAME)
 
             # Check if DIO modules exist
             if not self._axl_lib.is_dio_module():
@@ -188,8 +190,8 @@ class AjinextekDIO(DigitalIOService):
         try:
             if self._is_connected:
                 try:
-                    # 중앙화된 연결 해제 사용
-                    self._axl_lib.disconnect()
+                    # 중앙화된 연결 해제 사용 (서비스 이름으로 추적)
+                    self._axl_lib.disconnect(service_name=self.SERVICE_NAME)
                     logger.debug("Ajinextek DIO AXL disconnect completed")
                 except Exception as axl_error:
                     disconnect_error = axl_error

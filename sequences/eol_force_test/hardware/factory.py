@@ -183,6 +183,7 @@ class HardwareFactory:
                 velocity=config.get("velocity", 100.0),
                 acceleration=config.get("acceleration", 500.0),
                 deceleration=config.get("deceleration", 500.0),
+                motion_param_file=config.get("motion_param_file"),
             )
 
         else:
@@ -201,7 +202,7 @@ class HardwareFactory:
 
         Config Examples:
             Mock: {"type": "mock"}
-            Ajinextek: {"type": "ajinextek", "module_no": 0}
+            Ajinextek: {"type": "ajinextek", "input_module_no": 0, "output_module_no": 1}
 
         Note:
             Ajinextek DIO is Windows-only. On non-Windows platforms,
@@ -225,7 +226,8 @@ class HardwareFactory:
             from .real import AjinextekDIO
 
             return AjinextekDIO(
-                module_no=config.get("module_no", 0),
+                input_module_no=config.get("input_module_no", 0),
+                output_module_no=config.get("output_module_no", 1),
                 input_count=config.get("input_count", 32),
                 output_count=config.get("output_count", 32),
             )
@@ -328,7 +330,8 @@ class HardwareFactory:
             },
             "digital_io": {
                 "type": "ajinextek",
-                "module_no": 0,
+                "input_module_no": 0,
+                "output_module_no": 1,
                 "input_count": 32,
                 "output_count": 32,
             },

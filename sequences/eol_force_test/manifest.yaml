@@ -3,7 +3,7 @@
 
 # Top-level sequence metadata
 name: eol_force_test
-version: "1.0.0"
+version: "1.0.3"
 author: "WF EOL Tester Team"
 description: "End-of-Line force test sequence for WF devices"
 
