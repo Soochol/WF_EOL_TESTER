@@ -6,6 +6,7 @@ Standalone version for EOL Tester package (Windows only).
 """
 
 import asyncio
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ...interfaces import RobotService
@@ -55,8 +56,9 @@ class AjinextekRobot(RobotService):
             self._axl = AXLWrapper.get_instance()
             self._axl.connect()
 
-            # Load motion parameters if file specified
+            # Load motion parameters from file
             if self._motion_param_file:
+                # Use config-specified path
                 try:
                     self._axl.load_motion_parameters(self._motion_param_file)
                     print(f"DEBUG: Loaded motion parameters from {self._motion_param_file}")
@@ -64,6 +66,9 @@ class AjinextekRobot(RobotService):
                     print(f"WARNING: Motion parameter file not found: {e}")
                 except Exception as e:
                     print(f"WARNING: Failed to load motion parameters: {e}")
+            else:
+                # Use default path discovery
+                await self._load_robot_parameters()
 
             self._is_connected = True
 
@@ -380,6 +385,44 @@ class AjinextekRobot(RobotService):
             await asyncio.sleep(0.01)
 
         raise RuntimeError(f"Motion timeout for axis {axis}")
+
+    async def _load_robot_parameters(self) -> None:
+        """Load robot parameters from AJINEXTEK standard parameter file.
+
+        Uses AxmMotLoadParaAll to load motion settings including homing
+        parameters from the robot_motion_settings.mot file.
+
+        Raises:
+            RuntimeError: If parameter loading fails
+        """
+        if not self._axl:
+            raise RuntimeError("AXL wrapper not initialized")
+
+        try:
+            # Find the .mot file relative to this module
+            # The file should be in sequences/eol_force_test/config/
+            config_dir = Path(__file__).parent.parent.parent / "config"
+            mot_file = config_dir / "robot_motion_settings.mot"
+
+            if not mot_file.exists():
+                print(f"WARNING: Robot motion settings file not found: {mot_file}")
+                print("Homing may fail without proper motion parameters.")
+                return
+
+            print(f"Loading robot motion settings from: {mot_file}")
+
+            result = self._axl.load_para_all(str(mot_file))
+
+            if result != AXT_RT_SUCCESS:
+                print(f"WARNING: Failed to load motion settings (error={result})")
+                print("Homing may fail without proper motion parameters.")
+            else:
+                print("Robot motion settings loaded successfully")
+
+        except Exception as e:
+            print(f"WARNING: Failed to load robot parameters: {e}")
+            # Don't raise - allow connection to proceed even if params fail
+            # Homing will likely fail but we want to provide detailed error then
 
     # =========================================================================
     # RobotService Interface Implementation

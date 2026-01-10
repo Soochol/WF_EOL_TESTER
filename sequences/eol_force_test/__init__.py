@@ -30,7 +30,11 @@ import sys
 from loguru import logger
 
 logger.remove()  # Remove default stderr handler
-logger.add(sys.stdout, level="DEBUG")  # Output to stdout (not stderr) to avoid [WARNING] [stderr] prefix
+logger.add(
+    sys.stdout,
+    level="DEBUG",
+    format="{time:HH:mm:ss} | {name}:{function}:{line} - {message}"
+)  # Custom format without level (UI badge shows level separately)
 
 # Re-export ExecutionContext from SDK for convenience
 from station_service_sdk import ExecutionContext

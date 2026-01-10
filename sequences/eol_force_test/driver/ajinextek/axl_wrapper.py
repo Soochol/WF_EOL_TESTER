@@ -348,6 +348,7 @@ class AXLWrapper:
         except AttributeError:
             pass
 
+        # === Motion Parameter Load/Save Functions ===
         try:
             self.dll.AxmMotLoadParaAll.argtypes = [c_char_p]
             self.dll.AxmMotLoadParaAll.restype = c_long
@@ -736,6 +737,23 @@ class AXLWrapper:
             return 0
 
         return self.dll.AxmMoveVel(axis_no, velocity, accel, decel)  # type: ignore[no-any-return]
+
+    # === Motion Parameter Load/Save Functions ===
+    def load_para_all(self, file_path: str) -> int:
+        """Load motion parameters from .mot file.
+
+        Args:
+            file_path: Path to the .mot parameter file
+
+        Returns:
+            AXT_RT_SUCCESS (0) on success, error code otherwise
+        """
+        if self.dll is None:
+            raise AXLError("AXL DLL not loaded")
+
+        # Encode path to bytes for ctypes
+        path_bytes = file_path.encode('utf-8')
+        return self.dll.AxmMotLoadParaAll(path_bytes)  # type: ignore[no-any-return]
 
     # === Digital I/O Functions ===
     def is_dio_module(self) -> bool:

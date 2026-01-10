@@ -11,7 +11,7 @@ robot:
   motion_param_file: sequences/eol_force_test/config/robot_motion_settings.mot
 
 loadcell:
-  model: bs205
+  model: bs205         # mock | bs205
   port: COM7
   baudrate: 9600
   timeout: 1.0
@@ -21,8 +21,8 @@ loadcell:
   indicator_id: 0
 
 mcu:
-  model: mock
-  port: COM11
+  model: lma
+  port: COM9
   baudrate: 115200
   timeout: 10.0
   bytesize: 8

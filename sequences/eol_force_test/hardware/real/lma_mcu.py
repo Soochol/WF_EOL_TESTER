@@ -252,7 +252,8 @@ class LMAMCU(MCUService):
         """Set test mode."""
         self._ensure_connected()
 
-        packet = f"FFFF0104{mode:08X}FEFE"
+        mode_value = mode.value if hasattr(mode, 'value') else int(mode)
+        packet = f"FFFF0104{mode_value:08X}FEFE"
         packet_bytes = bytes.fromhex(packet.replace(" ", ""))
 
         if self.serial_conn:
